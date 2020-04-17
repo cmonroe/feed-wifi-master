@@ -1,0 +1,38 @@
+diff --git a/mt7615/mac.c b/mt7615/mac.c
+index c38bc395c5a3..c28c2a3bbf41 100644
+--- a/mt7615/mac.c
++++ b/mt7615/mac.c
+@@ -665,7 +665,8 @@ int mt7615_mac_write_txwi(struct mt7615_dev *dev, __le32 *txwi,
+ 		txwi[3] |= cpu_to_le32(MT_TXD3_NO_ACK);
+ 
+ 	txwi[7] = FIELD_PREP(MT_TXD7_TYPE, fc_type) |
+-		  FIELD_PREP(MT_TXD7_SUB_TYPE, fc_stype);
++		  FIELD_PREP(MT_TXD7_SUB_TYPE, fc_stype) |
++		  FIELD_PREP(MT_TXD7_SPE_IDX, 0x18);
+ 	if (is_usb)
+ 		txwi[8] = FIELD_PREP(MT_TXD8_L_TYPE, fc_type) |
+ 			  FIELD_PREP(MT_TXD8_L_SUB_TYPE, fc_stype);
+diff --git a/mt7615/mcu.c b/mt7615/mcu.c
+index f2f9e0c4cc1d..c64dddfe1703 100644
+--- a/mt7615/mcu.c
++++ b/mt7615/mcu.c
+@@ -876,6 +876,7 @@ mt7615_mcu_wtbl_generic_tlv(struct sk_buff *skb, struct ieee80211_vif *vif,
+ 	struct mt7615_vif *mvif = (struct mt7615_vif *)vif->drv_priv;
+ 	struct wtbl_generic *generic;
+ 	struct wtbl_rx *rx;
++	struct wtbl_spe *spe;
+ 	struct tlv *tlv;
+ 
+ 	tlv = mt7615_mcu_add_nested_tlv(skb, WTBL_GENERIC, sizeof(*generic),
+@@ -900,6 +901,11 @@ mt7615_mcu_wtbl_generic_tlv(struct sk_buff *skb, struct ieee80211_vif *vif,
+ 	rx->rca1 = sta ? vif->type != NL80211_IFTYPE_AP : 1;
+ 	rx->rca2 = 1;
+ 	rx->rv = 1;
++
++	tlv = mt7615_mcu_add_nested_tlv(skb, WTBL_SPE, sizeof(*spe),
++					wtbl_tlv, sta_wtbl);
++	spe = (struct wtbl_spe *)tlv;
++	spe->spe_idx = 24;
+ }
+ 
+ static void
