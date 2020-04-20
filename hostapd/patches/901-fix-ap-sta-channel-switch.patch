@@ -1,0 +1,83 @@
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -141,6 +141,71 @@ static char *get_option(char *opt, char
+ 		return NULL;
+ }
+ 
++/* conf includes information about the channel
++ *
++ * channel = channel number
++ * secondary_channel = offset to 40Mhz channel +/- 1
++ * vht_oper_chwidth = 0 - 20 or 40, 1 for 80, 2 for 160 3 for 80+80.
++ * ht_capab if HT40- is set then 40Mhz
++ * vht_capab if no 0, then 80Mhz
++ * vht_oper_centr_freq_seg0_idx = 80 Mhz or 160 Mhz channel 
++ * vht_oper_centr_freq_seg1_idx for 80+80 mode.
++ *
++ * UPDATE from wpa_supplicant only has channel, ht_capab, ht_capab_mask, secondar_channel, hw_mode, ieee80211n
++ * 
++ * We need to compute the secondary channel based on the passed channel.
++ *
++ */
++  
++static void hostapd_ctrl_compute_secondary( struct hostapd_config *conf )
++{
++	/* Just set the secondary frequeycy */
++	int s40, s80, s160, ch;
++
++	ch = conf->channel;
++
++	s40 = ch + (ch & 0x4) - 2;
++	s80 = s40 + 4 - (s40 & 0x8);
++	s160 = s80 + 8 - (s80 & 0x10);
++
++	switch( conf->vht_oper_chwidth )
++	{
++	case CHANWIDTH_USE_HT:
++		conf->vht_oper_centr_freq_seg0_idx = s40;
++		break;
++	case CHANWIDTH_80MHZ:
++		conf->vht_oper_centr_freq_seg0_idx = s80;
++		break;
++	case CHANWIDTH_160MHZ:
++		conf->vht_oper_centr_freq_seg0_idx = s160;
++		break;
++	default:
++		break;
++	}
++}
++
++static void hostapd_ctrl_update_fixup( struct hostapd_config *conf )
++{
++	// Can't keep hostapd's configure secondary idx if we change channel.
++	// Allow hostapd_set_freq_params to compute the secondary channel.
++	conf->vht_oper_centr_freq_seg0_idx = 0;
++
++	if ( conf->channel == 165 )
++	{
++		// Can't do anything but 20Mhz
++		conf->vht_oper_chwidth=0;
++		conf->secondary_channel=0;
++	}
++	if ( conf->vht_oper_chwidth && conf->secondary_channel == 0 )
++	{
++		// WPA is connected to a 20Mhz channel, but we are configured for 80Mhz
++		// spoof secondary channel to allow set_freq_params compute secondary
++		conf->secondary_channel=1;
++	}
++
++	hostapd_ctrl_compute_secondary( conf );
++}
++
+ static struct hostapd_config *hostapd_ctrl_iface_config_read(const char *fname)
+ {
+ 	struct hostapd_config *conf;
+@@ -170,6 +235,8 @@ static struct hostapd_config *hostapd_ct
+ 			break;
+ 	}
+ 
++	hostapd_ctrl_update_fixup( conf );
++
+ 	return conf;
+ }
+ 
