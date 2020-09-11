@@ -10,31 +10,9 @@ using an AP_VLAN.
 Signed-off-by: Felix Fietkau <nbd@nbd.name>
 ---
 
---- a/net/mac80211/iface.c
-+++ b/net/mac80211/iface.c
-@@ -378,7 +378,8 @@ static bool ieee80211_set_sdata_offload_
- 			if (key->conf.cipher == WLAN_CIPHER_SUITE_AES_CMAC ||
- 			    key->conf.cipher == WLAN_CIPHER_SUITE_BIP_GMAC_128 ||
- 			    key->conf.cipher == WLAN_CIPHER_SUITE_BIP_GMAC_256 ||
--			    key->conf.cipher == WLAN_CIPHER_SUITE_BIP_CMAC_256)
-+			    key->conf.cipher == WLAN_CIPHER_SUITE_BIP_CMAC_256 ||
-+			    !(key->conf.flags & IEEE80211_KEY_FLAG_PAIRWISE))
- 				continue;
- 			if (key->conf.cipher == WLAN_CIPHER_SUITE_TKIP ||
- 			    !(key->flags & KEY_FLAG_UPLOADED_TO_HARDWARE))
-@@ -1448,7 +1449,8 @@ static void ieee80211_set_vif_encap_ops(
- 			if (key->conf.cipher == WLAN_CIPHER_SUITE_AES_CMAC ||
- 			    key->conf.cipher == WLAN_CIPHER_SUITE_BIP_GMAC_128 ||
- 			    key->conf.cipher == WLAN_CIPHER_SUITE_BIP_GMAC_256 ||
--			    key->conf.cipher == WLAN_CIPHER_SUITE_BIP_CMAC_256)
-+			    key->conf.cipher == WLAN_CIPHER_SUITE_BIP_CMAC_256 ||
-+			    !(key->conf.flags & IEEE80211_KEY_FLAG_PAIRWISE))
- 				continue;
- 			if (!(key->flags & KEY_FLAG_UPLOADED_TO_HARDWARE))
- 				enabled = false;
 --- a/net/mac80211/tx.c
 +++ b/net/mac80211/tx.c
-@@ -4190,88 +4190,47 @@ static void ieee80211_8023_xmit(struct i
+@@ -4184,88 +4184,47 @@ static void ieee80211_8023_xmit(struct i
  				struct sk_buff *skb)
  {
  	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
@@ -137,15 +115,15 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  
  	if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
  		sdata = container_of(sdata->bss,
-@@ -4292,6 +4251,7 @@ netdev_tx_t ieee80211_subif_start_xmit_8
+@@ -4286,6 +4245,7 @@ netdev_tx_t ieee80211_subif_start_xmit_8
  					    struct net_device *dev)
  {
  	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 +	struct ethhdr *ehdr = (struct ethhdr *)skb->data;
  	struct sta_info *sta;
  
- 	if (unlikely(skb->len < ETH_HLEN)) {
-@@ -4303,6 +4263,10 @@ netdev_tx_t ieee80211_subif_start_xmit_8
+ 	if (WARN_ON(!sdata->hw_80211_encap)) {
+@@ -4302,6 +4262,10 @@ netdev_tx_t ieee80211_subif_start_xmit_8
  
  	if (ieee80211_lookup_ra_sta(sdata, skb, &sta))
  		kfree_skb(skb);
