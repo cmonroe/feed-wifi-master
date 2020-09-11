@@ -1,7 +1,7 @@
 From: Felix Fietkau <nbd@nbd.name>
 Date: Mon, 17 Aug 2020 13:55:56 +0200
-Subject: [PATCH] mac80211: add missing queue/hash initialization to 802.3
- xmit
+Subject: [PATCH] mac80211: add missing queue/hash initialization to
+ 802.3 xmit
 
 Fixes AQL for encap-offloaded tx
 
@@ -10,7 +10,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
 --- a/net/mac80211/tx.c
 +++ b/net/mac80211/tx.c
-@@ -4206,6 +4206,12 @@ static void ieee80211_8023_xmit(struct i
+@@ -4200,6 +4200,12 @@ static void ieee80211_8023_xmit(struct i
  	if (is_zero_ether_addr(ra))
  		goto out_free;
  
