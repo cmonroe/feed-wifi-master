@@ -1,0 +1,132 @@
+From: Scott Iveland <scott.iveland@smartrg.com>
+Date: Mon Apr 20 08:59:26 2020 -0700
+Subject: brcmfmac: release outstanding for flow when ring is re-used
+
+Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
+--
+ msgbuf.c |   51 +++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 47 insertions(+), 4 deletions(-)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
+@@ -281,6 +281,7 @@ struct brcmf_msgbuf_pktid {
+ 	u16 data_offset;
+ 	struct sk_buff *skb;
+ 	dma_addr_t physaddr;
++	u16 flowid;
+ };
+ 
+ struct brcmf_msgbuf_pktids {
+@@ -320,7 +321,7 @@ static int
+ brcmf_msgbuf_alloc_pktid(struct device *dev,
+ 			 struct brcmf_msgbuf_pktids *pktids,
+ 			 struct sk_buff *skb, u16 data_offset,
+-			 dma_addr_t *physaddr, u32 *idx)
++			 dma_addr_t *physaddr, u32 *idx, u16 flowid)
+ {
+ 	struct brcmf_msgbuf_pktid *array;
+ 	u32 count;
+@@ -354,6 +355,7 @@ brcmf_msgbuf_alloc_pktid(struct device *
+ 	array[*idx].data_offset = data_offset;
+ 	array[*idx].physaddr = *physaddr;
+ 	array[*idx].skb = skb;
++	array[*idx].flowid = flowid;
+ 
+ 	pktids->last_allocated_idx = *idx;
+ 
+@@ -388,6 +390,38 @@ brcmf_msgbuf_get_pktid(struct device *de
+ 	return NULL;
+ }
+ 
++static void brcmf_msgbuf_release_pktids_flowid(struct brcmf_msgbuf *msgbuf, u16 flowid)
++{
++	struct device *dev = msgbuf->drvr->bus_if->dev;
++	struct brcmf_msgbuf_pktid *array = msgbuf->tx_pktids->array;
++	struct brcmf_msgbuf_pktid *pktid;
++	struct brcmf_msgbuf_pktids *pktids = msgbuf->tx_pktids;
++	u32 count;
++	u32 rel = 0;
++	struct brcmf_commonring *commonring;
++
++	commonring = msgbuf->flowrings[flowid];
++	count = 0;
++	do {
++		if ((array[count].allocated.counter) && (array[count].flowid == flowid)) {
++			pktid = &array[count];
++			dma_unmap_single(dev, pktid->physaddr,
++					 pktid->skb->len - pktid->data_offset,
++					 pktids->direction);
++			brcmu_pkt_buf_free_skb(pktid->skb);
++			array[count].allocated.counter = 0;
++			rel++;
++		}
++		count++;
++	} while (count < pktids->array_size);
++	
++	atomic_set(&commonring->outstanding_tx,0);
++
++	if(rel > 0){
++		brcmf_dbg(MSGBUF, "released %d outstanding_tx for flowid %d\n", rel, flowid);
++	}
++
++}
+ 
+ static void
+ brcmf_msgbuf_release_array(struct device *dev,
+@@ -679,6 +713,8 @@ static u32 brcmf_msgbuf_flowring_create(
+ 		return flowid;
+ 	}
+ 
++	brcmf_msgbuf_release_pktids_flowid(msgbuf, flowid);
++
+ 	create->flowid = flowid;
+ 	create->ifidx = ifidx;
+ 	memcpy(create->sa, eh->h_source, ETH_ALEN);
+@@ -723,7 +759,7 @@ static void brcmf_msgbuf_txflow(struct b
+ 		skb_orphan(skb);
+ 		if (brcmf_msgbuf_alloc_pktid(msgbuf->drvr->bus_if->dev,
+ 					     msgbuf->tx_pktids, skb, ETH_HLEN,
+-					     &physaddr, &pktid)) {
++					     &physaddr, &pktid, flowid)) {
+ 			brcmf_flowring_reinsert(flow, flowid, skb);
+ 			bphy_err(drvr, "No PKTID available !!\n");
+ 			break;
+@@ -811,6 +847,11 @@ static int brcmf_msgbuf_tx_queue_data(st
+ 		if (flowid == BRCMF_FLOWRING_INVALID_ID)
+ 			return -ENOMEM;
+ 	}
++
++	if(msgbuf->flow->rings[flowid]->status != RING_OPEN) {
++		return -ENOMEM;
++	}
++
+ 	queue_count = brcmf_flowring_enqueue(flow, flowid, skb);
+ 	force = ((queue_count % BRCMF_MSGBUF_TRICKLE_TXWORKER_THRS) == 0);
+ 	brcmf_msgbuf_schedule_txdata(msgbuf, flowid, force);
+@@ -932,7 +973,7 @@ static u32 brcmf_msgbuf_rxbuf_data_post(
+ 		pktlen = skb->len;
+ 		if (brcmf_msgbuf_alloc_pktid(msgbuf->drvr->bus_if->dev,
+ 					     msgbuf->rx_pktids, skb, 0,
+-					     &physaddr, &pktid)) {
++					     &physaddr, &pktid, 0)) {
+ 			dev_kfree_skb_any(skb);
+ 			bphy_err(drvr, "No PKTID available !!\n");
+ 			brcmf_commonring_write_cancel(commonring, alloced - i);
+@@ -1042,7 +1083,7 @@ brcmf_msgbuf_rxbuf_ctrl_post(struct brcm
+ 		pktlen = skb->len;
+ 		if (brcmf_msgbuf_alloc_pktid(msgbuf->drvr->bus_if->dev,
+ 					     msgbuf->rx_pktids, skb, 0,
+-					     &physaddr, &pktid)) {
++					     &physaddr, &pktid, 0)) {
+ 			dev_kfree_skb_any(skb);
+ 			bphy_err(drvr, "No PKTID available !!\n");
+ 			brcmf_commonring_write_cancel(commonring, alloced - i);
+@@ -1401,6 +1442,8 @@ void brcmf_msgbuf_delete_flowring(struct
+ 	u8 ifidx;
+ 	int err;
+ 
++	msgbuf->flow->rings[flowid]->status=RING_CLOSED;
++
+ 	/* no need to submit if firmware can not be reached */
+ 	if (drvr->bus_if->state != BRCMF_BUS_UP) {
+ 		brcmf_dbg(MSGBUF, "bus down, flowring will be removed\n");

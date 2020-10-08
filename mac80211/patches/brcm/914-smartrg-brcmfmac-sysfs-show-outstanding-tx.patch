@@ -1,0 +1,24 @@
+From: Scott Iveland <scott.iveland@smartrg.com>
+Date: Thu Apr 16 09:55:10 2020 -0700
+Subject: brcmfmac: add outstanding_tx to msgbuf_stats 
+
+Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
+--
+ msgbuf.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
+@@ -1480,10 +1480,10 @@ static int brcmf_msgbuf_stats_read(struc
+ 		commonring = msgbuf->flowrings[i];
+ 		hash = &msgbuf->flow->hash[ring->hash_id];
+ 		seq_printf(seq, "id %3u: rp %4u, wp %4u, qlen %4u, blocked %u\n"
+-				"        ifidx %u, fifo %u, da %pM\n",
++				"        ifidx %u, fifo %u, da %pM, outstanding_tx %d\n",
+ 				i, commonring->r_ptr, commonring->w_ptr,
+ 				skb_queue_len(&ring->skblist), ring->blocked,
+-				hash->ifidx, hash->fifo, hash->mac);
++				hash->ifidx, hash->fifo, hash->mac,atomic_read(&commonring->outstanding_tx));
+ 	}
+ 
+ 	return 0;

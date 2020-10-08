@@ -1,0 +1,97 @@
+From: John Crispin <john@phrozen.org>
+Date: Mon 02 Mar 2020 16:15:14 -0800
+Subject: brcmfmac: fix for chanim_stats
+
+Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
+--
+ core.c |   33 +++++++++++++++++++++------------
+ 1 file changed, 21 insertions(+), 12 deletions(-)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -271,7 +271,7 @@ static int brcmf_netdev_ioctl(struct net
+ 	struct brcmf_pub *drvr = ifp->drvr;
+ 	brcmf_ioctl_t ioc;
+ 	void *local_buf = NULL;
+-	int ret = 0;
++	int ret = 0, len = 0;
+ 	char *request="";
+ 
+ 	memset(&ioc, 0, sizeof(ioc));
+@@ -309,7 +309,7 @@ static int brcmf_netdev_ioctl(struct net
+ 	}
+ 
+ 	if (ioc.buf == NULL) {
+-		bphy_err(drvr, "Unexpected NULL ioc.buf on %s\n", ioc.cmd, brcmf_ifname(ifp));
++		bphy_err(drvr, "Unexpected NULL ioc.buf, cmd %d on %s\n", ioc.cmd, brcmf_ifname(ifp));
+ 		ret = -EFAULT;
+ 		goto done;
+ 	}
+@@ -331,25 +331,27 @@ static int brcmf_netdev_ioctl(struct net
+ 	/* First NULL terminated string in the ioc.buf is the requested data */
+ 	if (strncmp (local_buf, "bs_data", strlen("bs_data")) == 0) {
+ 		/* retrieve the table from firmware */
+-		ret = brcmf_fil_iovar_data_get(ifp, "bs_data", local_buf, ioc.len);
+ 		request="bs_data";
++		ret = brcmf_fil_iovar_data_get(ifp, request, local_buf, ioc.len);
+ 	}
+ 	else if (strncmp (local_buf, "pktq_stats", strlen("pktq_stats")) == 0) {
+-                /* retrieve the table from firmware */
+-                ret = brcmf_fil_iovar_data_get(ifp, "pktq_stats", local_buf, ioc.len);
++		/* retrieve the table from firmware */
+ 		request="pktq_stats";
++		len = strlen(request) + 1;
++                ret = brcmf_fil_iovar_data_get(ifp, "pktq_stats", &local_buf[len], ioc.len - len);
+         }
+ 	else if (strncmp (local_buf, "chanim_stats", strlen("chanim_stats")) == 0) {
+-                /* retrieve the table from firmware */
+-                ret = brcmf_fil_iovar_data_get(ifp, "chanim_stats", local_buf, ioc.len);
++		/* retrieve the table from firmware */
+ 		request="chanim_stats";
++		len = strlen(request) + 1;
++		ret = brcmf_fil_iovar_data_get(ifp, "chanim_stats", &local_buf[len], ioc.len - len);
+         }
+ 	else if (strncmp (local_buf, "csa", strlen("csa")) == 0) {
+ 		u32 target_channel;
++		request="csa";
+                 /* Send the channel switch request */
+-		memcpy(&target_channel, local_buf + strlen("csa")+1, sizeof(u32));
++		memcpy(&target_channel, local_buf + strlen(request)+1, sizeof(u32));
+ 		ret = brcmf_fil_cmd_int_set(ifp, BRCMF_C_SET_CHANNEL, target_channel);
+-		request="csa";
+         }
+ 	else {
+ 		bphy_err(drvr, "Unsupported request in ioctl buf\n");
+@@ -359,22 +361,29 @@ static int brcmf_netdev_ioctl(struct net
+ 
+ 	if (ioc.cmd == WLC_GET_VAR) {
+ 		if (ret) {
+-			// bphy_err(drvr, "Failed to retrieve iovar_data for request %s on %s, err:%d\n", request, brcmf_ifname(ifp), ret);
++#if 0
++// Enable this once pktq_stats is fixed
++			bphy_err(drvr, "Failed to retrieve iovar_data for request %s on %s, err:%d\n", request, brcmf_ifname(ifp), ret);
++#endif
+ 			goto done;
+ 		}
+ 
+-		if (copy_to_user(ioc.buf, local_buf, ioc.len)) {
++
++		if (copy_to_user(ioc.buf, &local_buf[len], ioc.len - len)) {
+ 			bphy_err(drvr, "Failed to copy ioctl results to user space\n");
+ 			ret = -EFAULT;
+ 			goto done;
+ 		}
+ 		else {
+ #if 0
+-			char *lb=(char *) local_buf;
++			char *lb=(char *) local_buf+len;
+ 			bphy_err(drvr, "Successful iovar data retrieval for %s on %s\n", request,  brcmf_ifname(ifp));
+ 			printk ("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", 
+ 				  *(lb), *(lb+1), *(lb+2), *(lb+3), *(lb+4),
+ 				*(lb+5), *(lb+6), *(lb+7), *(lb+8), *(lb+9));
++			printk ("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
++				*(lb+10), *(lb+11), *(lb+12), *(lb+13), *(lb+14),
++				*(lb+15), *(lb+16), *(lb+17), *(lb+18), *(lb+19));
+ #endif
+ 		}
+ 	}

@@ -1,0 +1,24 @@
+From: Chad Monroe <chad.monroe@smartrg.com>
+Date: Tue 04 Feb 2020 10:39:48 -0700
+Subject: brcmfmac: always push country code to offload firmware
+
+Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
+--
+ cfg80211.c |    6 ------
+ 1 file changed, 6 deletions(-)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -7179,12 +7179,6 @@ static s32 brcmf_translate_country_code(
+ 		return -EINVAL;
+ 	}
+ 
+-	if ((alpha2[0] == ccreq->country_abbrev[0]) &&
+-	    (alpha2[1] == ccreq->country_abbrev[1])) {
+-		brcmf_dbg(TRACE, "Country code already set\n");
+-		return -EAGAIN;
+-	}
+-
+ 	found_index = -1;
+ 	for (i = 0; i < country_codes->table_size; i++) {
+ 		cc = &country_codes->table[i];

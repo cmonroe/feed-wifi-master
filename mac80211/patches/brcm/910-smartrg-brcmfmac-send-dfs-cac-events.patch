@@ -1,0 +1,43 @@
+From: Chad Monroe <chad.monroe@smartrg.com>
+Date: Wed 08 Apr 2020 12:38:20 -0700
+Subject: brcmfmac: HACK - send up emulated DFS CAC events 
+
+Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
+--
+ cfg80211.c |   25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -4875,6 +4875,31 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
+ 	set_bit(BRCMF_VIF_STATUS_AP_CREATED, &ifp->vif->sme_state);
+ 	brcmf_net_setcarrier(ifp, true);
+ 
++	/* hack to emulate DFS CAC completion (dongle will do it) to
++	 * keep hostapd happy. note that the dongle should really
++	 * post these events for hostapd to handle them accurately.
++	 */
++	if (!err && ifp->bsscfgidx == 0) {
++		struct wireless_dev *wdev = ndev->ieee80211_ptr;
++
++		if (!wiphy_ext_feature_isset(wiphy, NL80211_EXT_FEATURE_DFS_OFFLOAD)) {
++			goto exit;
++		}
++		if (!settings->chandef.chan->flags & IEEE80211_CHAN_RADAR) {
++			goto exit;
++		}
++
++		/* these params normally don't get initialized until after
++		 * start_ap is complete.. set them up to prevent warnings
++		 */
++		wdev->chandef = settings->chandef;
++		wdev->cac_start_time = jiffies;
++		wdev->cac_time_ms = 0;
++
++		cfg80211_cac_event(ndev, &settings->chandef, NL80211_RADAR_CAC_STARTED, GFP_KERNEL);
++		cfg80211_cac_event(ndev, &settings->chandef, NL80211_RADAR_CAC_FINISHED, GFP_KERNEL);
++	}
++
+ exit:
+ 	if ((err) && (!mbss)) {
+ 		brcmf_set_mpc(ifp, 1);

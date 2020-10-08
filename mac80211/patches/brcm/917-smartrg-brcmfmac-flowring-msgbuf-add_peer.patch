@@ -1,0 +1,139 @@
+From 0688cab41d6b9875e6499c771cd79db7f098d1f5 Mon Sep 17 00:00:00 2001
+From: Tim Hayes <tim.hayes@smartrg.com>
+Date: Wed, 22 Apr 2020 11:49:12 -0700
+Subject: [PATCH] OWRT-4809 flowring msgbuf add_peer() function added
+
+---
+ .../broadcom/brcm80211/brcmfmac/cfg80211.c         | 18 +++++++++
+ .../wireless/broadcom/brcm80211/brcmfmac/msgbuf.c  | 46 ++++++++++++++++++++--
+ .../wireless/broadcom/brcm80211/brcmfmac/proto.h   |  7 ++++
+ 3 files changed, 68 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+index da9e256..f358c45 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -5896,6 +5896,24 @@ brcmf_notify_connect_status(struct brcmf_if *ifp,
+ 	struct brcmf_cfg80211_profile *profile = &ifp->vif->profile;
+ 	struct ieee80211_channel *chan;
+ 	s32 err = 0;
++	u32 event = e->event_code;
++	u32 reason = e->reason;
++
++	pr_debug("%s:%d ndev %s %02X:%02X:%02X:%02X:%02X:%02X event %s (%u), reason %d\n",__FUNCTION__,__LINE__,ndev,
++		e->addr[0],
++		e->addr[1],
++		e->addr[2],
++		e->addr[3],
++		e->addr[4],
++		e->addr[5],
++		brcmf_fweh_event_name(event), event, reason);
++
++	if ((e->event_code == BRCMF_E_AUTH) ||
++	    (e->event_code == BRCMF_E_AUTH_IND) ||
++	    (e->event_code == BRCMF_E_REASSOC_IND) ||
++	    (e->event_code == BRCMF_E_ASSOC_IND)){
++		brcmf_proto_add_peer(ifp->drvr, ifp->ifidx, (u8 *)e->addr);
++	}
+ 
+ 	if ((e->event_code == BRCMF_E_DEAUTH) ||
+ 	    (e->event_code == BRCMF_E_DEAUTH_IND) ||
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
+index ce342a8..b0e7dcd 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
+@@ -844,9 +844,13 @@ static int brcmf_msgbuf_tx_queue_data(struct brcmf_pub *drvr, int ifidx,
+ 
+ 	flowid = brcmf_flowring_lookup(flow, eh->h_dest, skb->priority, ifidx);
+ 	if (flowid == BRCMF_FLOWRING_INVALID_ID) {
+-		flowid = brcmf_msgbuf_flowring_create(msgbuf, ifidx, skb);
+-		if (flowid == BRCMF_FLOWRING_INVALID_ID)
+-			return -ENOMEM;
++		if (is_multicast_ether_addr(eh->h_dest)) {
++			flowid = brcmf_msgbuf_flowring_create(msgbuf, ifidx, skb);
++			if (flowid == BRCMF_FLOWRING_INVALID_ID)
++				return -ENOMEM;
++		} else {
++				return -ENOMEM;
++		}
+ 	}
+ 	queue_count = brcmf_flowring_enqueue(flow, flowid, skb);
+ 	force = ((queue_count % BRCMF_MSGBUF_TRICKLE_TXWORKER_THRS) == 0);
+@@ -874,6 +878,41 @@ brcmf_msgbuf_delete_peer(struct brcmf_pub *drvr, int ifidx, u8 peer[ETH_ALEN])
+ 	brcmf_flowring_delete_peer(msgbuf->flow, ifidx, peer);
+ }
+ 
++static void
++brcmf_msgbuf_add_peer(struct brcmf_pub *drvr, int ifidx, u8 peer[ETH_ALEN])
++{
++	struct brcmf_msgbuf *msgbuf = (struct brcmf_msgbuf *)drvr->proto->pd;
++	u16 flowid;
++	struct sk_buff _skb={0};
++	struct sk_buff *skb=&_skb;
++	u8 data[64]={0};
++	struct ethhdr *eh;
++	u8 source[ETH_ALEN]={0};
++
++	skb->data=&data[0];
++
++	eh = (struct ethhdr *)(skb->data);
++
++	pr_debug("%s:%d %02X:%02X:%02X:%02X:%02X:%02X\n",__FUNCTION__,__LINE__,
++		peer[0],
++		peer[1],
++		peer[2],
++		peer[3],
++		peer[4],
++		peer[5]);
++
++	memcpy(eh->h_dest,peer,ETH_ALEN);
++	memcpy(eh->h_source,source,ETH_ALEN);
++
++       skb->priority=0;
++	flowid = brcmf_msgbuf_flowring_create(msgbuf, ifidx, skb);
++       skb->priority=1;
++	flowid = brcmf_msgbuf_flowring_create(msgbuf, ifidx, skb);
++       skb->priority=5;
++	flowid = brcmf_msgbuf_flowring_create(msgbuf, ifidx, skb);
++       skb->priority=7;
++	flowid = brcmf_msgbuf_flowring_create(msgbuf, ifidx, skb);
++}
+ 
+ static void
+ brcmf_msgbuf_add_tdls_peer(struct brcmf_pub *drvr, int ifidx, u8 peer[ETH_ALEN])
+@@ -1589,6 +1628,7 @@ int brcmf_proto_msgbuf_attach(struct brcmf_pub *drvr)
+ 	drvr->proto->tx_queue_data = brcmf_msgbuf_tx_queue_data;
+ 	drvr->proto->configure_addr_mode = brcmf_msgbuf_configure_addr_mode;
+ 	drvr->proto->delete_peer = brcmf_msgbuf_delete_peer;
++	drvr->proto->add_peer = brcmf_msgbuf_add_peer;
+ 	drvr->proto->add_tdls_peer = brcmf_msgbuf_add_tdls_peer;
+ 	drvr->proto->rxreorder = brcmf_msgbuf_rxreorder;
+ 	drvr->proto->debugfs_create = brcmf_msgbuf_debugfs_create;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
+index bd08d3a..4d2f1b6 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
+@@ -30,6 +30,8 @@ struct brcmf_proto {
+ 				    enum proto_addr_mode addr_mode);
+ 	void (*delete_peer)(struct brcmf_pub *drvr, int ifidx,
+ 			    u8 peer[ETH_ALEN]);
++	void (*add_peer)(struct brcmf_pub *drvr, int ifidx,
++			    u8 peer[ETH_ALEN]);
+ 	void (*add_tdls_peer)(struct brcmf_pub *drvr, int ifidx,
+ 			      u8 peer[ETH_ALEN]);
+ 	void (*rxreorder)(struct brcmf_if *ifp, struct sk_buff *skb);
+@@ -96,6 +98,11 @@ brcmf_proto_delete_peer(struct brcmf_pub *drvr, int ifidx, u8 peer[ETH_ALEN])
+ 	drvr->proto->delete_peer(drvr, ifidx, peer);
+ }
+ static inline void
++brcmf_proto_add_peer(struct brcmf_pub *drvr, int ifidx, u8 peer[ETH_ALEN])
++{
++	drvr->proto->add_peer(drvr, ifidx, peer);
++}
++static inline void
+ brcmf_proto_add_tdls_peer(struct brcmf_pub *drvr, int ifidx, u8 peer[ETH_ALEN])
+ {
+ 	drvr->proto->add_tdls_peer(drvr, ifidx, peer);
+-- 
+1.9.1
+

@@ -1,0 +1,32 @@
+From: Chad Monroe <chad.monroe@smartrg.com>
+Date: Tue 04 Feb 2020 10:56:40 -0700
+Subject: brcmfmac: set static max power allowed to 26dBm
+
+Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
+--
+ cfg80211.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -183,16 +183,16 @@ static const struct ieee80211_regdomain
+ 	.alpha2 =  "99",
+ 	.reg_rules = {
+ 		/* IEEE 802.11b/g, channels 1..11 */
+-		REG_RULE(2412-10, 2472+10, 40, 6, 20, 0),
++		REG_RULE(2412-10, 2472+10, 40, 6, 26, 0),
+ 		/* If any */
+ 		/* IEEE 802.11 channel 14 - Only JP enables
+ 		 * this and for 802.11b only
+ 		 */
+-		REG_RULE(2484-10, 2484+10, 20, 6, 20, 0),
++		REG_RULE(2484-10, 2484+10, 20, 6, 26, 0),
+ 		/* IEEE 802.11a, channel 36..64 */
+-		REG_RULE(5150-10, 5350+10, 160, 6, 20, 0),
++		REG_RULE(5150-10, 5350+10, 160, 6, 26, 0),
+ 		/* IEEE 802.11a, channel 100..165 */
+-		REG_RULE(5470-10, 5850+10, 160, 6, 20, 0), }
++		REG_RULE(5470-10, 5850+10, 160, 6, 26, 0), }
+ };
+ 
+ /* Note: brcmf_cipher_suites is an array of int defining which cipher suites

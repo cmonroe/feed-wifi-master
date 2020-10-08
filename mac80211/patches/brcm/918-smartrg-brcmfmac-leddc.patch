@@ -1,0 +1,65 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Tue 28 Apr 2020 12:02:00 -0700
+Subject: brcmfmac: added support for leddc iovar write
+
+Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
+--
+ core.c |   38 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
+
+Index: backports-4.19.98-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+===================================================================
+--- backports-4.19.98-1.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ backports-4.19.98-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -251,6 +251,42 @@ static void brcmf_netdev_set_multicast_l
+ 	schedule_work(&ifp->multicast_work);
+ }
+ 
++static ssize_t leddc_write(struct file *file, const char __user *user_buf,
++			       size_t count, loff_t *ppos)
++{
++	struct brcmf_pub *drvr = file->private_data;
++        struct brcmf_if *ifp;
++	int ret = 0;
++	u32 value;
++
++	if (drvr == NULL)
++		return -EINVAL;
++
++        ifp = drvr->iflist[0];
++	if (ifp == NULL) {
++		bphy_err(drvr, "No associated if to perform leddc\n");
++		return -EINVAL;
++	}
++
++	if (kstrtou32_from_user(user_buf, count, 0, &value))
++		return -EINVAL;
++
++	ret = brcmf_fil_iovar_data_set(ifp, "leddc", &value, sizeof(value));
++	if (ret) {
++		bphy_err(drvr, "Failed to perform leddc set request on %s, err:%d\n", brcmf_ifname(ifp), ret);
++		return -EINVAL;
++	}
++
++	return count;
++}
++
++static const struct file_operations leddc_fops = {
++	.open	= simple_open,
++	.llseek	= no_llseek,
++	.write	= leddc_write,
++};
++
++
+ /* Linux network driver ioctl encoding - this is same as wl_ioctl from libwmd/src/api/broadcom.h, similar to dhd_ioctl */
+ typedef struct brcmf_ioctl {
+         u32   cmd;    /* common ioctl definition */
+@@ -1510,6 +1546,8 @@ static int brcmf_bus_started(struct brcm
+ 			    &bus_reset_fops);
+ 	debugfs_create_file("console", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
+ 			    &console_fops);
++	debugfs_create_file("leddc", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
++			    &leddc_fops);
+ 	brcmf_feat_debugfs_create(drvr);
+ 	brcmf_proto_debugfs_create(drvr);
+ 	brcmf_bus_debugfs_create(bus_if);

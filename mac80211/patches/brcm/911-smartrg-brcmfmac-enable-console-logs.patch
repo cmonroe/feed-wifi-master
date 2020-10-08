@@ -1,0 +1,20 @@
+From: Chad Monroe <chad.monroe@smartrg.com>
+Date: Wed 08 Apr 2020 18:12:00 -0700
+Subject: brcmfmac: enable dongle console messages 
+
+Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
+--
+ common.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -38,7 +38,7 @@ module_param_named(txglomsz, brcmf_sdiod
+ MODULE_PARM_DESC(txglomsz, "Maximum tx packet chain size [SDIO]");
+ 
+ /* Debug level configuration. See debug.h for bits, sysfs modifiable */
+-int brcmf_msg_level;
++int brcmf_msg_level = BRCMF_FWCON_VAL;
+ module_param_named(debug, brcmf_msg_level, int, 0600);
+ MODULE_PARM_DESC(debug, "Level of debug output");
+ 

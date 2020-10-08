@@ -1,0 +1,674 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Wed 15 Jul 2020 13:50:00 -0700
+Subject: brcmfmac: added support for radar detection, associated debugfs files
+
+Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
+--
+ brcmfmac/cfg80211.c  |   15 +
+ brcmfmac/core.c      |  557 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ brcmfmac/fwil.h      |    3 
+ include/brcmu_wifi.h |   22 +-
+ 4 files changed, 586 insertions(+), 11 deletions(-)
+
+Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+===================================================================
+--- backports-4.19.120-1.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -4803,6 +4803,21 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
+ 			}
+ 		}
+ 
++		// Set radar detection to on
++		err = brcmf_fil_cmd_int_set (ifp, BRCMF_C_SET_RADAR, 1);
++		if (err < 0)
++			bphy_err(drvr, "Set radar detection failed %d\n", err);
++
++		// Set regulatory domain mode (802.11d)
++		err = brcmf_fil_cmd_int_set (ifp, BRCMF_C_SET_REGULATORY, 1);
++		if (err < 0)
++			bphy_err(drvr, "Set regulatory (802.11d) failed %d\n", err);
++			
++		// Set 80211h Spectrum Management mode
++		err = brcmf_fil_cmd_int_set (ifp, BRCMF_C_SET_SPECT_MANAGEMENT, 1);
++		if (err < 0)
++			bphy_err(drvr, "Set spectrum management (802.11h) failed %d\n", err);
++
+ 		if (!mbss) {
+ 			/* Firmware 10.x requires setting channel after enabling
+ 			 * AP and before bringing interface up.
+Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+===================================================================
+--- backports-4.19.120-1.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -286,6 +286,559 @@ static const struct file_operations ledd
+ 	.write	= leddc_write,
+ };
+ 
++/*
++ * BEGIN - DFS / RADAR related debugfs file handling 
++ */
++
++static ssize_t radar_detection_read(struct file *file, char __user *user_buf,
++			       size_t count, loff_t *ppos)
++{
++	struct brcmf_pub *drvr = file->private_data;
++        struct brcmf_if *ifp;
++	int ret = 0;
++	u32 value;
++	char value_str[32];
++
++	if (drvr == NULL)
++		return -EINVAL;
++
++        ifp = drvr->iflist[0];
++	if (ifp == NULL) {
++		bphy_err(drvr, "No associated if to perform radar_detection\n");
++		return -EINVAL;
++	}
++
++	ret = brcmf_fil_cmd_int_get(ifp, BRCMF_C_GET_RADAR, &value);
++	if (ret) {
++		bphy_err(drvr, "Failed to perform radar_detection get request on %s, err:%d\n", brcmf_ifname(ifp), ret);
++		return -EFAULT;
++	}
++
++	snprintf(value_str, sizeof(value_str), "%d\n", value);
++	return simple_read_from_buffer(user_buf, count, ppos, value_str, strlen(value_str));
++}
++
++static ssize_t radar_detection_write(struct file *file, const char __user *user_buf,
++			       size_t count, loff_t *ppos)
++{
++	struct brcmf_pub *drvr = file->private_data;
++        struct brcmf_if *ifp;
++	int ret = 0;
++	u32 value;
++
++	if (drvr == NULL)
++		return -EINVAL;
++
++        ifp = drvr->iflist[0];
++	if (ifp == NULL) {
++		bphy_err(drvr, "No associated if to perform radar_detection\n");
++		return -EINVAL;
++	}
++
++	if (kstrtou32_from_user(user_buf, count, 0, &value))
++		return -EFAULT;
++
++	ret = brcmf_fil_cmd_int_set(ifp, BRCMF_C_SET_RADAR, value);
++	if (ret) {
++		bphy_err(drvr, "Failed to perform radar_detection set request on %s, err:%d\n", brcmf_ifname(ifp), ret);
++		return -EINVAL;
++	}
++
++	return count;
++}
++
++static const struct file_operations radar_detection_fops = {
++	.open	= simple_open,
++	.llseek	= no_llseek,
++	.write	= radar_detection_write,
++	.read	= radar_detection_read,
++};
++
++typedef uint16_t chanspec_t;
++
++/* data structure used in 'radar_status' wl interface, which is use to query radar det status */
++typedef struct {
++        bool detected;
++        int count;
++        bool pretended;
++        uint32_t radartype;
++        uint32_t timenow;
++        uint32_t timefromL;
++        int lp_csect_single;
++        int detected_pulse_index;
++        int nconsecq_pulses;
++        chanspec_t ch;
++        int pw[10];
++        int intv[10];
++        int fm[10];
++} wl_radar_status_t;
++
++#define WL_CHANSPEC_CHAN_MASK           0x00ff
++#define WL_CHANSPEC_CHAN1_MASK          0x000f
++#define WL_CHANSPEC_CHAN1_SHIFT         0
++#define WL_CHANSPEC_CHAN2_MASK          0x00f0
++#define WL_CHANSPEC_CHAN2_SHIFT         4
++
++#define MAXCHANNEL              224
++
++#define WL_CHANSPEC_BW_80               0x2000
++#define WL_CHANSPEC_BW_160              0x2800
++#define WL_CHANSPEC_BW_8080             0x3000
++
++#define WL_CHANSPEC_CTL_SB_LLL          0x0000
++#define WL_CHANSPEC_CTL_SB_LLU          0x0100
++#define WL_CHANSPEC_CTL_SB_LUL          0x0200
++#define WL_CHANSPEC_CTL_SB_LUU          0x0300
++#define WL_CHANSPEC_CTL_SB_ULL          0x0400
++#define WL_CHANSPEC_CTL_SB_ULU          0x0500
++#define WL_CHANSPEC_CTL_SB_UUL          0x0600
++#define WL_CHANSPEC_CTL_SB_UUU          0x0700
++#define WL_CHANSPEC_CTL_SB_SHIFT        8
++
++#define CH_MAX_2G_CHANNEL               14      /* Max channel in 2G band */
++
++#define CHSPEC_CTL_SB(chspec)   ((chspec) & WL_CHANSPEC_CTL_SB_MASK)
++
++#define CHSPEC_CHAN1(chspec)    ((chspec) & WL_CHANSPEC_CHAN1_MASK) >> WL_CHANSPEC_CHAN1_SHIFT
++#define CHSPEC_CHAN2(chspec)    ((chspec) & WL_CHANSPEC_CHAN2_MASK) >> WL_CHANSPEC_CHAN2_SHIFT
++
++#define CHSPEC_BW(chspec)               ((chspec) & WL_CHANSPEC_BW_MASK)
++
++#define CHSPEC_IS2G(chspec)     (((chspec) & WL_CHANSPEC_BAND_MASK) == WL_CHANSPEC_BAND_2G)
++#define CHSPEC_IS5G(chspec)     (((chspec) & WL_CHANSPEC_BAND_MASK) == WL_CHANSPEC_BAND_5G)
++#define CHSPEC_IS20(chspec)     (((chspec) & WL_CHANSPEC_BW_MASK) == WL_CHANSPEC_BW_20)
++#define CHSPEC_IS40(chspec)     (((chspec) & WL_CHANSPEC_BW_MASK) == WL_CHANSPEC_BW_40)
++#define CHSPEC_IS80(chspec)     (((chspec) & WL_CHANSPEC_BW_MASK) == WL_CHANSPEC_BW_80)
++#define CHSPEC_IS8080(chspec)   (((chspec) & WL_CHANSPEC_BW_MASK) == WL_CHANSPEC_BW_8080)
++
++/* 80MHz channels in 5GHz band */
++static const uint8_t wf_5g_80m_chans[] = {42, 58, 106, 122, 138, 155};
++#define WF_NUM_5G_80M_CHANS \
++        (sizeof(wf_5g_80m_chans)/sizeof(uint8_t))
++
++static const uint8_t wf_chspec_bw_mhz[] = {5, 10, 20, 40, 80, 160, 160};
++#define WF_NUM_BW \
++        (sizeof(wf_chspec_bw_mhz)/sizeof(uint8_t))
++
++/*
++ * Verify the chanspec is using a legal set of parameters, i.e. that the
++ * chanspec specified a band, bw, ctl_sb and channel and that the
++ * combination could be legal given any set of circumstances.
++ * RETURNS: true is the chanspec is malformed, false if it looks good.
++ */
++bool
++wf_chspec_malformed(chanspec_t chanspec)
++{
++	uint chspec_bw = CHSPEC_BW(chanspec);
++	uint chspec_ch = CHSPEC_CHANNEL(chanspec);
++
++	/* must be 2G or 5G band */
++	if (CHSPEC_IS2G(chanspec)) {
++		/* must be valid bandwidth */
++		if (chspec_bw != WL_CHANSPEC_BW_20 &&
++		    chspec_bw != WL_CHANSPEC_BW_40) {
++			brcmf_err("wf_chspec_malformed: != 20 && != 40\n");
++			return true;
++		}
++	} else if (CHSPEC_IS5G(chanspec)) {
++		if (chspec_bw == WL_CHANSPEC_BW_8080) {
++			uint ch1_id, ch2_id;
++
++			/* channel IDs in 80+80 must be in range */
++			ch1_id = CHSPEC_CHAN1(chanspec);
++			ch2_id = CHSPEC_CHAN2(chanspec);
++			if (ch1_id >= WF_NUM_5G_80M_CHANS || ch2_id >= WF_NUM_5G_80M_CHANS) {
++				brcmf_err("wf_chspec_malformed: ch1_id / ch2_id\n");
++				return true;
++			}
++
++		} else if (chspec_bw == WL_CHANSPEC_BW_20 || chspec_bw == WL_CHANSPEC_BW_40 ||
++		           chspec_bw == WL_CHANSPEC_BW_80 || chspec_bw == WL_CHANSPEC_BW_160) {
++
++			if (chspec_ch > MAXCHANNEL) {
++				brcmf_err("wf_chspec_malformed: > MAXCHANNEL\n");
++				return true;
++			}
++		} else {
++			/* invalid bandwidth */
++			brcmf_err("wf_chspec_malformed: invalid bandwidth\n");
++			return true;
++		}
++	} else {
++		/* must be 2G or 5G band */
++		brcmf_err("wf_chspec_malformed: invalid band\n");
++		return true;
++	}
++
++	/* side band needs to be consistent with bandwidth */
++	if (chspec_bw == WL_CHANSPEC_BW_20) {
++		if (CHSPEC_CTL_SB(chanspec) != WL_CHANSPEC_CTL_SB_LLL) {
++			brcmf_err("wf_chspec_malformed: != WL_CHANSPEC_CTL_SB_LLL\n");
++			return true;
++		}
++	} else if (chspec_bw == WL_CHANSPEC_BW_40) {
++		if (CHSPEC_CTL_SB(chanspec) > WL_CHANSPEC_CTL_SB_LLU) {
++			brcmf_err("wf_chspec_malformed: > WL_CHANSPEC_CTL_SB_LLU\n");
++			return true;
++		}
++	} else if (chspec_bw == WL_CHANSPEC_BW_80) {
++		if (CHSPEC_CTL_SB(chanspec) > WL_CHANSPEC_CTL_SB_LUU) {
++			brcmf_err("wf_chspec_malformed: > WL_CHANSPEC_CTL_SB_LUU\n");
++			return true;
++		}
++	} else if (chspec_bw == WL_CHANSPEC_BW_160 ||
++	           chspec_bw == WL_CHANSPEC_BW_8080) {
++		if (CHSPEC_CTL_SB(chanspec) > WL_CHANSPEC_CTL_SB_UUU) {
++			brcmf_err("Unexpected chanspec value, CHSPEC_CTL_SB(chanspec) (%d) > WL_CHANSPEC_CTL_SB_UUU (%d)\n", 
++				CHSPEC_CTL_SB(chanspec), WL_CHANSPEC_CTL_SB_UUU);
++		}
++	}
++	// brcmf_err("wf_chspec_malformed: returning false\n");
++	return false;
++}
++
++/* convert bandwidth from chanspec to MHz */
++static uint
++bw_chspec_to_mhz(chanspec_t chspec)
++{
++        uint bw;
++
++        bw = (chspec & WL_CHANSPEC_BW_MASK) >> WL_CHANSPEC_BW_SHIFT;
++        return (bw >= WF_NUM_BW ? 0 : wf_chspec_bw_mhz[bw]);
++}
++
++/* bw in MHz, return the channel count from the center channel to the
++ * the channel at the edge of the band
++ */
++static uint8_t
++center_chan_to_edge(uint bw)
++{ 
++        /* edge channels separated by BW - 10MHz on each side
++         * delta from cf to edge is half of that,
++         * MHz to channel num conversion is 5MHz/channel
++         */
++        return (uint8_t)(((bw - 20) / 2) / 5);
++}
++
++/* return channel number of the low edge of the band
++ * given the center channel and BW
++ */
++static uint8_t
++channel_low_edge(uint center_ch, uint bw)
++{
++        return (uint8_t)(center_ch - center_chan_to_edge(bw));
++}
++
++/* return control channel given center channel and side band */
++static uint8_t
++channel_to_ctl_chan(uint center_ch, uint bw, uint sb)
++{
++        return (uint8_t)(channel_low_edge(center_ch, bw) + sb * 4);
++}
++
++/*
++ * This function returns the channel number that control traffic is being sent on, for 20MHz
++ * channels this is just the channel number, for 40MHZ, 80MHz, 160MHz channels it is the 20MHZ
++ * sideband depending on the chanspec selected
++ */
++uint8_t
++wf_chspec_ctlchan(chanspec_t chspec)
++{
++        uint center_chan;
++        uint bw_mhz;
++        uint sb;
++
++        /* Is there a sideband ? */
++        if (CHSPEC_IS20(chspec)) {
++                return CHSPEC_CHANNEL(chspec);
++        } else {
++                sb = CHSPEC_CTL_SB(chspec) >> WL_CHANSPEC_CTL_SB_SHIFT;
++
++                if (CHSPEC_IS8080(chspec)) {
++                        /* For an 80+80 MHz channel, the sideband 'sb' field is an 80 MHz sideband
++                         * (LL, LU, UL, LU) for the 80 MHz frequency segment 0.
++                         */
++                        uint chan_id = CHSPEC_CHAN1(chspec);
++
++                        bw_mhz = 80;
++
++                        /* convert from channel index to channel number */
++                        center_chan = wf_5g_80m_chans[chan_id];
++                }
++                else {
++                        bw_mhz = bw_chspec_to_mhz(chspec);
++                        center_chan = CHSPEC_CHANNEL(chspec) >> WL_CHANSPEC_CHAN_SHIFT;
++                }
++
++                return (channel_to_ctl_chan(center_chan, bw_mhz, sb));
++        }
++}
++
++/* bandwidth ASCII string */
++static const char *wf_chspec_bw_str[] =
++{
++        "5",
++        "10",
++        "20",
++        "40",
++        "80",
++        "160",
++        "80+80",
++        "na"
++};
++
++/*
++ * given a chanspec and a string buffer, format the chanspec as a
++ * string, and return the original pointer a.
++ * Min buffer length must be CHANSPEC_STR_LEN.
++ * On error return NULL
++ */
++char *
++wf_chspec_ntoa(chanspec_t chspec, char *buf)
++{
++	const char *band;
++	uint ctl_chan;
++
++	if (wf_chspec_malformed(chspec)) {
++		brcmf_err("malformed chspec %u\n", chspec);
++		return NULL;
++	}
++
++	band = "";
++
++	/* check for non-default band spec */
++	if ((CHSPEC_IS2G(chspec) && CHSPEC_CHANNEL(chspec) > CH_MAX_2G_CHANNEL) ||
++	    (CHSPEC_IS5G(chspec) && CHSPEC_CHANNEL(chspec) <= CH_MAX_2G_CHANNEL))
++		band = (CHSPEC_IS2G(chspec)) ? "2g" : "5g";
++
++	/* ctl channel */
++	ctl_chan = wf_chspec_ctlchan(chspec);
++
++	/* bandwidth and ctl sideband */
++	if (CHSPEC_IS20(chspec)) {
++		snprintf(buf, CHANSPEC_STR_LEN, "%s%d", band, ctl_chan);
++	} else if (!CHSPEC_IS8080(chspec)) {
++		const char *bw;
++		const char *sb = "";
++
++		bw = wf_chspec_bw_str[(chspec & WL_CHANSPEC_BW_MASK) >> WL_CHANSPEC_BW_SHIFT];
++
++#ifdef CHANSPEC_NEW_40MHZ_FORMAT
++		/* ctl sideband string if needed for 2g 40MHz */
++		if (CHSPEC_IS40(chspec) && CHSPEC_IS2G(chspec)) {
++			sb = CHSPEC_SB_UPPER(chspec) ? "u" : "l";
++		}
++
++		snprintf(buf, CHANSPEC_STR_LEN, "%s%d/%s%s", band, ctl_chan, bw, sb);
++#else
++		/* ctl sideband string instead of BW for 40MHz */
++		if (CHSPEC_IS40(chspec)) {
++			sb = CHSPEC_SB_UPPER(chspec) ? "u" : "l";
++			snprintf(buf, CHANSPEC_STR_LEN, "%s%d%s", band, ctl_chan, sb);
++		} else {
++			snprintf(buf, CHANSPEC_STR_LEN, "%s%d/%s", band, ctl_chan, bw);
++		}
++#endif /* CHANSPEC_NEW_40MHZ_FORMAT */
++
++	} else {
++		/* 80+80 */
++		uint chan1 = (chspec & WL_CHANSPEC_CHAN1_MASK) >> WL_CHANSPEC_CHAN1_SHIFT;
++		uint chan2 = (chspec & WL_CHANSPEC_CHAN2_MASK) >> WL_CHANSPEC_CHAN2_SHIFT;
++
++		/* convert to channel number */
++		chan1 = (chan1 < WF_NUM_5G_80M_CHANS) ? wf_5g_80m_chans[chan1] : 0;
++		chan2 = (chan2 < WF_NUM_5G_80M_CHANS) ? wf_5g_80m_chans[chan2] : 0;
++
++		/* Outputs a max of CHANSPEC_STR_LEN chars including '\0'  */
++		snprintf(buf, CHANSPEC_STR_LEN, "%d/80+80/%d-%d", ctl_chan, chan1, chan2);
++	}
++
++	return (buf);
++}
++
++/* Adapted from wl_radar_status */
++static ssize_t brcmf_radar_status_read(struct seq_file *seq, void *data)
++{
++	struct brcmf_bus *bus_if = dev_get_drvdata(seq->private);
++	struct brcmf_pub *drvr = bus_if->drvr;
++        struct brcmf_if *ifp;
++	int ret = 0;
++
++        uint i;
++        wl_radar_status_t ra;
++        char chanspec_str[CHANSPEC_STR_LEN];
++        static const struct {
++                uint32_t radar_type;
++                const char *radar_type_name;
++        } radar_names[] = {
++                {0, "NONE"},
++                {1, "ETSI_1"},
++                {2, "ETSI_2"},
++                {3, "ETSI_3"},
++                {4, "ETSI_4"},
++                {5, "S2"},
++                {6, "S3"},
++                {7, "UNCLASSIFIED"},
++                {8, "FCC-5"},
++                {9, "JP1-2/JP2-3"},
++                {10, "JP2-1"},
++                {11, "JP4"},
++                {12, "FCC_1"},
++        };
++
++        char radar_type_str[24];
++
++	if (drvr == NULL)
++		return -EINVAL;
++
++        ifp = drvr->iflist[0];
++	if (ifp == NULL) {
++		bphy_err(drvr, "No associated if to perform radar_detection\n");
++		return -EINVAL;
++	}
++
++        //ra.ch = wl_chspec_from_driver(ra.ch);
++	ret = brcmf_fil_iovar_data_get(ifp, "radar_status", &ra, sizeof(ra));
++        if (ret) {
++		bphy_err(drvr, "Failed to retrieve radar_status on %s, err:%d\n", brcmf_ifname(ifp), ret);
++                return -EFAULT;
++	}
++
++        if (ra.detected == false) {
++                seq_printf(seq, "NO RADAR DETECTED\n");
++        } else {
++		for (i = 0; i < ARRAY_SIZE(radar_names); i++) {
++			if (radar_names[i].radar_type == ra.radartype)
++				snprintf(radar_type_str, sizeof(radar_type_str),
++					"%s", radar_names[i].radar_type_name);
++		}
++
++		if (ra.pretended == true) {
++			seq_printf(seq, "DFS: NONE ########## RADAR DETECTED ON CHAN %s (chspec=0x%x)\n",
++				wf_chspec_ntoa(ra.ch, chanspec_str), ra.ch);
++		} else {
++			if (ra.radartype == 8) {
++				seq_printf(seq, "DFS: FCC-5 ########## RADAR DETECTED ON CHAN %s (chspec=0x%x)\n",
++					wf_chspec_ntoa(ra.ch, chanspec_str), ra.ch);
++				seq_printf(seq, " ########## lp_csect_single = %d, Time from last detection = %u, ",
++					ra.lp_csect_single, ra.timefromL);
++				seq_printf(seq, " = %dmin %dsec AT %dMS\n ",
++					ra.timefromL/60, ra.timefromL%60, ra.timenow);
++			} else {
++				seq_printf(seq, 
++					"DFS: %s ########## RADAR DETECTED ON CHAN %s (chspec=0x%x)\n",
++					radar_type_str, wf_chspec_ntoa(ra.ch, chanspec_str), ra.ch);
++
++				seq_printf(seq, 
++					" ########## detected_pulse_index= %d, nconseq_pulses = %d, ",
++					ra.detected_pulse_index, ra.nconsecq_pulses);
++				seq_printf(seq, 
++					"Time from last detection = %u, = %dmin %dsec AT %dMS\n",
++					ra.timefromL, ra.timefromL/60, ra.timefromL%60, ra.timenow);
++				seq_printf(seq, "Pruned Intv: ");
++				for (i = 0; i < 10; i++) {
++					seq_printf(seq, "%d-%d ", ra.intv[i], i);
++				}
++				seq_printf(seq, "\n");
++
++				seq_printf(seq, "Pruned PW:  ");
++				for (i = 0; i < 10; i++) {
++					seq_printf(seq, "%i-%d ", ra.pw[i], i);
++				}
++				seq_printf(seq, "\n");
++
++				seq_printf(seq, "Pruned FM:  ");
++				for (i = 0; i < 10; i++) {
++					seq_printf(seq, "%i-%d ", ra.fm[i], i);
++				}
++				seq_printf(seq, "\n");
++			}
++		}
++	}
++
++	return 0;
++}
++
++/* data structure used in 'dfs_status' wl interface, which is used to query dfs status */
++typedef struct {
++        uint state;             /**< noted by WL_DFS_CACSTATE_XX. */
++        uint duration;          /**< time spent in ms in state. */
++        /* as dfs enters ISM state, it removes the operational channel from quiet channel
++         * list and notes the channel in channel_cleared. set to 0 if no channel is cleared
++         */
++        chanspec_t chanspec_cleared;
++        /* chanspec cleared used to be a uint, add another to uint16 to maintain size */
++        uint16_t pad;
++} wl_dfs_status_t;
++
++/* cac state values */
++#define WL_DFS_CACSTATE_IDLE            0       /* state for operating in non-radar channel */
++#define WL_DFS_CACSTATE_PREISM_CAC      1       /* CAC in progress */
++#define WL_DFS_CACSTATE_ISM             2       /* ISM in progress */
++#define WL_DFS_CACSTATE_CSA             3       /* csa */
++#define WL_DFS_CACSTATE_POSTISM_CAC     4       /* ISM CAC */
++#define WL_DFS_CACSTATE_PREISM_OOC      5       /* PREISM OOC */
++#define WL_DFS_CACSTATE_POSTISM_OOC     6       /* POSTISM OOC */
++#define WL_DFS_CACSTATES                7       /* this many states exist */
++
++/* Adopted from wl_dfs_status */
++static ssize_t brcmf_dfs_status_read(struct seq_file *seq, void *data)
++{
++	struct brcmf_bus *bus_if = dev_get_drvdata(seq->private);
++	struct brcmf_pub *drvr = bus_if->drvr;
++        struct brcmf_if *ifp;
++	int ret = 0;
++        wl_dfs_status_t dfs_status;
++        char chanspec_str[CHANSPEC_STR_LEN];
++
++        const char *dfs_cacstate_str[WL_DFS_CACSTATES] = {
++                "IDLE",
++                "PRE-ISM Channel Availability Check(CAC)",
++                "In-Service Monitoring(ISM)",
++                "Channel Switching Announcement(CSA)",
++                "POST-ISM Channel Availability Check",
++                "PRE-ISM Ouf Of Channels(OOC)",
++                "POST-ISM Out Of Channels(OOC)"
++        };
++
++	if (drvr == NULL)
++		return -EINVAL;
++
++        ifp = drvr->iflist[0];
++	if (ifp == NULL) {
++		bphy_err(drvr, "No associated if to perform radar_detection\n");
++		return -EINVAL;
++	}
++
++	ret = brcmf_fil_iovar_data_get(ifp, "dfs_status", &dfs_status, sizeof(dfs_status));
++        if (ret) {
++		bphy_err(drvr, "Failed to retrieve dfs_status on %s, err:%d\n", brcmf_ifname(ifp), ret);
++                return -EFAULT;
++	}
++
++        if (dfs_status.state >= WL_DFS_CACSTATES) {
++                seq_printf(seq, "Unknown dfs state %d.\n", dfs_status.state);
++                return -EFAULT;
++        }
++
++        seq_printf(seq, "state %s time elapsed %dms radar channel cleared by dfs ",
++                dfs_cacstate_str[dfs_status.state], dfs_status.duration);
++
++        if (dfs_status.chanspec_cleared) {
++		seq_printf(seq, "channel %s (0x%04X)\n",
++                       wf_chspec_ntoa(dfs_status.chanspec_cleared, chanspec_str),
++                       dfs_status.chanspec_cleared);
++        }
++        else {
++                seq_printf(seq, "none\n");
++        }
++
++	return 0;
++}
++/*
++ * END - DFS / RADAR related debugfs file handling 
++ */
++
+ 
+ /* Linux network driver ioctl encoding - this is same as wl_ioctl from libwmd/src/api/broadcom.h, similar to dhd_ioctl */
+ typedef struct brcmf_ioctl {
+@@ -1557,6 +2110,10 @@ static int brcmf_bus_started(struct brcm
+ 			    &console_fops);
+ 	debugfs_create_file("leddc", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
+ 			    &leddc_fops);
++	debugfs_create_file("radar_detection", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
++			    &radar_detection_fops);
++	brcmf_debugfs_add_entry(drvr, "radar_status", brcmf_radar_status_read);
++	brcmf_debugfs_add_entry(drvr, "dfs_status", brcmf_dfs_status_read);
+ 	brcmf_feat_debugfs_create(drvr);
+ 	brcmf_proto_debugfs_create(drvr);
+ 	brcmf_bus_debugfs_create(bus_if);
+Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.h
+===================================================================
+--- backports-4.19.120-1.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.h
++++ backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.h
+@@ -75,6 +75,9 @@
+ #define BRCMF_C_SET_FAKEFRAG			219
+ #define BRCMF_C_GET_KEY_PRIMARY			235
+ #define BRCMF_C_SET_KEY_PRIMARY			236
++#define BRCMF_C_GET_RADAR			242
++#define BRCMF_C_SET_RADAR			243
++#define BRCMF_C_SET_SPECT_MANAGEMENT		244
+ #define BRCMF_C_GET_CURRENT_PWR			256
+ #define BRCMF_C_SET_SCAN_PASSIVE_TIME		258
+ #define BRCMF_C_GET_VAR				262
+Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
+===================================================================
+--- backports-4.19.120-1.orig/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
++++ backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
+@@ -53,23 +53,23 @@
+ #define WL_CHANSPEC_CHAN_MASK		0x00ff
+ #define WL_CHANSPEC_CHAN_SHIFT		0
+ 
+-#define WL_CHANSPEC_CTL_SB_MASK		0x0300
++#define WL_CHANSPEC_CTL_SB_MASK		0x0700
+ #define WL_CHANSPEC_CTL_SB_SHIFT	     8
+ #define WL_CHANSPEC_CTL_SB_LOWER	0x0100
+ #define WL_CHANSPEC_CTL_SB_UPPER	0x0200
+ #define WL_CHANSPEC_CTL_SB_NONE		0x0300
+ 
+-#define WL_CHANSPEC_BW_MASK		0x0C00
+-#define WL_CHANSPEC_BW_SHIFT		    10
+-#define WL_CHANSPEC_BW_10		0x0400
+-#define WL_CHANSPEC_BW_20		0x0800
+-#define WL_CHANSPEC_BW_40		0x0C00
++#define WL_CHANSPEC_BW_MASK		0x3800
++#define WL_CHANSPEC_BW_SHIFT		    11
++#define WL_CHANSPEC_BW_10		0x0800
++#define WL_CHANSPEC_BW_20		0x1000
++#define WL_CHANSPEC_BW_40		0x1800
+ #define WL_CHANSPEC_BW_80		0x2000
+ 
+-#define WL_CHANSPEC_BAND_MASK		0xf000
+-#define WL_CHANSPEC_BAND_SHIFT		12
+-#define WL_CHANSPEC_BAND_5G		0x1000
+-#define WL_CHANSPEC_BAND_2G		0x2000
++#define WL_CHANSPEC_BAND_MASK		0xc000
++#define WL_CHANSPEC_BAND_SHIFT		14
++#define WL_CHANSPEC_BAND_5G		0xc000
++#define WL_CHANSPEC_BAND_2G		0x0000
+ #define INVCHANSPEC			255
+ 
+ #define WL_CHAN_VALID_HW		(1 << 0) /* valid with current HW */
+@@ -145,7 +145,7 @@
+ 
+ #define CHSPEC2BAND(chspec) (CHSPEC_IS5G(chspec) ? BRCM_BAND_5G : BRCM_BAND_2G)
+ 
+-#define CHANSPEC_STR_LEN    8
++#define CHANSPEC_STR_LEN    20
+ 
+ static inline int lower_20_sb(int channel)
+ {

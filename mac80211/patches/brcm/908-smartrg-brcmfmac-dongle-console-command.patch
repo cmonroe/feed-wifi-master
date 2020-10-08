@@ -1,0 +1,222 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Thu 02 Apr 2020 14:24:14 -0700
+Subject: Added support for dongle console commands
+
+Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
+--
+ core.c |   84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ pcie.c |   37 ++++++++++++++++++++++++++++
+ pcie.h |    2 +
+ 3 files changed, 118 insertions(+), 5 deletions(-)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -270,7 +270,7 @@ static int brcmf_netdev_ioctl(struct net
+ 	struct brcmf_if *ifp = netdev_priv(ndev);
+ 	struct brcmf_pub *drvr = ifp->drvr;
+ 	brcmf_ioctl_t ioc;
+-	void *local_buf = NULL;
++	char *local_buf = NULL;
+ 	int ret = 0, len = 0;
+ 	char *request="";
+ 
+@@ -320,7 +320,7 @@ static int brcmf_netdev_ioctl(struct net
+ 		ret = -ENOMEM;
+ 		goto done;
+ 	}
+-	*(char *)(local_buf + ioc.len) = '\0';
++	*(local_buf + ioc.len) = '\0';
+ 
+ 	if (copy_from_user(local_buf, ioc.buf, ioc.len)) {
+ 		bphy_err(drvr, "Failed to copy ioc buffer from user space\n");
+@@ -332,19 +332,19 @@ static int brcmf_netdev_ioctl(struct net
+ 	if (strncmp (local_buf, "bs_data", strlen("bs_data")) == 0) {
+ 		/* retrieve the table from firmware */
+ 		request="bs_data";
+-		ret = brcmf_fil_iovar_data_get(ifp, request, local_buf, ioc.len);
++		ret = brcmf_fil_iovar_data_get(ifp, request, (void *) local_buf, ioc.len);
+ 	}
+ 	else if (strncmp (local_buf, "pktq_stats", strlen("pktq_stats")) == 0) {
+ 		/* retrieve the table from firmware */
+ 		request="pktq_stats";
+ 		len = strlen(request) + 1;
+-                ret = brcmf_fil_iovar_data_get(ifp, "pktq_stats", &local_buf[len], ioc.len - len);
++                ret = brcmf_fil_iovar_data_get(ifp, "pktq_stats", (void *) &local_buf[len], ioc.len - len);
+         }
+ 	else if (strncmp (local_buf, "chanim_stats", strlen("chanim_stats")) == 0) {
+ 		/* retrieve the table from firmware */
+ 		request="chanim_stats";
+ 		len = strlen(request) + 1;
+-		ret = brcmf_fil_iovar_data_get(ifp, "chanim_stats", &local_buf[len], ioc.len - len);
++		ret = brcmf_fil_iovar_data_get(ifp, "chanim_stats", (void *) &local_buf[len], ioc.len - len);
+         }
+ 	else if (strncmp (local_buf, "csa", strlen("csa")) == 0) {
+ 		u32 target_channel;
+@@ -1353,6 +1353,78 @@ static const struct file_operations bus_
+ 	.write	= bus_reset_write,
+ };
+ 
++static ssize_t console_write(struct file *file, const char __user *user_buf,
++			       size_t count, loff_t *ppos)
++{
++	struct brcmf_pub *drvr = file->private_data;
++	struct brcmf_bus *bus_if = drvr->bus_if;
++	struct brcmf_pciedev *pcie_bus_dev = bus_if->bus_priv.pcie;
++	struct brcmf_pciedev_info *devinfo = pcie_bus_dev->devinfo;
++	char buf[32]={0};
++
++	if (file == NULL) {
++		printk (KERN_ERR "%s: file=NULL!!\n", __FUNCTION__);
++		return -EFAULT;
++	}
++
++	drvr = file->private_data;
++	if (drvr == NULL) {
++		printk (KERN_ERR "%s: drvr=NULL!!\n", __FUNCTION__);
++		return -EFAULT;
++	}
++
++	bus_if = drvr->bus_if;
++	if (bus_if == NULL) {
++		printk (KERN_ERR "%s: bus_if=NULL!!\n", __FUNCTION__);
++		return -EFAULT;
++	}
++
++	if (bus_if->state == BRCMF_BUS_DOWN) {
++		printk (KERN_ERR "%s: bus is DOWN!!\n", __FUNCTION__);
++		return -EFAULT;
++	}
++
++	pcie_bus_dev = bus_if->bus_priv.pcie;
++	if (pcie_bus_dev == NULL) {
++		printk (KERN_ERR "%s: pcie_bus_dev=NULL!!\n", __FUNCTION__);
++		return -EFAULT;
++	}
++
++	devinfo = pcie_bus_dev->devinfo;
++	if (devinfo == NULL) {
++		printk (KERN_ERR "%s: devinfo=NULL!!\n", __FUNCTION__);
++		return -EFAULT;
++	}
++
++        if (copy_from_user(buf, user_buf, count)) {
++		printk (KERN_ERR "%s: copy_from_user failed\n", __FUNCTION__);
++                return -EINVAL;
++	}
++
++	if (count == 1) {
++		// Ignore. For some reason we get a newline all by itself.
++		return count;
++	}
++
++	if (count > sizeof(buf)-1) {
++		buf[sizeof(buf)-1]=0; // NULL terminate
++		printk (KERN_ERR "%s: buf %s cropped, max len=%d\n", __FUNCTION__, buf, sizeof(buf));
++	}
++	else {
++		buf[count]=0; // NULL terminate
++	}
++	// printk (KERN_ERR "%s: sending buf %s to console, len=%d\n", __FUNCTION__, buf, count);
++	brcmf_pcie_bus_console_write(devinfo, buf, count);
++
++	return count;
++}
++
++static const struct file_operations console_fops = {
++	.open	= simple_open,
++	.llseek	= no_llseek,
++	.write	= console_write,
++};
++
+ static int brcmf_bus_started(struct brcmf_pub *drvr, struct cfg80211_ops *ops)
+ {
+ 	int ret = -1;
+@@ -1430,6 +1502,8 @@ static int brcmf_bus_started(struct brcm
+ 	brcmf_debugfs_add_entry(drvr, "revinfo", brcmf_revinfo_read);
+ 	debugfs_create_file("reset", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
+ 			    &bus_reset_fops);
++	debugfs_create_file("console", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
++			    &console_fops);
+ 	brcmf_feat_debugfs_create(drvr);
+ 	brcmf_proto_debugfs_create(drvr);
+ 	brcmf_bus_debugfs_create(bus_if);
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+@@ -173,9 +173,13 @@ static const struct brcmf_firmware_mappi
+ 
+ #define BRCMF_DEF_MAX_RXBUFPOST			255
+ 
++#define BRCMF_CONSOLE_VCONS_IN_OFFSET		0
++#define BRCMF_CONSOLE_VCONS_OUT_OFFSET		4
+ #define BRCMF_CONSOLE_BUFADDR_OFFSET		8
+ #define BRCMF_CONSOLE_BUFSIZE_OFFSET		12
+ #define BRCMF_CONSOLE_WRITEIDX_OFFSET		16
++#define BRCMF_CONSOLE_CBUF_IDX_OFFSET		24
++#define BRCMF_CONSOLE_CBUF_OFFSET		28
+ 
+ #define BRCMF_DMA_D2H_SCRATCH_BUF_LEN		8
+ #define BRCMF_DMA_D2H_RINGUPD_BUF_LEN		1024
+@@ -189,6 +193,8 @@ static const struct brcmf_firmware_mappi
+ #define BRCMF_H2D_HOST_DS_ACK			0x00000002
+ #define BRCMF_H2D_HOST_D0_INFORM_IN_USE		0x00000008
+ #define BRCMF_H2D_HOST_D0_INFORM		0x00000010
++#define BRCMF_H2D_HOST_CONS_INT			0x80000000 /**< h2d int for console cmds */
++
+ 
+ #define BRCMF_PCIE_MBDATA_TIMEOUT		msecs_to_jiffies(2000)
+ 
+@@ -369,6 +375,14 @@ brcmf_pcie_read_tcm8(struct brcmf_pciede
+ 	return (ioread8(address));
+ }
+ 
++static void
++brcmf_pcie_write_tcm8(struct brcmf_pciedev_info *devinfo, u32 mem_offset,
++		       u8 value)
++{
++	void __iomem *address = devinfo->tcm + mem_offset;
++
++	iowrite8(value, address);
++}
+ 
+ static u16
+ brcmf_pcie_read_tcm16(struct brcmf_pciedev_info *devinfo, u32 mem_offset)
+@@ -805,6 +819,29 @@ static void brcmf_pcie_bus_console_read(
+ 	}
+ }
+ 
++void brcmf_pcie_bus_console_write(struct brcmf_pciedev_info *devinfo,
++				  char *buf, size_t count)
++{
++        struct brcmf_pcie_console *console = &devinfo->shared.console;
++	u32 addr;
++	u32 idx;
++
++	/* Clear the index */
++	addr = console->base_addr + BRCMF_CONSOLE_CBUF_IDX_OFFSET;
++	brcmf_pcie_write_tcm8(devinfo, addr, 0);
++
++	/* Write message into cbuf */
++	addr = console->base_addr + BRCMF_CONSOLE_CBUF_OFFSET;
++	for (idx=0; idx<count; idx++)
++		brcmf_pcie_write_tcm8(devinfo, addr+idx, buf[idx]);
++
++	/* Write message length into vcons_in */
++	addr = console->base_addr + BRCMF_CONSOLE_VCONS_IN_OFFSET;
++	brcmf_pcie_write_tcm32(devinfo, addr, count);
++
++	/* generate an interrupt to dongle to indicate that it needs to process cons command */
++	brcmf_pcie_send_mb_data(devinfo, BRCMF_H2D_HOST_CONS_INT);
++}
+ 
+ static void brcmf_pcie_intr_disable(struct brcmf_pciedev_info *devinfo)
+ {
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.h
+@@ -15,5 +15,7 @@ struct brcmf_pciedev {
+ void brcmf_pcie_exit(void);
+ void brcmf_pcie_register(void);
+ 
++void brcmf_pcie_bus_console_write(struct brcmf_pciedev_info *devinfo,
++                                  char *buf, size_t count);
+ 
+ #endif /* BRCMFMAC_PCIE_H */

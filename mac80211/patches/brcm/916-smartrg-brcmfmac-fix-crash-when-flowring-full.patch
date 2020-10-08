@@ -1,0 +1,25 @@
+From: Chad Monroe <chad.monroe@smartrg.com>
+Date: Thu Apr 16 13:28:35 2020 -0700
+Subject: brcmfmac: don't crash when flowring is full
+
+Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
+--
+ flowring.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/flowring.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/flowring.c
+@@ -143,11 +143,11 @@ u32 brcmf_flowring_create(struct brcmf_f
+ 				break;
+ 		}
+ 		if (i == flow->nrofrings)
+-			return -ENOMEM;
++			return BRCMF_FLOWRING_INVALID_ID;
+ 
+ 		ring = kzalloc(sizeof(*ring), GFP_ATOMIC);
+ 		if (!ring)
+-			return -ENOMEM;
++			return BRCMF_FLOWRING_INVALID_ID;
+ 
+ 		memcpy(hash[hash_idx].mac, mac, ETH_ALEN);
+ 		hash[hash_idx].fifo = fifo;

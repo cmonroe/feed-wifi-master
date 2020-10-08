@@ -1,0 +1,180 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Thu 09 Apr 2020 15:02:00 -0700
+Subject: brcmfmac: make iovar handling more generic
+
+Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
+--
+ core.c |  108 ++++++++++++++++++++++++++++++++++-------------------------------
+ fwil.h |    2 +
+ 2 files changed, 59 insertions(+), 51 deletions(-)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -36,10 +36,6 @@
+ 
+ #define	D11_PHY_HDR_LEN				6
+ 
+-/* A subset of WLC ioctl's from target/linux/bcm5301x/files-3.18/brcm/arm/dhd/src/supp/include/wlioctl.h */
+-#define WLC_GET_VAR	262
+-#define WLC_SET_VAR	263
+-
+ struct d11rxhdr_le {
+ 	__le16 RxFrameSize;
+ 	u16 PAD;
+@@ -302,12 +298,6 @@ static int brcmf_netdev_ioctl(struct net
+ 		// bphy_err(drvr, "ioc.len %d ioc.cmd %d", ioc.len, ioc.cmd);
+ 	}
+ 
+-	if ((ioc.cmd != WLC_GET_VAR) && (ioc.cmd != WLC_SET_VAR)) {
+-		bphy_err(drvr, "Unsupported ioc.cmd %d on %s\n", ioc.cmd, brcmf_ifname(ifp));
+-		ret = -ENOTSUPP;
+-		goto done;
+-	}
+-
+ 	if (ioc.buf == NULL) {
+ 		bphy_err(drvr, "Unexpected NULL ioc.buf, cmd %d on %s\n", ioc.cmd, brcmf_ifname(ifp));
+ 		ret = -EFAULT;
+@@ -328,43 +318,42 @@ static int brcmf_netdev_ioctl(struct net
+ 		goto done;
+ 	}
+ 
+-	/* First NULL terminated string in the ioc.buf is the requested data */
+-	if (strncmp (local_buf, "bs_data", strlen("bs_data")) == 0) {
+-		/* retrieve the table from firmware */
+-		request="bs_data";
+-		ret = brcmf_fil_iovar_data_get(ifp, request, (void *) local_buf, ioc.len);
+-	}
+-	else if (strncmp (local_buf, "pktq_stats", strlen("pktq_stats")) == 0) {
+-		/* retrieve the table from firmware */
+-		request="pktq_stats";
+-		len = strlen(request) + 1;
+-                ret = brcmf_fil_iovar_data_get(ifp, "pktq_stats", (void *) &local_buf[len], ioc.len - len);
+-        }
+-	else if (strncmp (local_buf, "chanim_stats", strlen("chanim_stats")) == 0) {
+-		/* retrieve the table from firmware */
+-		request="chanim_stats";
+-		len = strlen(request) + 1;
+-		ret = brcmf_fil_iovar_data_get(ifp, "chanim_stats", (void *) &local_buf[len], ioc.len - len);
+-        }
+-	else if (strncmp (local_buf, "csa", strlen("csa")) == 0) {
+-		u32 target_channel;
+-		request="csa";
+-                /* Send the channel switch request */
+-		memcpy(&target_channel, local_buf + strlen(request)+1, sizeof(u32));
+-		ret = brcmf_fil_cmd_int_set(ifp, BRCMF_C_SET_CHANNEL, target_channel);
+-        }
+-	else {
+-		bphy_err(drvr, "Unsupported request in ioctl buf\n");
+-		ret = -ENOTSUPP;
+-		goto done;
++	switch (ioc.cmd) {
++		case BRCMF_C_GET_VAR:
++			/* First NULL terminated string in the ioc.buf is the requested data */
++			request=local_buf;
++			len = strlen(request) + 1;
++			ret = brcmf_fil_iovar_data_get(ifp, request, (void *) &local_buf[len], ioc.len - len);
++			break;
++		case BRCMF_C_SET_VAR:
++			if (strncmp (local_buf, "csa", strlen("csa")) == 0) {
++				u32 target_channel;
++				request="csa";
++				/* Send the channel switch request */
++				memcpy(&target_channel, local_buf + strlen(request)+1, sizeof(u32));
++				ret = brcmf_fil_cmd_int_set(ifp, BRCMF_C_SET_CHANNEL, target_channel);
++			}
++			else {
++				bphy_err(drvr, "Unsupported BRCMF_C_SET_VAR request in ioctl buf\n");
++				ret = -ENOTSUPP;
++				goto done;
++			}
++		case BRCMF_C_GET_CLK:
++			ret = brcmf_fil_cmd_data_get(ifp, ioc.cmd, local_buf, ioc.len - len);
++			break;
++		case BRCMF_C_GET_CURRENT_PWR:
++			ret = brcmf_fil_cmd_data_get(ifp, ioc.cmd, local_buf, ioc.len - len);
++			break;
++		default:
++			bphy_err(drvr, "Unsupported ioc.cmd %d on %s\n", ioc.cmd, brcmf_ifname(ifp));
++			ret = -ENOTSUPP;
++			goto done;
++			break;
+ 	}
+ 
+-	if (ioc.cmd == WLC_GET_VAR) {
++	if (ioc.cmd == BRCMF_C_GET_VAR) {
+ 		if (ret) {
+-#if 0
+-// Enable this once pktq_stats is fixed
+ 			bphy_err(drvr, "Failed to retrieve iovar_data for request %s on %s, err:%d\n", request, brcmf_ifname(ifp), ret);
+-#endif
+ 			goto done;
+ 		}
+ 
+@@ -376,24 +365,41 @@ static int brcmf_netdev_ioctl(struct net
+ 		}
+ 		else {
+ #if 0
++			u8 line;
+ 			char *lb=(char *) local_buf+len;
+ 			bphy_err(drvr, "Successful iovar data retrieval for %s on %s\n", request,  brcmf_ifname(ifp));
+-			printk ("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", 
+-				  *(lb), *(lb+1), *(lb+2), *(lb+3), *(lb+4),
+-				*(lb+5), *(lb+6), *(lb+7), *(lb+8), *(lb+9));
+-			printk ("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+-				*(lb+10), *(lb+11), *(lb+12), *(lb+13), *(lb+14),
+-				*(lb+15), *(lb+16), *(lb+17), *(lb+18), *(lb+19));
++			/* Dump some bytes */
++			for (line=0; line<10; line++) {
++				printk ("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", 
++					*(lb+(line*16)+0),  *(lb+(line*16)+1),  *(lb+(line*16)+2),  *(lb+(line*16)+3), 
++					*(lb+(line*16)+4),  *(lb+(line*16)+5),  *(lb+(line*16)+6),  *(lb+(line*16)+7), 
++					*(lb+(line*16)+8),  *(lb+(line*16)+9),  *(lb+(line*16)+10), *(lb+(line*16)+11),
++                                        *(lb+(line*16)+12), *(lb+(line*16)+13), *(lb+(line*16)+14), *(lb+(line*16)+15));
++			}
+ #endif
+ 		}
+ 	}
+-	else {
++	else if (ioc.cmd == BRCMF_C_SET_VAR) {
+ 		if (ret) {
+ 			bphy_err(drvr, "Failed to perform set request %s on %s, err:%d\n", request, brcmf_ifname(ifp), ret);
+ 			goto done;
+ 		}
+ 		else {
+-			bphy_err(drvr, "Successful set for %s on %s\n", request,  brcmf_ifname(ifp));
++			bphy_err(drvr, "Successful set for %s on %s\n", request, brcmf_ifname(ifp));
++		}
++	}
++	else {
++		if (ret) {
++			bphy_err(drvr, "Failed to perform %d request on %s, err:%d\n", ioc.cmd, brcmf_ifname(ifp), ret);
++			goto done;
++		}
++		else {
++			brcmf_dbg(TRACE, "Successful response to cmd %d on %s\n", ioc.cmd, brcmf_ifname(ifp));
++			if (copy_to_user(ioc.buf, &local_buf[len], ioc.len - len)) {
++				bphy_err(drvr, "Failed to copy ioctl results to user space\n");
++				ret = -EFAULT;
++				goto done;
++			}
+ 		}
+ 	}
+ 
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.h
+@@ -65,6 +65,7 @@
+ #define BRCMF_C_GET_BANDLIST			140
+ #define BRCMF_C_SET_SCB_TIMEOUT			158
+ #define BRCMF_C_GET_ASSOCLIST			159
++#define BRCMF_C_GET_CLK				160
+ #define BRCMF_C_GET_PHYLIST			180
+ #define BRCMF_C_SET_SCAN_CHANNEL_TIME		185
+ #define BRCMF_C_SET_SCAN_UNASSOC_TIME		187
+@@ -74,6 +75,7 @@
+ #define BRCMF_C_SET_FAKEFRAG			219
+ #define BRCMF_C_GET_KEY_PRIMARY			235
+ #define BRCMF_C_SET_KEY_PRIMARY			236
++#define BRCMF_C_GET_CURRENT_PWR			256
+ #define BRCMF_C_SET_SCAN_PASSIVE_TIME		258
+ #define BRCMF_C_GET_VAR				262
+ #define BRCMF_C_SET_VAR				263

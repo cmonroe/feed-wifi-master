@@ -1,0 +1,65 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Mon 02 Mar 2020 16:14:24 -0800
+Subject: brcmfmac: support for tpc_mode setting
+
+Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
+--
+ cfg80211.c |   29 +++++++++++++++++++++++++++++
+ cfg80211.h |    1 +
+ 2 files changed, 30 insertions(+)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -4790,6 +4790,19 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
+ 				 err);
+ 			goto exit;
+ 		}
++
++		if (cfg->tpc_mode) {
++			// Set the tpc mode
++			brcmf_fil_iovar_int_set(ifp, "tpc_mode", cfg->tpc_mode);
++			if (err < 0) {
++				bphy_err(drvr, "Set tpc_mode failed: tpc_mode=%u, %d\n",
++					 cfg->tpc_mode, err);
++			}
++			else {
++				brcmf_dbg(TRACE, "tpc_mode iovar set to %u\n", cfg->tpc_mode);
++			}
++		}
++
+ 		if (!mbss) {
+ 			/* Firmware 10.x requires setting channel after enabling
+ 			 * AP and before bringing interface up.
+@@ -7227,6 +7240,22 @@ static void brcmf_cfg80211_reg_notifier(
+ 			return;
+ 		}
+ 
++	/* Set the tpc_mode if we are on 5ghz band */
++	if (wiphy->bands[NL80211_BAND_5GHZ]) {
++		if (((req->alpha2[0] == 'U') && (req->alpha2[1] == 'S')) ||
++		    ((req->alpha2[0] == 'C') && (req->alpha2[1] == 'A'))) {
++			cfg->tpc_mode = 1;
++			brcmf_dbg(TRACE, "reg_notifier: tpc_mode set to 1\n");
++		}		
++		else {
++			cfg->tpc_mode = 3;
++			brcmf_dbg(TRACE, "reg_notifier: tpc_mode set to 3\n");
++		}
++	}
++	else {
++		cfg->tpc_mode = 0;
++	}
++
+ 	brcmf_dbg(TRACE, "Enter: initiator=%d, alpha=%c%c\n", req->initiator,
+ 		  req->alpha2[0], req->alpha2[1]);
+ 
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
+@@ -321,6 +321,7 @@ struct brcmf_cfg80211_info {
+ 	struct brcmf_assoclist_le assoclist;
+ 	struct brcmf_cfg80211_wowl wowl;
+ 	struct brcmf_pno_info *pno;
++	u32 tpc_mode;
+	u8 ac_priority[MAX_8021D_PRIO];
+ };
+ 

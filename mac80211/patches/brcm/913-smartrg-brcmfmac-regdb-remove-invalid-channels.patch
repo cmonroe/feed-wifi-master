@@ -1,0 +1,22 @@
+From: Chad Monroe <chad.monroe@smartrg.com>
+Date: Fri 10 Apr 2020 10:20:20 -0700
+Subject: brcmfmac: remove channels invalid in US 
+
+Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
+--
+ cfg80211.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -148,8 +148,8 @@ static struct ieee80211_channel __wl_2gh
+ };
+ 
+ static struct ieee80211_channel __wl_5ghz_channels[] = {
+-	CHAN5G(34), CHAN5G(36), CHAN5G(38), CHAN5G(40), CHAN5G(42),
+-	CHAN5G(44), CHAN5G(46), CHAN5G(48), CHAN5G(52), CHAN5G(56),
++	CHAN5G(36), CHAN5G(40),
++	CHAN5G(44), CHAN5G(48), CHAN5G(52), CHAN5G(56),
+ 	CHAN5G(60), CHAN5G(64), CHAN5G(100), CHAN5G(104), CHAN5G(108),
+ 	CHAN5G(112), CHAN5G(116), CHAN5G(120), CHAN5G(124), CHAN5G(128),
+ 	CHAN5G(132), CHAN5G(136), CHAN5G(140), CHAN5G(144), CHAN5G(149),
