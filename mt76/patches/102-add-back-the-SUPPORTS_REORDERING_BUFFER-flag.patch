@@ -1,0 +1,28 @@
+From a3459554830e1b9cb432231c8781fff923c5c061 Mon Sep 17 00:00:00 2001
+From: Felix Fietkau <nbd@nbd.name>
+Date: Sat, 10 Oct 2020 15:20:18 +0200
+Subject: [PATCH] mt76: add back the SUPPORTS_REORDERING_BUFFER flag
+
+It was accidentally dropped while adding multiple wiphy support
+Fixes fast-rx support and avoids handling reordering in both mac80211
+and the driver
+
+Cc: stable@vger.kernel.org
+Fixes: c89d36254155 ("mt76: add function for allocating an extra wiphy")
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+ drivers/net/wireless/mediatek/mt76/mac80211.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/mac80211.c b/mac80211.c
+index a778ecc65261..2bc1ef1cbfea 100644
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -305,6 +305,7 @@ mt76_phy_init(struct mt76_dev *dev, struct ieee80211_hw *hw)
+ 	ieee80211_hw_set(hw, SUPPORT_FAST_XMIT);
+ 	ieee80211_hw_set(hw, SUPPORTS_CLONED_SKBS);
+ 	ieee80211_hw_set(hw, SUPPORTS_AMSDU_IN_AMPDU);
++	ieee80211_hw_set(hw, SUPPORTS_REORDERING_BUFFER);
+ 
+ 	if (!(dev->drv->drv_flags & MT_DRV_AMSDU_OFFLOAD)) {
+ 		ieee80211_hw_set(hw, TX_AMSDU);
