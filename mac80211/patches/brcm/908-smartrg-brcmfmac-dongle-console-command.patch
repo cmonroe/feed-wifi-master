@@ -52,7 +52,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
          }
  	else if (strncmp (local_buf, "csa", strlen("csa")) == 0) {
  		u32 target_channel;
-@@ -1353,6 +1353,78 @@ static const struct file_operations bus_
+@@ -1359,6 +1359,78 @@ static const struct file_operations bus_
  	.write	= bus_reset_write,
  };
  
@@ -131,7 +131,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  static int brcmf_bus_started(struct brcmf_pub *drvr, struct cfg80211_ops *ops)
  {
  	int ret = -1;
-@@ -1430,6 +1502,8 @@ static int brcmf_bus_started(struct brcm
+@@ -1436,6 +1508,8 @@ static int brcmf_bus_started(struct brcm
  	brcmf_debugfs_add_entry(drvr, "revinfo", brcmf_revinfo_read);
  	debugfs_create_file("reset", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
  			    &bus_reset_fops);
@@ -142,7 +142,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  	brcmf_bus_debugfs_create(bus_if);
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-@@ -173,9 +173,13 @@ static const struct brcmf_firmware_mappi
+@@ -175,9 +175,13 @@ static const struct brcmf_firmware_mappi
  
  #define BRCMF_DEF_MAX_RXBUFPOST			255
  
@@ -156,7 +156,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  #define BRCMF_DMA_D2H_SCRATCH_BUF_LEN		8
  #define BRCMF_DMA_D2H_RINGUPD_BUF_LEN		1024
-@@ -189,6 +193,8 @@ static const struct brcmf_firmware_mappi
+@@ -191,6 +195,8 @@ static const struct brcmf_firmware_mappi
  #define BRCMF_H2D_HOST_DS_ACK			0x00000002
  #define BRCMF_H2D_HOST_D0_INFORM_IN_USE		0x00000008
  #define BRCMF_H2D_HOST_D0_INFORM		0x00000010
@@ -165,7 +165,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  #define BRCMF_PCIE_MBDATA_TIMEOUT		msecs_to_jiffies(2000)
  
-@@ -369,6 +375,14 @@ brcmf_pcie_read_tcm8(struct brcmf_pciede
+@@ -371,6 +377,14 @@ brcmf_pcie_read_tcm8(struct brcmf_pciede
  	return (ioread8(address));
  }
  
@@ -180,7 +180,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  static u16
  brcmf_pcie_read_tcm16(struct brcmf_pciedev_info *devinfo, u32 mem_offset)
-@@ -805,6 +819,29 @@ static void brcmf_pcie_bus_console_read(
+@@ -807,6 +821,29 @@ static void brcmf_pcie_bus_console_read(
  	}
  }
  

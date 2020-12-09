@@ -9,7 +9,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -183,16 +183,16 @@ static const struct ieee80211_regdomain
+@@ -184,16 +184,16 @@ static const struct ieee80211_regdomain
  	.alpha2 =  "99",
  	.reg_rules = {
  		/* IEEE 802.11b/g, channels 1..11 */

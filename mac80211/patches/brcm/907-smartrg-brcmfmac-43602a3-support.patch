@@ -17,7 +17,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  BRCMF_FW_DEF(4350, "brcmfmac4350-pcie");
  BRCMF_FW_DEF(4350C, "brcmfmac4350c2-pcie");
  BRCMF_FW_DEF(4356, "brcmfmac4356-pcie");
-@@ -59,7 +60,8 @@ BRCMF_FW_DEF(4366C, "brcmfmac4366c-pcie"
+@@ -60,7 +61,8 @@ BRCMF_FW_DEF(4366C, "brcmfmac4366c-pcie"
  BRCMF_FW_DEF(4371, "brcmfmac4371-pcie");
  
  static const struct brcmf_firmware_mapping brcmf_pcie_fwnames[] = {

@@ -9,11 +9,9 @@ Subject: [PATCH] OWRT-4809 flowring msgbuf add_peer() function added
  .../wireless/broadcom/brcm80211/brcmfmac/proto.h   |  7 ++++
  3 files changed, 68 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-index da9e256..f358c45 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -5896,6 +5896,24 @@ brcmf_notify_connect_status(struct brcmf_if *ifp,
+@@ -6106,6 +6106,24 @@ brcmf_notify_connect_status(struct brcmf
  	struct brcmf_cfg80211_profile *profile = &ifp->vif->profile;
  	struct ieee80211_channel *chan;
  	s32 err = 0;
@@ -38,11 +36,9 @@ index da9e256..f358c45 100644
  
  	if ((e->event_code == BRCMF_E_DEAUTH) ||
  	    (e->event_code == BRCMF_E_DEAUTH_IND) ||
-diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
-index ce342a8..b0e7dcd 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
-@@ -844,9 +844,13 @@ static int brcmf_msgbuf_tx_queue_data(struct brcmf_pub *drvr, int ifidx,
+@@ -843,9 +843,13 @@ static int brcmf_msgbuf_tx_queue_data(st
  
  	flowid = brcmf_flowring_lookup(flow, eh->h_dest, skb->priority, ifidx);
  	if (flowid == BRCMF_FLOWRING_INVALID_ID) {
@@ -57,9 +53,9 @@ index ce342a8..b0e7dcd 100644
 +				return -ENOMEM;
 +		}
  	}
- 	queue_count = brcmf_flowring_enqueue(flow, flowid, skb);
- 	force = ((queue_count % BRCMF_MSGBUF_TRICKLE_TXWORKER_THRS) == 0);
-@@ -874,6 +878,41 @@ brcmf_msgbuf_delete_peer(struct brcmf_pub *drvr, int ifidx, u8 peer[ETH_ALEN])
+ 
+ 	if(msgbuf->flow->rings[flowid]->status != RING_OPEN) {
+@@ -878,6 +882,41 @@ brcmf_msgbuf_delete_peer(struct brcmf_pu
  	brcmf_flowring_delete_peer(msgbuf->flow, ifidx, peer);
  }
  
@@ -101,7 +97,7 @@ index ce342a8..b0e7dcd 100644
  
  static void
  brcmf_msgbuf_add_tdls_peer(struct brcmf_pub *drvr, int ifidx, u8 peer[ETH_ALEN])
-@@ -1589,6 +1628,7 @@ int brcmf_proto_msgbuf_attach(struct brcmf_pub *drvr)
+@@ -1595,6 +1634,7 @@ int brcmf_proto_msgbuf_attach(struct brc
  	drvr->proto->tx_queue_data = brcmf_msgbuf_tx_queue_data;
  	drvr->proto->configure_addr_mode = brcmf_msgbuf_configure_addr_mode;
  	drvr->proto->delete_peer = brcmf_msgbuf_delete_peer;
@@ -109,8 +105,6 @@ index ce342a8..b0e7dcd 100644
  	drvr->proto->add_tdls_peer = brcmf_msgbuf_add_tdls_peer;
  	drvr->proto->rxreorder = brcmf_msgbuf_rxreorder;
  	drvr->proto->debugfs_create = brcmf_msgbuf_debugfs_create;
-diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
-index bd08d3a..4d2f1b6 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
 @@ -30,6 +30,8 @@ struct brcmf_proto {
@@ -122,7 +116,7 @@ index bd08d3a..4d2f1b6 100644
  	void (*add_tdls_peer)(struct brcmf_pub *drvr, int ifidx,
  			      u8 peer[ETH_ALEN]);
  	void (*rxreorder)(struct brcmf_if *ifp, struct sk_buff *skb);
-@@ -96,6 +98,11 @@ brcmf_proto_delete_peer(struct brcmf_pub *drvr, int ifidx, u8 peer[ETH_ALEN])
+@@ -96,6 +98,11 @@ brcmf_proto_delete_peer(struct brcmf_pub
  	drvr->proto->delete_peer(drvr, ifidx, peer);
  }
  static inline void
@@ -134,6 +128,3 @@ index bd08d3a..4d2f1b6 100644
  brcmf_proto_add_tdls_peer(struct brcmf_pub *drvr, int ifidx, u8 peer[ETH_ALEN])
  {
  	drvr->proto->add_tdls_peer(drvr, ifidx, peer);
--- 
-1.9.1
-

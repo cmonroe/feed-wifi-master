@@ -10,11 +10,9 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  include/brcmu_wifi.h |   22 +-
  4 files changed, 586 insertions(+), 11 deletions(-)
 
-Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-===================================================================
---- backports-4.19.120-1.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-+++ backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -4803,6 +4803,21 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -4846,6 +4846,21 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
  			}
  		}
  
@@ -36,10 +34,8 @@ Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg
  		if (!mbss) {
  			/* Firmware 10.x requires setting channel after enabling
  			 * AP and before bringing interface up.
-Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-===================================================================
---- backports-4.19.120-1.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-+++ backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 @@ -286,6 +286,559 @@ static const struct file_operations ledd
  	.write	= leddc_write,
  };
@@ -600,7 +596,7 @@ Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cor
  
  /* Linux network driver ioctl encoding - this is same as wl_ioctl from libwmd/src/api/broadcom.h, similar to dhd_ioctl */
  typedef struct brcmf_ioctl {
-@@ -1557,6 +2110,10 @@ static int brcmf_bus_started(struct brcm
+@@ -1554,6 +2107,10 @@ static int brcmf_bus_started(struct brcm
  			    &console_fops);
  	debugfs_create_file("leddc", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
  			    &leddc_fops);
@@ -611,10 +607,8 @@ Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cor
  	brcmf_feat_debugfs_create(drvr);
  	brcmf_proto_debugfs_create(drvr);
  	brcmf_bus_debugfs_create(bus_if);
-Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.h
-===================================================================
---- backports-4.19.120-1.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.h
-+++ backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.h
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.h
 @@ -75,6 +75,9 @@
  #define BRCMF_C_SET_FAKEFRAG			219
  #define BRCMF_C_GET_KEY_PRIMARY			235
@@ -625,11 +619,9 @@ Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwi
  #define BRCMF_C_GET_CURRENT_PWR			256
  #define BRCMF_C_SET_SCAN_PASSIVE_TIME		258
  #define BRCMF_C_GET_VAR				262
-Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
-===================================================================
---- backports-4.19.120-1.orig/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
-+++ backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
-@@ -53,23 +53,23 @@
+--- a/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
++++ b/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
+@@ -42,23 +42,23 @@
  #define WL_CHANSPEC_CHAN_MASK		0x00ff
  #define WL_CHANSPEC_CHAN_SHIFT		0
  
@@ -663,7 +655,7 @@ Index: backports-4.19.120-1/drivers/net/wireless/broadcom/brcm80211/include/brcm
  #define INVCHANSPEC			255
  
  #define WL_CHAN_VALID_HW		(1 << 0) /* valid with current HW */
-@@ -145,7 +145,7 @@
+@@ -134,7 +134,7 @@
  
  #define CHSPEC2BAND(chspec) (CHSPEC_IS5G(chspec) ? BRCM_BAND_5G : BRCM_BAND_2G)
  

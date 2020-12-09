@@ -9,7 +9,7 @@ Signed-off-by: Colin Whittaker <colin.whittaker@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -892,6 +892,7 @@ struct brcmf_if *brcmf_add_if(struct brc
+@@ -898,6 +898,7 @@ struct brcmf_if *brcmf_add_if(struct brc
  #else
  		netdev_set_def_destructor(ndev);
  #endif
