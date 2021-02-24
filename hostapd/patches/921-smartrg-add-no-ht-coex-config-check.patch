@@ -1,0 +1,21 @@
+From: Shen Loh <shen.loh@smartrg.com>
+Date: Wed 22 Feb 2021 13:50:00 -0700
+Subject: Use no_ht_coex to bypass HT coexistence checks.
+
+---
+ src/ap/hw_features.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+Index: b/src/ap/hw_features.c
+===================================================================
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -328,6 +328,8 @@ static void ieee80211n_check_scan(struct
+ 
+ 	if (iface->current_mode->mode == HOSTAPD_MODE_IEEE80211A)
+ 		oper40 = ieee80211n_check_40mhz_5g(iface, scan_res);
++	else if (iface->conf->no_ht_coex)
++		oper40 = 1;
+ 	else
+ 		oper40 = ieee80211n_check_40mhz_2g4(iface, scan_res);
+ 	wpa_scan_results_free(scan_res);
