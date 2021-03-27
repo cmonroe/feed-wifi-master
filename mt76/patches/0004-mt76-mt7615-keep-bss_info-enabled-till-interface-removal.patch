@@ -1,0 +1,50 @@
+Message ID: 02d52818307a85b66e59ca11e36a9da47e2fe4df.1616657048.git.ryder.lee@mediatek.com
+From: Ryder Lee <ryder.lee@mediatek.com>
+Date: March 25, 2021, 8:06 a.m. UTC
+Subject: [4/5] mt76: mt7615: keep mcu_add_bss_info enabled till interface removal
+
+BSS_INFO_BASIC is never called alone with inactive state, which always
+follows beacon offload disable, so keep it enabled throughout interfaces
+life cycle. Inactive state also removes sta record of all connected
+stations, thurs causes connection lost which defeats the purpose of CSA.
+
+Lastly, this is especially an unexpected behavior that keeping mt7622
+failing beacon buffer recyled when scanning channels.
+
+bss_conf change is updated with active state only, so just overwrite it.
+
+Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
+---
+ mt7615/main.c |   11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+Index: b/mt7615/main.c
+===================================================================
+--- a/mt7615/main.c
++++ b/mt7615/main.c
+@@ -253,7 +253,8 @@ static void mt7615_remove_interface(stru
+ 	struct mt7615_phy *phy = mt7615_hw_phy(hw);
+ 	int idx = msta->wcid.idx;
+ 
+-	/* TODO: disable beacon for the bss */
++	mt7615_mcu_add_bss_info(phy, vif, NULL, false);
++	mt7615_mcu_sta_add(phy, vif, NULL, false);
+ 
+ 	mt7615_mutex_acquire(dev);
+ 
+@@ -558,11 +559,11 @@ static void mt7615_bss_info_changed(stru
+ 		}
+ 	}
+ 
+-	if (changed & BSS_CHANGED_BEACON_ENABLED) {
+-		mt7615_mcu_add_bss_info(phy, vif, NULL, info->enable_beacon);
+-		mt7615_mcu_sta_add(phy, vif, NULL, info->enable_beacon);
++	if (changed & BSS_CHANGED_BEACON_ENABLED && info->enable_beacon) {
++		mt7615_mcu_add_bss_info(phy, vif, NULL, true);
++		mt7615_mcu_sta_add(phy, vif, NULL, true);
+ 
+-		if (vif->p2p && info->enable_beacon)
++		if (vif->p2p)
+ 			mt7615_mcu_set_p2p_oppps(hw, vif);
+ 	}
+ 
