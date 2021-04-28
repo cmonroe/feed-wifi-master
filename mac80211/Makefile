@@ -127,7 +127,7 @@ define KernelPackage/mac80211
   $(call KernelPackage/mac80211/Default)
   TITLE:=Linux 802.11 Wireless Networking Stack
   # +kmod-crypto-cmac is a runtime only dependency of net/mac80211/aes_cmac.c
-  DEPENDS+= +kmod-cfg80211 +hostapd-common +@KERNEL_RELAY
+  DEPENDS+= +kmod-cfg80211 +hostapd-common
   KCONFIG:=\
 	CONFIG_AVERAGE=y
   FILES:= $(PKG_BUILD_DIR)/net/mac80211/mac80211.ko
@@ -396,8 +396,7 @@ endef
 ifdef CONFIG_PACKAGE_MAC80211_DEBUGFS
   config-y += \
 	CFG80211_DEBUGFS \
-	MAC80211_DEBUGFS \
-	MAC80211_RC_MINSTREL_DEBUGFS_API
+	MAC80211_DEBUGFS
 endif
 
 ifdef CONFIG_PACKAGE_MAC80211_TRACING
