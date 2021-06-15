@@ -6,8 +6,6 @@ Subject: brcmfmac: use HT40+ for lower eight 2.4G channels
  drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-Index: b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-===================================================================
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 @@ -265,7 +265,7 @@ static u16 chandef_to_chanspec(struct br

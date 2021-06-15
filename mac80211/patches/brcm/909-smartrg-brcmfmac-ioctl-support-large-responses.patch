@@ -8,10 +8,8 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  msgbuf.c |    7 +++++--
  2 files changed, 8 insertions(+), 5 deletions(-)
 
-Index: backports-5.10.16-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
-===================================================================
---- backports-5.10.16-1.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
-+++ backports-5.10.16-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
 @@ -26,10 +26,10 @@
  /* Needs to be slightly bigger than the ioc buf from user space for ioctl's */
  #define BRCMF_DCMD_MAXLEN	(8192+16)
@@ -26,10 +24,8 @@ Index: backports-5.10.16-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core
  
  #define BRCMF_AMPDU_RX_REORDER_MAXFLOWS		256
  
-Index: backports-5.10.16-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
-===================================================================
---- backports-5.10.16-1.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
-+++ backports-5.10.16-1/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
 @@ -52,6 +52,8 @@
  #define NR_RX_PKTIDS				1024
  

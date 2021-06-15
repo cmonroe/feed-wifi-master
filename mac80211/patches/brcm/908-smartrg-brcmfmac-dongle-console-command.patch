@@ -52,7 +52,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
          }
  	else if (strncmp (local_buf, "csa", strlen("csa")) == 0) {
  		u32 target_channel;
-@@ -1359,6 +1359,78 @@ static const struct file_operations bus_
+@@ -1366,6 +1366,78 @@ static const struct file_operations bus_
  	.write	= bus_reset_write,
  };
  
@@ -131,7 +131,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  static int brcmf_bus_started(struct brcmf_pub *drvr, struct cfg80211_ops *ops)
  {
  	int ret = -1;
-@@ -1436,6 +1508,8 @@ static int brcmf_bus_started(struct brcm
+@@ -1443,6 +1515,8 @@ static int brcmf_bus_started(struct brcm
  	brcmf_debugfs_add_entry(drvr, "revinfo", brcmf_revinfo_read);
  	debugfs_create_file("reset", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
  			    &bus_reset_fops);
@@ -212,11 +212,14 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  {
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.h
-@@ -15,5 +15,7 @@ struct brcmf_pciedev {
- void brcmf_pcie_exit(void);
- void brcmf_pcie_register(void);
+@@ -5,6 +5,10 @@
+ #ifndef BRCMFMAC_PCIE_H
+ #define BRCMFMAC_PCIE_H
  
++struct brcmf_pciedev_info;
++
 +void brcmf_pcie_bus_console_write(struct brcmf_pciedev_info *devinfo,
 +                                  char *buf, size_t count);
  
- #endif /* BRCMFMAC_PCIE_H */
+ struct brcmf_pciedev {
+ 	struct brcmf_bus *bus;
