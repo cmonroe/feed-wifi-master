@@ -1,0 +1,25 @@
+Index: mt76-2021-06-02-b9f09f53/mt7615/mcu.c
+===================================================================
+--- mt76-2021-06-02-b9f09f53.orig/mt7615/mcu.c
++++ mt76-2021-06-02-b9f09f53/mt7615/mcu.c
+@@ -432,11 +432,20 @@ mt7615_mcu_rx_radar_detected(struct mt76
+ 
+ 	if (!dev->radar_pattern.n_pulses && !r->long_detected &&
+ 	    !r->constant_prf_detected && !r->staggered_prf_detected)
++	{
++		dev_info(dev->mt76.dev, "%s: called but no radar detected\n", __func__);
+ 		return;
++	}
+ 
+ 	if (r->band_idx && dev->mt76.phy2)
+ 		mphy = dev->mt76.phy2;
+ 
++	dev_info(dev->mt76.dev, "%s: RADAR DETECTED\n", __func__);
++	dev_info(dev->mt76.dev, "%s: n_pulses=%u long_detected=%u constant_prf_detected=%u staggered_prf_detected=%u\n",
++			__func__, dev->radar_pattern.n_pulses, r->long_detected, r->constant_prf_detected, r->staggered_prf_detected);
++	dev_info(dev->mt76.dev, "%s: radar_type_idx=%u periodic_pulse_num=%u long_pulse_num=%u hw_pulse_num=%u\n",
++			__func__, r->radar_type_idx, r->periodic_pulse_num, r->long_pulse_num, r->hw_pulse_num);
++
+ 	ieee80211_radar_detected(mphy->hw);
+ 	dev->hw_pattern++;
+ }
