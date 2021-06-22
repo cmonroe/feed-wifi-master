@@ -1,0 +1,14 @@
+Index: mt76-2021-06-06-22b69033/mt7915/main.c
+===================================================================
+--- mt76-2021-06-06-22b69033.orig/mt7915/main.c
++++ mt76-2021-06-06-22b69033/mt7915/main.c
+@@ -251,6 +251,9 @@ static int mt7915_add_interface(struct i
+ 		vif->offload_flags = 0;
+ 	vif->offload_flags |= IEEE80211_OFFLOAD_ENCAP_4ADDR;
+ 
++	if (vif->type != NL80211_IFTYPE_AP)
++		vif->offload_flags = 0;
++
+ 	mt7915_init_bitrate_mask(vif);
+ 
+ out:
