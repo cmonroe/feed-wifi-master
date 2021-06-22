@@ -90,7 +90,7 @@
  	bss_data.chan = ieee80211_get_channel(wiphy, freq);
  	bss_data.scan_width = NL80211_BSS_CHAN_WIDTH_20;
  	bss_data.boottime_ns = ktime_to_ns(ktime_get_boottime());
-@@ -5599,6 +5668,7 @@ static struct cfg80211_ops brcmf_cfg8021
+@@ -5515,6 +5584,7 @@ static struct cfg80211_ops brcmf_cfg8021
  	.leave_ibss = brcmf_cfg80211_leave_ibss,
  	.get_station = brcmf_cfg80211_get_station,
  	.dump_station = brcmf_cfg80211_dump_station,
@@ -100,7 +100,7 @@
  	.add_key = brcmf_cfg80211_add_key,
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -2186,6 +2186,8 @@ int brcmf_attach(struct device *dev)
+@@ -1356,6 +1356,8 @@ int brcmf_attach(struct device *dev)
  
  	/* Link to bus module */
  	drvr->hdrlen = 0;
@@ -109,7 +109,7 @@
  
  	/* Attach and link in the protocol */
  	ret = brcmf_proto_attach(drvr);
-@@ -2268,6 +2270,12 @@ void brcmf_detach(struct device *dev)
+@@ -1438,6 +1440,12 @@ void brcmf_detach(struct device *dev)
  	if (drvr == NULL)
  		return;
  
@@ -124,7 +124,7 @@
  #endif
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
-@@ -92,6 +92,11 @@ struct brcmf_rev_info {
+@@ -91,6 +91,11 @@ struct brcmf_rev_info {
  	u32 nvramrev;
  };
  
@@ -136,7 +136,7 @@
  /* Common structure for module and instance linkage */
  struct brcmf_pub {
  	/* Linkage ponters */
-@@ -101,6 +106,9 @@ struct brcmf_pub {
+@@ -100,6 +105,9 @@ struct brcmf_pub {
  	struct cfg80211_ops *ops;
  	struct brcmf_cfg80211_info *config;
  
