@@ -1,7 +1,5 @@
-Index: mt76-2021-06-02-b9f09f53/mt7615/mcu.c
-===================================================================
---- mt76-2021-06-02-b9f09f53.orig/mt7615/mcu.c
-+++ mt76-2021-06-02-b9f09f53/mt7615/mcu.c
+--- a/mt7615/mcu.c
++++ b/mt7615/mcu.c
 @@ -432,11 +432,20 @@ mt7615_mcu_rx_radar_detected(struct mt76
  
  	if (!dev->radar_pattern.n_pulses && !r->long_detected &&
