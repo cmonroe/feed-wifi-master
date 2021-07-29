@@ -1,0 +1,34 @@
+Index: mt76-2021-07-15-bbebea7d/mt7915/eeprom.c
+===================================================================
+--- mt76-2021-07-15-bbebea7d.orig/mt7915/eeprom.c
++++ mt76-2021-07-15-bbebea7d/mt7915/eeprom.c
+@@ -3,6 +3,8 @@
+ 
+ #include "mt7915.h"
+ #include "eeprom.h"
++#include "mt7915_e2p_7915A.h"
++#include "mt7915_e2p_7915D.h"
+ 
+ static int mt7915_eeprom_load_precal(struct mt7915_dev *dev)
+ {
+@@ -121,8 +123,18 @@ int mt7915_eeprom_init(struct mt7915_dev
+ 		return ret;
+ 
+ 	ret = mt7915_check_eeprom(dev);
+-	if (ret)
+-		return ret;
++	if (ret) {
++		dev_info(dev->mt76.dev, "Falling back to default calibration!\n");
++		if (dev->dbdc_support) {
++			memcpy(dev->mt76.eeprom.data, MT7915_E2PImage_7915D, MT7915_EEPROM_SIZE);
++			dev_info(dev->mt76.dev, "DBDC card detected\n");
++		}
++		else {
++			dev_info(dev->mt76.dev, "Single band card detected\n");
++			memcpy(dev->mt76.eeprom.data, MT7915_E2PImage_7915A, MT7915_EEPROM_SIZE);
++		}
++		dev->flash_mode = true;
++	}
+ 
+ 	mt7915_eeprom_parse_hw_cap(dev);
+ 	memcpy(dev->mphy.macaddr, dev->mt76.eeprom.data + MT_EE_MAC_ADDR,
