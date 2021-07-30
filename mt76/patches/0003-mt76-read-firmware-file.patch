@@ -1,3 +1,13 @@
+From: Scott Iveland <scott.iveland@smartrg.com>
+Date: Fri, 30 Jul 2021 13:18:48 -0700
+Subject: mediatek: add option to read rf data from a firmware file
+
+Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
+--
+eeprom.c |  103 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 102 insertions(+), 1 deletion(-)
+
+===================================================================
 --- a/eeprom.c
 +++ b/eeprom.c
 @@ -9,6 +9,107 @@
@@ -40,7 +50,7 @@
 +	if (!part)
 +		part = np->name;
 +
-+	dev_info(dev->dev,"Looking for /lib/firmware/mediatek/rf.bin");
++	dev_dbg(dev->dev,"Looking for /lib/firmware/mediatek/rf.bin");
 +	retlen = snprintf(path,sizeof(path),"/lib/firmware/mediatek/rf.bin");
 +	if(retlen<0)
 +		return -EINVAL;
@@ -71,7 +81,7 @@
 +	offset += be32_to_cpup(list);
 +	pos = offset;
 +
-+	dev_info(dev->dev,"Reading file: len %d, pos %lld \n",len,pos);
++	dev_dbg(dev->dev,"Reading file: len %d, pos %lld \n",len,pos);
 +	retlen = kernel_read(fp, dev->eeprom.data, len, &pos);
 +	if (retlen != len) {
 +		ret = -EINVAL;
@@ -94,7 +104,7 @@
 +	dev->test_mtd.offset = offset;
 +#endif
 +
-+	dev_info(dev->dev,"Load eeprom OK, count %d byte\n",retlen);
++	dev_dbg(dev->dev,"Load eeprom from rf.bin OK, count %d, pos %lld \n",retlen,pos);
 +
 +out_put_node:
 +	of_node_put(np);
