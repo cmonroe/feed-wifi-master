@@ -1,0 +1,14 @@
+Index: mt76-2021-07-15-bbebea7d/mt7615/main.c
+===================================================================
+--- mt76-2021-07-15-bbebea7d.orig/mt7615/main.c
++++ mt76-2021-07-15-bbebea7d/mt7615/main.c
+@@ -241,6 +241,9 @@ static int mt7615_add_interface(struct i
+ 	}
+ 
+ 	ret = mt7615_mcu_add_dev_info(phy, vif, true);
++
++	if (vif->type != NL80211_IFTYPE_AP)
++		vif->offload_flags = 0;
+ out:
+ 	mt7615_mutex_release(dev);
+ 
