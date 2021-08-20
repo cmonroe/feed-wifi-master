@@ -1,7 +1,5 @@
-Index: mt76-2021-07-15-bbebea7d/mt7615/main.c
-===================================================================
---- mt76-2021-07-15-bbebea7d.orig/mt7615/main.c
-+++ mt76-2021-07-15-bbebea7d/mt7615/main.c
+--- a/mt7615/main.c
++++ b/mt7615/main.c
 @@ -241,6 +241,9 @@ static int mt7615_add_interface(struct i
  	}
  
