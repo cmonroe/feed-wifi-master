@@ -132,10 +132,6 @@ get_band_defaults() {
 		mode_band="$band"
 		channel="$chan"
 		htmode="$mode"
-
-		# use only the first returned mode to we handle boards that
-		# say they support concurrent dual band by defaulting to 2.4G
-		break
 	done
 }
 

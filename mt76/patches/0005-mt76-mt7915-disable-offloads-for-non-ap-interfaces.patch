@@ -4,7 +4,7 @@
  		vif->offload_flags = 0;
  	vif->offload_flags |= IEEE80211_OFFLOAD_ENCAP_4ADDR;
  
-+	if (vif->type != NL80211_IFTYPE_AP)
++	if (vif->type == NL80211_IFTYPE_STATION)
 +		vif->offload_flags = 0;
 +
  	mt7915_init_bitrate_mask(vif);

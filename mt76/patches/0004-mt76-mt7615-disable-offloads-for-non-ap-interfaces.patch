@@ -5,7 +5,7 @@
  
  	ret = mt7615_mcu_add_dev_info(phy, vif, true);
 +
-+	if (vif->type != NL80211_IFTYPE_AP)
++	if (vif->type == NL80211_IFTYPE_STATION)
 +		vif->offload_flags = 0;
  out:
  	mt7615_mutex_release(dev);

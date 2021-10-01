@@ -13,11 +13,11 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  mac80211.c | 9 ++++++++-
  1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/mac80211.c b/mac80211.c
-index e282c627..c00fd3ea 100644
---- a/mac80211.c
-+++ b/mac80211.c
-@@ -1357,9 +1357,16 @@ u16 mt76_calculate_default_rate(struct mt76_phy *phy, int rateidx)
+Index: mt76-2021-09-14-e0b84615/mac80211.c
+===================================================================
+--- mt76-2021-09-14-e0b84615.orig/mac80211.c
++++ mt76-2021-09-14-e0b84615/mac80211.c
+@@ -1358,12 +1358,16 @@ u16 mt76_calculate_default_rate(struct m
  	int offset = 0;
  	struct ieee80211_rate *rate;
  
@@ -28,13 +28,13 @@ index e282c627..c00fd3ea 100644
 +	} else if (phy->chandef.chan->band == NL80211_BAND_5GHZ) {
  		offset = 4;
  
+-	/* pick the lowest rate for hidden nodes */
+-	if (rateidx < 0)
+-		rateidx = 0;
++		/* pick the lowest rate for hidden nodes */
 +		if (rateidx < 0)
 +			rateidx = 4; /* 24Mbps */
 +	}
-+
+ 
  	rate = &mt76_rates[offset + rateidx];
  
- 	return rate->hw_value;
--- 
-2.30.1 (Apple Git-130)
-

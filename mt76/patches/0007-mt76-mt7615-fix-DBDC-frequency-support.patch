@@ -1,0 +1,109 @@
+diff --git a/mt7615/eeprom.c b/mt7615/eeprom.c
+index 6dbaaf9..4f52f99 100644
+--- a/mt7615/eeprom.c
++++ b/mt7615/eeprom.c
+@@ -93,45 +93,48 @@ static int mt7615_check_eeprom(struct mt76_dev *dev)
+ 	}
+ }
+ 
+-static void
+-mt7615_eeprom_parse_hw_band_cap(struct mt7615_dev *dev)
++void mt7615_eeprom_parse_hw_band_cap(struct mt7615_phy *phy)
+ {
++	struct mt7615_dev *dev = phy->dev;
+ 	u8 val, *eeprom = dev->mt76.eeprom.data;
+ 
+ 	if (is_mt7663(&dev->mt76)) {
+ 		/* dual band */
+-		dev->mphy.cap.has_2ghz = true;
+-		dev->mphy.cap.has_5ghz = true;
++		phy->mt76->cap.has_2ghz = true;
++		phy->mt76->cap.has_5ghz = true;
+ 		return;
+ 	}
+ 
+ 	if (is_mt7622(&dev->mt76)) {
+ 		/* 2GHz only */
+-		dev->mphy.cap.has_2ghz = true;
++		phy->mt76->cap.has_2ghz = true;
+ 		return;
+ 	}
+ 
+ 	if (is_mt7611(&dev->mt76)) {
+ 		/* 5GHz only */
+-		dev->mphy.cap.has_5ghz = true;
++		phy->mt76->cap.has_5ghz = true;
+ 		return;
+ 	}
+ 
+ 	val = FIELD_GET(MT_EE_NIC_WIFI_CONF_BAND_SEL,
+ 			eeprom[MT_EE_WIFI_CONF]);
++
++	if (val == MT_EE_DBDC) {
++		val = (phy != &dev->phy) ? MT_EE_5GHZ : MT_EE_2GHZ;
++		dev->dbdc_support = true;
++	}
++
+ 	switch (val) {
+ 	case MT_EE_5GHZ:
+-		dev->mphy.cap.has_5ghz = true;
++		phy->mt76->cap.has_5ghz = true;
+ 		break;
+ 	case MT_EE_2GHZ:
+-		dev->mphy.cap.has_2ghz = true;
++		phy->mt76->cap.has_2ghz = true;
+ 		break;
+-	case MT_EE_DBDC:
+-		dev->dbdc_support = true;
+-		fallthrough;
+ 	default:
+-		dev->mphy.cap.has_2ghz = true;
+-		dev->mphy.cap.has_5ghz = true;
++		phy->mt76->cap.has_2ghz = true;
++		phy->mt76->cap.has_5ghz = true;
+ 		break;
+ 	}
+ }
+@@ -141,7 +144,7 @@ static void mt7615_eeprom_parse_hw_cap(struct mt7615_dev *dev)
+ 	u8 *eeprom = dev->mt76.eeprom.data;
+ 	u8 tx_mask, max_nss;
+ 
+-	mt7615_eeprom_parse_hw_band_cap(dev);
++	mt7615_eeprom_parse_hw_band_cap(&dev->phy);
+ 
+ 	if (is_mt7663(&dev->mt76)) {
+ 		max_nss = 2;
+diff --git a/mt7615/init.c b/mt7615/init.c
+index 2f1ac64..25841e8 100644
+--- a/mt7615/init.c
++++ b/mt7615/init.c
+@@ -476,6 +476,7 @@ int mt7615_register_ext_phy(struct mt7615_dev *dev)
+ 
+ 	mt7615_mac_set_scs(phy, true);
+ 
++	mt7615_eeprom_parse_hw_band_cap(phy);
+ 	/*
+ 	 * Make the secondary PHY MAC address local without overlapping with
+ 	 * the usual MAC address allocation scheme on multiple virtual interfaces
+@@ -486,9 +487,6 @@ int mt7615_register_ext_phy(struct mt7615_dev *dev)
+ 	mphy->macaddr[0] ^= BIT(7);
+ 	mt76_eeprom_override(mphy);
+ 
+-	/* second phy can only handle 5 GHz */
+-	mphy->cap.has_5ghz = true;
+-
+ 	/* mt7615 second phy shares the same hw queues with the primary one */
+ 	for (i = 0; i <= MT_TXQ_PSD ; i++)
+ 		mphy->q_tx[i] = dev->mphy.q_tx[i];
+diff --git a/mt7615/mt7615.h b/mt7615/mt7615.h
+index 58a98b5..e7b57c6 100644
+--- a/mt7615/mt7615.h
++++ b/mt7615/mt7615.h
+@@ -373,6 +373,7 @@ int mt7615_eeprom_init(struct mt7615_dev *dev, u32 addr);
+ int mt7615_eeprom_get_target_power_index(struct mt7615_dev *dev,
+ 					 struct ieee80211_channel *chan,
+ 					 u8 chain_idx);
++void mt7615_eeprom_parse_hw_band_cap(struct mt7615_phy *phy);
+ int mt7615_eeprom_get_power_delta_index(struct mt7615_dev *dev,
+ 					enum nl80211_band band);
+ int mt7615_wait_pdma_busy(struct mt7615_dev *dev);
