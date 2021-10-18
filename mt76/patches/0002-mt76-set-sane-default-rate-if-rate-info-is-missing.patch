@@ -13,28 +13,27 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  mac80211.c | 9 ++++++++-
  1 file changed, 8 insertions(+), 1 deletion(-)
 
-Index: mt76-2021-09-14-e0b84615/mac80211.c
+Index: mt76-2021-10-12-83598c2e/mac80211.c
 ===================================================================
---- mt76-2021-09-14-e0b84615.orig/mac80211.c
-+++ mt76-2021-09-14-e0b84615/mac80211.c
-@@ -1358,12 +1358,16 @@ u16 mt76_calculate_default_rate(struct m
+--- mt76-2021-10-12-83598c2e.orig/mac80211.c
++++ mt76-2021-10-12-83598c2e/mac80211.c
+@@ -1496,9 +1496,18 @@ u16 mt76_calculate_default_rate(struct m
  	int offset = 0;
  	struct ieee80211_rate *rate;
  
--	if (phy->chandef.chan->band == NL80211_BAND_5GHZ)
+-	if (phy->chandef.chan->band != NL80211_BAND_2GHZ)
 +	if (phy->chandef.chan->band == NL80211_BAND_2GHZ) {
 +		if (rateidx < 0)
 +			rateidx = 3; /* 11Mbps */
-+	} else if (phy->chandef.chan->band == NL80211_BAND_5GHZ) {
++	} else {
  		offset = 4;
  
--	/* pick the lowest rate for hidden nodes */
--	if (rateidx < 0)
--		rateidx = 0;
-+		/* pick the lowest rate for hidden nodes */
-+		if (rateidx < 0)
-+			rateidx = 4; /* 24Mbps */
++		if (phy->chandef.chan->band == NL80211_BAND_5GHZ) {
++			if (rateidx < 0)
++				rateidx = 4; /* 24Mbps */
++		}
 +	}
- 
- 	rate = &mt76_rates[offset + rateidx];
- 
++
+ 	/* pick the lowest rate for hidden nodes */
+ 	if (rateidx < 0)
+ 		rateidx = 0;

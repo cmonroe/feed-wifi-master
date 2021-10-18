@@ -8,11 +8,9 @@ This reverts commit 4932c5d80153c336c77dbe8d7af9f8fdd879d01f.
  eeprom.c | 8 +++++++-
  1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/eeprom.c b/eeprom.c
-index 3873b6a9..cc74c372 100644
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -91,9 +91,15 @@ mt76_eeprom_override(struct mt76_phy *phy)
+@@ -203,9 +203,15 @@ mt76_eeprom_override(struct mt76_phy *ph
  {
  	struct mt76_dev *dev = phy->dev;
  
@@ -29,6 +27,3 @@ index 3873b6a9..cc74c372 100644
  
  	if (!is_valid_ether_addr(phy->macaddr)) {
  		eth_random_addr(phy->macaddr);
--- 
-2.30.1 (Apple Git-130)
-

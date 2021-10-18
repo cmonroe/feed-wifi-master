@@ -12,11 +12,9 @@ v3:  Fix typo in SOB in 1/2, fix rebase typo in 2/2,
  .../net/wireless/mediatek/mt76/mt7615/mac.c   | 38 +++++++++++++++++--
  1 file changed, 35 insertions(+), 3 deletions(-)
 
-diff --git a/mt7615/mac.c b/mt7615/mac.c
-index 8747e452e114..a6e142d27b60 100644
 --- a/mt7615/mac.c
 +++ b/mt7615/mac.c
-@@ -2455,6 +2455,32 @@ static int mt7615_dfs_start_radar_detector(struct mt7615_phy *phy)
+@@ -2098,6 +2098,32 @@ static int mt7615_dfs_start_radar_detect
  	return 0;
  }
  
@@ -49,15 +47,15 @@ index 8747e452e114..a6e142d27b60 100644
  static int
  mt7615_dfs_init_radar_specs(struct mt7615_phy *phy)
  {
-@@ -2495,6 +2521,7 @@ int mt7615_dfs_init_radar_detector(struct mt7615_phy *phy)
+@@ -2141,6 +2167,7 @@ int mt7615_dfs_init_radar_detector(struc
  	struct mt7615_dev *dev = phy->dev;
  	bool ext_phy = phy != &dev->phy;
  	int err;
 +	struct mt7615_vif_counts counts = {0};
  
- 	if (dev->mt76.region == NL80211_DFS_UNSET) {
- 		phy->dfs_state = -1;
-@@ -2519,9 +2546,14 @@ int mt7615_dfs_init_radar_detector(struct mt7615_phy *phy)
+ 	if (is_mt7663(&dev->mt76))
+ 		return 0;
+@@ -2168,9 +2195,14 @@ int mt7615_dfs_init_radar_detector(struc
  	phy->dfs_state = chandef->chan->dfs_state;
  
  	if (chandef->chan->flags & IEEE80211_CHAN_RADAR) {

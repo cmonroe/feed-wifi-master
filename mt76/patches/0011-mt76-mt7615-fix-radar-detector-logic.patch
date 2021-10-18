@@ -26,11 +26,9 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  .../wireless/mediatek/mt76/mt7615/mt7615.h    |   6 +-
  4 files changed, 100 insertions(+), 38 deletions(-)
 
-Index: mt76-2021-08-13-8b3d8e2d/mt7615/init.c
-===================================================================
---- mt76-2021-08-13-8b3d8e2d.orig/mt7615/init.c
-+++ mt76-2021-08-13-8b3d8e2d/mt7615/init.c
-@@ -333,6 +333,7 @@ mt7615_regd_notifier(struct wiphy *wiphy
+--- a/mt7615/init.c
++++ b/mt7615/init.c
+@@ -335,6 +335,7 @@ mt7615_regd_notifier(struct wiphy *wiphy
  	struct mt76_phy *mphy = hw->priv;
  	struct mt7615_phy *phy = mphy->priv;
  	struct cfg80211_chan_def *chandef = &mphy->chandef;
@@ -38,7 +36,7 @@ Index: mt76-2021-08-13-8b3d8e2d/mt7615/init.c
  
  	memcpy(dev->mt76.alpha2, request->alpha2, sizeof(dev->mt76.alpha2));
  	dev->mt76.region = request->dfs_region;
-@@ -342,14 +343,18 @@ mt7615_regd_notifier(struct wiphy *wiphy
+@@ -344,14 +345,18 @@ mt7615_regd_notifier(struct wiphy *wiphy
  
  	mt7615_mutex_acquire(dev);
  
@@ -60,7 +58,7 @@ Index: mt76-2021-08-13-8b3d8e2d/mt7615/init.c
  	mt7615_mutex_release(dev);
  }
  
-@@ -549,7 +554,6 @@ void mt7615_init_device(struct mt7615_de
+@@ -555,7 +560,6 @@ void mt7615_init_device(struct mt7615_de
  	dev->pm.stats.last_wake_event = jiffies;
  	dev->pm.stats.last_doze_event = jiffies;
  	mt7615_cap_dbdc_disable(dev);
@@ -68,10 +66,8 @@ Index: mt76-2021-08-13-8b3d8e2d/mt7615/init.c
  
  #ifdef CONFIG_NL80211_TESTMODE
  	dev->mt76.test_ops = &mt7615_testmode_ops;
-Index: mt76-2021-08-13-8b3d8e2d/mt7615/mac.c
-===================================================================
---- mt76-2021-08-13-8b3d8e2d.orig/mt7615/mac.c
-+++ mt76-2021-08-13-8b3d8e2d/mt7615/mac.c
+--- a/mt7615/mac.c
++++ b/mt7615/mac.c
 @@ -2046,14 +2046,29 @@ void mt7615_tx_token_put(struct mt7615_d
  }
  EXPORT_SYMBOL_GPL(mt7615_tx_token_put);
@@ -219,11 +215,9 @@ Index: mt76-2021-08-13-8b3d8e2d/mt7615/mac.c
  }
  
  int mt7615_mac_set_beacon_filter(struct mt7615_phy *phy,
-Index: mt76-2021-08-13-8b3d8e2d/mt7615/main.c
-===================================================================
---- mt76-2021-08-13-8b3d8e2d.orig/mt7615/main.c
-+++ mt76-2021-08-13-8b3d8e2d/mt7615/main.c
-@@ -291,6 +291,8 @@ static void mt7615_init_dfs_state(struct
+--- a/mt7615/main.c
++++ b/mt7615/main.c
+@@ -295,6 +295,8 @@ static void mt7615_init_dfs_state(struct
  	struct mt76_phy *mphy = phy->mt76;
  	struct ieee80211_hw *hw = mphy->hw;
  	struct cfg80211_chan_def *chandef = &hw->conf.chandef;
@@ -232,7 +226,7 @@ Index: mt76-2021-08-13-8b3d8e2d/mt7615/main.c
  
  	if (hw->conf.flags & IEEE80211_CONF_OFFCHANNEL)
  		return;
-@@ -298,11 +300,23 @@ static void mt7615_init_dfs_state(struct
+@@ -302,11 +304,23 @@ static void mt7615_init_dfs_state(struct
  	if (!(chandef->chan->flags & IEEE80211_CHAN_RADAR))
  		return;
  
@@ -259,7 +253,7 @@ Index: mt76-2021-08-13-8b3d8e2d/mt7615/main.c
  }
  
  int mt7615_set_channel(struct mt7615_phy *phy)
-@@ -336,8 +350,11 @@ int mt7615_set_channel(struct mt7615_phy
+@@ -340,8 +354,11 @@ int mt7615_set_channel(struct mt7615_phy
  
  	mt7615_mac_set_timing(phy);
  	ret = mt7615_dfs_init_radar_detector(phy);
@@ -272,10 +266,8 @@ Index: mt76-2021-08-13-8b3d8e2d/mt7615/main.c
  
  	mt7615_mac_cca_stats_reset(phy);
  	ret = mt7615_mcu_set_sku_en(phy, true);
-Index: mt76-2021-08-13-8b3d8e2d/mt7615/mt7615.h
-===================================================================
---- mt76-2021-08-13-8b3d8e2d.orig/mt7615/mt7615.h
-+++ mt76-2021-08-13-8b3d8e2d/mt7615/mt7615.h
+--- a/mt7615/mt7615.h
++++ b/mt7615/mt7615.h
 @@ -164,8 +164,9 @@ struct mt7615_phy {
  	u8 slottime;
  
@@ -288,7 +280,7 @@ Index: mt76-2021-08-13-8b3d8e2d/mt7615/mt7615.h
  
  	u32 rx_ampdu_ts;
  	u32 ampdu_ref;
-@@ -540,6 +541,7 @@ int mt7615_mcu_set_sku_en(struct mt7615_
+@@ -541,6 +542,7 @@ int mt7615_mcu_set_sku_en(struct mt7615_
  int mt7615_mcu_apply_rx_dcoc(struct mt7615_phy *phy);
  int mt7615_mcu_apply_tx_dpd(struct mt7615_phy *phy);
  int mt7615_dfs_init_radar_detector(struct mt7615_phy *phy);

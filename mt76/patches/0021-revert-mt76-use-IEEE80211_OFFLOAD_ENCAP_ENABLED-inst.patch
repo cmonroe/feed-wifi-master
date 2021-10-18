@@ -12,11 +12,9 @@ This reverts commit e2ee9d0a33ed57edbeba40e9b8b3523ffd6e5365.
  mt7921/pci.c | 3 ++-
  4 files changed, 11 insertions(+), 4 deletions(-)
 
-diff --git a/mac80211.c b/mac80211.c
-index bbe7ba64..9837c106 100644
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -337,8 +337,12 @@ mt76_phy_init(struct mt76_phy *phy, struct ieee80211_hw *hw)
+@@ -427,8 +427,12 @@ mt76_phy_init(struct mt76_phy *phy, stru
  	ieee80211_hw_set(hw, SUPPORTS_CLONED_SKBS);
  	ieee80211_hw_set(hw, SUPPORTS_AMSDU_IN_AMPDU);
  	ieee80211_hw_set(hw, SUPPORTS_REORDERING_BUFFER);
@@ -31,11 +29,9 @@ index bbe7ba64..9837c106 100644
  	ieee80211_hw_set(hw, MFP_CAPABLE);
  	ieee80211_hw_set(hw, AP_LINK_PS);
  	ieee80211_hw_set(hw, REPORTS_TX_ACK_STATUS);
-diff --git a/mt76.h b/mt76.h
-index 783ea555..8e7fedfd 100644
 --- a/mt76.h
 +++ b/mt76.h
-@@ -346,6 +346,7 @@ struct mt76_hw_cap {
+@@ -352,6 +352,7 @@ struct mt76_hw_cap {
  #define MT_DRV_SW_RX_AIRTIME		BIT(2)
  #define MT_DRV_RX_DMA_HDR		BIT(3)
  #define MT_DRV_HW_MGMT_TXQ		BIT(4)
@@ -43,11 +39,9 @@ index 783ea555..8e7fedfd 100644
  
  struct mt76_driver_ops {
  	u32 drv_flags;
-diff --git a/mt7915/pci.c b/mt7915/pci.c
-index d3cceccd..c98e997d 100644
 --- a/mt7915/pci.c
 +++ b/mt7915/pci.c
-@@ -222,7 +222,8 @@ static int mt7915_pci_probe(struct pci_dev *pdev,
+@@ -222,7 +222,8 @@ static int mt7915_pci_probe(struct pci_d
  	static const struct mt76_driver_ops drv_ops = {
  		/* txwi_size = txd size + txp size */
  		.txwi_size = MT_TXD_SIZE + sizeof(struct mt7915_txp),
@@ -57,11 +51,9 @@ index d3cceccd..c98e997d 100644
  		.survey_flags = SURVEY_INFO_TIME_TX |
  				SURVEY_INFO_TIME_RX |
  				SURVEY_INFO_TIME_BSS_RX,
-diff --git a/mt7921/pci.c b/mt7921/pci.c
-index b5622b61..4b3d8757 100644
 --- a/mt7921/pci.c
 +++ b/mt7921/pci.c
-@@ -99,7 +99,8 @@ static int mt7921_pci_probe(struct pci_dev *pdev,
+@@ -99,7 +99,8 @@ static int mt7921_pci_probe(struct pci_d
  	static const struct mt76_driver_ops drv_ops = {
  		/* txwi_size = txd size + txp size */
  		.txwi_size = MT_TXD_SIZE + sizeof(struct mt7921_txp_common),
@@ -71,6 +63,3 @@ index b5622b61..4b3d8757 100644
  		.survey_flags = SURVEY_INFO_TIME_TX |
  				SURVEY_INFO_TIME_RX |
  				SURVEY_INFO_TIME_BSS_RX,
--- 
-2.30.1 (Apple Git-130)
-

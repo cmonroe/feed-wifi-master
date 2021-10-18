@@ -1,7 +1,5 @@
-Index: mt76-2021-07-15-bbebea7d/mt7915/eeprom.c
-===================================================================
---- mt76-2021-07-15-bbebea7d.orig/mt7915/eeprom.c
-+++ mt76-2021-07-15-bbebea7d/mt7915/eeprom.c
+--- a/mt7915/eeprom.c
++++ b/mt7915/eeprom.c
 @@ -3,6 +3,8 @@
  
  #include "mt7915.h"

@@ -1,6 +1,6 @@
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -250,6 +250,9 @@ static int mt7915_add_interface(struct i
+@@ -252,6 +252,9 @@ static int mt7915_add_interface(struct i
  		vif->offload_flags = 0;
  	vif->offload_flags |= IEEE80211_OFFLOAD_ENCAP_4ADDR;
  

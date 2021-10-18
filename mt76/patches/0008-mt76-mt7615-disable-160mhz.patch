@@ -1,8 +1,6 @@
-Index: mt76-2021-09-14-e0b84615/mt7615/init.c
-===================================================================
---- mt76-2021-09-14-e0b84615.orig/mt7615/init.c
-+++ mt76-2021-09-14-e0b84615/mt7615/init.c
-@@ -436,9 +436,15 @@ mt7615_cap_dbdc_enable(struct mt7615_dev
+--- a/mt7615/init.c
++++ b/mt7615/init.c
+@@ -431,9 +431,15 @@ mt7615_cap_dbdc_enable(struct mt7615_dev
  static void
  mt7615_cap_dbdc_disable(struct mt7615_dev *dev)
  {

@@ -1,8 +1,6 @@
-diff --git a/mt7615/eeprom.c b/mt7615/eeprom.c
-index 6dbaaf9..4f52f99 100644
 --- a/mt7615/eeprom.c
 +++ b/mt7615/eeprom.c
-@@ -93,45 +93,48 @@ static int mt7615_check_eeprom(struct mt76_dev *dev)
+@@ -93,45 +93,48 @@ static int mt7615_check_eeprom(struct mt
  	}
  }
  
@@ -64,7 +62,7 @@ index 6dbaaf9..4f52f99 100644
  		break;
  	}
  }
-@@ -141,7 +144,7 @@ static void mt7615_eeprom_parse_hw_cap(struct mt7615_dev *dev)
+@@ -141,7 +144,7 @@ static void mt7615_eeprom_parse_hw_cap(s
  	u8 *eeprom = dev->mt76.eeprom.data;
  	u8 tx_mask, max_nss;
  
@@ -73,11 +71,9 @@ index 6dbaaf9..4f52f99 100644
  
  	if (is_mt7663(&dev->mt76)) {
  		max_nss = 2;
-diff --git a/mt7615/init.c b/mt7615/init.c
-index 2f1ac64..25841e8 100644
 --- a/mt7615/init.c
 +++ b/mt7615/init.c
-@@ -476,6 +476,7 @@ int mt7615_register_ext_phy(struct mt7615_dev *dev)
+@@ -478,6 +478,7 @@ int mt7615_register_ext_phy(struct mt761
  
  	mt7615_mac_set_scs(phy, true);
  
@@ -85,7 +81,7 @@ index 2f1ac64..25841e8 100644
  	/*
  	 * Make the secondary PHY MAC address local without overlapping with
  	 * the usual MAC address allocation scheme on multiple virtual interfaces
-@@ -486,9 +487,6 @@ int mt7615_register_ext_phy(struct mt7615_dev *dev)
+@@ -488,9 +489,6 @@ int mt7615_register_ext_phy(struct mt761
  	mphy->macaddr[0] ^= BIT(7);
  	mt76_eeprom_override(mphy);
  
@@ -95,11 +91,9 @@ index 2f1ac64..25841e8 100644
  	/* mt7615 second phy shares the same hw queues with the primary one */
  	for (i = 0; i <= MT_TXQ_PSD ; i++)
  		mphy->q_tx[i] = dev->mphy.q_tx[i];
-diff --git a/mt7615/mt7615.h b/mt7615/mt7615.h
-index 58a98b5..e7b57c6 100644
 --- a/mt7615/mt7615.h
 +++ b/mt7615/mt7615.h
-@@ -373,6 +373,7 @@ int mt7615_eeprom_init(struct mt7615_dev *dev, u32 addr);
+@@ -373,6 +373,7 @@ int mt7615_eeprom_init(struct mt7615_dev
  int mt7615_eeprom_get_target_power_index(struct mt7615_dev *dev,
  					 struct ieee80211_channel *chan,
  					 u8 chain_idx);
