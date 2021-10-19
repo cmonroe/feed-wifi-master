@@ -1,0 +1,43 @@
+From 41ec97cd09486a6bda21f5f5b89e5242e6ade2a2 Mon Sep 17 00:00:00 2001
+From: Hu Wang <huw@codeaurora.org>
+Date: Wed, 22 Sep 2021 08:54:38 +0530
+Subject: HE: Use a random BSS Color if not defined in the config file
+
+Commit 0cb39f4fd5 ("HE: Extend BSS color support") sets the BSS Color
+default value to 1 as "Interoperability testing showed that stations
+will require a BSS color to be set even if the feature is disabled."
+
+A new interop issue was observed with hardcoded BSS color value of 1:
+- REF device using one interface (e.g., wlan0) to connect to an HE
+  AP, whose BSS color is enabled and value is 1.
+- REF device using another interface (e.g., p2p0) to connect to a
+  P2P GO using BSS color default settings.
+  (i.e., BSS color disabled and value is 1).
+- REF device checks both AP's and P2P GO's BSS Color values even though
+  GO's BSS color is disabled. This causes collision of the BSS
+  color somehow causing RX problems.
+
+For DUT as a P2P GO, its firmware uses default BSS color value 1 from
+wpa_supplicant, then triggers a timer (e.g., 120 s) to update its BSS
+color values based on its neighboring BSSes. To reduce the likelihood of
+BSS color collision with REF device before that, use a random BSS Color
+if not defined in the config file.
+
+Signed-off-by: Jouni Malinen <jouni@codeaurora.org>
+---
+ src/ap/ap_config.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: hostapd-2021-05-22-b102f19b/src/ap/ap_config.c
+===================================================================
+--- hostapd-2021-05-22-b102f19b.orig/src/ap/ap_config.c
++++ hostapd-2021-05-22-b102f19b/src/ap/ap_config.c
+@@ -273,7 +273,7 @@ struct hostapd_config * hostapd_config_d
+ 	conf->he_op.he_basic_mcs_nss_set = 0xfffc;
+ 	conf->he_op.he_bss_color_disabled = 1;
+ 	conf->he_op.he_bss_color_partial = 0;
+-	conf->he_op.he_bss_color = 1;
++	conf->he_op.he_bss_color = os_random() % 63 + 1;
+ 	conf->he_6ghz_max_mpdu = 2;
+ 	conf->he_6ghz_max_ampdu_len_exp = 7;
+ 	conf->he_6ghz_rx_ant_pat = 1;
