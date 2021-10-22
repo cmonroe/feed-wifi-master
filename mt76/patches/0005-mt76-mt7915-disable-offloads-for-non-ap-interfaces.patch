@@ -8,5 +8,5 @@
 +		vif->offload_flags = 0;
 +
  	mt7915_init_bitrate_mask(vif);
+ 	memset(&mvif->cap, -1, sizeof(mvif->cap));
  
- out:

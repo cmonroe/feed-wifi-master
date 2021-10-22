@@ -1,6 +1,6 @@
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -767,10 +767,15 @@ mt7915_init_he_caps(struct mt7915_phy *p
+@@ -771,10 +771,15 @@ mt7915_init_he_caps(struct mt7915_phy *p
  			he_cap_elem->phy_cap_info[0] =
  				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G;
  		else if (band == NL80211_BAND_5GHZ)
@@ -16,7 +16,7 @@
  
  		he_cap_elem->phy_cap_info[1] =
  			IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD;
-@@ -918,10 +923,12 @@ int mt7915_register_device(struct mt7915
+@@ -926,10 +931,12 @@ int mt7915_register_device(struct mt7915
  
  	mt7915_init_wiphy(hw);
  

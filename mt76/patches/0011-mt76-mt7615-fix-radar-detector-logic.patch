@@ -268,7 +268,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  	ret = mt7615_mcu_set_sku_en(phy, true);
 --- a/mt7615/mt7615.h
 +++ b/mt7615/mt7615.h
-@@ -164,8 +164,9 @@ struct mt7615_phy {
+@@ -176,8 +176,9 @@ struct mt7615_phy {
  	u8 slottime;
  
  	u8 chfreq;
@@ -280,7 +280,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  
  	u32 rx_ampdu_ts;
  	u32 ampdu_ref;
-@@ -541,6 +542,7 @@ int mt7615_mcu_set_sku_en(struct mt7615_
+@@ -553,6 +554,7 @@ int mt7615_mcu_set_sku_en(struct mt7615_
  int mt7615_mcu_apply_rx_dcoc(struct mt7615_phy *phy);
  int mt7615_mcu_apply_tx_dpd(struct mt7615_phy *phy);
  int mt7615_dfs_init_radar_detector(struct mt7615_phy *phy);

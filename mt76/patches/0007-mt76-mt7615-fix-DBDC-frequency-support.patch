@@ -93,7 +93,7 @@
  		mphy->q_tx[i] = dev->mphy.q_tx[i];
 --- a/mt7615/mt7615.h
 +++ b/mt7615/mt7615.h
-@@ -373,6 +373,7 @@ int mt7615_eeprom_init(struct mt7615_dev
+@@ -385,6 +385,7 @@ int mt7615_eeprom_init(struct mt7615_dev
  int mt7615_eeprom_get_target_power_index(struct mt7615_dev *dev,
  					 struct ieee80211_channel *chan,
  					 u8 chain_idx);

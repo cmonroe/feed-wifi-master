@@ -13,10 +13,8 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  mac80211.c | 9 ++++++++-
  1 file changed, 8 insertions(+), 1 deletion(-)
 
-Index: mt76-2021-10-12-83598c2e/mac80211.c
-===================================================================
---- mt76-2021-10-12-83598c2e.orig/mac80211.c
-+++ mt76-2021-10-12-83598c2e/mac80211.c
+--- a/mac80211.c
++++ b/mac80211.c
 @@ -1496,9 +1496,18 @@ u16 mt76_calculate_default_rate(struct m
  	int offset = 0;
  	struct ieee80211_rate *rate;

@@ -31,7 +31,7 @@ This reverts commit e2ee9d0a33ed57edbeba40e9b8b3523ffd6e5365.
  	ieee80211_hw_set(hw, REPORTS_TX_ACK_STATUS);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -352,6 +352,7 @@ struct mt76_hw_cap {
+@@ -353,6 +353,7 @@ struct mt76_hw_cap {
  #define MT_DRV_SW_RX_AIRTIME		BIT(2)
  #define MT_DRV_RX_DMA_HDR		BIT(3)
  #define MT_DRV_HW_MGMT_TXQ		BIT(4)
@@ -53,7 +53,7 @@ This reverts commit e2ee9d0a33ed57edbeba40e9b8b3523ffd6e5365.
  				SURVEY_INFO_TIME_BSS_RX,
 --- a/mt7921/pci.c
 +++ b/mt7921/pci.c
-@@ -99,7 +99,8 @@ static int mt7921_pci_probe(struct pci_d
+@@ -125,7 +125,8 @@ static int mt7921_pci_probe(struct pci_d
  	static const struct mt76_driver_ops drv_ops = {
  		/* txwi_size = txd size + txp size */
  		.txwi_size = MT_TXD_SIZE + sizeof(struct mt7921_txp_common),
