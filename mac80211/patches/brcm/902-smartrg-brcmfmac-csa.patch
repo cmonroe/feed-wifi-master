@@ -89,9 +89,9 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  {
  	conf->frag_threshold = (u32)-1;
 @@ -6276,6 +6326,14 @@ static void brcmf_register_event_handler
- 			    brcmf_p2p_notify_action_tx_complete);
  	brcmf_fweh_register(cfg->pub, BRCMF_E_PSK_SUP,
  			    brcmf_notify_connect_status);
+	brcmf_fweh_register(cfg->pub, BRCMF_E_RSSI, brcmf_notify_rssi);
 +	brcmf_fweh_register(cfg->pub, BRCMF_E_CSA_COMPLETE_IND,
 +			    brcmf_notify_csa);
 +	brcmf_fweh_register(cfg->pub, BRCMF_E_CSA_START_IND,
