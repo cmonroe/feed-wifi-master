@@ -1,7 +1,9 @@
---- a/mt7915/eeprom.c
-+++ b/mt7915/eeprom.c
-@@ -3,6 +3,8 @@
- 
+Index: mt76-2021-11-22-b1d0ad2e/mt7915/eeprom.c
+===================================================================
+--- mt76-2021-11-22-b1d0ad2e.orig/mt7915/eeprom.c
++++ mt76-2021-11-22-b1d0ad2e/mt7915/eeprom.c
+@@ -4,6 +4,8 @@
+ #include <linux/firmware.h>
  #include "mt7915.h"
  #include "eeprom.h"
 +#include "mt7915_e2p_7915A.h"
@@ -9,13 +11,26 @@
  
  static int mt7915_eeprom_load_precal(struct mt7915_dev *dev)
  {
-@@ -121,8 +123,18 @@ int mt7915_eeprom_init(struct mt7915_dev
- 		return ret;
+@@ -38,6 +40,7 @@ static int mt7915_check_eeprom(struct mt
+ 	}
+ }
  
- 	ret = mt7915_check_eeprom(dev);
--	if (ret)
--		return ret;
-+	if (ret) {
++#if 0
+ static int
+ mt7915_eeprom_load_default(struct mt7915_dev *dev)
+ {
+@@ -67,6 +70,7 @@ out:
+ 
+ 	return ret;
+ }
++#endif
+ 
+ static int mt7915_eeprom_load(struct mt7915_dev *dev)
+ {
+@@ -161,10 +165,23 @@ int mt7915_eeprom_init(struct mt7915_dev
+ 		if (ret != -EINVAL)
+ 			return ret;
+ 
 +		dev_info(dev->mt76.dev, "Falling back to default calibration!\n");
 +		if (dev->dbdc_support) {
 +			memcpy(dev->mt76.eeprom.data, MT7915_E2PImage_7915D, MT7915_EEPROM_SIZE);
@@ -26,7 +41,13 @@
 +			memcpy(dev->mt76.eeprom.data, MT7915_E2PImage_7915A, MT7915_EEPROM_SIZE);
 +		}
 +		dev->flash_mode = true;
-+	}
++
++#if 0
+ 		dev_warn(dev->mt76.dev, "eeprom load fail, use default bin\n");
+ 		ret = mt7915_eeprom_load_default(dev);
+ 		if (ret)
+ 			return ret;
++#endif
+ 	}
  
- 	mt7915_eeprom_parse_hw_cap(dev);
- 	memcpy(dev->mphy.macaddr, dev->mt76.eeprom.data + MT_EE_MAC_ADDR,
+ 	ret = mt7915_eeprom_load_precal(dev);
