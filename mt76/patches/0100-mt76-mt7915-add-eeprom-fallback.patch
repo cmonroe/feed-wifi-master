@@ -1,7 +1,5 @@
-Index: mt76-2021-11-22-b1d0ad2e/mt7915/eeprom.c
-===================================================================
---- mt76-2021-11-22-b1d0ad2e.orig/mt7915/eeprom.c
-+++ mt76-2021-11-22-b1d0ad2e/mt7915/eeprom.c
+--- a/mt7915/eeprom.c
++++ b/mt7915/eeprom.c
 @@ -4,6 +4,8 @@
  #include <linux/firmware.h>
  #include "mt7915.h"

@@ -118,7 +118,7 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  int mt76_get_of_eeprom(struct mt76_dev *dev, void *eep, int offset, int len)
  {
  #if defined(CONFIG_OF) && defined(CONFIG_MTD)
-@@ -346,6 +447,6 @@ mt76_eeprom_init(struct mt76_dev *dev, i
+@@ -349,6 +450,6 @@ mt76_eeprom_init(struct mt76_dev *dev, i
  	if (!dev->eeprom.data)
  		return -ENOMEM;
  

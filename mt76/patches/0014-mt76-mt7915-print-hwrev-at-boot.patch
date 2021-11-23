@@ -1,7 +1,5 @@
-Index: mt76-2021-10-23.1-f6bde7ba/mt7915/mmio.c
-===================================================================
---- mt76-2021-10-23.1-f6bde7ba.orig/mt7915/mmio.c
-+++ mt76-2021-10-23.1-f6bde7ba/mt7915/mmio.c
+--- a/mt7915/mmio.c
++++ b/mt7915/mmio.c
 @@ -146,7 +146,7 @@ int mt7915_mmio_init(struct mt76_dev *md
  
  	mdev->rev = (mt76_rr(dev, MT_HW_CHIPID) << 16) |
