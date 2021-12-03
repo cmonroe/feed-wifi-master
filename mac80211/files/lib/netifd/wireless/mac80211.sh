@@ -313,7 +313,11 @@ mac80211_hostapd_setup_base() {
 		done
 
 		append base_cfg "vht_oper_chwidth=$vht_oper_chwidth" "$N"
-		append base_cfg "vht_oper_centr_freq_seg0_idx=$vht_center_seg0" "$N"
+		# vth_center_seg0 ends up being a bogus value if uci channel=auto.
+		# So, skip adding this value to the base_cfg.
+		if [ $vht_center_seg0 -gt 0 ]; then
+			append base_cfg "vht_oper_centr_freq_seg0_idx=$vht_center_seg0" "$N"
+		fi
 
 		cap_rx_stbc=$((($vht_cap >> 8) & 7))
 		[ "$rx_stbc" -lt "$cap_rx_stbc" ] && cap_rx_stbc="$rx_stbc"
@@ -422,7 +426,11 @@ mac80211_hostapd_setup_base() {
 		[ -n "$he_bss_color" ] && append base_cfg "he_bss_color=$he_bss_color" "$N"
 		[ "$hwmode" = "a" ] && {
 			append base_cfg "he_oper_chwidth=$vht_oper_chwidth" "$N"
-			append base_cfg "he_oper_centr_freq_seg0_idx=$vht_center_seg0" "$N"
+			# vth_center_seg0 ends up being a bogus value if uci channel=auto.
+			# So, skip adding this value to the base_cfg.
+			if [ $vht_center_seg0 -gt 0 ]; then
+				append base_cfg "he_oper_centr_freq_seg0_idx=$vht_center_seg0" "$N"
+			fi
 		}
 
 		mac80211_add_he_capabilities \
