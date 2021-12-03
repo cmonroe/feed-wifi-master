@@ -1,0 +1,31 @@
+Index: hostapd-2021-05-22-b102f19b/src/ap/acs.c
+===================================================================
+--- hostapd-2021-05-22-b102f19b.orig/src/ap/acs.c
++++ hostapd-2021-05-22-b102f19b/src/ap/acs.c
+@@ -21,6 +21,7 @@
+ #include "ap_config.h"
+ #include "hw_features.h"
+ #include "acs.h"
++#include <time.h>
+ 
+ /*
+  * Automatic Channel Selection
+@@ -415,9 +416,17 @@ static int acs_usable_bw160_chan(const s
+ 
+ static int acs_survey_is_sufficient(struct freq_survey *survey)
+ {
++	static time_t last_seconds=0;
++	time_t current_seconds;
++
+ 	if (!(survey->filled & SURVEY_HAS_NF)) {
+ 		survey->nf = -95;
+-		wpa_printf(MSG_INFO, "ACS: Survey is missing noise floor");
++
++		current_seconds=time(NULL);
++		if (last_seconds != current_seconds) {
++			wpa_printf(MSG_INFO, "ACS: Survey is missing noise floor");
++			last_seconds = current_seconds;
++		}
+ 	}
+ 
+ 	if (!(survey->filled & SURVEY_HAS_CHAN_TIME)) {
