@@ -94,7 +94,7 @@ Index: hostapd-2021-05-22-b102f19b/src/ap/hw_features.c
 ===================================================================
 --- hostapd-2021-05-22-b102f19b.orig/src/ap/hw_features.c
 +++ hostapd-2021-05-22-b102f19b/src/ap/hw_features.c
-@@ -1037,6 +1037,31 @@ int hostapd_acs_completed(struct hostapd
+@@ -1037,6 +1037,33 @@ int hostapd_acs_completed(struct hostapd
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
  			ACS_EVENT_COMPLETED "freq=%d channel=%d",
  			iface->freq, iface->conf->channel);
@@ -120,6 +120,8 @@ Index: hostapd-2021-05-22-b102f19b/src/ap/hw_features.c
 +		// channel change will happen separately via chan_switch.
 +		if (iface->manual_acs_triggered == true) {
 +			iface->manual_acs_triggered = false;
++			hostapd_set_state(iface, HAPD_IFACE_ENABLED);
++			wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, AP_EVENT_ENABLED);
 +			return 0;
 +		}
 +
