@@ -47,17 +47,18 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  }
  
  static void
-@@ -940,7 +944,6 @@ int mt7915_register_device(struct mt7915
+@@ -975,8 +979,6 @@ int mt7915_register_device(struct mt7915
  
- 	dev->mphy.hw->wiphy->available_antennas_rx = dev->mphy.chainmask;
- 	dev->mphy.hw->wiphy->available_antennas_tx = dev->mphy.chainmask;
+ 	mt7915_init_wiphy(hw);
+ 
 -	dev->phy.dfs_state = -1;
- 
+-
  #ifdef CONFIG_NL80211_TESTMODE
  	dev->mt76.test_ops = &mt7915_testmode_ops;
+ #endif
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -2207,14 +2207,29 @@ void mt7915_mac_work(struct work_struct
+@@ -2341,14 +2341,29 @@ void mt7915_mac_work(struct work_struct
  				     MT7915_WATCHDOG_TIME);
  }
  
@@ -88,7 +89,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  }
  
  static int mt7915_dfs_start_rdd(struct mt7915_dev *dev, int chain)
-@@ -2222,10 +2237,14 @@ static int mt7915_dfs_start_rdd(struct m
+@@ -2356,10 +2371,14 @@ static int mt7915_dfs_start_rdd(struct m
  	int err;
  
  	err = mt7915_mcu_rdd_cmd(dev, RDD_START, chain, MT_RX_SEL0, 0);
@@ -104,7 +105,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  }
  
  static int mt7915_dfs_start_radar_detector(struct mt7915_phy *phy)
-@@ -2326,49 +2345,70 @@ int mt7915_dfs_init_radar_detector(struc
+@@ -2460,49 +2479,70 @@ int mt7915_dfs_init_radar_detector(struc
  	int err;
  	struct mt7915_vif_counts counts = {0};
  
@@ -206,7 +207,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  static int
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -305,6 +305,8 @@ static void mt7915_init_dfs_state(struct
+@@ -303,6 +303,8 @@ static void mt7915_init_dfs_state(struct
  	struct mt76_phy *mphy = phy->mt76;
  	struct ieee80211_hw *hw = mphy->hw;
  	struct cfg80211_chan_def *chandef = &hw->conf.chandef;
@@ -215,7 +216,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  
  	if (hw->conf.flags & IEEE80211_CONF_OFFCHANNEL)
  		return;
-@@ -312,11 +314,23 @@ static void mt7915_init_dfs_state(struct
+@@ -310,11 +312,23 @@ static void mt7915_init_dfs_state(struct
  	if (!(chandef->chan->flags & IEEE80211_CHAN_RADAR))
  		return;
  
@@ -242,7 +243,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  }
  
  int mt7915_set_channel(struct mt7915_phy *phy)
-@@ -344,6 +358,9 @@ int mt7915_set_channel(struct mt7915_phy
+@@ -342,6 +356,9 @@ int mt7915_set_channel(struct mt7915_phy
  
  	mt7915_mac_set_timing(phy);
  	ret = mt7915_dfs_init_radar_detector(phy);
@@ -254,7 +255,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  	mt7915_mac_reset_counters(phy);
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -219,8 +219,9 @@ struct mt7915_phy {
+@@ -229,8 +229,9 @@ struct mt7915_phy {
  	s16 coverage_class;
  	u8 slottime;
  
@@ -266,10 +267,10 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  
  	u32 rx_ampdu_ts;
  	u32 ampdu_ref;
-@@ -526,6 +527,7 @@ int mt7915_dfs_init_radar_detector(struc
- void mt7915_set_stream_he_caps(struct mt7915_phy *phy);
- void mt7915_set_stream_vht_txbf_caps(struct mt7915_phy *phy);
+@@ -543,6 +544,7 @@ void mt7915_set_stream_vht_txbf_caps(str
  void mt7915_update_channel(struct mt76_phy *mphy);
+ int mt7915_mcu_muru_debug_set(struct mt7915_dev *dev, bool enable);
+ int mt7915_mcu_muru_debug_get(struct mt7915_phy *phy, void *ms);
 +int mt7915_dfs_stop_radar_detector(struct mt7915_phy *phy, bool ext_phy);
  int mt7915_init_debugfs(struct mt7915_phy *phy);
  #ifdef CONFIG_MAC80211_DEBUGFS

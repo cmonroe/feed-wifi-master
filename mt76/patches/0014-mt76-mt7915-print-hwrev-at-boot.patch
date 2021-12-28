@@ -1,11 +1,11 @@
 --- a/mt7915/mmio.c
 +++ b/mt7915/mmio.c
-@@ -146,7 +146,7 @@ int mt7915_mmio_init(struct mt76_dev *md
+@@ -408,7 +408,7 @@ static int mt7915_mmio_init(struct mt76_
  
- 	mdev->rev = (mt76_rr(dev, MT_HW_CHIPID) << 16) |
+ 	mdev->rev = (device_id << 16) |
  		    (mt76_rr(dev, MT_HW_REV) & 0xff);
 -	dev_dbg(mdev->dev, "ASIC revision: %04x\n", mdev->rev);
 +	dev_err(mdev->dev, "ASIC revision: %04x\n", mdev->rev);
  
- 	mt76_wr(dev, MT_INT_MASK_CSR, 0);
- 
+ 	return 0;
+ }

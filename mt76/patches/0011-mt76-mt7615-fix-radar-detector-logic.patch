@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/mt7615/init.c
 +++ b/mt7615/init.c
-@@ -335,6 +335,7 @@ mt7615_regd_notifier(struct wiphy *wiphy
+@@ -336,6 +336,7 @@ mt7615_regd_notifier(struct wiphy *wiphy
  	struct mt76_phy *mphy = hw->priv;
  	struct mt7615_phy *phy = mphy->priv;
  	struct cfg80211_chan_def *chandef = &mphy->chandef;
@@ -36,7 +36,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  
  	memcpy(dev->mt76.alpha2, request->alpha2, sizeof(dev->mt76.alpha2));
  	dev->mt76.region = request->dfs_region;
-@@ -344,14 +345,18 @@ mt7615_regd_notifier(struct wiphy *wiphy
+@@ -345,14 +346,18 @@ mt7615_regd_notifier(struct wiphy *wiphy
  
  	mt7615_mutex_acquire(dev);
  
@@ -58,7 +58,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  	mt7615_mutex_release(dev);
  }
  
-@@ -555,7 +560,6 @@ void mt7615_init_device(struct mt7615_de
+@@ -556,7 +561,6 @@ void mt7615_init_device(struct mt7615_de
  	dev->pm.stats.last_wake_event = jiffies;
  	dev->pm.stats.last_doze_event = jiffies;
  	mt7615_cap_dbdc_disable(dev);
@@ -68,7 +68,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  	dev->mt76.test_ops = &mt7615_testmode_ops;
 --- a/mt7615/mac.c
 +++ b/mt7615/mac.c
-@@ -2144,14 +2144,29 @@ void mt7615_tx_token_put(struct mt7615_d
+@@ -2156,14 +2156,29 @@ void mt7615_tx_token_put(struct mt7615_d
  }
  EXPORT_SYMBOL_GPL(mt7615_tx_token_put);
  
@@ -99,7 +99,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  }
  
  static int mt7615_dfs_start_rdd(struct mt7615_dev *dev, int chain)
-@@ -2159,11 +2174,14 @@ static int mt7615_dfs_start_rdd(struct m
+@@ -2171,11 +2186,14 @@ static int mt7615_dfs_start_rdd(struct m
  	int err;
  
  	err = mt7615_mcu_rdd_cmd(dev, RDD_START, chain, MT_RX_SEL0, 0);
@@ -116,7 +116,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  }
  
  static int mt7615_dfs_start_radar_detector(struct mt7615_phy *phy)
-@@ -2270,48 +2288,70 @@ int mt7615_dfs_init_radar_detector(struc
+@@ -2282,48 +2300,70 @@ int mt7615_dfs_init_radar_detector(struc
  	if (is_mt7663(&dev->mt76))
  		return 0;
  
@@ -217,7 +217,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  int mt7615_mac_set_beacon_filter(struct mt7615_phy *phy,
 --- a/mt7615/main.c
 +++ b/mt7615/main.c
-@@ -289,6 +289,8 @@ static void mt7615_init_dfs_state(struct
+@@ -287,6 +287,8 @@ static void mt7615_init_dfs_state(struct
  	struct mt76_phy *mphy = phy->mt76;
  	struct ieee80211_hw *hw = mphy->hw;
  	struct cfg80211_chan_def *chandef = &hw->conf.chandef;
@@ -226,7 +226,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  
  	if (hw->conf.flags & IEEE80211_CONF_OFFCHANNEL)
  		return;
-@@ -296,11 +298,23 @@ static void mt7615_init_dfs_state(struct
+@@ -294,11 +296,23 @@ static void mt7615_init_dfs_state(struct
  	if (!(chandef->chan->flags & IEEE80211_CHAN_RADAR))
  		return;
  
@@ -253,7 +253,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  }
  
  int mt7615_set_channel(struct mt7615_phy *phy)
-@@ -334,8 +348,11 @@ int mt7615_set_channel(struct mt7615_phy
+@@ -332,8 +346,11 @@ int mt7615_set_channel(struct mt7615_phy
  
  	mt7615_mac_set_timing(phy);
  	ret = mt7615_dfs_init_radar_detector(phy);

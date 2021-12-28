@@ -1,6 +1,19 @@
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -771,10 +771,15 @@ mt7915_init_he_caps(struct mt7915_phy *p
+@@ -359,10 +359,12 @@ mt7915_init_wiphy(struct ieee80211_hw *h
+ 				IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_7991 |
+ 				IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK;
+ 
++#if 0
+ 			if (!dev->dbdc_support)
+ 				phy->mt76->sband_5g.sband.vht_cap.cap |=
+ 					IEEE80211_VHT_CAP_SHORT_GI_160 |
+ 					IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ;
++#endif
+ 		} else {
+ 			phy->mt76->sband_5g.sband.vht_cap.cap |=
+ 				IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_11454 |
+@@ -813,10 +815,15 @@ mt7915_init_he_caps(struct mt7915_phy *p
  			he_cap_elem->phy_cap_info[0] =
  				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G;
  		else if (band == NL80211_BAND_5GHZ)
@@ -16,16 +29,3 @@
  
  		he_cap_elem->phy_cap_info[1] =
  			IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD;
-@@ -926,10 +931,12 @@ int mt7915_register_device(struct mt7915
- 
- 	mt7915_init_wiphy(hw);
- 
-+#if 0
- 	if (!dev->dbdc_support)
- 		dev->mphy.sband_5g.sband.vht_cap.cap |=
- 			IEEE80211_VHT_CAP_SHORT_GI_160 |
- 			IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ;
-+#endif
- 
- 	dev->mphy.hw->wiphy->available_antennas_rx = dev->mphy.chainmask;
- 	dev->mphy.hw->wiphy->available_antennas_tx = dev->mphy.chainmask;

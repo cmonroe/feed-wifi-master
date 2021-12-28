@@ -1,6 +1,6 @@
 --- a/mt7615/mcu.c
 +++ b/mt7615/mcu.c
-@@ -432,11 +432,20 @@ mt7615_mcu_rx_radar_detected(struct mt76
+@@ -410,11 +410,20 @@ mt7615_mcu_rx_radar_detected(struct mt76
  
  	if (!dev->radar_pattern.n_pulses && !r->long_detected &&
  	    !r->constant_prf_detected && !r->staggered_prf_detected)
