@@ -1,0 +1,55 @@
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -5,6 +5,7 @@
+ #include <linux/hwmon.h>
+ #include <linux/hwmon-sysfs.h>
+ #include <linux/thermal.h>
++#include <linux/of.h>
+ #include "mt7915.h"
+ #include "mac.h"
+ #include "mcu.h"
+@@ -604,6 +605,11 @@ static int mt7915_init_hardware(struct m
+ 	dev->dbdc_support = is_mt7915(&dev->mt76) ?
+ 			    !!(mt76_rr(dev, MT_HW_BOUND) & BIT(5)) : true;
+ 
++	if (of_property_read_u32(dev->mt76.dev->of_node, "rdd_antenna",
++		&dev->phy.rdd_antenna))	
++		dev_info(dev->mt76.dev, "%s: rdd_antenna = %u\n",
++			__func__, dev->phy.rdd_antenna);
++
+ 	/* If MCU was already running, it is likely in a bad state */
+ 	if (mt76_get_field(dev, MT_TOP_MISC, MT_TOP_MISC_FW_STATE) >
+ 	    FW_STATE_FW_DOWNLOAD)
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -2537,6 +2537,12 @@ int mt7915_dfs_init_radar_detector(struc
+ 		goto stop;
+ 	}
+ 
++	err = mt7915_mcu_rdd_cmd(dev, RDD_SET_WF_ANT, 0,
++			MT_RX_SEL0, phy->rdd_antenna);
++	if (err < 0) {
++		goto stop;
++	}
++
+ 	err = mt7915_dfs_start_radar_detector(phy);
+ 	dev_dbg(dev->mt76.dev, "dfs-start-radar-detector rv: %d", err);
+ 	return err;
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -222,6 +222,7 @@ struct mt7915_phy {
+ 	u32 throttle_temp[2]; /* 0: critical high, 1: maximum */
+ 
+ 	u32 rxfilter;
++	u32 rdd_antenna;
+ 	u64 omac_mask;
+ 
+ 	u16 noise;
+@@ -333,6 +334,7 @@ enum mt7915_rdd_cmd {
+ 	RDD_DET_MODE,
+ 	RDD_RADAR_EMULATE,
+ 	RDD_START_TXQ = 20,
++	RDD_SET_WF_ANT = 30,
+ 	RDD_CAC_START = 50,
+ 	RDD_CAC_END,
+ 	RDD_NORMAL_START,
