@@ -2,7 +2,16 @@ Index: hostapd-2021-05-22-b102f19b/hostapd/ctrl_iface.c
 ===================================================================
 --- hostapd-2021-05-22-b102f19b.orig/hostapd/ctrl_iface.c
 +++ hostapd-2021-05-22-b102f19b/hostapd/ctrl_iface.c
-@@ -163,19 +163,33 @@ static char *get_option(char *opt, char
+@@ -79,6 +79,8 @@
+ #define HOSTAPD_GLOBAL_CTRL_IFACE_PORT_LIMIT	50
+ #endif /* CONFIG_CTRL_IFACE_UDP */
+ 
++extern enum hostapd_chan_status acs_init(struct hostapd_iface *iface);
++
+ static void hostapd_ctrl_iface_send(struct hostapd_data *hapd, int level,
+ 				    enum wpa_msg_type type,
+ 				    const char *buf, size_t len);
+@@ -163,19 +165,33 @@ static char *get_option(char *opt, char
    
  static void hostapd_ctrl_compute_secondary( struct hostapd_config *conf )
  {
@@ -38,7 +47,7 @@ Index: hostapd-2021-05-22-b102f19b/hostapd/ctrl_iface.c
  		break;
  	case CHANWIDTH_80MHZ:
  		conf->vht_oper_centr_freq_seg0_idx = s80;
-@@ -186,28 +200,85 @@ static void hostapd_ctrl_compute_seconda
+@@ -186,28 +202,90 @@ static void hostapd_ctrl_compute_seconda
  	default:
  		break;
  	}
@@ -65,9 +74,14 @@ Index: hostapd-2021-05-22-b102f19b/hostapd/ctrl_iface.c
 +	}
 +#endif
 +out:
-+	wpa_printf(MSG_WARNING, "ACS: hostapd_ctrl_compute_secondary() vht_chwidth=%d, he_chwidth=%d, channel=%d, vht_center=%d he_center=%d",
-+		conf->vht_oper_chwidth, conf->he_oper_chwidth, conf->channel,
-+		conf->vht_oper_centr_freq_seg0_idx, conf->he_oper_centr_freq_seg0_idx);
++	wpa_printf(MSG_WARNING, "ACS: hostapd_ctrl_compute_secondary() vht_chwidth=%d, channel=%d, vht_center=%d",
++		conf->vht_oper_chwidth, conf->channel,
++		conf->vht_oper_centr_freq_seg0_idx);
++#ifdef CONFIG_IEEE80211AX
++	wpa_printf(MSG_WARNING, "ACS: hostapd_ctrl_compute_secondary() he_chwidth=%d, channel=%d, he_center=%d",
++		conf->he_oper_chwidth, conf->channel,
++		conf->he_oper_centr_freq_seg0_idx);
++#endif
  }
  
 -static void hostapd_ctrl_update_fixup( struct hostapd_config *conf )
@@ -110,6 +124,8 @@ Index: hostapd-2021-05-22-b102f19b/hostapd/ctrl_iface.c
 +	else {
 +		wpa_printf(MSG_ERROR, "hostapd_ctrl_update_fixup: Invalid secondary channel!");
 +	}
++	wpa_printf(MSG_WARNING, "ACS: hostapd_ctrl_update_fixup: vht_chwidth=%d, channel=%d, vht_center=%d",
++		conf->vht_oper_chwidth, conf->channel, conf->vht_oper_centr_freq_seg0_idx);
 +#ifdef CONFIG_IEEE80211AX
 +	if (conf->ieee80211ax == 1) {
 +		center = conf->he_oper_centr_freq_seg0_idx;
@@ -123,15 +139,13 @@ Index: hostapd-2021-05-22-b102f19b/hostapd/ctrl_iface.c
 +			wpa_printf(MSG_ERROR, "hostapd_ctrl_update_fixup: Invalid secondary channel!");
 +		}
 +	}
++	wpa_printf(MSG_WARNING, "ACS: hostapd_ctrl_update_fixup: he_chwidth=%d, channel=%d, he_center=%d",
++		conf->he_oper_chwidth, conf->channel, conf->he_oper_centr_freq_seg0_idx);
 +#endif
-+	wpa_printf(MSG_WARNING, "ACS: hostapd_ctrl_update_fixup: vht_chwidth=%d, he_chwidth=%d, channel=%d, vht_center=%d, he_center=%d",
-+		conf->vht_oper_chwidth, conf->he_oper_chwidth,
-+		conf->channel,
-+		conf->vht_oper_centr_freq_seg0_idx, conf->he_oper_centr_freq_seg0_idx);
  }
  
  static struct hostapd_config *hostapd_ctrl_iface_config_read(const char *fname)
-@@ -1751,6 +1822,23 @@ static int hostapd_ctrl_iface_reload(str
+@@ -1751,6 +1829,23 @@ static int hostapd_ctrl_iface_reload(str
  }
  
  
@@ -155,7 +169,7 @@ Index: hostapd-2021-05-22-b102f19b/hostapd/ctrl_iface.c
  static int hostapd_ctrl_iface_disable(struct hostapd_iface *iface)
  {
  	if (hostapd_disable_iface(iface) < 0) {
-@@ -3812,6 +3900,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -3812,6 +3907,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "RELOAD", 6) == 0) {
  		if (hostapd_ctrl_iface_reload(hapd->iface))
  			reply_len = -1;
