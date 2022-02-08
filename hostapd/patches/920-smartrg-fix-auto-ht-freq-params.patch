@@ -15,13 +15,14 @@ Index: hostapd-2020-06-08-5a8b3662/hostapd/ctrl_iface.c
  	if (dfs_range) {
  		ret = ieee80211_freq_to_chan(settings.freq_params.freq, &chan);
  		if (ret == NUM_HOSTAPD_MODES) {
-@@ -2779,11 +2784,6 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2779,12 +2785,6 @@ static int hostapd_ctrl_iface_chan_switc
  		return 0;
  	}
  
 -	if (os_strstr(pos, " auto-ht")) {
 -		settings.freq_params.ht_enabled = iface->conf->ieee80211n;
 -		settings.freq_params.vht_enabled = iface->conf->ieee80211ac;
+-		settings.freq_params.he_enabled = iface->conf->ieee80211ax;
 -	}
 -
  	for (i = 0; i < iface->num_bss; i++) {
