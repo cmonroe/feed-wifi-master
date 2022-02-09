@@ -1,8 +1,6 @@
-Index: hostapd-2020-06-08-5a8b3662/hostapd/ctrl_iface.c
-===================================================================
---- hostapd-2020-06-08-5a8b3662.orig/hostapd/ctrl_iface.c
-+++ hostapd-2020-06-08-5a8b3662/hostapd/ctrl_iface.c
-@@ -2753,6 +2753,12 @@ static int hostapd_ctrl_iface_chan_switc
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -2930,6 +2930,12 @@ static int hostapd_ctrl_iface_chan_switc
  		dfs_range += hostapd_is_dfs_overlap(
  			iface, bandwidth, settings.freq_params.center_freq2);
  
@@ -15,7 +13,7 @@ Index: hostapd-2020-06-08-5a8b3662/hostapd/ctrl_iface.c
  	if (dfs_range) {
  		ret = ieee80211_freq_to_chan(settings.freq_params.freq, &chan);
  		if (ret == NUM_HOSTAPD_MODES) {
-@@ -2779,12 +2785,6 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2956,12 +2962,6 @@ static int hostapd_ctrl_iface_chan_switc
  		return 0;
  	}
  
@@ -27,4 +25,4 @@ Index: hostapd-2020-06-08-5a8b3662/hostapd/ctrl_iface.c
 -
  	for (i = 0; i < iface->num_bss; i++) {
  
- 		/* Save CHAN_SWITCH VHT config */
+ 		/* Save CHAN_SWITCH VHT and HE config */

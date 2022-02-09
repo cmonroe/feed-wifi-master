@@ -1,6 +1,6 @@
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -141,6 +141,71 @@ static char *get_option(char *opt, char
+@@ -145,6 +145,71 @@ static char *get_option(char *opt, char
  		return NULL;
  }
  
@@ -72,7 +72,7 @@
  static struct hostapd_config *hostapd_ctrl_iface_config_read(const char *fname)
  {
  	struct hostapd_config *conf;
-@@ -170,6 +235,8 @@ static struct hostapd_config *hostapd_ct
+@@ -174,6 +239,8 @@ static struct hostapd_config *hostapd_ct
  			break;
  	}
  

@@ -6,8 +6,6 @@ Subject: Use no_ht_coex to bypass HT coexistence checks.
  src/ap/hw_features.c |    2 ++
  1 file changed, 2 insertions(+)
 
-Index: b/src/ap/hw_features.c
-===================================================================
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
 @@ -328,6 +328,8 @@ static void ieee80211n_check_scan(struct
