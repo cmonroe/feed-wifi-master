@@ -433,7 +433,7 @@ endef
 define KernelPackage/mt7915e/install
 	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
 	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7915_wa.bin \
+		./files/firmware/mt7915_wa.bin \
 		./files/firmware/mt7915_wm.bin \
 		./files/firmware/mt7915_rom_patch.bin \
 		$(1)/lib/firmware/mediatek
