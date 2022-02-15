@@ -35,7 +35,7 @@
  	rxd = (struct mt7915_mcu_rxd *)skb->data;
 -	if (seq != rxd->seq)
 +	if (seq != rxd->seq) {
-+		dev_err(mdev->dev, "ERROR: MCU: Sequence mismatch in response, seq: %d rxd->seq: %d cmd: %0x\n",
++		dev_dbg(mdev->dev, "ERROR: MCU: Sequence mismatch in response, seq: %d rxd->seq: %d cmd: %0x\n",
 +			seq, rxd->seq, cmd);
 +
  		return -EAGAIN;
