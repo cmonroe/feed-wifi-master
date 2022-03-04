@@ -1,0 +1,14 @@
+Index: mt76-2022-02-15-c67df0d3/mt7915/mac.c
+===================================================================
+--- mt76-2022-02-15-c67df0d3.orig/mt7915/mac.c
++++ mt76-2022-02-15-c67df0d3/mt7915/mac.c
+@@ -1259,6 +1259,9 @@ void mt7915_mac_write_txwi(struct mt7915
+ 		txwi[3] |= cpu_to_le32(MT_TXD3_BA_DISABLE);
+ 	}
+ 
++	if (beacon)
++		txwi[7] |= cpu_to_le32(FIELD_PREP(MT_TXD7_SPE_IDX, 24));
++
+ 	if (mt76_testmode_enabled(mphy))
+ 		mt7915_mac_write_txwi_tm(mphy->priv, txwi, skb);
+ }
