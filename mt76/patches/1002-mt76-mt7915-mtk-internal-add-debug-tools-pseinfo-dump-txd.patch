@@ -1,0 +1,886 @@
+From 7904c2c4acb150cbe228a8536cf287e1901fe8ad Mon Sep 17 00:00:00 2001
+From: MeiChia Chiu <meichia.chiu@mediatek.com>
+Date: Wed, 15 Dec 2021 13:34:47 +0800
+Subject: [PATCH 2/4] mtk-internal: add debug tools pseinfo, dump txd.
+
+Signed-off-by: Chih-Min Chen <chih-min.chen@mediatek.com>
+---
+ mt7915/mt7915.h       |   2 +
+ mt7915/mt7915_debug.h | 210 +++++++++++++++
+ mt7915/mtk_debugfs.c  | 596 ++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 808 insertions(+)
+
+diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
+index bbfaa617..de981336 100644
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -301,6 +301,7 @@ struct mt7915_dev {
+ 		char fwlog_ifname[10];
+ 		u32 bcn_total_cnt[2];
+ 		u16 fwlog_seq;
++		u32 token_idx;
+ 	} dbg;
+ #endif
+ };
+@@ -556,5 +557,6 @@ void mt7915_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+ int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir);
+ void mt7915_mcu_rx_log_message_internal(struct mt7915_dev *dev, struct sk_buff *skb);
+ void mt7915_mcu_rx_ics(struct mt7915_dev *dev, struct sk_buff *skb);
++void mtf_dump_tmac_info(u8 *tmac_info);
+ #endif
+ #endif
+diff --git a/mt7915/mt7915_debug.h b/mt7915/mt7915_debug.h
+index ff8fe503..d39e145f 100644
+--- a/mt7915/mt7915_debug.h
++++ b/mt7915/mt7915_debug.h
+@@ -430,6 +430,203 @@ const struct hif_pci_rx_ring_desc rx_ring_layout[] = {
+ #define WF_PLE_TOP_AC3_QUEUE_EMPTY7_ADDR                       (WF_PLE_TOP_BASE + 0x5dc) // 05DC
+ #define WF_PLE_TOP_AC3_QUEUE_EMPTY8_ADDR                       (WF_PLE_TOP_BASE + 0x5e0) // 05E0
+ 
++/* pseinfo related CRs. */
++#define WF_PSE_TOP_BASE                                        0x820C8000
++
++#define WF_PSE_TOP_PBUF_CTRL_ADDR                              (WF_PSE_TOP_BASE + 0x14) // 8014
++#define WF_PSE_TOP_PBUF_CTRL_PAGE_SIZE_CFG_MASK                0x80000000                // PAGE_SIZE_CFG[31]
++#define WF_PSE_TOP_PBUF_CTRL_PAGE_SIZE_CFG_SHFT                31
++#define WF_PSE_TOP_PBUF_CTRL_PBUF_OFFSET_MASK                  0x03FE0000                // PBUF_OFFSET[25..17]
++#define WF_PSE_TOP_PBUF_CTRL_PBUF_OFFSET_SHFT                  17
++#define WF_PSE_TOP_PBUF_CTRL_TOTAL_PAGE_NUM_MASK               0x00000FFF                // TOTAL_PAGE_NUM[11..0]
++#define WF_PSE_TOP_PBUF_CTRL_TOTAL_PAGE_NUM_SHFT               0
++#define WF_PSE_TOP_QUEUE_EMPTY_ADDR                            (WF_PSE_TOP_BASE + 0xB0) // 80B0
++#define WF_PSE_TOP_QUEUE_EMPTY_RLS_Q_EMTPY_ADDR                WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_RLS_Q_EMTPY_MASK                0x80000000                // RLS_Q_EMTPY[31]
++#define WF_PSE_TOP_QUEUE_EMPTY_RLS_Q_EMTPY_SHFT                31
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_RXIOC_QUEUE_EMPTY_ADDR      WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_RXIOC_QUEUE_EMPTY_MASK      0x00800000                // MDP_RXIOC_QUEUE_EMPTY[23]
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_RXIOC_QUEUE_EMPTY_SHFT      23
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_TXIOC_QUEUE_EMPTY_ADDR      WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_TXIOC_QUEUE_EMPTY_MASK      0x00400000                // MDP_TXIOC_QUEUE_EMPTY[22]
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_TXIOC_QUEUE_EMPTY_SHFT      22
++#define WF_PSE_TOP_QUEUE_EMPTY_SFD_PARK_QUEUE_EMPTY_ADDR       WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_SFD_PARK_QUEUE_EMPTY_MASK       0x00200000                // SFD_PARK_QUEUE_EMPTY[21]
++#define WF_PSE_TOP_QUEUE_EMPTY_SFD_PARK_QUEUE_EMPTY_SHFT       21
++#define WF_PSE_TOP_QUEUE_EMPTY_SEC_RX_QUEUE_EMPTY_ADDR         WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_SEC_RX_QUEUE_EMPTY_MASK         0x00100000                // SEC_RX_QUEUE_EMPTY[20]
++#define WF_PSE_TOP_QUEUE_EMPTY_SEC_RX_QUEUE_EMPTY_SHFT         20
++#define WF_PSE_TOP_QUEUE_EMPTY_SEC_TX_QUEUE_EMPTY_ADDR         WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_SEC_TX_QUEUE_EMPTY_MASK         0x00080000                // SEC_TX_QUEUE_EMPTY[19]
++#define WF_PSE_TOP_QUEUE_EMPTY_SEC_TX_QUEUE_EMPTY_SHFT         19
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_RX_QUEUE_EMPTY_ADDR         WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_RX_QUEUE_EMPTY_MASK         0x00040000                // MDP_RX_QUEUE_EMPTY[18]
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_RX_QUEUE_EMPTY_SHFT         18
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_TX_QUEUE_EMPTY_ADDR         WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_TX_QUEUE_EMPTY_MASK         0x00020000                // MDP_TX_QUEUE_EMPTY[17]
++#define WF_PSE_TOP_QUEUE_EMPTY_MDP_TX_QUEUE_EMPTY_SHFT         17
++#define WF_PSE_TOP_QUEUE_EMPTY_LMAC_TX_QUEUE_EMPTY_ADDR        WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_LMAC_TX_QUEUE_EMPTY_MASK        0x00010000                // LMAC_TX_QUEUE_EMPTY[16]
++#define WF_PSE_TOP_QUEUE_EMPTY_LMAC_TX_QUEUE_EMPTY_SHFT        16
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_5_EMPTY_MASK                0x00002000                // HIF_5_EMPTY[13]
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_5_EMPTY_SHFT                13
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_4_EMPTY_ADDR                WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_4_EMPTY_MASK                0x00001000                // HIF_4_EMPTY[12]
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_4_EMPTY_SHFT                12
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_3_EMPTY_ADDR                WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_3_EMPTY_MASK                0x00000800                // HIF_3_EMPTY[11]
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_3_EMPTY_SHFT                11
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_2_EMPTY_ADDR                WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_2_EMPTY_MASK                0x00000400                // HIF_2_EMPTY[10]
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_2_EMPTY_SHFT                10
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_1_EMPTY_ADDR                WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_1_EMPTY_MASK                0x00000200                // HIF_1_EMPTY[9]
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_1_EMPTY_SHFT                9
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_0_EMPTY_ADDR                WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_0_EMPTY_MASK                0x00000100                // HIF_0_EMPTY[8]
++#define WF_PSE_TOP_QUEUE_EMPTY_HIF_0_EMPTY_SHFT                8
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q3_EMPTY_ADDR               WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q3_EMPTY_MASK               0x00000008                // CPU_Q3_EMPTY[3]
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q3_EMPTY_SHFT               3
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q2_EMPTY_ADDR               WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q2_EMPTY_MASK               0x00000004                // CPU_Q2_EMPTY[2]
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q2_EMPTY_SHFT               2
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q1_EMPTY_ADDR               WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q1_EMPTY_MASK               0x00000002                // CPU_Q1_EMPTY[1]
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q1_EMPTY_SHFT               1
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q0_EMPTY_ADDR               WF_PSE_TOP_QUEUE_EMPTY_ADDR
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q0_EMPTY_MASK               0x00000001                // CPU_Q0_EMPTY[0]
++#define WF_PSE_TOP_QUEUE_EMPTY_CPU_Q0_EMPTY_SHFT               0
++#define WF_PSE_TOP_FREEPG_CNT_ADDR                             (WF_PSE_TOP_BASE + 0x100) // 8100
++#define WF_PSE_TOP_FREEPG_CNT_FFA_CNT_MASK                     0x0FFF0000                // FFA_CNT[27..16]
++#define WF_PSE_TOP_FREEPG_CNT_FFA_CNT_SHFT                     16
++#define WF_PSE_TOP_FREEPG_CNT_FREEPG_CNT_MASK                  0x00000FFF                // FREEPG_CNT[11..0]
++#define WF_PSE_TOP_FREEPG_CNT_FREEPG_CNT_SHFT                  0
++#define WF_PSE_TOP_FREEPG_HEAD_TAIL_ADDR                       (WF_PSE_TOP_BASE + 0x104) // 8104
++#define WF_PSE_TOP_FREEPG_HEAD_TAIL_FREEPG_TAIL_MASK           0x0FFF0000                // FREEPG_TAIL[27..16]
++#define WF_PSE_TOP_FREEPG_HEAD_TAIL_FREEPG_TAIL_SHFT           16
++#define WF_PSE_TOP_FREEPG_HEAD_TAIL_FREEPG_HEAD_MASK           0x00000FFF                // FREEPG_HEAD[11..0]
++#define WF_PSE_TOP_FREEPG_HEAD_TAIL_FREEPG_HEAD_SHFT           0
++#define WF_PSE_TOP_PG_HIF0_GROUP_ADDR                          (WF_PSE_TOP_BASE + 0x110) // 8110
++#define WF_PSE_TOP_PG_HIF0_GROUP_HIF0_MAX_QUOTA_MASK           0x0FFF0000                // HIF0_MAX_QUOTA[27..16]
++#define WF_PSE_TOP_PG_HIF0_GROUP_HIF0_MAX_QUOTA_SHFT           16
++#define WF_PSE_TOP_PG_HIF0_GROUP_HIF0_MIN_QUOTA_MASK           0x00000FFF                // HIF0_MIN_QUOTA[11..0]
++#define WF_PSE_TOP_PG_HIF0_GROUP_HIF0_MIN_QUOTA_SHFT           0
++#define WF_PSE_TOP_HIF0_PG_INFO_ADDR                           (WF_PSE_TOP_BASE + 0x114) // 8114
++#define WF_PSE_TOP_HIF0_PG_INFO_HIF0_SRC_CNT_MASK              0x0FFF0000                // HIF0_SRC_CNT[27..16]
++#define WF_PSE_TOP_HIF0_PG_INFO_HIF0_SRC_CNT_SHFT              16
++#define WF_PSE_TOP_HIF0_PG_INFO_HIF0_RSV_CNT_MASK              0x00000FFF                // HIF0_RSV_CNT[11..0]
++#define WF_PSE_TOP_HIF0_PG_INFO_HIF0_RSV_CNT_SHFT              0
++#define WF_PSE_TOP_PG_HIF1_GROUP_ADDR                          (WF_PSE_TOP_BASE + 0x118) // 8118
++#define WF_PSE_TOP_PG_HIF1_GROUP_HIF1_MAX_QUOTA_MASK           0x0FFF0000                // HIF1_MAX_QUOTA[27..16]
++#define WF_PSE_TOP_PG_HIF1_GROUP_HIF1_MAX_QUOTA_SHFT           16
++#define WF_PSE_TOP_PG_HIF1_GROUP_HIF1_MIN_QUOTA_MASK           0x00000FFF                // HIF1_MIN_QUOTA[11..0]
++#define WF_PSE_TOP_PG_HIF1_GROUP_HIF1_MIN_QUOTA_SHFT           0
++#define WF_PSE_TOP_HIF1_PG_INFO_ADDR                           (WF_PSE_TOP_BASE + 0x11C) // 811C
++#define WF_PSE_TOP_HIF1_PG_INFO_HIF1_SRC_CNT_MASK              0x0FFF0000                // HIF1_SRC_CNT[27..16]
++#define WF_PSE_TOP_HIF1_PG_INFO_HIF1_SRC_CNT_SHFT              16
++#define WF_PSE_TOP_HIF1_PG_INFO_HIF1_RSV_CNT_MASK              0x00000FFF                // HIF1_RSV_CNT[11..0]
++#define WF_PSE_TOP_HIF1_PG_INFO_HIF1_RSV_CNT_SHFT              0
++#define WF_PSE_TOP_PG_CPU_GROUP_ADDR                           (WF_PSE_TOP_BASE + 0x150) // 8150
++#define WF_PSE_TOP_PG_CPU_GROUP_CPU_MAX_QUOTA_MASK             0x0FFF0000                // CPU_MAX_QUOTA[27..16]
++#define WF_PSE_TOP_PG_CPU_GROUP_CPU_MAX_QUOTA_SHFT             16
++#define WF_PSE_TOP_PG_CPU_GROUP_CPU_MIN_QUOTA_MASK             0x00000FFF                // CPU_MIN_QUOTA[11..0]
++#define WF_PSE_TOP_PG_CPU_GROUP_CPU_MIN_QUOTA_SHFT             0
++#define WF_PSE_TOP_CPU_PG_INFO_ADDR                            (WF_PSE_TOP_BASE + 0x154) // 8154
++#define WF_PSE_TOP_CPU_PG_INFO_CPU_SRC_CNT_MASK                0x0FFF0000                // CPU_SRC_CNT[27..16]
++#define WF_PSE_TOP_CPU_PG_INFO_CPU_SRC_CNT_SHFT                16
++#define WF_PSE_TOP_CPU_PG_INFO_CPU_RSV_CNT_MASK                0x00000FFF                // CPU_RSV_CNT[11..0]
++#define WF_PSE_TOP_CPU_PG_INFO_CPU_RSV_CNT_SHFT                0
++#define WF_PSE_TOP_PG_PLE_GROUP_ADDR                           (WF_PSE_TOP_BASE + 0x160) // 8160
++#define WF_PSE_TOP_PG_PLE_GROUP_PLE_MAX_QUOTA_MASK             0x0FFF0000                // PLE_MAX_QUOTA[27..16]
++#define WF_PSE_TOP_PG_PLE_GROUP_PLE_MAX_QUOTA_SHFT             16
++#define WF_PSE_TOP_PG_PLE_GROUP_PLE_MIN_QUOTA_MASK             0x00000FFF                // PLE_MIN_QUOTA[11..0]
++#define WF_PSE_TOP_PG_PLE_GROUP_PLE_MIN_QUOTA_SHFT             0
++#define WF_PSE_TOP_PLE_PG_INFO_ADDR                            (WF_PSE_TOP_BASE + 0x164) // 8164
++#define WF_PSE_TOP_PLE_PG_INFO_PLE_SRC_CNT_MASK                0x0FFF0000                // PLE_SRC_CNT[27..16]
++#define WF_PSE_TOP_PLE_PG_INFO_PLE_SRC_CNT_SHFT                16
++#define WF_PSE_TOP_PLE_PG_INFO_PLE_RSV_CNT_MASK                0x00000FFF                // PLE_RSV_CNT[11..0]
++#define WF_PSE_TOP_PLE_PG_INFO_PLE_RSV_CNT_SHFT                0
++#define WF_PSE_TOP_PG_LMAC0_GROUP_ADDR                         (WF_PSE_TOP_BASE + 0x170) // 8170
++#define WF_PSE_TOP_PG_LMAC0_GROUP_LMAC0_MAX_QUOTA_MASK         0x0FFF0000                // LMAC0_MAX_QUOTA[27..16]
++#define WF_PSE_TOP_PG_LMAC0_GROUP_LMAC0_MAX_QUOTA_SHFT         16
++#define WF_PSE_TOP_PG_LMAC0_GROUP_LMAC0_MIN_QUOTA_MASK         0x00000FFF                // LMAC0_MIN_QUOTA[11..0]
++#define WF_PSE_TOP_PG_LMAC0_GROUP_LMAC0_MIN_QUOTA_SHFT         0
++#define WF_PSE_TOP_LMAC0_PG_INFO_ADDR                          (WF_PSE_TOP_BASE + 0x174) // 8174
++#define WF_PSE_TOP_LMAC0_PG_INFO_LMAC0_SRC_CNT_MASK            0x0FFF0000                // LMAC0_SRC_CNT[27..16]
++#define WF_PSE_TOP_LMAC0_PG_INFO_LMAC0_SRC_CNT_SHFT            16
++#define WF_PSE_TOP_LMAC0_PG_INFO_LMAC0_RSV_CNT_MASK            0x00000FFF                // LMAC0_RSV_CNT[11..0]
++#define WF_PSE_TOP_LMAC0_PG_INFO_LMAC0_RSV_CNT_SHFT            0
++#define WF_PSE_TOP_PG_LMAC1_GROUP_ADDR                         (WF_PSE_TOP_BASE + 0x178) // 8178
++#define WF_PSE_TOP_PG_LMAC1_GROUP_LMAC1_MAX_QUOTA_MASK         0x0FFF0000                // LMAC1_MAX_QUOTA[27..16]
++#define WF_PSE_TOP_PG_LMAC1_GROUP_LMAC1_MAX_QUOTA_SHFT         16
++#define WF_PSE_TOP_PG_LMAC1_GROUP_LMAC1_MIN_QUOTA_MASK         0x00000FFF                // LMAC1_MIN_QUOTA[11..0]
++#define WF_PSE_TOP_PG_LMAC1_GROUP_LMAC1_MIN_QUOTA_SHFT         0
++#define WF_PSE_TOP_LMAC1_PG_INFO_ADDR                          (WF_PSE_TOP_BASE + 0x17C) // 817C
++#define WF_PSE_TOP_LMAC1_PG_INFO_LMAC1_SRC_CNT_MASK            0x0FFF0000                // LMAC1_SRC_CNT[27..16]
++#define WF_PSE_TOP_LMAC1_PG_INFO_LMAC1_SRC_CNT_SHFT            16
++#define WF_PSE_TOP_LMAC1_PG_INFO_LMAC1_RSV_CNT_MASK            0x00000FFF                // LMAC1_RSV_CNT[11..0]
++#define WF_PSE_TOP_LMAC1_PG_INFO_LMAC1_RSV_CNT_SHFT            0
++#define WF_PSE_TOP_PG_LMAC2_GROUP_ADDR                         (WF_PSE_TOP_BASE + 0x180) // 8180
++#define WF_PSE_TOP_PG_LMAC2_GROUP_LMAC2_MAX_QUOTA_MASK         0x0FFF0000                // LMAC2_MAX_QUOTA[27..16]
++#define WF_PSE_TOP_PG_LMAC2_GROUP_LMAC2_MAX_QUOTA_SHFT         16
++#define WF_PSE_TOP_PG_LMAC2_GROUP_LMAC2_MIN_QUOTA_MASK         0x00000FFF                // LMAC2_MIN_QUOTA[11..0]
++#define WF_PSE_TOP_PG_LMAC2_GROUP_LMAC2_MIN_QUOTA_SHFT         0
++#define WF_PSE_TOP_LMAC2_PG_INFO_ADDR                          (WF_PSE_TOP_BASE + 0x184) // 8184
++#define WF_PSE_TOP_LMAC2_PG_INFO_LMAC2_SRC_CNT_MASK            0x0FFF0000                // LMAC2_SRC_CNT[27..16]
++#define WF_PSE_TOP_LMAC2_PG_INFO_LMAC2_SRC_CNT_SHFT            16
++#define WF_PSE_TOP_LMAC2_PG_INFO_LMAC2_RSV_CNT_MASK            0x00000FFF                // LMAC2_RSV_CNT[11..0]
++#define WF_PSE_TOP_LMAC2_PG_INFO_LMAC2_RSV_CNT_SHFT            0
++#define WF_PSE_TOP_PG_LMAC3_GROUP_ADDR                         (WF_PSE_TOP_BASE + 0x188) // 8188
++#define WF_PSE_TOP_PG_LMAC3_GROUP_LMAC3_MAX_QUOTA_MASK         0x0FFF0000                // LMAC3_MAX_QUOTA[27..16]
++#define WF_PSE_TOP_PG_LMAC3_GROUP_LMAC3_MAX_QUOTA_SHFT         16
++#define WF_PSE_TOP_PG_LMAC3_GROUP_LMAC3_MIN_QUOTA_MASK         0x00000FFF                // LMAC3_MIN_QUOTA[11..0]
++#define WF_PSE_TOP_PG_LMAC3_GROUP_LMAC3_MIN_QUOTA_SHFT         0
++#define WF_PSE_TOP_LMAC3_PG_INFO_ADDR                          (WF_PSE_TOP_BASE + 0x18C) // 818C
++#define WF_PSE_TOP_LMAC3_PG_INFO_LMAC3_SRC_CNT_MASK            0x0FFF0000                // LMAC3_SRC_CNT[27..16]
++#define WF_PSE_TOP_LMAC3_PG_INFO_LMAC3_SRC_CNT_SHFT            16
++#define WF_PSE_TOP_LMAC3_PG_INFO_LMAC3_RSV_CNT_MASK            0x00000FFF                // LMAC3_RSV_CNT[11..0]
++#define WF_PSE_TOP_LMAC3_PG_INFO_LMAC3_RSV_CNT_SHFT            0
++#define WF_PSE_TOP_PG_MDP_GROUP_ADDR                           (WF_PSE_TOP_BASE + 0x198) // 8198
++#define WF_PSE_TOP_PG_MDP_GROUP_MDP_MAX_QUOTA_MASK             0x0FFF0000                // MDP_MAX_QUOTA[27..16]
++#define WF_PSE_TOP_PG_MDP_GROUP_MDP_MAX_QUOTA_SHFT             16
++#define WF_PSE_TOP_PG_MDP_GROUP_MDP_MIN_QUOTA_MASK             0x00000FFF                // MDP_MIN_QUOTA[11..0]
++#define WF_PSE_TOP_PG_MDP_GROUP_MDP_MIN_QUOTA_SHFT             0
++#define WF_PSE_TOP_MDP_PG_INFO_ADDR                            (WF_PSE_TOP_BASE + 0x19C) // 819C
++#define WF_PSE_TOP_MDP_PG_INFO_MDP_SRC_CNT_MASK                0x0FFF0000                // MDP_SRC_CNT[27..16]
++#define WF_PSE_TOP_MDP_PG_INFO_MDP_SRC_CNT_SHFT                16
++#define WF_PSE_TOP_MDP_PG_INFO_MDP_RSV_CNT_MASK                0x00000FFF                // MDP_RSV_CNT[11..0]
++#define WF_PSE_TOP_MDP_PG_INFO_MDP_RSV_CNT_SHFT                0
++#define WF_PSE_TOP_PG_PLE1_GROUP_ADDR                          (WF_PSE_TOP_BASE + 0x168) // 8168
++#define WF_PSE_TOP_PLE1_PG_INFO_ADDR                           (WF_PSE_TOP_BASE + 0x16C) // 816C
++#define WF_PSE_TOP_FL_QUE_CTRL_0_ADDR                          (WF_PSE_TOP_BASE + 0x1B0) // 81B0
++#define WF_PSE_TOP_FL_QUE_CTRL_0_EXECUTE_ADDR                  WF_PSE_TOP_FL_QUE_CTRL_0_ADDR
++#define WF_PSE_TOP_FL_QUE_CTRL_0_EXECUTE_MASK                  0x80000000                // EXECUTE[31]
++#define WF_PSE_TOP_FL_QUE_CTRL_0_EXECUTE_SHFT                  31
++#define WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_QID_ADDR                WF_PSE_TOP_FL_QUE_CTRL_0_ADDR
++#define WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_QID_MASK                0x7F000000                // Q_BUF_QID[30..24]
++#define WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_QID_SHFT                24
++#define WF_PSE_TOP_FL_QUE_CTRL_0_FL_BUFFER_ADDR_ADDR           WF_PSE_TOP_FL_QUE_CTRL_0_ADDR
++#define WF_PSE_TOP_FL_QUE_CTRL_0_FL_BUFFER_ADDR_MASK           0x00FFF000                // FL_BUFFER_ADDR[23..12]
++#define WF_PSE_TOP_FL_QUE_CTRL_0_FL_BUFFER_ADDR_SHFT           12
++#define WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_PID_ADDR                WF_PSE_TOP_FL_QUE_CTRL_0_ADDR
++#define WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_PID_MASK                0x00000C00                // Q_BUF_PID[11..10]
++#define WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_PID_SHFT                10
++#define WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_WLANID_ADDR             WF_PSE_TOP_FL_QUE_CTRL_0_ADDR
++#define WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_WLANID_MASK             0x000003FF                // Q_BUF_WLANID[9..0]
++#define WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_WLANID_SHFT             0
++#define WF_PSE_TOP_FL_QUE_CTRL_2_ADDR                          (WF_PSE_TOP_BASE + 0x1B8) // 81B8
++#define WF_PSE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_ADDR           WF_PSE_TOP_FL_QUE_CTRL_2_ADDR
++#define WF_PSE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_MASK           0x0FFF0000                // QUEUE_TAIL_FID[27..16]
++#define WF_PSE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_SHFT           16
++#define WF_PSE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_ADDR           WF_PSE_TOP_FL_QUE_CTRL_2_ADDR
++#define WF_PSE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_MASK           0x00000FFF                // QUEUE_HEAD_FID[11..0]
++#define WF_PSE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_SHFT           0
++#define WF_PSE_TOP_FL_QUE_CTRL_3_ADDR                          (WF_PSE_TOP_BASE + 0x1BC) // 81BC
++#define WF_PSE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_ADDR            WF_PSE_TOP_FL_QUE_CTRL_3_ADDR
++#define WF_PSE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_MASK            0x00000FFF                // QUEUE_PKT_NUM[11..0]
++#define WF_PSE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_SHFT            0
++
+ /* mibinfo related CRs. */
+ #define BN0_WF_MIB_TOP_BASE                                    0x820ed000
+ #define BN1_WF_MIB_TOP_BASE                                    0x820fd000
+@@ -537,5 +734,18 @@ const struct hif_pci_rx_ring_desc rx_ring_layout[] = {
+ 
+ #define WF_WTBLON_TOP_B1BTCRn_ADDR                             (WF_WTBLON_TOP_BASE + 0x1800) // 5800
+ 
++/* TXD */
++#define MT_TXD1_ETYP			BIT(15)
++#define MT_TXD1_VLAN			BIT(14)
++#define MT_TXD1_RMVL			BIT(13)
++#define MT_TXD1_AMS			BIT(13)
++#define MT_TXD1_EOSP			BIT(12)
++#define MT_TXD1_MRD			BIT(11)
++
++#define MT_TXD7_CTXD			BIT(26)
++#define MT_TXD7_CTXD_CNT		GENMASK(25, 23)
++
++#define MT_TXD7_TAT			GENMASK(9, 0)
++
+ #endif
+ #endif
+diff --git a/mt7915/mtk_debugfs.c b/mt7915/mtk_debugfs.c
+index eaae509a..9072ff3f 100644
+--- a/mt7915/mtk_debugfs.c
++++ b/mt7915/mtk_debugfs.c
+@@ -1862,6 +1862,238 @@ static int mt7915_pleinfo_read(struct seq_file *s, void *data)
+ 	return 0;
+ }
+ 
++typedef enum _ENUM_UMAC_PLE_CTRL_P3_QUEUE_T {
++	ENUM_UMAC_PLE_CTRL_P3_Q_0X1E            = 0x1e,
++	ENUM_UMAC_PLE_CTRL_P3_Q_0X1F            = 0x1f,
++	ENUM_UMAC_PLE_CTRL_P3_TOTAL_NUM         = 2
++} ENUM_UMAC_PLE_CTRL_P3_QUEUE_T, *P_ENUM_UMAC_PLE_CTRL_P3_QUEUE_T;
++
++static EMPTY_QUEUE_INFO_T pse_queue_empty_info[] = {
++	{"CPU Q0",  ENUM_UMAC_CPU_PORT_1,     ENUM_UMAC_CTX_Q_0},
++	{"CPU Q1",  ENUM_UMAC_CPU_PORT_1,     ENUM_UMAC_CTX_Q_1},
++	{"CPU Q2",  ENUM_UMAC_CPU_PORT_1,     ENUM_UMAC_CTX_Q_2},
++	{"CPU Q3",  ENUM_UMAC_CPU_PORT_1,     ENUM_UMAC_CTX_Q_3},
++	{NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, /* 4~7 not defined */
++	{"HIF Q0", ENUM_UMAC_HIF_PORT_0,    0}, /* Q8 */
++	{"HIF Q1", ENUM_UMAC_HIF_PORT_0,    1},
++	{"HIF Q2", ENUM_UMAC_HIF_PORT_0,    2},
++	{"HIF Q3", ENUM_UMAC_HIF_PORT_0,    3},
++	{"HIF Q4", ENUM_UMAC_HIF_PORT_0,    4},
++	{"HIF Q5", ENUM_UMAC_HIF_PORT_0,    5},
++	{NULL, 0, 0}, {NULL, 0, 0},  /* 14~15 not defined */
++	{"LMAC Q",  ENUM_UMAC_LMAC_PORT_2,    0},
++	{"MDP TX Q", ENUM_UMAC_LMAC_PORT_2, 1},
++	{"MDP RX Q", ENUM_UMAC_LMAC_PORT_2, 2},
++	{"SEC TX Q", ENUM_UMAC_LMAC_PORT_2, 3},
++	{"SEC RX Q", ENUM_UMAC_LMAC_PORT_2, 4},
++	{"SFD_PARK Q", ENUM_UMAC_LMAC_PORT_2, 5},
++	{"MDP_TXIOC Q", ENUM_UMAC_LMAC_PORT_2, 6},
++	{"MDP_RXIOC Q", ENUM_UMAC_LMAC_PORT_2, 7},
++	{NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, /* 24~30 not defined */
++	{"RLS Q",  ENUM_PLE_CTRL_PSE_PORT_3, ENUM_UMAC_PLE_CTRL_P3_Q_0X1F}
++};
++
++static int mt7915_pseinfo_read(struct seq_file *s, void *data)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u32 pse_buf_ctrl, pg_sz, pg_num;
++	u32 pse_stat, pg_flow_ctrl[22] = {0};
++	u32 fpg_cnt, ffa_cnt, fpg_head, fpg_tail;
++	u32 max_q, min_q, rsv_pg, used_pg;
++	int i;
++
++	pse_buf_ctrl     = mt7915_mac_rr(dev, WF_PSE_TOP_PBUF_CTRL_ADDR);
++	pse_stat         = mt7915_mac_rr(dev, WF_PSE_TOP_QUEUE_EMPTY_ADDR);
++	pg_flow_ctrl[0]  = mt7915_mac_rr(dev, WF_PSE_TOP_FREEPG_CNT_ADDR);
++	pg_flow_ctrl[1]  = mt7915_mac_rr(dev, WF_PSE_TOP_FREEPG_HEAD_TAIL_ADDR);
++	pg_flow_ctrl[2]  = mt7915_mac_rr(dev, WF_PSE_TOP_PG_HIF0_GROUP_ADDR);
++	pg_flow_ctrl[3]  = mt7915_mac_rr(dev, WF_PSE_TOP_HIF0_PG_INFO_ADDR);
++	pg_flow_ctrl[4]  = mt7915_mac_rr(dev, WF_PSE_TOP_PG_HIF1_GROUP_ADDR);
++	pg_flow_ctrl[5]  = mt7915_mac_rr(dev, WF_PSE_TOP_HIF1_PG_INFO_ADDR);
++	pg_flow_ctrl[6]  = mt7915_mac_rr(dev, WF_PSE_TOP_PG_CPU_GROUP_ADDR);
++	pg_flow_ctrl[7]  = mt7915_mac_rr(dev, WF_PSE_TOP_CPU_PG_INFO_ADDR);
++	pg_flow_ctrl[8]  = mt7915_mac_rr(dev, WF_PSE_TOP_PG_LMAC0_GROUP_ADDR);
++	pg_flow_ctrl[9]  = mt7915_mac_rr(dev, WF_PSE_TOP_LMAC0_PG_INFO_ADDR);
++	pg_flow_ctrl[10] = mt7915_mac_rr(dev, WF_PSE_TOP_PG_LMAC1_GROUP_ADDR);
++	pg_flow_ctrl[11] = mt7915_mac_rr(dev, WF_PSE_TOP_LMAC1_PG_INFO_ADDR);
++	pg_flow_ctrl[12] = mt7915_mac_rr(dev, WF_PSE_TOP_PG_LMAC2_GROUP_ADDR);
++	pg_flow_ctrl[13] = mt7915_mac_rr(dev, WF_PSE_TOP_LMAC2_PG_INFO_ADDR);
++	pg_flow_ctrl[14] = mt7915_mac_rr(dev, WF_PSE_TOP_PG_PLE_GROUP_ADDR);
++	pg_flow_ctrl[15] = mt7915_mac_rr(dev, WF_PSE_TOP_PLE_PG_INFO_ADDR);
++	pg_flow_ctrl[16] = mt7915_mac_rr(dev, WF_PSE_TOP_PG_LMAC3_GROUP_ADDR);
++	pg_flow_ctrl[17] = mt7915_mac_rr(dev, WF_PSE_TOP_LMAC3_PG_INFO_ADDR);
++	pg_flow_ctrl[18] = mt7915_mac_rr(dev, WF_PSE_TOP_PG_MDP_GROUP_ADDR);
++	pg_flow_ctrl[19] = mt7915_mac_rr(dev, WF_PSE_TOP_MDP_PG_INFO_ADDR);
++	pg_flow_ctrl[20] = mt7915_mac_rr(dev, WF_PSE_TOP_PG_PLE1_GROUP_ADDR);
++	pg_flow_ctrl[21] = mt7915_mac_rr(dev, WF_PSE_TOP_PLE1_PG_INFO_ADDR);
++
++	/* Configuration Info */
++	seq_printf(s, "PSE Configuration Info:\n");
++	seq_printf(s, "\tPacket Buffer Control(0x82068014): 0x%08x\n", pse_buf_ctrl);
++	pg_sz = (pse_buf_ctrl & WF_PSE_TOP_PBUF_CTRL_PAGE_SIZE_CFG_MASK) >> WF_PSE_TOP_PBUF_CTRL_PAGE_SIZE_CFG_SHFT;
++
++	seq_printf(s, "\t\tPage Size=%d(%d bytes per page)\n", pg_sz, (pg_sz == 1 ? 256 : 128));
++	seq_printf(s, "\t\tPage Offset=%d(in unit of 64KB)\n",
++			 (pse_buf_ctrl & WF_PSE_TOP_PBUF_CTRL_PBUF_OFFSET_MASK) >> WF_PSE_TOP_PBUF_CTRL_PBUF_OFFSET_SHFT);
++	pg_num = (pse_buf_ctrl & WF_PSE_TOP_PBUF_CTRL_TOTAL_PAGE_NUM_MASK) >> WF_PSE_TOP_PBUF_CTRL_TOTAL_PAGE_NUM_SHFT;
++	seq_printf(s, "\t\tTotal page numbers=%d pages\n", pg_num);
++
++	/* Page Flow Control */
++	seq_printf(s, "PSE Page Flow Control:\n");
++	seq_printf(s, "\tFree page counter(0x82068100): 0x%08x\n", pg_flow_ctrl[0]);
++	fpg_cnt = (pg_flow_ctrl[0] & WF_PSE_TOP_FREEPG_CNT_FREEPG_CNT_MASK) >> WF_PSE_TOP_FREEPG_CNT_FREEPG_CNT_SHFT;
++	seq_printf(s, "\t\tThe toal page number of free=0x%03x\n", fpg_cnt);
++	ffa_cnt = (pg_flow_ctrl[0] & WF_PSE_TOP_FREEPG_CNT_FFA_CNT_MASK) >> WF_PSE_TOP_FREEPG_CNT_FFA_CNT_SHFT;
++	seq_printf(s, "\t\tThe free page numbers of free for all=0x%03x\n", ffa_cnt);
++	seq_printf(s, "\tFree page head and tail(0x82068104): 0x%08x\n", pg_flow_ctrl[1]);
++	fpg_head = (pg_flow_ctrl[1] & WF_PSE_TOP_FREEPG_HEAD_TAIL_FREEPG_HEAD_MASK) >> WF_PSE_TOP_FREEPG_HEAD_TAIL_FREEPG_HEAD_SHFT;
++	fpg_tail = (pg_flow_ctrl[1] & WF_PSE_TOP_FREEPG_HEAD_TAIL_FREEPG_TAIL_MASK) >> WF_PSE_TOP_FREEPG_HEAD_TAIL_FREEPG_TAIL_SHFT;
++	seq_printf(s, "\t\tThe tail/head page of free page list=0x%03x/0x%03x\n", fpg_tail, fpg_head);
++	seq_printf(s, "\tReserved page counter of HIF0 group(0x82068110): 0x%08x\n", pg_flow_ctrl[2]);
++	seq_printf(s, "\tHIF0 group page status(0x82068114): 0x%08x\n", pg_flow_ctrl[3]);
++	min_q = (pg_flow_ctrl[2] & WF_PSE_TOP_PG_HIF0_GROUP_HIF0_MIN_QUOTA_MASK) >> WF_PSE_TOP_PG_HIF0_GROUP_HIF0_MIN_QUOTA_SHFT;
++	max_q = (pg_flow_ctrl[2] & WF_PSE_TOP_PG_HIF0_GROUP_HIF0_MAX_QUOTA_MASK) >> WF_PSE_TOP_PG_HIF0_GROUP_HIF0_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of HIF0 group=0x%03x/0x%03x\n", max_q, min_q);
++	rsv_pg = (pg_flow_ctrl[3] & WF_PSE_TOP_HIF0_PG_INFO_HIF0_RSV_CNT_MASK) >> WF_PSE_TOP_HIF0_PG_INFO_HIF0_RSV_CNT_SHFT;
++	used_pg = (pg_flow_ctrl[3] & WF_PSE_TOP_HIF0_PG_INFO_HIF0_SRC_CNT_MASK) >> WF_PSE_TOP_HIF0_PG_INFO_HIF0_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of HIF0 group=0x%03x/0x%03x\n", used_pg, rsv_pg);
++	seq_printf(s, "\tReserved page counter of HIF1 group(0x82068118): 0x%08x\n", pg_flow_ctrl[4]);
++	seq_printf(s, "\tHIF1 group page status(0x8206811c): 0x%08x\n", pg_flow_ctrl[5]);
++	min_q = (pg_flow_ctrl[4] & WF_PSE_TOP_PG_HIF1_GROUP_HIF1_MIN_QUOTA_MASK) >> WF_PSE_TOP_PG_HIF1_GROUP_HIF1_MIN_QUOTA_SHFT;
++	max_q = (pg_flow_ctrl[4] & WF_PSE_TOP_PG_HIF1_GROUP_HIF1_MAX_QUOTA_MASK) >> WF_PSE_TOP_PG_HIF1_GROUP_HIF1_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of HIF1 group=0x%03x/0x%03x\n", max_q, min_q);
++	rsv_pg = (pg_flow_ctrl[5] & WF_PSE_TOP_HIF1_PG_INFO_HIF1_RSV_CNT_MASK) >> WF_PSE_TOP_HIF1_PG_INFO_HIF1_RSV_CNT_SHFT;
++	used_pg = (pg_flow_ctrl[5] & WF_PSE_TOP_HIF1_PG_INFO_HIF1_SRC_CNT_MASK) >> WF_PSE_TOP_HIF1_PG_INFO_HIF1_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of HIF1 group=0x%03x/0x%03x\n", used_pg, rsv_pg);
++	seq_printf(s, "\tReserved page counter of CPU group(0x82068150): 0x%08x\n", pg_flow_ctrl[6]);
++	seq_printf(s, "\tCPU group page status(0x82068154): 0x%08x\n", pg_flow_ctrl[7]);
++	min_q = (pg_flow_ctrl[6] & WF_PSE_TOP_PG_CPU_GROUP_CPU_MIN_QUOTA_MASK) >> WF_PSE_TOP_PG_CPU_GROUP_CPU_MIN_QUOTA_SHFT;
++	max_q = (pg_flow_ctrl[6] & WF_PSE_TOP_PG_CPU_GROUP_CPU_MAX_QUOTA_MASK) >> WF_PSE_TOP_PG_CPU_GROUP_CPU_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of CPU group=0x%03x/0x%03x\n", max_q, min_q);
++	rsv_pg = (pg_flow_ctrl[7] & WF_PSE_TOP_CPU_PG_INFO_CPU_RSV_CNT_MASK) >> WF_PSE_TOP_CPU_PG_INFO_CPU_RSV_CNT_SHFT;
++	used_pg = (pg_flow_ctrl[7] & WF_PSE_TOP_CPU_PG_INFO_CPU_SRC_CNT_MASK) >> WF_PSE_TOP_CPU_PG_INFO_CPU_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of CPU group=0x%03x/0x%03x\n", used_pg, rsv_pg);
++	seq_printf(s, "\tReserved page counter of LMAC0 group(0x82068170): 0x%08x\n", pg_flow_ctrl[8]);
++	seq_printf(s, "\tLMAC0 group page status(0x82068174): 0x%08x\n", pg_flow_ctrl[9]);
++	min_q = (pg_flow_ctrl[8] & WF_PSE_TOP_PG_LMAC0_GROUP_LMAC0_MIN_QUOTA_MASK) >> WF_PSE_TOP_PG_LMAC0_GROUP_LMAC0_MIN_QUOTA_SHFT;
++	max_q = (pg_flow_ctrl[8] & WF_PSE_TOP_PG_LMAC0_GROUP_LMAC0_MAX_QUOTA_MASK) >> WF_PSE_TOP_PG_LMAC0_GROUP_LMAC0_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of LMAC0 group=0x%03x/0x%03x\n", max_q, min_q);
++	rsv_pg = (pg_flow_ctrl[9] & WF_PSE_TOP_LMAC0_PG_INFO_LMAC0_RSV_CNT_MASK) >> WF_PSE_TOP_LMAC0_PG_INFO_LMAC0_RSV_CNT_SHFT;
++	used_pg = (pg_flow_ctrl[9] & WF_PSE_TOP_LMAC0_PG_INFO_LMAC0_SRC_CNT_MASK) >> WF_PSE_TOP_LMAC0_PG_INFO_LMAC0_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of LMAC0 group=0x%03x/0x%03x\n", used_pg, rsv_pg);
++	seq_printf(s, "\tReserved page counter of LMAC1 group(0x82068178): 0x%08x\n", pg_flow_ctrl[10]);
++	seq_printf(s, "\tLMAC1 group page status(0x8206817c): 0x%08x\n", pg_flow_ctrl[11]);
++	min_q = (pg_flow_ctrl[10] & WF_PSE_TOP_PG_LMAC1_GROUP_LMAC1_MIN_QUOTA_MASK) >> WF_PSE_TOP_PG_LMAC1_GROUP_LMAC1_MIN_QUOTA_SHFT;
++	max_q = (pg_flow_ctrl[10] & WF_PSE_TOP_PG_LMAC1_GROUP_LMAC1_MAX_QUOTA_MASK) >> WF_PSE_TOP_PG_LMAC1_GROUP_LMAC1_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of LMAC1 group=0x%03x/0x%03x\n", max_q, min_q);
++	rsv_pg = (pg_flow_ctrl[11] & WF_PSE_TOP_LMAC1_PG_INFO_LMAC1_RSV_CNT_MASK) >> WF_PSE_TOP_LMAC1_PG_INFO_LMAC1_RSV_CNT_SHFT;
++	used_pg = (pg_flow_ctrl[11] & WF_PSE_TOP_LMAC1_PG_INFO_LMAC1_SRC_CNT_MASK) >> WF_PSE_TOP_LMAC1_PG_INFO_LMAC1_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of LMAC1 group=0x%03x/0x%03x\n", used_pg, rsv_pg);
++	seq_printf(s, "\tReserved page counter of LMAC2 group(0x82068180): 0x%08x\n", pg_flow_ctrl[11]);
++	seq_printf(s, "\tLMAC2 group page status(0x82068184): 0x%08x\n", pg_flow_ctrl[12]);
++	min_q = (pg_flow_ctrl[12] & WF_PSE_TOP_PG_LMAC2_GROUP_LMAC2_MIN_QUOTA_MASK) >> WF_PSE_TOP_PG_LMAC2_GROUP_LMAC2_MIN_QUOTA_SHFT;
++	max_q = (pg_flow_ctrl[12] & WF_PSE_TOP_PG_LMAC2_GROUP_LMAC2_MAX_QUOTA_MASK) >> WF_PSE_TOP_PG_LMAC2_GROUP_LMAC2_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of LMAC2 group=0x%03x/0x%03x\n", max_q, min_q);
++	rsv_pg = (pg_flow_ctrl[13] & WF_PSE_TOP_LMAC2_PG_INFO_LMAC2_RSV_CNT_MASK) >> WF_PSE_TOP_LMAC2_PG_INFO_LMAC2_RSV_CNT_SHFT;
++	used_pg = (pg_flow_ctrl[13] & WF_PSE_TOP_LMAC2_PG_INFO_LMAC2_SRC_CNT_MASK) >> WF_PSE_TOP_LMAC2_PG_INFO_LMAC2_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of LMAC2 group=0x%03x/0x%03x\n", used_pg, rsv_pg);
++
++	seq_printf(s, "\tReserved page counter of LMAC3 group(0x82068188): 0x%08x\n", pg_flow_ctrl[16]);
++	seq_printf(s, "\tLMAC3 group page status(0x8206818c): 0x%08x\n", pg_flow_ctrl[17]);
++	min_q = (pg_flow_ctrl[16] & WF_PSE_TOP_PG_LMAC3_GROUP_LMAC3_MIN_QUOTA_MASK) >> WF_PSE_TOP_PG_LMAC3_GROUP_LMAC3_MIN_QUOTA_SHFT;
++	max_q = (pg_flow_ctrl[16] & WF_PSE_TOP_PG_LMAC3_GROUP_LMAC3_MAX_QUOTA_MASK) >> WF_PSE_TOP_PG_LMAC3_GROUP_LMAC3_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of LMAC3 group=0x%03x/0x%03x\n", max_q, min_q);
++	rsv_pg = (pg_flow_ctrl[17] & WF_PSE_TOP_LMAC3_PG_INFO_LMAC3_RSV_CNT_MASK) >> WF_PSE_TOP_LMAC3_PG_INFO_LMAC3_RSV_CNT_SHFT;
++	used_pg = (pg_flow_ctrl[17] & WF_PSE_TOP_LMAC3_PG_INFO_LMAC3_SRC_CNT_MASK) >> WF_PSE_TOP_LMAC3_PG_INFO_LMAC3_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of LMAC3 group=0x%03x/0x%03x\n", used_pg, rsv_pg);
++
++	seq_printf(s, "\tReserved page counter of PLE group(0x82068160): 0x%08x\n", pg_flow_ctrl[14]);
++	seq_printf(s, "\tPLE group page status(0x82068164): 0x%08x\n", pg_flow_ctrl[15]);
++	min_q = (pg_flow_ctrl[14] & WF_PSE_TOP_PG_PLE_GROUP_PLE_MIN_QUOTA_MASK) >> WF_PSE_TOP_PG_PLE_GROUP_PLE_MIN_QUOTA_SHFT;
++	max_q = (pg_flow_ctrl[14] & WF_PSE_TOP_PG_PLE_GROUP_PLE_MAX_QUOTA_MASK) >> WF_PSE_TOP_PG_PLE_GROUP_PLE_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of PLE group=0x%03x/0x%03x\n", max_q, min_q);
++	rsv_pg = (pg_flow_ctrl[15] & WF_PSE_TOP_PLE_PG_INFO_PLE_RSV_CNT_MASK) >> WF_PSE_TOP_PLE_PG_INFO_PLE_RSV_CNT_SHFT;
++	used_pg = (pg_flow_ctrl[15] & WF_PSE_TOP_PLE_PG_INFO_PLE_SRC_CNT_MASK) >> WF_PSE_TOP_PLE_PG_INFO_PLE_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of PLE group=0x%03x/0x%03x\n", used_pg, rsv_pg);
++
++	seq_printf(s, "\tReserved page counter of PLE1 group(0x82068168): 0x%08x\n", pg_flow_ctrl[14]);
++	seq_printf(s, "\tPLE1 group page status(0x8206816c): 0x%08x\n", pg_flow_ctrl[15]);
++	min_q = (pg_flow_ctrl[20] & WF_PSE_TOP_PG_PLE_GROUP_PLE_MIN_QUOTA_MASK) >> WF_PSE_TOP_PG_PLE_GROUP_PLE_MIN_QUOTA_SHFT;
++	max_q = (pg_flow_ctrl[20] & WF_PSE_TOP_PG_PLE_GROUP_PLE_MAX_QUOTA_MASK) >> WF_PSE_TOP_PG_PLE_GROUP_PLE_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of PLE1 group=0x%03x/0x%03x\n", max_q, min_q);
++	rsv_pg = (pg_flow_ctrl[21] & WF_PSE_TOP_PLE_PG_INFO_PLE_RSV_CNT_MASK) >> WF_PSE_TOP_PLE_PG_INFO_PLE_RSV_CNT_SHFT;
++	used_pg = (pg_flow_ctrl[21] & WF_PSE_TOP_PLE_PG_INFO_PLE_SRC_CNT_MASK) >> WF_PSE_TOP_PLE_PG_INFO_PLE_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of PLE1 group=0x%03x/0x%03x\n", used_pg, rsv_pg);
++
++	seq_printf(s, "\tReserved page counter of MDP group(0x82068198): 0x%08x\n", pg_flow_ctrl[18]);
++	seq_printf(s, "\tMDP group page status(0x8206819c): 0x%08x\n", pg_flow_ctrl[19]);
++	min_q = (pg_flow_ctrl[18] & WF_PSE_TOP_PG_MDP_GROUP_MDP_MIN_QUOTA_MASK) >> WF_PSE_TOP_PG_MDP_GROUP_MDP_MIN_QUOTA_SHFT;
++	max_q = (pg_flow_ctrl[18] & WF_PSE_TOP_PG_MDP_GROUP_MDP_MAX_QUOTA_MASK) >> WF_PSE_TOP_PG_MDP_GROUP_MDP_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of MDP group=0x%03x/0x%03x\n", max_q, min_q);
++	rsv_pg = (pg_flow_ctrl[19] & WF_PSE_TOP_MDP_PG_INFO_MDP_RSV_CNT_MASK) >> WF_PSE_TOP_MDP_PG_INFO_MDP_RSV_CNT_SHFT;
++	used_pg = (pg_flow_ctrl[19] & WF_PSE_TOP_MDP_PG_INFO_MDP_SRC_CNT_MASK) >> WF_PSE_TOP_MDP_PG_INFO_MDP_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of MDP group=0x%03x/0x%03x\n", used_pg, rsv_pg);
++
++	/* Queue Empty Status */
++	seq_printf(s, "PSE Queue Empty Status:\n");
++	seq_printf(s, "\tQUEUE_EMPTY(0x820680b0): 0x%08x\n", pse_stat);
++	seq_printf(s, "\t\tCPU Q0/1/2/3 empty=%d/%d/%d/%d\n",
++			  (pse_stat & WF_PSE_TOP_QUEUE_EMPTY_CPU_Q0_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_CPU_Q0_EMPTY_SHFT,
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_CPU_Q1_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_CPU_Q1_EMPTY_SHFT),
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_CPU_Q2_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_CPU_Q2_EMPTY_SHFT),
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_CPU_Q3_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_CPU_Q3_EMPTY_SHFT));
++	seq_printf(s, "\t\tHIF Q0/1/2/3/4/5 empty=%d/%d/%d/%d/%d/%d\n",
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_HIF_0_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_HIF_0_EMPTY_SHFT),
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_HIF_1_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_HIF_1_EMPTY_SHFT),
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_HIF_2_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_HIF_2_EMPTY_SHFT),
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_HIF_3_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_HIF_3_EMPTY_SHFT),
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_HIF_4_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_HIF_4_EMPTY_SHFT),
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_HIF_5_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_HIF_5_EMPTY_SHFT));
++	seq_printf(s, "\t\tLMAC TX Q empty=%d\n",
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_LMAC_TX_QUEUE_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_LMAC_TX_QUEUE_EMPTY_SHFT));
++	seq_printf(s, "\t\tMDP TX Q/RX Q empty=%d/%d\n",
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_MDP_TX_QUEUE_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_MDP_TX_QUEUE_EMPTY_SHFT),
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_MDP_RX_QUEUE_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_MDP_RX_QUEUE_EMPTY_SHFT));
++	seq_printf(s, "\t\tSEC TX Q/RX Q empty=%d/%d\n",
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_SEC_TX_QUEUE_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_SEC_TX_QUEUE_EMPTY_SHFT),
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_SEC_RX_QUEUE_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_SEC_RX_QUEUE_EMPTY_SHFT));
++	seq_printf(s, "\t\tSFD PARK Q empty=%d\n",
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_SFD_PARK_QUEUE_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_SFD_PARK_QUEUE_EMPTY_SHFT));
++	seq_printf(s, "\t\tMDP TXIOC Q/RXIOC Q empty=%d/%d\n",
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_MDP_TXIOC_QUEUE_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_MDP_TXIOC_QUEUE_EMPTY_SHFT),
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_MDP_RXIOC_QUEUE_EMPTY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_MDP_RXIOC_QUEUE_EMPTY_SHFT));
++	seq_printf(s, "\t\tRLS Q empty=%d\n",
++			  ((pse_stat & WF_PSE_TOP_QUEUE_EMPTY_RLS_Q_EMTPY_MASK) >> WF_PSE_TOP_QUEUE_EMPTY_RLS_Q_EMTPY_SHFT));
++	seq_printf(s, "Nonempty Q info:\n");
++
++	for (i = 0; i < 31; i++) {
++		if (((pse_stat & (0x1 << i)) >> i) == 0) {
++			u32 hfid, tfid, pktcnt, fl_que_ctrl[3] = {0};
++
++			if (pse_queue_empty_info[i].QueueName != NULL) {
++				seq_printf(s, "\t%s: ", pse_queue_empty_info[i].QueueName);
++				fl_que_ctrl[0] |= WF_PSE_TOP_FL_QUE_CTRL_0_EXECUTE_MASK;
++				fl_que_ctrl[0] |= (pse_queue_empty_info[i].Portid << WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_PID_SHFT);
++				fl_que_ctrl[0] |= (pse_queue_empty_info[i].Queueid << WF_PSE_TOP_FL_QUE_CTRL_0_Q_BUF_QID_SHFT);
++			} else
++				continue;
++
++			fl_que_ctrl[0] |= (0x1 << 31);
++
++			mt7915_mac_wr(dev, WF_PSE_TOP_FL_QUE_CTRL_0_ADDR, fl_que_ctrl[0]);
++			fl_que_ctrl[1] = mt7915_mac_rr(dev, WF_PSE_TOP_FL_QUE_CTRL_2_ADDR);
++			fl_que_ctrl[2] = mt7915_mac_rr(dev, WF_PSE_TOP_FL_QUE_CTRL_3_ADDR);
++
++			hfid = (fl_que_ctrl[1] & WF_PSE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_MASK) >> WF_PSE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_SHFT;
++			tfid = (fl_que_ctrl[1] & WF_PSE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_MASK) >> WF_PSE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_SHFT;
++			pktcnt = (fl_que_ctrl[2] & WF_PSE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_MASK) >> WF_PSE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_SHFT;
++			seq_printf(s, "tail/head fid = 0x%03x/0x%03x, pkt cnt = 0x%03x\n",
++					  tfid, hfid, pktcnt);
++		}
++	}
++
++	return 0;
++}
+ 
+ static int mt7915_mibinfo_read_per_band(struct seq_file *s, int band_idx)
+ {
+@@ -2042,6 +2274,360 @@ static int mt7915_mibinfo_band1(struct seq_file *s, void *data)
+ 	return 0;
+ }
+ 
++static int mt7915_token_read(struct seq_file *s, void *data)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	int id, count = 0;
++	struct mt76_txwi_cache *txwi;
++
++	seq_printf(s, "Cut through token:\n");
++	spin_lock_bh(&dev->mt76.token_lock);
++	idr_for_each_entry(&dev->mt76.token, txwi, id) {
++		seq_printf(s, "%4d ", id);
++		count++;
++		if (count % 8 == 0)
++			seq_printf(s, "\n");
++	}
++	spin_unlock_bh(&dev->mt76.token_lock);
++	seq_printf(s, "\n");
++
++	return 0;
++}
++
++struct txd_l {
++	u32 txd_0;
++	u32 txd_1;
++	u32 txd_2;
++	u32 txd_3;
++	u32 txd_4;
++	u32 txd_5;
++	u32 txd_6;
++	u32 txd_7;
++} __packed;
++
++char *pkt_ft_str[] = {"cut_through", "store_forward", "cmd", "PDA_FW_Download"};
++char *hdr_fmt_str[] = {
++	"Non-80211-Frame",
++	"Command-Frame",
++	"Normal-80211-Frame",
++	"enhanced-80211-Frame",
++};
++/* TMAC_TXD_1.hdr_format */
++#define TMI_HDR_FT_NON_80211	0x0
++#define TMI_HDR_FT_CMD		0x1
++#define TMI_HDR_FT_NOR_80211	0x2
++#define TMI_HDR_FT_ENH_80211	0x3
++
++void mtf_dump_tmac_info(u8 *tmac_info)
++{
++	struct txd_l *txd = (struct txd_l *)tmac_info;
++
++	printk("txd raw data: size=%d\n", MT_TXD_SIZE);
++	print_hex_dump(KERN_ERR , "", DUMP_PREFIX_OFFSET, 16, 1, tmac_info, MT_TXD_SIZE, false);
++
++	printk("TMAC_TXD Fields:\n");
++	printk("\tTMAC_TXD_0:\n");
++
++	/* DW0 */
++	/* TX Byte Count [15:0]  */
++	printk("\t\tTxByteCnt = %ld\n", FIELD_GET(MT_TXD0_TX_BYTES, txd->txd_0));
++
++	/* PKT_FT: Packet Format [24:23] */
++	printk("\t\tpkt_ft = %ld(%s)\n",
++			FIELD_GET(MT_TXD0_PKT_FMT, txd->txd_0),
++			pkt_ft_str[FIELD_GET(MT_TXD0_PKT_FMT, txd->txd_0)]);
++
++	/* Q_IDX [31:25]  */
++	printk("\t\tQueID =0x%lx\n", FIELD_GET(MT_TXD0_Q_IDX, txd->txd_0));
++
++	printk("\tTMAC_TXD_1:\n");
++
++	/* DW1 */
++	/* WLAN Indec [9:0] */
++	printk("\t\tWlan Index = %ld\n", FIELD_GET(MT_TXD1_WLAN_IDX, txd->txd_1));
++
++	/* VTA [10] */
++	printk("\t\tVTA = %d\n", ((txd->txd_1 & MT_TXD1_VTA) ? 1 : 0));
++
++	/* HF: Header Format [17:16] */
++	printk("\t\tHdrFmt = %ld(%s)\n",
++			FIELD_GET(MT_TXD1_HDR_FORMAT, txd->txd_1),
++			FIELD_GET(MT_TXD1_HDR_FORMAT, txd->txd_1) < 4 ?
++			hdr_fmt_str[FIELD_GET(MT_TXD1_HDR_FORMAT, txd->txd_1)] : "N/A");
++
++	switch (FIELD_GET(MT_TXD1_HDR_FORMAT, txd->txd_1)) {
++	case TMI_HDR_FT_NON_80211:
++		/* MRD [11], EOSP [12], RMVL [13], VLAN [14], ETYPE [15] */
++		printk("\t\t\tMRD = %d, EOSP = %d,\
++				RMVL = %d, VLAN = %d, ETYP = %d\n",
++				(txd->txd_1 & MT_TXD1_MRD) ? 1 : 0,
++				(txd->txd_1 & MT_TXD1_EOSP) ? 1 : 0,
++				(txd->txd_1 & MT_TXD1_RMVL) ? 1 : 0,
++				(txd->txd_1 & MT_TXD1_VLAN) ? 1 : 0,
++				(txd->txd_1 & MT_TXD1_ETYP) ? 1 : 0);
++		break;
++	case TMI_HDR_FT_NOR_80211:
++		/* HEADER_LENGTH [15:11] */
++		printk("\t\t\tHeader Len = %ld(WORD)\n", FIELD_GET(MT_TXD1_HDR_INFO, txd->txd_1));
++		break;
++
++	case TMI_HDR_FT_ENH_80211:
++		/* EOSP [12], AMS [13]  */
++		printk("\t\t\tEOSP = %d, AMS = %d\n",
++				(txd->txd_1 & MT_TXD1_EOSP) ? 1 : 0,
++				(txd->txd_1 & MT_TXD1_AMS) ? 1 : 0);
++		break;
++	}
++
++	/* Header Padding [19:18] */
++	printk("\t\tHdrPad = %ld\n", FIELD_GET(MT_TXD1_HDR_PAD, txd->txd_1));
++
++	/* TID [22:20] */
++	printk("\t\tTID = %ld\n", FIELD_GET(MT_TXD1_TID, txd->txd_1));
++
++
++	/* UtxB/AMSDU_C/AMSDU [23] */
++	printk("\t\tamsdu = %d\n", ((txd->txd_1 & MT_TXD1_AMSDU) ? 1 : 0));
++
++	/* OM [29:24] */
++	printk("\t\town_mac = %ld\n", FIELD_GET(MT_TXD1_OWN_MAC, txd->txd_1));
++
++
++	/* TGID [30] */
++	printk("\t\tTGID = %d\n", ((txd->txd_1 & MT_TXD1_TGID) ? 1 : 0));
++
++
++	/* FT [31] */
++	printk("\t\tTxDFormatType = %d\n", (txd->txd_1 & MT_TXD1_LONG_FORMAT) ? 1 : 0);
++
++	printk("\tTMAC_TXD_2:\n");
++	/* DW2 */
++	/* Subtype [3:0] */
++	printk("\t\tsub_type = %ld\n", FIELD_GET(MT_TXD2_SUB_TYPE, txd->txd_2));
++
++	/* Type[5:4] */
++	printk("\t\tfrm_type = %ld\n", FIELD_GET(MT_TXD2_FRAME_TYPE, txd->txd_2));
++
++	/* NDP [6] */
++	printk("\t\tNDP = %d\n", ((txd->txd_2 & MT_TXD2_NDP) ? 1 : 0));
++
++	/* NDPA [7] */
++	printk("\t\tNDPA = %d\n", ((txd->txd_2 & MT_TXD2_NDPA) ? 1 : 0));
++
++	/* SD [8] */
++	printk("\t\tSounding = %d\n", ((txd->txd_2 & MT_TXD2_SOUNDING) ? 1 : 0));
++
++	/* RTS [9] */
++	printk("\t\tRTS = %d\n", ((txd->txd_2 & MT_TXD2_RTS) ? 1 : 0));
++
++	/* BM [10] */
++	printk("\t\tbc_mc_pkt = %d\n", ((txd->txd_2 & MT_TXD2_MULTICAST) ? 1 : 0));
++
++	/* B [11]  */
++	printk("\t\tBIP = %d\n", ((txd->txd_2 & MT_TXD2_BIP) ? 1 : 0));
++
++	/* DU [12] */
++	printk("\t\tDuration = %d\n", ((txd->txd_2 & MT_TXD2_DURATION) ? 1 : 0));
++
++	/* HE [13] */
++	printk("\t\tHE(HTC Exist) = %d\n", ((txd->txd_2 & MT_TXD2_HTC_VLD) ? 1 : 0));
++
++	/* FRAG [15:14] */
++	printk("\t\tFRAG = %ld\n", FIELD_GET(MT_TXD2_FRAG, txd->txd_2));
++
++
++	/* Remaining Life Time [23:16]*/
++	printk("\t\tReamingLife/MaxTx time = %ld (unit: 64TU)\n",
++		FIELD_GET(MT_TXD2_MAX_TX_TIME, txd->txd_2));
++
++	/* Power Offset [29:24] */
++	printk("\t\tpwr_offset = %ld\n", FIELD_GET(MT_TXD2_POWER_OFFSET, txd->txd_2));
++
++	/* FRM [30] */
++	printk("\t\tfix rate mode = %d\n", (txd->txd_2 & MT_TXD2_FIXED_RATE) ? 1 : 0);
++
++	/* FR[31] */
++	printk("\t\tfix rate = %d\n", (txd->txd_2 & MT_TXD2_FIX_RATE) ? 1 : 0);
++
++
++	printk("\tTMAC_TXD_3:\n");
++
++	/* DW3 */
++	/* NA [0] */
++	printk("\t\tNoAck = %d\n", (txd->txd_3 & MT_TXD3_NO_ACK) ? 1 : 0);
++
++	/* PF [1] */
++	printk("\t\tPF = %d\n", (txd->txd_3 & MT_TXD3_PROTECT_FRAME) ? 1 : 0);
++
++	/* EMRD [2] */
++	printk("\t\tEMRD = %d\n", (txd->txd_3 & MT_TXD3_EMRD) ? 1 : 0);
++
++	/* EEOSP [3] */
++	printk("\t\tEEOSP = %d\n", (txd->txd_3 & MT_TXD3_EEOSP) ? 1 : 0);
++
++	/* DAS [4] */
++	printk("\t\tda_select = %d\n", (txd->txd_3 & MT_TXD3_DAS) ? 1 : 0);
++
++	/* TM [5] */
++	printk("\t\ttm = %d\n", (txd->txd_3 & MT_TXD3_TIMING_MEASURE) ? 1 : 0);
++
++	/* TX Count [10:6] */
++	printk("\t\ttx_cnt = %ld\n", FIELD_GET(MT_TXD3_TX_COUNT, txd->txd_3));
++
++	/* Remaining TX Count [15:11] */
++	printk("\t\tremain_tx_cnt = %ld\n", FIELD_GET(MT_TXD3_REM_TX_COUNT, txd->txd_3));
++
++	/* SN [27:16] */
++	printk("\t\tsn = %ld\n", FIELD_GET(MT_TXD3_SEQ, txd->txd_3));
++
++	/* BA_DIS [28] */
++	printk("\t\tba dis = %d\n", (txd->txd_3 & MT_TXD3_BA_DISABLE) ? 1 : 0);
++
++	/* Power Management [29] */
++	printk("\t\tpwr_mgmt = 0x%x\n", (txd->txd_3 & MT_TXD3_SW_POWER_MGMT) ? 1 : 0);
++
++	/* PN_VLD [30] */
++	printk("\t\tpn_vld = %d\n", (txd->txd_3 & MT_TXD3_PN_VALID) ? 1 : 0);
++
++	/* SN_VLD [31] */
++	printk("\t\tsn_vld = %d\n", (txd->txd_3 & MT_TXD3_SN_VALID) ? 1 : 0);
++
++
++	/* DW4 */
++	printk("\tTMAC_TXD_4:\n");
++
++	/* PN_LOW [31:0] */
++	printk("\t\tpn_low = 0x%lx\n", FIELD_GET(MT_TXD4_PN_LOW, txd->txd_4));
++
++
++	/* DW5 */
++	printk("\tTMAC_TXD_5:\n");
++
++	/* PID [7:0] */
++	printk("\t\tpid = %ld\n", FIELD_GET(MT_TXD5_PID, txd->txd_5));
++
++	/* TXSFM [8] */
++	printk("\t\ttx_status_fmt = %d\n", (txd->txd_5 & MT_TXD5_TX_STATUS_FMT) ? 1 : 0);
++
++	/* TXS2M [9] */
++	printk("\t\ttx_status_2_mcu = %d\n", (txd->txd_5 & MT_TXD5_TX_STATUS_MCU) ? 1 : 0);
++
++	/* TXS2H [10] */
++	printk("\t\ttx_status_2_host = %d\n", (txd->txd_5 & MT_TXD5_TX_STATUS_HOST) ? 1 : 0);
++
++	/* ADD_BA [14] */
++	printk("\t\tADD_BA = %d\n", (txd->txd_5 & MT_TXD5_ADD_BA) ? 1 : 0);
++
++	/* MD [15] */
++	printk("\t\tMD = %d\n", (txd->txd_5 & MT_TXD5_MD) ? 1 : 0);
++
++	/* PN_HIGH [31:16]  */
++	printk("\t\tpn_high = 0x%lx\n", FIELD_GET(MT_TXD5_PN_HIGH, txd->txd_5));
++
++	/* DW6 */
++	printk("\tTMAC_TXD_6:\n");
++
++	if (txd->txd_2 & MT_TXD2_FIX_RATE) {
++		/* Fixed BandWidth mode [2:0] */
++		printk("\t\tbw = %ld\n", FIELD_GET(MT_TXD6_BW, txd->txd_6));
++
++		/* DYN_BW [3] */
++		printk("\t\tdyn_bw = %d\n", (txd->txd_6 & MT_TXD6_DYN_BW) ? 1 : 0);
++
++		/* ANT_ID [7:4] */
++		printk("\t\tant_id = %ld\n", FIELD_GET(MT_TXD6_ANT_ID, txd->txd_6));
++
++		/* SPE_IDX_SEL [10] */
++		printk("\t\tspe_idx_sel = %d\n", (txd->txd_6 & MT_TXD6_SPE_ID_IDX) ? 1 : 0);
++
++		/* LDPC [11] */
++		printk("\t\tldpc = %d\n", (txd->txd_6 & MT_TXD6_LDPC) ? 1 : 0);
++
++		/* HELTF Type[13:12] */
++		printk("\t\tHELTF Type = %ld\n", FIELD_GET(MT_TXD6_HELTF, txd->txd_6));
++
++		/* GI Type [15:14] */
++		printk("\t\tGI = %ld\n", FIELD_GET(MT_TXD6_SGI, txd->txd_6));
++
++		/* Rate to be Fixed [29:16] */
++		printk("\t\ttx_rate = 0x%lx\n", FIELD_GET(MT_TXD6_TX_RATE, txd->txd_6));
++	}
++
++	/* TXEBF [30] */
++	printk("\t\ttxebf = %d\n", (txd->txd_6 & MT_TXD6_TX_EBF)  ? 1 : 0);
++
++	/* TXIBF [31] */
++	printk("\t\ttxibf = %d\n", (txd->txd_6 & MT_TXD6_TX_IBF) ? 1 : 0);
++
++	/* DW7 */
++	printk("\tTMAC_TXD_7:\n");
++
++	if ((txd->txd_1 & MT_TXD1_VTA) == 0) {
++		/* SW Tx Time [9:0] */
++		printk("\t\tsw_tx_time = %ld\n", FIELD_GET(MT_TXD7_TX_TIME, txd->txd_7));
++	} else {
++		/* TXD Arrival Time [9:0] */
++		printk("\t\tat = %ld\n", FIELD_GET(MT_TXD7_TAT, txd->txd_7));
++	}
++
++	/* HW_AMSDU_CAP [10] */
++	printk("\t\thw amsdu cap = %d\n",(txd->txd_7 & MT_TXD7_HW_AMSDU) ? 1 : 0);
++
++	/* SPE_IDX [15:11] */
++	if (txd->txd_2 & MT_TXD2_FIX_RATE) {
++		printk("\t\tspe_idx = 0x%lx\n", FIELD_GET(MT_TXD7_SPE_IDX, txd->txd_7));
++	}
++
++	/* PSE_FID [27:16] */
++	printk("\t\tpse_fid = 0x%lx\n", FIELD_GET(MT_TXD7_PSE_FID, txd->txd_7));
++
++	/* Subtype [19:16] */
++	printk("\t\tpp_sub_type=%ld\n", FIELD_GET(MT_TXD7_SUB_TYPE, txd->txd_7));
++
++	/* Type [21:20] */
++	printk("\t\tpp_type=%ld\n", FIELD_GET(MT_TXD7_TYPE, txd->txd_7));
++
++	/* CTXD_CNT [25:23] */
++	printk("\t\tctxd cnt=0x%lx\n", FIELD_GET(MT_TXD7_CTXD_CNT, txd->txd_7));
++
++	/* CTXD [26] */
++	printk("\t\tctxd = %d\n", (txd->txd_7 & MT_TXD7_CTXD) ? 1 : 0);
++
++	/* I [28]  */
++	printk("\t\ti = %d\n", (txd->txd_7 & MT_TXD7_IP_SUM) ? 1 : 0);
++
++	/* UT [29] */
++	printk("\t\tUT = %d\n", (txd->txd_7 & MT_TXD7_UDP_TCP_SUM) ? 1 : 0);
++
++	/* TXDLEN [31:30] */
++	printk("\t\t txd len= %ld\n", FIELD_GET(MT_TXD7_TXD_LEN, txd->txd_7));
++}
++
++
++static int mt7915_token_txd_read(struct seq_file *s, void *data)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	struct mt76_txwi_cache *t;
++	u8* txwi;
++
++	seq_printf(s, "\n");
++	spin_lock_bh(&dev->mt76.token_lock);
++
++	t = idr_find(&dev->mt76.token, dev->dbg.token_idx);
++
++	spin_unlock_bh(&dev->mt76.token_lock);
++	if (t != NULL) {
++		struct mt76_dev *mdev = &dev->mt76;
++		txwi = ((u8*)(t)) - (mdev->drv->txwi_size);
++		mtf_dump_tmac_info((u8*) txwi);
++		seq_printf(s, "\n");
++		//printk("[SKB]\n");
++		//print_hex_dump(KERN_ERR , "", DUMP_PREFIX_OFFSET, 16, 1, (u8 *)t->skb->data, t->skb->len, false);
++		//seq_printf(s, "\n");
++	}
++	return 0;
++}
++
+ int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
+ {
+ 	struct mt7915_dev *dev = phy->dev;
+@@ -2088,10 +2674,20 @@ int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
+ 	debugfs_create_devm_seqfile(dev->mt76.dev, "ple_info", dir,
+ 				    mt7915_pleinfo_read);
+ 
++	debugfs_create_devm_seqfile(dev->mt76.dev, "pse_info", dir,
++				    mt7915_pseinfo_read);
++
+ 	debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info0", dir,
+ 				    mt7915_mibinfo_band0);
+ 	debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info1", dir,
+ 				    mt7915_mibinfo_band1);
++
++	debugfs_create_u32("token_idx", 0600, dir, &dev->dbg.token_idx);
++	debugfs_create_devm_seqfile(dev->mt76.dev, "token", dir,
++				    mt7915_token_read);
++	debugfs_create_devm_seqfile(dev->mt76.dev, "token_txd", dir,
++				    mt7915_token_txd_read);
++
+ 	return 0;
+ }
+ #endif
+-- 
+2.29.2
+

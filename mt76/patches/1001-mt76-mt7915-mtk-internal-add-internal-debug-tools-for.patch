@@ -1,0 +1,3309 @@
+From b2469ddf76fecb0c1fe809ef1350f939248eaeaf Mon Sep 17 00:00:00 2001
+From: Shayne Chen <shayne.chen@mediatek.com>
+Date: Mon, 14 Dec 2020 11:19:32 +0800
+Subject: [PATCH 1/4] mtk-internal: add internal debug tools for mt76
+
+Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
+---
+ mt7915/Makefile       |    2 +
+ mt7915/debugfs.c      |    4 +
+ mt7915/mac.c          |    5 +
+ mt7915/mac.h          |    3 +
+ mt7915/mcu.c          |    6 +
+ mt7915/mt7915.h       |   25 +
+ mt7915/mt7915_debug.h |  541 +++++++++++
+ mt7915/mtk_debugfs.c  | 2097 +++++++++++++++++++++++++++++++++++++++++
+ mt7915/mtk_mcu.c      |  485 ++++++++++
+ mt7915/regs.h         |   11 +
+ 10 files changed, 3179 insertions(+)
+ create mode 100644 mt7915/mt7915_debug.h
+ create mode 100644 mt7915/mtk_debugfs.c
+ create mode 100644 mt7915/mtk_mcu.c
+
+Index: mt76-2022-02-15-c67df0d3/mt7915/Makefile
+===================================================================
+--- mt76-2022-02-15-c67df0d3.orig/mt7915/Makefile
++++ mt76-2022-02-15-c67df0d3/mt7915/Makefile
+@@ -5,5 +5,7 @@ obj-$(CONFIG_MT7915E) += mt7915e.o
+ mt7915e-y := pci.o init.o dma.o eeprom.o main.o mcu.o mac.o \
+ 	     debugfs.o mmio.o
+ 
++mt7915e-y += mtk_debugfs.o mtk_mcu.o
++
+ mt7915e-$(CONFIG_NL80211_TESTMODE) += testmode.o
+-mt7915e-$(CONFIG_MT7986_WMAC) += soc.o
+\ No newline at end of file
++mt7915e-$(CONFIG_MT7986_WMAC) += soc.o
+Index: mt76-2022-02-15-c67df0d3/mt7915/debugfs.c
+===================================================================
+--- mt76-2022-02-15-c67df0d3.orig/mt7915/debugfs.c
++++ mt76-2022-02-15-c67df0d3/mt7915/debugfs.c
+@@ -907,6 +907,11 @@ int mt7915_init_debugfs(struct mt7915_ph
+ 					    mt7915_rdd_monitor);
+ 	}
+ 
++#ifdef MTK_DEBUG
++//	debugfs_create_u16("wlan_idx", 0600, dir, &dev->wlan_idx);
++	mt7915_mtk_init_debugfs(phy, dir);
++#endif
++
+ 	if (!ext_phy)
+ 		dev->debugfs_dir = dir;
+ 
+Index: mt76-2022-02-15-c67df0d3/mt7915/mac.c
+===================================================================
+--- mt76-2022-02-15-c67df0d3.orig/mt7915/mac.c
++++ mt76-2022-02-15-c67df0d3/mt7915/mac.c
+@@ -1728,6 +1728,13 @@ void mt7915_queue_rx_skb(struct mt76_dev
+ 		mt7915_debugfs_rx_fw_monitor(dev, skb->data, skb->len);
+ 		dev_kfree_skb(skb);
+ 		break;
++#if 0
++#ifdef MTK_DEBUG
++	case PKT_TYPE_RX_ICS:
++		mt7915_mcu_rx_ics(dev, skb);
++		break;
++#endif
++#endif
+ 	case PKT_TYPE_NORMAL:
+ 		if (!mt7915_mac_fill_rx(dev, skb)) {
+ 			mt76_rx(&dev->mt76, q, skb);
+Index: mt76-2022-02-15-c67df0d3/mt7915/mcu.c
+===================================================================
+--- mt76-2022-02-15-c67df0d3.orig/mt7915/mcu.c
++++ mt76-2022-02-15-c67df0d3/mt7915/mcu.c
+@@ -405,6 +405,7 @@ mt7915_mcu_rx_radar_detected(struct mt79
+ 	dev->hw_pattern++;
+ }
+ 
++#ifndef MTK_DEBUG
+ static void
+ mt7915_mcu_rx_log_message(struct mt7915_dev *dev, struct sk_buff *skb)
+ {
+@@ -430,6 +431,7 @@ mt7915_mcu_rx_log_message(struct mt7915_
+ 
+ 	wiphy_info(mt76_hw(dev)->wiphy, "%s: %.*s", type, len, data);
+ }
++#endif
+ 
+ static void
+ mt7915_mcu_cca_finish(void *priv, u8 *mac, struct ieee80211_vif *vif)
+@@ -472,7 +474,11 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
+ 		mt7915_mcu_rx_csa_notify(dev, skb);
+ 		break;
+ 	case MCU_EXT_EVENT_FW_LOG_2_HOST:
++#ifdef MTK_DEBUG
++		mt7915_mcu_rx_log_message_internal(dev, skb);
++#else
+ 		mt7915_mcu_rx_log_message(dev, skb);
++#endif
+ 		break;
+ 	case MCU_EXT_EVENT_BCC_NOTIFY:
+ 		mt7915_mcu_rx_bcc_notify(dev, skb);
+Index: mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
+===================================================================
+--- mt76-2022-02-15-c67df0d3.orig/mt7915/mt7915.h
++++ mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
+@@ -9,6 +9,7 @@
+ #include "../mt76_connac.h"
+ #include "regs.h"
+ 
++#define MTK_DEBUG 1
+ #define MT7915_MAX_INTERFACES		19
+ #define MT7915_MAX_WMM_SETS		4
+ #define MT7915_WTBL_SIZE		288
+@@ -325,6 +326,25 @@ struct mt7915_dev {
+ 	struct reset_control *rstc;
+ 	void __iomem *dcm;
+ 	void __iomem *sku;
++
++#ifdef MTK_DEBUG
++	u16 wlan_idx;
++	struct {
++		u16 eep_idx;
++		u32 fixed_rate;
++		u32 l1debugfs_reg;
++		u32 l2debugfs_reg;
++		u32 mac_reg;
++		u8 fw_debug;
++		u32 fw_dbg_module;
++		u8 fw_dbg_lv;
++		u8 fwlog_server_mac[ETH_ALEN];
++		u32 fwlog_server_ip;
++		char fwlog_ifname[10];
++		u32 bcn_total_cnt[2];
++		u16 fwlog_seq;
++	} dbg;
++#endif
+ };
+ 
+ enum {
+@@ -593,4 +613,9 @@ void mt7915_sta_add_debugfs(struct ieee8
+ 			    struct ieee80211_sta *sta, struct dentry *dir);
+ #endif
+ 
++#ifdef MTK_DEBUG
++int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir);
++void mt7915_mcu_rx_log_message_internal(struct mt7915_dev *dev, struct sk_buff *skb);
++void mt7915_mcu_rx_ics(struct mt7915_dev *dev, struct sk_buff *skb);
++#endif
+ #endif
+Index: mt76-2022-02-15-c67df0d3/mt7915/mt7915_debug.h
+===================================================================
+--- /dev/null
++++ mt76-2022-02-15-c67df0d3/mt7915/mt7915_debug.h
+@@ -0,0 +1,541 @@
++#ifndef __MT7915_DEBUG_H
++#define __MT7915_DEBUG_H
++
++#ifdef MTK_DEBUG
++
++#define CONN_INFRA_REMAPPING_OFFSET			0x64000000
++#define WF_WFDMA_HOST_DMA0_BASE				(0x18024000 + CONN_INFRA_REMAPPING_OFFSET)
++#define WF_WFDMA_HOST_DMA0_PCI_BASE(addr)		(addr - WF_WFDMA_HOST_DMA0_BASE + 0xd4000)
++
++#define WF_WFDMA_HOST_DMA0_HOST_INT_STA_ADDR		(WF_WFDMA_HOST_DMA0_BASE + 0x200) // 4200
++#define WF_WFDMA_HOST_DMA0_HOST_INT_ENA_ADDR		(WF_WFDMA_HOST_DMA0_BASE + 0X204) // 4204
++#define WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_ADDR		(WF_WFDMA_HOST_DMA0_BASE + 0x208) // 4208
++
++#define WF_WFDMA_HOST_DMA0_WPDMA_RX_RING0_CTRL0_ADDR	(WF_WFDMA_HOST_DMA0_BASE + 0x500) // 4500
++#define WF_WFDMA_HOST_DMA0_WPDMA_RX_RING1_CTRL0_ADDR	(WF_WFDMA_HOST_DMA0_BASE + 0x510) // 4510
++
++#define MT_DMA0_R0_RING_BASE				WF_WFDMA_HOST_DMA0_PCI_BASE(WF_WFDMA_HOST_DMA0_WPDMA_RX_RING0_CTRL0_ADDR)
++#define MT_DMA0_R1_RING_BASE				WF_WFDMA_HOST_DMA0_PCI_BASE(WF_WFDMA_HOST_DMA0_WPDMA_RX_RING1_CTRL0_ADDR)
++
++#define WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_RX_DMA_EN_MASK		0x00000004	// RX_DMA_EN[2]
++#define WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_RX_DMA_EN_SHFT		2
++#define WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_TX_DMA_EN_MASK		0x00000001	// TX_DMA_EN[0]
++#define WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_TX_DMA_EN_SHFT		0
++
++#define WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK	0x00000008	// RX_DMA_BUSY[3]
++#define WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT	3
++#define WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK	0x00000002	// TX_DMA_BUSY[1]
++#define WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT	1
++
++#define WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma0_rx_don_int_sts_0_MASK 0x00010000	// host_dma0_rx_don_int_sts_0[16]
++#define WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma0_rx_don_int_sts_1_MASK 0x00020000	// host_dma0_rx_don_int_sts_1[17]
++#define MT_INT_DMA0_R0_DONE				WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma0_rx_don_int_sts_0_MASK
++#define MT_INT_DMA0_R1_DONE				WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma0_rx_don_int_sts_1_MASK
++
++#define WF_WFDMA_HOST_DMA1_BASE				(0x18025000 + CONN_INFRA_REMAPPING_OFFSET)
++#define WF_WFDMA_HOST_DMA1_PCI_BASE(addr)		(addr - WF_WFDMA_HOST_DMA1_BASE + 0xd5000)
++
++#define WF_WFDMA_HOST_DMA1_HOST_INT_STA_ADDR		(WF_WFDMA_HOST_DMA1_BASE + 0x200) // 5200
++#define WF_WFDMA_HOST_DMA1_HOST_INT_ENA_ADDR		(WF_WFDMA_HOST_DMA1_BASE + 0X204) // 5204
++#define WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_ADDR		(WF_WFDMA_HOST_DMA1_BASE + 0x208) // 5208
++
++#define WF_WFDMA_HOST_DMA1_WPDMA_TX_RING16_CTRL0_ADDR	(WF_WFDMA_HOST_DMA1_BASE + 0x400) // 5400
++#define WF_WFDMA_HOST_DMA1_WPDMA_TX_RING17_CTRL0_ADDR	(WF_WFDMA_HOST_DMA1_BASE + 0x410) // 5410
++#define WF_WFDMA_HOST_DMA1_WPDMA_TX_RING18_CTRL0_ADDR	(WF_WFDMA_HOST_DMA1_BASE + 0x420) // 5420
++#define WF_WFDMA_HOST_DMA1_WPDMA_TX_RING19_CTRL0_ADDR	(WF_WFDMA_HOST_DMA1_BASE + 0x430) // 5430
++#define WF_WFDMA_HOST_DMA1_WPDMA_TX_RING20_CTRL0_ADDR	(WF_WFDMA_HOST_DMA1_BASE + 0x440) // 5440
++#define WF_WFDMA_HOST_DMA1_WPDMA_RX_RING0_CTRL0_ADDR	(WF_WFDMA_HOST_DMA1_BASE + 0x500) // 5500
++#define WF_WFDMA_HOST_DMA1_WPDMA_RX_RING1_CTRL0_ADDR	(WF_WFDMA_HOST_DMA1_BASE + 0x510) // 5510
++#define WF_WFDMA_HOST_DMA1_WPDMA_RX_RING2_CTRL0_ADDR	(WF_WFDMA_HOST_DMA1_BASE + 0x520) // 5520
++
++#define WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_RX_DMA_EN_MASK		0x00000004	// RX_DMA_EN[2]
++#define WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_RX_DMA_EN_SHFT		2
++#define WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_TX_DMA_EN_MASK		0x00000001	// TX_DMA_EN[0]
++#define WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_TX_DMA_EN_SHFT		0
++
++#define WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK	0x00000008	// RX_DMA_BUSY[3]
++#define WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT	3
++#define WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK	0x00000002	// TX_DMA_BUSY[1]
++#define WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT	1
++
++#define MT_DMA1_T16_RING_BASE	WF_WFDMA_HOST_DMA1_PCI_BASE(WF_WFDMA_HOST_DMA1_WPDMA_TX_RING16_CTRL0_ADDR)
++#define MT_DMA1_T17_RING_BASE	WF_WFDMA_HOST_DMA1_PCI_BASE(WF_WFDMA_HOST_DMA1_WPDMA_TX_RING17_CTRL0_ADDR)
++#define MT_DMA1_T18_RING_BASE	WF_WFDMA_HOST_DMA1_PCI_BASE(WF_WFDMA_HOST_DMA1_WPDMA_TX_RING18_CTRL0_ADDR)
++#define MT_DMA1_T19_RING_BASE	WF_WFDMA_HOST_DMA1_PCI_BASE(WF_WFDMA_HOST_DMA1_WPDMA_TX_RING19_CTRL0_ADDR)
++#define MT_DMA1_T20_RING_BASE	WF_WFDMA_HOST_DMA1_PCI_BASE(WF_WFDMA_HOST_DMA1_WPDMA_TX_RING20_CTRL0_ADDR)
++#define MT_DMA1_R0_RING_BASE	WF_WFDMA_HOST_DMA1_PCI_BASE(WF_WFDMA_HOST_DMA1_WPDMA_RX_RING0_CTRL0_ADDR)
++#define MT_DMA1_R1_RING_BASE	WF_WFDMA_HOST_DMA1_PCI_BASE(WF_WFDMA_HOST_DMA1_WPDMA_RX_RING1_CTRL0_ADDR)
++#define MT_DMA1_R2_RING_BASE	WF_WFDMA_HOST_DMA1_PCI_BASE(WF_WFDMA_HOST_DMA1_WPDMA_RX_RING2_CTRL0_ADDR)
++
++#define WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_rx_done_int_sts_0_MASK 0x00000001                // host_dma1_rx_done_int_sts_0[0]
++#define WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_rx_done_int_sts_1_MASK 0x00000002                // host_dma1_rx_done_int_sts_1[1]
++#define WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_rx_done_int_sts_2_MASK 0x00000004                // host_dma1_rx_done_int_sts_2[2]
++
++#define WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_tx_done_int_sts_20_MASK 0x00008000                // host_dma1_tx_done_int_sts_20[15]
++#define WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_tx_done_int_sts_19_MASK 0x80000000                // host_dma1_tx_done_int_sts_19[31]
++#define WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_tx_done_int_sts_18_MASK 0x40000000                // host_dma1_tx_done_int_sts_18[30]
++#define WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_tx_done_int_sts_17_MASK 0x08000000                // host_dma1_tx_done_int_sts_17[27]
++#define WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_tx_done_int_sts_16_MASK 0x04000000                // host_dma1_tx_done_int_sts_16[26]
++
++#define MT_INT_DMA1_R0_DONE	WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_rx_done_int_sts_0_MASK
++#define MT_INT_DMA1_R1_DONE	WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_rx_done_int_sts_1_MASK
++#define MT_INT_DMA1_R2_DONE	WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_rx_done_int_sts_2_MASK
++
++#define MT_INT_DMA1_T16_DONE	WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_tx_done_int_sts_16_MASK
++#define MT_INT_DMA1_T17_DONE	WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_tx_done_int_sts_17_MASK
++#define MT_INT_DMA1_T18_DONE	WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_tx_done_int_sts_18_MASK
++#define MT_INT_DMA1_T19_DONE	WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_tx_done_int_sts_19_MASK
++#define MT_INT_DMA1_T20_DONE	WF_WFDMA_EXT_WRAP_CSR_WFDMA_HOST_INT_STA_host_dma1_tx_done_int_sts_20_MASK
++
++
++#define WF_WFDMA_EXT_WRAP_CSR_BASE		(0x18027000 + CONN_INFRA_REMAPPING_OFFSET)
++#define WF_WFDMA_EXT_WRAP_CSR_PCI_BASE(addr)	(addr - WF_WFDMA_EXT_WRAP_CSR_BASE + 0xd7000)
++
++#define WF_WFDMA_EXT_WRAP_CSR_PCIE1_HOST_INT_STA_ADDR	(WF_WFDMA_EXT_WRAP_CSR_BASE + 0x88) // 7088
++#define WF_WFDMA_EXT_WRAP_CSR_PCIE1_HOST_INT_ENA_ADDR	(WF_WFDMA_EXT_WRAP_CSR_BASE + 0x8C) // 708C
++
++#define WF_WFDMA_HOST_DMA0_PCIE1_BASE				(0x18028000 + CONN_INFRA_REMAPPING_OFFSET)
++#define WF_WFDMA_HOST_DMA0_PCIE1_HOST_INT_STA_ADDR		(WF_WFDMA_HOST_DMA0_PCIE1_BASE + 0x200) // 8200
++#define WF_WFDMA_HOST_DMA0_PCIE1_HOST_INT_ENA_ADDR		(WF_WFDMA_HOST_DMA0_PCIE1_BASE + 0X204) // 8204
++#define WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_ADDR		(WF_WFDMA_HOST_DMA0_PCIE1_BASE + 0x208) // 8208
++#define WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK	0x00000008	// RX_DMA_BUSY[3]
++#define WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT	3
++#define WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_MASK	0x00000004	// RX_DMA_EN[2]
++#define WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_SHFT	2
++#define WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK	0x00000002	// TX_DMA_BUSY[1]
++#define WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT	1
++#define WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_MASK	0x00000001	// TX_DMA_EN[0]
++#define WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_SHFT	0
++#define WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_RX_RING1_CTRL0_ADDR	(WF_WFDMA_HOST_DMA0_PCIE1_BASE + 0x510) // 8510
++
++#define WF_WFDMA_HOST_DMA1_PCIE1_BASE				(0x18029000 + CONN_INFRA_REMAPPING_OFFSET)
++#define WF_WFDMA_HOST_DMA1_PCIE1_HOST_INT_STA_ADDR		(WF_WFDMA_HOST_DMA1_PCIE1_BASE + 0x200) // 9200
++#define WF_WFDMA_HOST_DMA1_PCIE1_HOST_INT_ENA_ADDR		(WF_WFDMA_HOST_DMA1_PCIE1_BASE + 0X204) // 9204
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_ADDR		(WF_WFDMA_HOST_DMA1_PCIE1_BASE + 0x208) // 9208
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK	0x00000008	// RX_DMA_BUSY[3]
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT	3
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_MASK	0x00000004	// RX_DMA_EN[2]
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_SHFT	2
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK	0x00000002	// TX_DMA_BUSY[1]
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT	1
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_MASK	0x00000001	// TX_DMA_EN[0]
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_SHFT	0
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_TX_RING19_CTRL0_ADDR	(WF_WFDMA_HOST_DMA1_PCIE1_BASE + 0x330) // 9330
++#define WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_RX_RING2_CTRL0_ADDR	(WF_WFDMA_HOST_DMA1_PCIE1_BASE + 0x520) // 9520
++
++#define WF_WFDMA_MCU_DMA0_BASE					0x54000000
++#define WF_WFDMA_MCU_DMA0_HOST_INT_STA_ADDR			(WF_WFDMA_MCU_DMA0_BASE + 0x200) // 0200
++#define WF_WFDMA_MCU_DMA0_HOST_INT_ENA_ADDR			(WF_WFDMA_MCU_DMA0_BASE + 0X204) // 0204
++#define WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_ADDR			(WF_WFDMA_MCU_DMA0_BASE + 0x208) // 0208
++#define WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK	0x00000008	// RX_DMA_BUSY[3]
++#define WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT	3
++#define WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_RX_DMA_EN_MASK		0x00000004	// RX_DMA_EN[2]
++#define WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_RX_DMA_EN_SHFT		2
++#define WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK	0x00000002	// TX_DMA_BUSY[1]
++#define WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT	1
++#define WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_TX_DMA_EN_MASK		0x00000001	// TX_DMA_EN[0]
++#define WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_TX_DMA_EN_SHFT	0
++
++#define WF_WFDMA_MCU_DMA1_BASE					0x55000000
++#define WF_WFDMA_MCU_DMA1_HOST_INT_STA_ADDR			(WF_WFDMA_MCU_DMA1_BASE + 0x200) // 0200
++#define WF_WFDMA_MCU_DMA1_HOST_INT_ENA_ADDR			(WF_WFDMA_MCU_DMA1_BASE + 0X204) // 0204
++#define WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_ADDR			(WF_WFDMA_MCU_DMA1_BASE + 0x208) // 0208
++#define WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK	0x00000008	// RX_DMA_BUSY[3]
++#define WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT	3
++#define WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_RX_DMA_EN_MASK		0x00000004	// RX_DMA_EN[2]
++#define WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_RX_DMA_EN_SHFT		2
++#define WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK	0x00000002	// TX_DMA_BUSY[1]
++#define WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT	1
++#define WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_TX_DMA_EN_MASK		0x00000001	// TX_DMA_EN[0]
++#define WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_TX_DMA_EN_SHFT		0
++#define WF_WFDMA_MCU_DMA1_WPDMA_TX_RING0_CTRL0_ADDR		(WF_WFDMA_MCU_DMA1_BASE + 0x300) // 0300
++#define WF_WFDMA_MCU_DMA1_WPDMA_TX_RING1_CTRL0_ADDR		(WF_WFDMA_MCU_DMA1_BASE + 0x310) // 0310
++#define WF_WFDMA_MCU_DMA1_WPDMA_TX_RING2_CTRL0_ADDR		(WF_WFDMA_MCU_DMA1_BASE + 0x320) // 0320
++#define WF_WFDMA_MCU_DMA1_WPDMA_RX_RING0_CTRL0_ADDR		(WF_WFDMA_MCU_DMA1_BASE + 0x500) // 0500
++#define WF_WFDMA_MCU_DMA1_WPDMA_RX_RING1_CTRL0_ADDR		(WF_WFDMA_MCU_DMA1_BASE + 0x510) // 0510
++#define WF_WFDMA_MCU_DMA1_WPDMA_RX_RING2_CTRL0_ADDR		(WF_WFDMA_MCU_DMA1_BASE + 0x520) // 0520
++#define WF_WFDMA_MCU_DMA1_WPDMA_RX_RING3_CTRL0_ADDR		(WF_WFDMA_MCU_DMA1_BASE + 0x530) // 0530
++#define WF_WFDMA_MCU_DMA1_WPDMA_RX_RING4_CTRL0_ADDR		(WF_WFDMA_MCU_DMA1_BASE + 0x540) // 0540
++
++#define WF_WFDMA_MCU_DMA1_PCIE1_BASE				0x59000000
++#define WF_WFDMA_MCU_DMA1_PCIE1_HOST_INT_STA_ADDR		(WF_WFDMA_MCU_DMA1_PCIE1_BASE + 0x200) // 0200
++#define WF_WFDMA_MCU_DMA1_PCIE1_HOST_INT_ENA_ADDR		(WF_WFDMA_MCU_DMA1_PCIE1_BASE + 0X204) // 0204
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_ADDR		(WF_WFDMA_MCU_DMA1_PCIE1_BASE + 0x208) // 0208
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK	0x00000008	// RX_DMA_BUSY[3]
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT	3
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_MASK	0x00000004	// RX_DMA_EN[2]
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_SHFT	2
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK	0x00000002	// TX_DMA_BUSY[1]
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT	1
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_MASK	0x00000001	// TX_DMA_EN[0]
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_SHFT	0
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_TX_RING2_CTRL0_ADDR	(WF_WFDMA_MCU_DMA1_PCIE1_BASE + 0x320) // 0320
++#define WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_RX_RING3_CTRL0_ADDR	(WF_WFDMA_MCU_DMA1_PCIE1_BASE + 0x530) // 0530
++
++#define WF_WFDMA_MCU_DMA0_WPDMA_TX_RING0_CTRL0_ADDR		(WF_WFDMA_MCU_DMA0_BASE + 0x300) // 0300
++#define WF_WFDMA_MCU_DMA0_WPDMA_TX_RING1_CTRL0_ADDR		(WF_WFDMA_MCU_DMA0_BASE + 0x310) // 0310
++#define WF_WFDMA_MCU_DMA0_WPDMA_TX_RING2_CTRL0_ADDR		(WF_WFDMA_MCU_DMA0_BASE + 0x320) // 0320
++#define WF_WFDMA_MCU_DMA0_WPDMA_RX_RING0_CTRL0_ADDR		(WF_WFDMA_MCU_DMA0_BASE + 0x500) // 0500
++#define WF_WFDMA_MCU_DMA0_WPDMA_RX_RING1_CTRL0_ADDR		(WF_WFDMA_MCU_DMA0_BASE + 0x510) // 0510
++#define WF_WFDMA_MCU_DMA0_WPDMA_RX_RING2_CTRL0_ADDR		(WF_WFDMA_MCU_DMA0_BASE + 0x520) // 0520
++#define WF_WFDMA_MCU_DMA0_WPDMA_RX_RING3_CTRL0_ADDR		(WF_WFDMA_MCU_DMA0_BASE + 0x530) // 0530
++#define WF_WFDMA_MCU_DMA0_WPDMA_RX_RING4_CTRL0_ADDR		(WF_WFDMA_MCU_DMA0_BASE + 0x540) // 0540
++
++
++#define WF_WFDMA_MEM_DMA_BASE					0x58000000
++#define WF_WFDMA_MEM_DMA_HOST_INT_STA_ADDR			(WF_WFDMA_MEM_DMA_BASE + 0x200) // 0200
++#define WF_WFDMA_MEM_DMA_HOST_INT_ENA_ADDR			(WF_WFDMA_MEM_DMA_BASE + 0X204) // 0204
++#define WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_ADDR			(WF_WFDMA_MEM_DMA_BASE + 0x208) // 0208
++#define WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK		0x00000008	// RX_DMA_BUSY[3]
++#define WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT		3
++#define WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_RX_DMA_EN_MASK		0x00000004	// RX_DMA_EN[2]
++#define WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_RX_DMA_EN_SHFT		2
++#define WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK		0x00000002	// TX_DMA_BUSY[1]
++#define WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT		1
++#define WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_TX_DMA_EN_MASK		0x00000001	// TX_DMA_EN[0]
++#define WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_TX_DMA_EN_SHFT		0
++#define WF_WFDMA_MEM_DMA_WPDMA_TX_RING0_CTRL0_ADDR		(WF_WFDMA_MEM_DMA_BASE + 0x300) // 0300
++#define WF_WFDMA_MEM_DMA_WPDMA_TX_RING1_CTRL0_ADDR		(WF_WFDMA_MEM_DMA_BASE + 0x310) // 0310
++#define WF_WFDMA_MEM_DMA_WPDMA_RX_RING0_CTRL0_ADDR		(WF_WFDMA_MEM_DMA_BASE + 0x500) // 0500
++#define WF_WFDMA_MEM_DMA_WPDMA_RX_RING1_CTRL0_ADDR		(WF_WFDMA_MEM_DMA_BASE + 0x510) // 0510
++
++enum resource_attr {
++	HIF_TX_DATA,
++	HIF_TX_CMD,
++	HIF_TX_CMD_WM, /* direct path to WMCPU, only exist for WFDMA arch with 2 CPU */
++	HIF_TX_FWDL,
++	HIF_RX_DATA,
++	HIF_RX_EVENT,
++	RING_ATTR_NUM
++};
++
++struct hif_pci_tx_ring_desc {
++	u32 hw_desc_base;
++	u32 hw_int_mask;
++	u16 ring_size;
++	enum resource_attr ring_attr;
++	u8 band_idx;
++	char *const ring_info;
++};
++
++struct hif_pci_rx_ring_desc {
++	u32 hw_desc_base;
++	u32 hw_int_mask;
++	u16 ring_size;
++	enum resource_attr ring_attr;
++	u16 max_rx_process_cnt;
++	u16 max_sw_read_idx_inc;
++	char *const ring_info;
++};
++
++
++const struct hif_pci_tx_ring_desc tx_ring_layout[] = {
++	{
++	 .hw_desc_base = MT_DMA1_T18_RING_BASE,
++	 .hw_int_mask = MT_INT_DMA1_T18_DONE,
++	 .ring_size = 2048,
++	 .ring_attr = HIF_TX_DATA,
++	 .ring_info = "band0 TXD"
++	},
++	{
++	 .hw_desc_base = MT_DMA1_T19_RING_BASE,
++	 .hw_int_mask = MT_INT_DMA1_T19_DONE,
++	 .ring_size = 2048,
++	 .ring_attr = HIF_TX_DATA,
++	 .ring_info = "band1 TXD"
++	},
++	{
++	 .hw_desc_base = MT_DMA1_T16_RING_BASE,
++	 .hw_int_mask = MT_INT_DMA1_T16_DONE,
++	 .ring_size = 128,
++	 .ring_attr = HIF_TX_FWDL,
++	 .ring_info = "FWDL"
++	},
++	{
++	 .hw_desc_base = MT_DMA1_T17_RING_BASE,
++	 .hw_int_mask = MT_INT_DMA1_T17_DONE,
++	 .ring_size = 256,
++	 .ring_attr = HIF_TX_CMD_WM,
++	 .ring_info = "cmd to WM"
++	},
++	{
++	 .hw_desc_base = MT_DMA1_T20_RING_BASE,
++	 .hw_int_mask = MT_INT_DMA1_T20_DONE,
++	 .ring_size = 256,
++	 .ring_attr = HIF_TX_CMD,
++	 .ring_info = "cmd to WA"
++	}
++};
++
++const struct hif_pci_rx_ring_desc rx_ring_layout[] = {
++	{
++	 .hw_desc_base = MT_DMA0_R0_RING_BASE,
++	 .hw_int_mask = MT_INT_DMA0_R0_DONE,
++	 .ring_size = 1536,
++	 .ring_attr = HIF_RX_DATA,
++	 .ring_info = "band0 RX data"
++	},
++	{
++	 .hw_desc_base = MT_DMA0_R1_RING_BASE,
++	 .hw_int_mask = MT_INT_DMA0_R1_DONE,
++	 .ring_size = 1536,
++	 .ring_attr = HIF_RX_DATA,
++	 .ring_info = "band1 RX data"
++	},
++	{
++	 .hw_desc_base = MT_DMA1_R0_RING_BASE,
++	 .hw_int_mask = MT_INT_DMA1_R0_DONE,
++	 .ring_size = 512,
++	 .ring_attr = HIF_RX_EVENT,
++	 .ring_info = "event from WM"
++	},
++	{
++	 .hw_desc_base = MT_DMA1_R1_RING_BASE,
++	 .hw_int_mask = MT_INT_DMA1_R1_DONE,
++	 .ring_size = 1024,
++	 .ring_attr = HIF_RX_EVENT,
++	 .ring_info = "event from WA band0"
++	},
++	{
++	 .hw_desc_base = MT_DMA1_R2_RING_BASE,
++	 .hw_int_mask = MT_INT_DMA1_R2_DONE,
++	 .ring_size = 512,
++	 .ring_attr = HIF_RX_EVENT,
++	 .ring_info = "event from WA band1"
++	}
++};
++
++/* pleinfo related CRs. */
++#define WF_PLE_TOP_BASE                                        0x820C0000
++
++#define WF_PLE_TOP_PBUF_CTRL_ADDR                              (WF_PLE_TOP_BASE + 0x14) // 0014
++#define WF_PLE_TOP_PBUF_CTRL_PAGE_SIZE_CFG_MASK                0x80000000                // PAGE_SIZE_CFG[31]
++#define WF_PLE_TOP_PBUF_CTRL_PAGE_SIZE_CFG_SHFT                31
++#define WF_PLE_TOP_PBUF_CTRL_PBUF_OFFSET_MASK                  0x03FE0000                // PBUF_OFFSET[25..17]
++#define WF_PLE_TOP_PBUF_CTRL_PBUF_OFFSET_SHFT                  17
++#define WF_PLE_TOP_PBUF_CTRL_TOTAL_PAGE_NUM_MASK               0x00000FFF                // TOTAL_PAGE_NUM[11..0]
++#define WF_PLE_TOP_PBUF_CTRL_TOTAL_PAGE_NUM_SHFT               0
++#define WF_PLE_TOP_QUEUE_EMPTY_ADDR                            (WF_PLE_TOP_BASE + 0xB0) // 00B0
++#define WF_PLE_TOP_QUEUE_EMPTY_ALL_AC_EMPTY_MASK               0x01000000                // ALL_AC_EMPTY[24]
++#define WF_PLE_TOP_FREEPG_CNT_ADDR                             (WF_PLE_TOP_BASE + 0x100) // 0100
++#define WF_PLE_TOP_FREEPG_CNT_FFA_CNT_MASK                     0x0FFF0000                // FFA_CNT[27..16]
++#define WF_PLE_TOP_FREEPG_CNT_FFA_CNT_SHFT                     16
++#define WF_PLE_TOP_FREEPG_CNT_FREEPG_CNT_MASK                  0x00000FFF                // FREEPG_CNT[11..0]
++#define WF_PLE_TOP_FREEPG_CNT_FREEPG_CNT_SHFT                  0
++#define WF_PLE_TOP_FREEPG_HEAD_TAIL_ADDR                       (WF_PLE_TOP_BASE + 0x104) // 0104
++#define WF_PLE_TOP_FREEPG_HEAD_TAIL_FREEPG_TAIL_MASK           0x0FFF0000                // FREEPG_TAIL[27..16]
++#define WF_PLE_TOP_FREEPG_HEAD_TAIL_FREEPG_TAIL_SHFT           16
++#define WF_PLE_TOP_FREEPG_HEAD_TAIL_FREEPG_HEAD_MASK           0x00000FFF                // FREEPG_HEAD[11..0]
++#define WF_PLE_TOP_FREEPG_HEAD_TAIL_FREEPG_HEAD_SHFT           0
++#define WF_PLE_TOP_PG_HIF_GROUP_ADDR                           (WF_PLE_TOP_BASE + 0x110) // 0110
++#define WF_PLE_TOP_PG_HIF_GROUP_HIF_MAX_QUOTA_MASK             0x0FFF0000                // HIF_MAX_QUOTA[27..16]
++#define WF_PLE_TOP_PG_HIF_GROUP_HIF_MAX_QUOTA_SHFT             16
++#define WF_PLE_TOP_PG_HIF_GROUP_HIF_MIN_QUOTA_MASK             0x00000FFF                // HIF_MIN_QUOTA[11..0]
++#define WF_PLE_TOP_PG_HIF_GROUP_HIF_MIN_QUOTA_SHFT             0
++#define WF_PLE_TOP_HIF_PG_INFO_ADDR                            (WF_PLE_TOP_BASE + 0x114) // 0114
++#define WF_PLE_TOP_HIF_PG_INFO_HIF_SRC_CNT_MASK                0x0FFF0000                // HIF_SRC_CNT[27..16]
++#define WF_PLE_TOP_HIF_PG_INFO_HIF_SRC_CNT_SHFT                16
++#define WF_PLE_TOP_HIF_PG_INFO_HIF_RSV_CNT_MASK                0x00000FFF                // HIF_RSV_CNT[11..0]
++#define WF_PLE_TOP_HIF_PG_INFO_HIF_RSV_CNT_SHFT                0
++#define WF_PLE_TOP_PG_HIF_TXCMD_GROUP_ADDR                     (WF_PLE_TOP_BASE + 0x120) // 0120
++#define WF_PLE_TOP_PG_HIF_TXCMD_GROUP_HIF_TXCMD_MAX_QUOTA_MASK 0x0FFF0000                // HIF_TXCMD_MAX_QUOTA[27..16]
++#define WF_PLE_TOP_PG_HIF_TXCMD_GROUP_HIF_TXCMD_MAX_QUOTA_SHFT 16
++#define WF_PLE_TOP_PG_HIF_TXCMD_GROUP_HIF_TXCMD_MIN_QUOTA_MASK 0x00000FFF                // HIF_TXCMD_MIN_QUOTA[11..0]
++#define WF_PLE_TOP_PG_HIF_TXCMD_GROUP_HIF_TXCMD_MIN_QUOTA_SHFT 0
++#define WF_PLE_TOP_HIF_TXCMD_PG_INFO_ADDR                      (WF_PLE_TOP_BASE + 0x124) // 0124
++#define WF_PLE_TOP_HIF_TXCMD_PG_INFO_HIF_TXCMD_SRC_CNT_MASK    0x0FFF0000                // HIF_TXCMD_SRC_CNT[27..16]
++#define WF_PLE_TOP_HIF_TXCMD_PG_INFO_HIF_TXCMD_SRC_CNT_SHFT    16
++#define WF_PLE_TOP_HIF_TXCMD_PG_INFO_HIF_TXCMD_RSV_CNT_MASK    0x00000FFF                // HIF_TXCMD_RSV_CNT[11..0]
++#define WF_PLE_TOP_HIF_TXCMD_PG_INFO_HIF_TXCMD_RSV_CNT_SHFT    0
++#define WF_PLE_TOP_PG_CPU_GROUP_ADDR                           (WF_PLE_TOP_BASE + 0x150) // 0150
++#define WF_PLE_TOP_PG_CPU_GROUP_CPU_MAX_QUOTA_MASK             0x0FFF0000                // CPU_MAX_QUOTA[27..16]
++#define WF_PLE_TOP_PG_CPU_GROUP_CPU_MAX_QUOTA_SHFT             16
++#define WF_PLE_TOP_PG_CPU_GROUP_CPU_MIN_QUOTA_MASK             0x00000FFF                // CPU_MIN_QUOTA[11..0]
++#define WF_PLE_TOP_PG_CPU_GROUP_CPU_MIN_QUOTA_SHFT             0
++#define WF_PLE_TOP_CPU_PG_INFO_ADDR                            (WF_PLE_TOP_BASE + 0x154) // 0154
++#define WF_PLE_TOP_CPU_PG_INFO_CPU_SRC_CNT_MASK                0x0FFF0000                // CPU_SRC_CNT[27..16]
++#define WF_PLE_TOP_CPU_PG_INFO_CPU_SRC_CNT_SHFT                16
++#define WF_PLE_TOP_CPU_PG_INFO_CPU_RSV_CNT_MASK                0x00000FFF                // CPU_RSV_CNT[11..0]
++#define WF_PLE_TOP_CPU_PG_INFO_CPU_RSV_CNT_SHFT                0
++#define WF_PLE_TOP_FL_QUE_CTRL_0_ADDR                          (WF_PLE_TOP_BASE + 0x1B0) // 01B0
++#define WF_PLE_TOP_FL_QUE_CTRL_0_EXECUTE_MASK                  0x80000000                // EXECUTE[31]
++#define WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_QID_MASK                0x7F000000                // Q_BUF_QID[30..24]
++#define WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_QID_SHFT                24
++#define WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_PID_MASK                0x00000C00                // Q_BUF_PID[11..10]
++#define WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_PID_SHFT                10
++#define WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_WLANID_SHFT             0
++#define WF_PLE_TOP_FL_QUE_CTRL_1_ADDR                          (WF_PLE_TOP_BASE + 0x1B4) // 01B4
++#define WF_PLE_TOP_FL_QUE_CTRL_2_ADDR                          (WF_PLE_TOP_BASE + 0x1B8) // 01B8
++#define WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_MASK           0x0FFF0000                // QUEUE_TAIL_FID[27..16]
++#define WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_SHFT           16
++#define WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_MASK           0x00000FFF                // QUEUE_HEAD_FID[11..0]
++#define WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_SHFT           0
++#define WF_PLE_TOP_FL_QUE_CTRL_3_ADDR                          (WF_PLE_TOP_BASE + 0x1BC) // 01BC
++#define WF_PLE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_MASK            0x00000FFF                // QUEUE_PKT_NUM[11..0]
++#define WF_PLE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_SHFT            0
++#define WF_PLE_TOP_NATIVE_TXCMD_QUEUE_EMPTY_ADDR               (WF_PLE_TOP_BASE + 0x22c) // 022C
++#define WF_PLE_TOP_TXCMD_QUEUE_EMPTY_ADDR                      (WF_PLE_TOP_BASE + 0x230) // 0230
++#define WF_PLE_TOP_STATION_PAUSE0_ADDR                         (WF_PLE_TOP_BASE + 0x400) // 0400
++#define WF_PLE_TOP_STATION_PAUSE1_ADDR                         (WF_PLE_TOP_BASE + 0x404) // 0404
++#define WF_PLE_TOP_STATION_PAUSE2_ADDR                         (WF_PLE_TOP_BASE + 0x408) // 0408
++#define WF_PLE_TOP_STATION_PAUSE3_ADDR                         (WF_PLE_TOP_BASE + 0x40c) // 040C
++#define WF_PLE_TOP_STATION_PAUSE4_ADDR                         (WF_PLE_TOP_BASE + 0x410) // 0410
++#define WF_PLE_TOP_STATION_PAUSE5_ADDR                         (WF_PLE_TOP_BASE + 0x414) // 0414
++#define WF_PLE_TOP_STATION_PAUSE6_ADDR                         (WF_PLE_TOP_BASE + 0x418) // 0418
++#define WF_PLE_TOP_STATION_PAUSE7_ADDR                         (WF_PLE_TOP_BASE + 0x41c) // 041C
++#define WF_PLE_TOP_STATION_PAUSE8_ADDR                         (WF_PLE_TOP_BASE + 0x420) // 0420
++#define WF_PLE_TOP_DIS_STA_MAP0_ADDR                           (WF_PLE_TOP_BASE + 0x440) // 0440
++#define WF_PLE_TOP_DIS_STA_MAP1_ADDR                           (WF_PLE_TOP_BASE + 0x444) // 0444
++#define WF_PLE_TOP_DIS_STA_MAP2_ADDR                           (WF_PLE_TOP_BASE + 0x448) // 0448
++#define WF_PLE_TOP_DIS_STA_MAP3_ADDR                           (WF_PLE_TOP_BASE + 0x44c) // 044C
++#define WF_PLE_TOP_DIS_STA_MAP4_ADDR                           (WF_PLE_TOP_BASE + 0x450) // 0450
++#define WF_PLE_TOP_DIS_STA_MAP5_ADDR                           (WF_PLE_TOP_BASE + 0x454) // 0454
++#define WF_PLE_TOP_DIS_STA_MAP6_ADDR                           (WF_PLE_TOP_BASE + 0x458) // 0458
++#define WF_PLE_TOP_DIS_STA_MAP7_ADDR                           (WF_PLE_TOP_BASE + 0x45c) // 045C
++#define WF_PLE_TOP_DIS_STA_MAP8_ADDR                           (WF_PLE_TOP_BASE + 0x460) // 0460
++#define WF_PLE_TOP_AC0_QUEUE_EMPTY0_ADDR                       (WF_PLE_TOP_BASE + 0x500) // 0500
++#define WF_PLE_TOP_AC0_QUEUE_EMPTY1_ADDR                       (WF_PLE_TOP_BASE + 0x504) // 0504
++#define WF_PLE_TOP_AC0_QUEUE_EMPTY2_ADDR                       (WF_PLE_TOP_BASE + 0x508) // 0508
++#define WF_PLE_TOP_AC0_QUEUE_EMPTY3_ADDR                       (WF_PLE_TOP_BASE + 0x50c) // 050C
++#define WF_PLE_TOP_AC0_QUEUE_EMPTY4_ADDR                       (WF_PLE_TOP_BASE + 0x510) // 0510
++#define WF_PLE_TOP_AC0_QUEUE_EMPTY5_ADDR                       (WF_PLE_TOP_BASE + 0x514) // 0514
++#define WF_PLE_TOP_AC0_QUEUE_EMPTY6_ADDR                       (WF_PLE_TOP_BASE + 0x518) // 0518
++#define WF_PLE_TOP_AC0_QUEUE_EMPTY7_ADDR                       (WF_PLE_TOP_BASE + 0x51c) // 051C
++#define WF_PLE_TOP_AC0_QUEUE_EMPTY8_ADDR                       (WF_PLE_TOP_BASE + 0x520) // 0520
++#define WF_PLE_TOP_AC1_QUEUE_EMPTY0_ADDR                       (WF_PLE_TOP_BASE + 0x540) // 0540
++#define WF_PLE_TOP_AC1_QUEUE_EMPTY1_ADDR                       (WF_PLE_TOP_BASE + 0x544) // 0544
++#define WF_PLE_TOP_AC1_QUEUE_EMPTY2_ADDR                       (WF_PLE_TOP_BASE + 0x548) // 0548
++#define WF_PLE_TOP_AC1_QUEUE_EMPTY3_ADDR                       (WF_PLE_TOP_BASE + 0x54c) // 054C
++#define WF_PLE_TOP_AC1_QUEUE_EMPTY4_ADDR                       (WF_PLE_TOP_BASE + 0x550) // 0550
++#define WF_PLE_TOP_AC1_QUEUE_EMPTY5_ADDR                       (WF_PLE_TOP_BASE + 0x554) // 0554
++#define WF_PLE_TOP_AC1_QUEUE_EMPTY6_ADDR                       (WF_PLE_TOP_BASE + 0x558) // 0558
++#define WF_PLE_TOP_AC1_QUEUE_EMPTY7_ADDR                       (WF_PLE_TOP_BASE + 0x55c) // 055C
++#define WF_PLE_TOP_AC1_QUEUE_EMPTY8_ADDR                       (WF_PLE_TOP_BASE + 0x560) // 0560
++#define WF_PLE_TOP_AC2_QUEUE_EMPTY0_ADDR                       (WF_PLE_TOP_BASE + 0x580) // 0580
++#define WF_PLE_TOP_AC2_QUEUE_EMPTY1_ADDR                       (WF_PLE_TOP_BASE + 0x584) // 0584
++#define WF_PLE_TOP_AC2_QUEUE_EMPTY2_ADDR                       (WF_PLE_TOP_BASE + 0x588) // 0588
++#define WF_PLE_TOP_AC2_QUEUE_EMPTY3_ADDR                       (WF_PLE_TOP_BASE + 0x58c) // 058C
++#define WF_PLE_TOP_AC2_QUEUE_EMPTY4_ADDR                       (WF_PLE_TOP_BASE + 0x590) // 0590
++#define WF_PLE_TOP_AC2_QUEUE_EMPTY5_ADDR                       (WF_PLE_TOP_BASE + 0x594) // 0594
++#define WF_PLE_TOP_AC2_QUEUE_EMPTY6_ADDR                       (WF_PLE_TOP_BASE + 0x598) // 0598
++#define WF_PLE_TOP_AC2_QUEUE_EMPTY7_ADDR                       (WF_PLE_TOP_BASE + 0x59c) // 059C
++#define WF_PLE_TOP_AC2_QUEUE_EMPTY8_ADDR                       (WF_PLE_TOP_BASE + 0x5a0) // 05A0
++#define WF_PLE_TOP_AC3_QUEUE_EMPTY0_ADDR                       (WF_PLE_TOP_BASE + 0x5c0) // 05C0
++#define WF_PLE_TOP_AC3_QUEUE_EMPTY1_ADDR                       (WF_PLE_TOP_BASE + 0x5c4) // 05C4
++#define WF_PLE_TOP_AC3_QUEUE_EMPTY2_ADDR                       (WF_PLE_TOP_BASE + 0x5c8) // 05C8
++#define WF_PLE_TOP_AC3_QUEUE_EMPTY3_ADDR                       (WF_PLE_TOP_BASE + 0x5cc) // 05CC
++#define WF_PLE_TOP_AC3_QUEUE_EMPTY4_ADDR                       (WF_PLE_TOP_BASE + 0x5d0) // 05D0
++#define WF_PLE_TOP_AC3_QUEUE_EMPTY5_ADDR                       (WF_PLE_TOP_BASE + 0x5d4) // 05D4
++#define WF_PLE_TOP_AC3_QUEUE_EMPTY6_ADDR                       (WF_PLE_TOP_BASE + 0x5d8) // 05D8
++#define WF_PLE_TOP_AC3_QUEUE_EMPTY7_ADDR                       (WF_PLE_TOP_BASE + 0x5dc) // 05DC
++#define WF_PLE_TOP_AC3_QUEUE_EMPTY8_ADDR                       (WF_PLE_TOP_BASE + 0x5e0) // 05E0
++
++/* mibinfo related CRs. */
++#define BN0_WF_MIB_TOP_BASE                                    0x820ed000
++#define BN1_WF_MIB_TOP_BASE                                    0x820fd000
++
++#define BN0_WF_MIB_TOP_M0SCR0_ADDR                             (BN0_WF_MIB_TOP_BASE + 0x00) // D000
++#define BN0_WF_MIB_TOP_M0PBSCR_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x04) // D004
++#define BN0_WF_MIB_TOP_M0SDR0_ADDR                             (BN0_WF_MIB_TOP_BASE + 0x10) // D010
++#define BN0_WF_MIB_TOP_M0SDR0_BEACONTXCOUNT_MASK               0x0000FFFF                // BEACONTXCOUNT[15..0]
++#define BN0_WF_MIB_TOP_M0SDR3_ADDR                             (BN0_WF_MIB_TOP_BASE + 0x14) // D014
++#define BN0_WF_MIB_TOP_M0SDR3_RX_FCS_ERROR_COUNT_MASK          0x0000FFFF                // RX_FCS_ERROR_COUNT[15..0]
++#define BN0_WF_MIB_TOP_M0SDR4_ADDR                             (BN0_WF_MIB_TOP_BASE + 0x18) // D018
++#define BN0_WF_MIB_TOP_M0SDR4_RX_FIFO_FULL_COUNT_MASK          0x0000FFFF                // RX_FIFO_FULL_COUNT[15..0]
++#define BN0_WF_MIB_TOP_M0SDR5_ADDR                             (BN0_WF_MIB_TOP_BASE + 0x1C) // D01C
++#define BN0_WF_MIB_TOP_M0SDR5_RX_MPDU_COUNT_MASK               0xFFFFFFFF                // RX_MPDU_COUNT[31..0]
++#define BN0_WF_MIB_TOP_M0SDR6_ADDR                             (BN0_WF_MIB_TOP_BASE + 0x20) // D020
++#define BN0_WF_MIB_TOP_M0SDR6_CHANNEL_IDLE_COUNT_MASK          0x0000FFFF                // CHANNEL_IDLE_COUNT[15..0]
++#define BN0_WF_MIB_TOP_M0SDR7_ADDR                             (BN0_WF_MIB_TOP_BASE + 0x24) // D024
++#define BN0_WF_MIB_TOP_M0SDR7_VEC_MISS_COUNT_MASK              0x0000FFFF                // VEC_MISS_COUNT[15..0]
++#define BN0_WF_MIB_TOP_M0SDR8_ADDR                             (BN0_WF_MIB_TOP_BASE + 0x28) // D028
++#define BN0_WF_MIB_TOP_M0SDR8_DELIMITER_FAIL_COUNT_MASK        0x0000FFFF                // DELIMITER_FAIL_COUNT[15..0]
++#define BN0_WF_MIB_TOP_M0SDR9_ADDR                             (BN0_WF_MIB_TOP_BASE + 0x2C) // D02C
++#define BN0_WF_MIB_TOP_M0SDR9_CCA_NAV_TX_TIME_MASK             0x00FFFFFF                // CCA_NAV_TX_TIME[23..0]
++#define BN0_WF_MIB_TOP_M0SDR10_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x30) // D030
++#define BN0_WF_MIB_TOP_M0SDR10_RX_MDRDY_COUNT_MASK             0x03FFFFFF                // RX_MDRDY_COUNT[25..0]
++#define BN0_WF_MIB_TOP_M0SDR11_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x34) // D034
++#define BN0_WF_MIB_TOP_M0SDR11_RX_LEN_MISMATCH_MASK            0x0000FFFF                // RX_LEN_MISMATCH[15..0]
++#define BN0_WF_MIB_TOP_M0SDR12_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x38) // D038
++#define BN0_WF_MIB_TOP_M0SDR14_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x40) // D040
++#define BN0_WF_MIB_TOP_M0SDR14_AMPDU_MPDU_COUNT_MASK           0x00FFFFFF                // AMPDU_MPDU_COUNT[23..0]
++#define BN0_WF_MIB_TOP_M0SDR15_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x44) // D044
++#define BN0_WF_MIB_TOP_M0SDR15_AMPDU_ACKED_COUNT_MASK          0x00FFFFFF                // AMPDU_ACKED_COUNT[23..0]
++#define BN0_WF_MIB_TOP_M0SDR16_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x48) // D048
++#define BN0_WF_MIB_TOP_M0SDR16_P_CCA_TIME_MASK                 0x00FFFFFF                // P_CCA_TIME[23..0]
++#define BN0_WF_MIB_TOP_M0SDR17_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x4C) // D04C
++#define BN0_WF_MIB_TOP_M0SDR17_S_CCA_TIME_MASK                 0x00FFFFFF                // S_CCA_TIME[23..0]
++#define BN0_WF_MIB_TOP_M0SDR18_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x50) // D050
++#define BN0_WF_MIB_TOP_M0SDR18_P_ED_TIME_MASK                  0x00FFFFFF                // P_ED_TIME[23..0]
++#define BN0_WF_MIB_TOP_M0SDR19_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x54) // D054
++#define BN0_WF_MIB_TOP_M0SDR19_CCK_MDRDY_TIME_MASK             0x00FFFFFF                // CCK_MDRDY_TIME[23..0]
++#define BN0_WF_MIB_TOP_M0SDR20_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x58) // D058
++#define BN0_WF_MIB_TOP_M0SDR20_OFDM_LG_MIXED_VHT_MDRDY_TIME_MASK 0x00FFFFFF                // OFDM_LG_MIXED_VHT_MDRDY_TIME[23..0]
++#define BN0_WF_MIB_TOP_M0SDR21_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x5C) // D05C
++#define BN0_WF_MIB_TOP_M0SDR21_OFDM_GREEN_MDRDY_TIME_MASK      0x00FFFFFF                // OFDM_GREEN_MDRDY_TIME[23..0]
++#define BN0_WF_MIB_TOP_M0SDR22_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x60) // D060
++#define BN0_WF_MIB_TOP_M0SDR23_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x64) // D064
++#define BN0_WF_MIB_TOP_M0SDR34_ADDR                            (BN0_WF_MIB_TOP_BASE + 0x90) // D090
++#define BN0_WF_MIB_TOP_M0SDR34_MUBF_TX_COUNT_MASK              0x0000FFFF                // MUBF_TX_COUNT[15..0]
++#define BN0_WF_MIB_TOP_M0DR0_ADDR                              (BN0_WF_MIB_TOP_BASE + 0xA0) // D0A0
++#define BN0_WF_MIB_TOP_M0DR0_TX_40MHZ_CNT_MASK                 0xFFFF0000                // TX_40MHZ_CNT[31..16]
++#define BN0_WF_MIB_TOP_M0DR0_TX_40MHZ_CNT_SHFT                 16
++#define BN0_WF_MIB_TOP_M0DR0_TX_20MHZ_CNT_MASK                 0x0000FFFF                // TX_20MHZ_CNT[15..0]
++#define BN0_WF_MIB_TOP_M0DR0_TX_20MHZ_CNT_SHFT                 0
++#define BN0_WF_MIB_TOP_M0DR1_ADDR                              (BN0_WF_MIB_TOP_BASE + 0xA4) // D0A4
++#define BN0_WF_MIB_TOP_M0DR1_TX_160MHZ_CNT_MASK                0xFFFF0000                // TX_160MHZ_CNT[31..16]
++#define BN0_WF_MIB_TOP_M0DR1_TX_160MHZ_CNT_SHFT                16
++#define BN0_WF_MIB_TOP_M0DR1_TX_80MHZ_CNT_MASK                 0x0000FFFF                // TX_80MHZ_CNT[15..0]
++#define BN0_WF_MIB_TOP_M0DR1_TX_80MHZ_CNT_SHFT                 0
++#define BN0_WF_MIB_TOP_M0DR6_ADDR                              (BN0_WF_MIB_TOP_BASE + 0xB8) // D0B8
++#define BN0_WF_MIB_TOP_M0DR6_TX_DDLMT_RNG2_CNT_MASK            0xFFFF0000                // TX_DDLMT_RNG2_CNT[31..16]
++#define BN0_WF_MIB_TOP_M0DR6_TX_DDLMT_RNG2_CNT_SHFT            16
++#define BN0_WF_MIB_TOP_M0DR6_TX_DDLMT_RNG1_CNT_MASK            0x0000FFFF                // TX_DDLMT_RNG1_CNT[15..0]
++#define BN0_WF_MIB_TOP_M0DR6_TX_DDLMT_RNG1_CNT_SHFT            0
++#define BN0_WF_MIB_TOP_M0DR7_ADDR                              (BN0_WF_MIB_TOP_BASE + 0xBC) // D0BC
++#define BN0_WF_MIB_TOP_M0DR7_TX_DDLMT_RNG4_CNT_MASK            0xFFFF0000                // TX_DDLMT_RNG4_CNT[31..16]
++#define BN0_WF_MIB_TOP_M0DR7_TX_DDLMT_RNG4_CNT_SHFT            16
++#define BN0_WF_MIB_TOP_M0DR7_TX_DDLMT_RNG3_CNT_MASK            0x0000FFFF                // TX_DDLMT_RNG3_CNT[15..0]
++#define BN0_WF_MIB_TOP_M0DR7_TX_DDLMT_RNG3_CNT_SHFT            0
++#define BN0_WF_MIB_TOP_M0DR8_ADDR                              (BN0_WF_MIB_TOP_BASE + 0XC0) // D0C0
++#define BN0_WF_MIB_TOP_M0DR9_ADDR                              (BN0_WF_MIB_TOP_BASE + 0XC4) // D0C4
++#define BN0_WF_MIB_TOP_M0DR10_ADDR                             (BN0_WF_MIB_TOP_BASE + 0XC8) // D0C8
++#define BN0_WF_MIB_TOP_M0DR10_MU_FAIL_PPDU_CNT_MASK            0x0000FFFF                // MU_FAIL_PPDU_CNT[15..0]
++#define BN0_WF_MIB_TOP_M0DR11_ADDR                             (BN0_WF_MIB_TOP_BASE + 0XCC) // D0CC
++#define BN0_WF_MIB_TOP_M0B0SDR0_ADDR                           (BN0_WF_MIB_TOP_BASE + 0x100) // D100
++#define BN0_WF_MIB_TOP_M0B0SDR0_RTSRETRYCOUNT_MASK             0xFFFF0000                // RTSRETRYCOUNT[31..16]
++#define BN0_WF_MIB_TOP_M0B0SDR0_RTSRETRYCOUNT_SHFT             16
++#define BN0_WF_MIB_TOP_M0B0SDR0_RTSTXCOUNT_MASK                0x0000FFFF                // RTSTXCOUNT[15..0]
++#define BN0_WF_MIB_TOP_M0B0SDR0_RTSTXCOUNT_SHFT                0
++#define BN0_WF_MIB_TOP_M0B0SDR1_ADDR                           (BN0_WF_MIB_TOP_BASE + 0x104) // D104
++#define BN0_WF_MIB_TOP_M0B0SDR1_ACKFAILCOUNT_MASK              0xFFFF0000                // ACKFAILCOUNT[31..16]
++#define BN0_WF_MIB_TOP_M0B0SDR1_ACKFAILCOUNT_SHFT              16
++#define BN0_WF_MIB_TOP_M0B0SDR1_BAMISSCOUNT_MASK               0x0000FFFF                // BAMISSCOUNT[15..0]
++#define BN0_WF_MIB_TOP_M0B0SDR1_BAMISSCOUNT_SHFT               0
++#define BN0_WF_MIB_TOP_M0B0SDR2_ADDR                           (BN0_WF_MIB_TOP_BASE + 0x108) // D108
++#define BN0_WF_MIB_TOP_M0B0SDR2_FRAMERETRY2COUNT_MASK          0xFFFF0000                // FRAMERETRY2COUNT[31..16]
++#define BN0_WF_MIB_TOP_M0B0SDR2_FRAMERETRY2COUNT_SHFT          16
++#define BN0_WF_MIB_TOP_M0B0SDR2_FRAMERETRYCOUNT_MASK           0x0000FFFF                // FRAMERETRYCOUNT[15..0]
++#define BN0_WF_MIB_TOP_M0B0SDR2_FRAMERETRYCOUNT_SHFT           0
++#define BN0_WF_MIB_TOP_M0B0SDR3_ADDR                           (BN0_WF_MIB_TOP_BASE + 0x10C) // D10C
++#define BN0_WF_MIB_TOP_M0B0SDR3_FRAMERETRY3COUNT_MASK          0x0000FFFF                // FRAMERETRY3COUNT[15..0]
++#define BN0_WF_MIB_TOP_M0B0SDR3_FRAMERETRY3COUNT_SHFT          0
++#define BN0_WF_MIB_TOP_M0DR12_ADDR                             (BN0_WF_MIB_TOP_BASE + 0x160) // D160
++#define BN0_WF_MIB_TOP_M0DR12_TX_DDLMT_RNG0_CNT_MASK           0x0000FFFF                // TX_DDLMT_RNG0_CNT[15..0]
++
++#define WF_WTBLON_TOP_BASE                                     0x820D4000
++#define WF_WTBLON_TOP_B0BTCRn_ADDR                             (WF_WTBLON_TOP_BASE + 0x1000) // 5000
++#define WF_WTBLON_TOP_B0BTBCRn_ADDR                            (WF_WTBLON_TOP_BASE + 0x1010) // 5010
++#define WF_WTBLON_TOP_B0BRCRn_ADDR                             (WF_WTBLON_TOP_BASE + 0x1020) // 5020
++#define WF_WTBLON_TOP_B0BRBCRn_ADDR                            (WF_WTBLON_TOP_BASE + 0x1030) // 5030
++#define WF_WTBLON_TOP_B0BTDCRn_ADDR                            (WF_WTBLON_TOP_BASE + 0x1040) // 5040
++#define WF_WTBLON_TOP_B0BRDCRn_ADDR                            (WF_WTBLON_TOP_BASE + 0x1050) // 5050
++#define WF_WTBLON_TOP_B0MBTCRn_ADDR                            (WF_WTBLON_TOP_BASE + 0x1100) // 5100
++#define WF_WTBLON_TOP_B0MBTBCRn_ADDR                           (WF_WTBLON_TOP_BASE + 0x1140) // 5140
++#define WF_WTBLON_TOP_B0MBRCRn_ADDR                            (WF_WTBLON_TOP_BASE + 0x1180) // 5180
++#define WF_WTBLON_TOP_B0MBRBCRn_ADDR                           (WF_WTBLON_TOP_BASE + 0x11C0) // 51C0
++
++#define WF_WTBLON_TOP_B1BTCRn_ADDR                             (WF_WTBLON_TOP_BASE + 0x1800) // 5800
++
++#endif
++#endif
+Index: mt76-2022-02-15-c67df0d3/mt7915/mtk_debugfs.c
+===================================================================
+--- /dev/null
++++ mt76-2022-02-15-c67df0d3/mt7915/mtk_debugfs.c
+@@ -0,0 +1,2097 @@
++#include<linux/inet.h>
++#include "mt7915.h"
++#include "mt7915_debug.h"
++#include "mac.h"
++#include "mcu.h"
++
++#ifdef MTK_DEBUG
++
++u32 mt7915_mac_cr_range[] = {
++	0x54000000, 0x02000, 0x1000, /* WFDMA PCIE0 MCU DMA0 */
++	0x55000000, 0x03000, 0x1000, /* WFDMA PCIE0 MCU DMA1 */
++	0x56000000, 0x04000, 0x1000, /* WFDMA reserved */
++	0x57000000, 0x05000, 0x1000, /* WFDMA MCU wrap CR */
++	0x58000000, 0x06000, 0x1000, /* WFDMA PCIE1 MCU DMA0 (MEM_DMA) */
++	0x59000000, 0x07000, 0x1000, /* WFDMA PCIE1 MCU DMA1 */
++	0x820c0000, 0x08000, 0x4000, /* WF_UMAC_TOP (PLE) */
++	0x820c8000, 0x0c000, 0x2000, /* WF_UMAC_TOP (PSE) */
++	0x820cc000, 0x0e000, 0x2000, /* WF_UMAC_TOP (PP) */
++	0x820e0000, 0x20000, 0x0400, /* WF_LMAC_TOP BN0 (WF_CFG) */
++	0x820e1000, 0x20400, 0x0200, /* WF_LMAC_TOP BN0 (WF_TRB) */
++	0x820e2000, 0x20800, 0x0400, /* WF_LMAC_TOP BN0 (WF_AGG) */
++	0x820e3000, 0x20c00, 0x0400, /* WF_LMAC_TOP BN0 (WF_ARB) */
++	0x820e4000, 0x21000, 0x0400, /* WF_LMAC_TOP BN0 (WF_TMAC) */
++	0x820e5000, 0x21400, 0x0800, /* WF_LMAC_TOP BN0 (WF_RMAC) */
++	0x820ce000, 0x21c00, 0x0200, /* WF_LMAC_TOP (WF_SEC) */
++	0x820e7000, 0x21e00, 0x0200, /* WF_LMAC_TOP BN0 (WF_DMA) */
++	0x820cf000, 0x22000, 0x1000, /* WF_LMAC_TOP (WF_PF) */
++	0x820e9000, 0x23400, 0x0200, /* WF_LMAC_TOP BN0 (WF_WTBLOFF) */
++	0x820ea000, 0x24000, 0x0200, /* WF_LMAC_TOP BN0 (WF_ETBF) */
++	0x820eb000, 0x24200, 0x0400, /* WF_LMAC_TOP BN0 (WF_LPON) */
++	0x820ec000, 0x24600, 0x0200, /* WF_LMAC_TOP BN0 (WF_INT) */
++	0x820ed000, 0x24800, 0x0800, /* WF_LMAC_TOP BN0 (WF_MIB) */
++	0x820ca000, 0x26000, 0x2000, /* WF_LMAC_TOP BN0 (WF_MUCOP) */
++	0x820d0000, 0x30000, 0x10000, /* WF_LMAC_TOP (WF_WTBLON) */
++	0x40000000, 0x70000, 0x10000, /* WF_UMAC_SYSRAM */
++	0x00400000, 0x80000, 0x10000, /* WF_MCU_SYSRAM */
++	0x00410000, 0x90000, 0x10000, /* WF_MCU_SYSRAM (configure register) */
++	0x820f0000, 0xa0000, 0x0400, /* WF_LMAC_TOP BN1 (WF_CFG) */
++	0x820f1000, 0xa0600, 0x0200, /* WF_LMAC_TOP BN1 (WF_TRB) */
++	0x820f2000, 0xa0800, 0x0400, /* WF_LMAC_TOP BN1 (WF_AGG) */
++	0x820f3000, 0xa0c00, 0x0400, /* WF_LMAC_TOP BN1 (WF_ARB) */
++	0x820f4000, 0xa1000, 0x0400, /* WF_LMAC_TOP BN1 (WF_TMAC) */
++	0x820f5000, 0xa1400, 0x0800, /* WF_LMAC_TOP BN1 (WF_RMAC) */
++	0x820f7000, 0xa1e00, 0x0200, /* WF_LMAC_TOP BN1 (WF_DMA) */
++	0x820f9000, 0xa3400, 0x0200, /* WF_LMAC_TOP BN1 (WF_WTBLOFF) */
++	0x820fa000, 0xa4000, 0x0200, /* WF_LMAC_TOP BN1 (WF_ETBF) */
++	0x820fb000, 0xa4200, 0x0400, /* WF_LMAC_TOP BN1 (WF_LPON) */
++	0x820fc000, 0xa4600, 0x0200, /* WF_LMAC_TOP BN1 (WF_INT) */
++	0x820fd000, 0xa4800, 0x0800, /* WF_LMAC_TOP BN1 (WF_MIB) */
++	0x820cc000, 0xa5000, 0x2000, /* WF_LMAC_TOP BN1 (WF_MUCOP) */
++	0x820c4000, 0xa8000, 0x4000, /* WF_LMAC_TOP BN1 (WF_MUCOP) */
++	0x820b0000, 0xae000, 0x1000, /* [APB2] WFSYS_ON */
++	0x80020000, 0xb0000, 0x10000, /* WF_TOP_MISC_OFF */
++	0x81020000, 0xc0000, 0x10000, /* WF_TOP_MISC_ON */
++	0x7c020000, 0xd0000, 0x10000, /* CONN_INFRA, wfdma */
++	0x7c000000, 0xf0000, 0x10000, /* CONN_INFRA */
++
++	0x0, 0x0, 0x100000, /* fixed remap range */
++	0x0, 0x0, 0x0, /* imply end of search */
++};
++
++bool mt_mac_cr_range_mapping(struct mt7915_dev *dev, u32 *mac_addr)
++{
++	u32 mac_addr_hif = *mac_addr;
++	int idx = 0;
++	bool IsFound = false;
++	do {
++		if (mac_addr_hif >= mt7915_mac_cr_range[idx] &&
++		    mac_addr_hif < (mt7915_mac_cr_range[idx] +
++				    mt7915_mac_cr_range[idx + 2])) {
++		    mac_addr_hif -= mt7915_mac_cr_range[idx];
++		    mac_addr_hif += mt7915_mac_cr_range[idx + 1];
++		    IsFound = true;
++		    break;
++		}
++
++		idx += 3;
++	} while (mt7915_mac_cr_range[idx + 2] != 0);
++
++	*mac_addr = mac_addr_hif;
++	return IsFound;
++}
++
++#define CONN_INFRA_PHY_ADDR_START	0x18000000
++#define CONN_INFRA_PHY_ADDR_END		0x183fffff
++#define WFSYS_PHY_ADDR_START		0x18400000
++#define WFSYS_PHY_ADDR_END		0x187fffff
++#define BGFSYS_PHY_ADDR_START		0x18800000
++#define BGFSYS_PHY_ADDR_END		0x18bfffff
++#define CBTOP1_PHY_ADDR_START		0x70000000
++#define CBTOP1_PHY_ADDR_END		0x77ffffff
++#define CBTOP2_PHY_ADDR_START		0xf0000000
++#define CBTOP2_PHY_ADDR_END		0xffffffff
++
++#define CONN_INFRA_MCU_ADDR_START	0x7c000000
++#define CONN_INFRA_MCU_ADDR_END		0x7c3fffff
++#define CONN_INFRA_MCU_TO_PHY_ADDR_OFFSET	(CONN_INFRA_MCU_ADDR_START \
++						 - CONN_INFRA_PHY_ADDR_START)
++
++#define IS_CONN_INFRA_PHY_ADDR(_reg)	((_reg) >= CONN_INFRA_PHY_ADDR_START \
++					 && (_reg) <= CONN_INFRA_PHY_ADDR_END)
++#define IS_WFSYS_PHY_ADDR(_reg)		((_reg) >= WFSYS_PHY_ADDR_START \
++					 && (_reg) <= WFSYS_PHY_ADDR_END)
++#define IS_BGFSYS_PHY_ADDR(_reg)	((_reg) >= BGFSYS_PHY_ADDR_START \
++					 && (_reg) <= BGFSYS_PHY_ADDR_END)
++#define IS_CBTOP_PHY_ADDR(_reg)		(((_reg) >= CBTOP1_PHY_ADDR_START \
++					 && (_reg) <= CBTOP1_PHY_ADDR_END) \
++					 || ((_reg) >= CBTOP2_PHY_ADDR_START \
++					 && (_reg) <= CBTOP2_PHY_ADDR_END))
++#define IS_PHY_ADDR(_reg)		(IS_CONN_INFRA_PHY_ADDR(_reg) \
++					 || IS_WFSYS_PHY_ADDR(_reg) \
++					 || IS_BGFSYS_PHY_ADDR(_reg) \
++					 || IS_CBTOP_PHY_ADDR(_reg))
++
++#define IS_CONN_INFRA_MCU_ADDR(_reg)	((_reg) >= CONN_INFRA_MCU_ADDR_START \
++					 && (_reg) <= CONN_INFRA_MCU_ADDR_END)
++
++static bool pci_io_remap_is_l1_remap(u32 *reg)
++{
++	/* physical addr shall use layer 1 remap */
++	if (IS_PHY_ADDR(*reg))
++		return true;
++
++	/* mcu view addr are handled depends on domain */
++	/* CBTOP: MCU view addr equals to physical addr, already handled */
++
++	/* CONN_INFRA: covert to phyiscal addr and use layer 1 remap */
++	if (IS_CONN_INFRA_MCU_ADDR(*reg)) {
++		(*reg) -= CONN_INFRA_MCU_TO_PHY_ADDR_OFFSET;
++		return true;
++	}
++
++	/* WFSYS: shall use layer 2 remap */
++	return false;
++}
++
++#define MT_UWTBL_TOP_BASE		0xa8000
++#define MT_UWTBL_TOP(ofs)		(MT_UWTBL_TOP_BASE + (ofs))
++#define MT_UWTBL_TOP_WDUCR		MT_UWTBL_TOP(0x0)
++#define MT_UWTBL_TOP_WDUCR_TARGET	BIT(31)
++#define MT_UWTBL_TOP_WDUCR_GROUP	GENMASK(3, 0)
++
++#define LWTBL_IDX2BASE_ID		GENMASK(14, 8)
++#define LWTBL_IDX2BASE_DW		GENMASK(7, 2)
++#define LWTBL_IDX2BASE(_id, _dw)	(MT_WTBL_BASE | \
++					FIELD_PREP(LWTBL_IDX2BASE_ID, _id) | \
++					FIELD_PREP(LWTBL_IDX2BASE_DW, _dw))
++
++#define UWTBL_IDX2BASE_ID		GENMASK(12, 6)
++#define UWTBL_IDX2BASE_DW		GENMASK(5, 2)
++#define UWTBL_IDX2BASE(_id, _dw)	(MT_UWTBL_TOP_BASE | 0x2000 | \
++					FIELD_PREP(UWTBL_IDX2BASE_ID, _id) | \
++					FIELD_PREP(UWTBL_IDX2BASE_DW, _dw))
++
++#define KEYTBL_IDX2BASE_KEY		GENMASK(12, 6)
++#define KEYTBL_IDX2BASE_DW		GENMASK(5, 2)
++#define KEYTBL_IDX2BASE(_key, _dw)	(MT_UWTBL_TOP_BASE | 0x2000 | \
++					FIELD_PREP(KEYTBL_IDX2BASE_KEY, _key) | \
++					FIELD_PREP(KEYTBL_IDX2BASE_DW, _dw))
++
++enum mt7915_wtbl_type {
++	WTBL_TYPE_LMAC,		/* WTBL in LMAC */
++	WTBL_TYPE_UMAC,		/* WTBL in UMAC */
++	WTBL_TYPE_KEY,		/* Key Table */
++	MAX_NUM_WTBL_TYPE
++};
++
++static int mt7915_wtbl_read_raw(struct mt7915_dev *dev, u16 idx,
++			        enum mt7915_wtbl_type type, u16 start_dw,
++			        u16 len, void *buf)
++{
++	u32 *dest_cpy = (u32 *)buf;
++	u32 size_dw = len;
++	u32 src = 0;
++
++	if (!buf)
++		return 0xFF;
++
++	if (type == WTBL_TYPE_LMAC) {
++		mt76_wr(dev, MT_WTBLON_TOP_WDUCR,
++			FIELD_PREP(MT_WTBLON_TOP_WDUCR_GROUP, (idx >> 7)));
++		src = LWTBL_IDX2BASE(idx, start_dw);
++	} else if (type == WTBL_TYPE_UMAC) {
++		mt76_wr(dev, MT_UWTBL_TOP_WDUCR,
++			FIELD_PREP(MT_UWTBL_TOP_WDUCR_GROUP, (idx >> 7)));
++		src = UWTBL_IDX2BASE(idx, start_dw);
++	} else if (type == WTBL_TYPE_KEY) {
++		mt76_wr(dev, MT_UWTBL_TOP_WDUCR,
++			MT_UWTBL_TOP_WDUCR_TARGET |
++			FIELD_PREP(MT_UWTBL_TOP_WDUCR_GROUP, (idx >> 7)));
++		src = KEYTBL_IDX2BASE(idx, start_dw);
++	}
++
++	while (size_dw--) {
++		*dest_cpy++ = mt76_rr(dev, src);
++		src += 4;
++	};
++
++	return 0;
++}
++
++#if 0
++static int mt7915_wtbl_write_raw(struct mt7915_dev *dev, u16 idx,
++			         enum mt7915_wtbl_type type, u16 start_dw,
++			         u32 val)
++{
++	u32 addr = 0;
++
++	if (type == WTBL_TYPE_LMAC) {
++		mt76_wr(dev, MT_WTBLON_TOP_WDUCR,
++			FIELD_PREP(MT_WTBLON_TOP_WDUCR_GROUP, (idx >> 7)));
++		addr = LWTBL_IDX2BASE(idx, start_dw);
++	} else if (type == WTBL_TYPE_UMAC) {
++		mt76_wr(dev, MT_UWTBL_TOP_WDUCR,
++			FIELD_PREP(MT_UWTBL_TOP_WDUCR_GROUP, (idx >> 7)));
++		addr = UWTBL_IDX2BASE(idx, start_dw);
++	} else if (type == WTBL_TYPE_KEY) {
++		mt76_wr(dev, MT_UWTBL_TOP_WDUCR,
++			MT_UWTBL_TOP_WDUCR_TARGET |
++			FIELD_PREP(MT_UWTBL_TOP_WDUCR_GROUP, (idx >> 7)));
++		addr = KEYTBL_IDX2BASE(idx, start_dw);
++	}
++
++	mt76_wr(dev, addr, val);
++
++	return 0;
++}
++#endif
++
++static int
++mt7915_fw_debug_set(void *data, u64 val)
++{
++	struct mt7915_phy *phy = data;
++	struct mt7915_dev *dev = phy->dev;
++	u8 band_idx = phy != &dev->phy;
++
++	dev->dbg.fw_debug = val;
++
++	/* 88 is magic num enable ICS */
++	if (val == 88)
++		dev->dbg.fw_debug = 16;
++
++	/* 87 is magic num enable ICS for older FW */
++	if (val == 87)
++		dev->dbg.fw_debug = 15;
++
++	if (dev->dbg.fw_debug == 15)
++		mt7915_mcu_fw_log_2_host(dev, MCU_FW_LOG_WM, 16);
++	else
++		mt7915_mcu_fw_log_2_host(dev, MCU_FW_LOG_WM, dev->dbg.fw_debug);
++
++	if (val == 8 || val == 88 || val == 16 || val == 87 || val == 15) {
++		mt7915_mcu_fw_dbg_ctrl(dev, 62, 1);
++		mt7915_mcu_fw_dbg_ctrl(dev, 63, 1);
++		mt7915_mcu_fw_dbg_ctrl(dev, 64, 1);
++		mt7915_mcu_fw_dbg_ctrl(dev, 65, 1);
++		mt7915_mcu_fw_dbg_ctrl(dev, 66, 1);
++		mt7915_mcu_fw_dbg_ctrl(dev, 68, 1);
++	}
++
++	if (val == 88 || val == 87) {
++		switch (band_idx) {
++		case 0:
++			/* ICS report engine enable, use RXVEC page count,
++			 * ICS AGG timeout to maximum. 
++			 */
++			mt76_wr(dev, 0x21ef0, 0x1FF0000);
++
++			// ICS AGG size --> 1400b
++			mt76_wr(dev, 0x21ef4, 0x5780070);
++
++			// ICS TX enable
++			mt76_wr(dev, 0x21200, 1);
++
++			// ICS RX enable
++			mt76_wr(dev, 0x21a18, 1);
++			break;
++		case 1:
++			/* ICS report engine enable, use RXVEC page count,
++			 * ICS AGG timeout to maximum.
++			 */
++			mt76_wr(dev, 0xa1ef0, 0x1FF0000);
++
++			// ICS AGG size --> 1400b
++			mt76_wr(dev, 0xa1ef4, 0x5780070);
++
++			// ICS TX enable
++			mt76_wr(dev, 0xa1200, 1);
++
++			// ICS RX enable
++			mt76_wr(dev, 0xa1a18, 1);
++			break;
++		}
++	}
++
++	if (!val) {
++		// Stop ICS
++		switch (band_idx) {
++		case 0:
++			mt76_wr(dev, 0x21ef0, 0x0FF0000);
++			break;
++		case 1:
++			mt76_wr(dev, 0xa1ef0, 0x0FF0000);
++			break;
++		}
++	}
++
++	return 0;
++}
++
++static int
++mt7915_fw_debug_get(void *data, u64 *val)
++{
++	struct mt7915_dev *dev = data;
++
++	*val = dev->dbg.fw_debug;
++
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(fops_fw_debug, mt7915_fw_debug_get,
++			 mt7915_fw_debug_set, "%lld\n");
++
++static int
++mt7915_fw_debug_module_set(void *data, u64 module)
++{
++	struct mt7915_dev *dev = data;
++
++	dev->dbg.fw_dbg_module = module;
++	return 0;
++}
++
++static int
++mt7915_fw_debug_module_get(void *data, u64 *module)
++{
++	struct mt7915_dev *dev = data;
++
++	*module = dev->dbg.fw_dbg_module;
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(fops_fw_debug_module, mt7915_fw_debug_module_get,
++			 mt7915_fw_debug_module_set, "%lld\n");
++
++static int
++mt7915_fw_debug_level_set(void *data, u64 level)
++{
++	struct mt7915_dev *dev = data;
++
++	dev->dbg.fw_dbg_lv = level;
++	mt7915_mcu_fw_dbg_ctrl(dev, dev->dbg.fw_dbg_module, dev->dbg.fw_dbg_lv);
++	return 0;
++}
++
++static int
++mt7915_fw_debug_level_get(void *data, u64 *level)
++{
++	struct mt7915_dev *dev = data;
++
++	*level = dev->dbg.fw_dbg_lv;
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(fops_fw_debug_level, mt7915_fw_debug_level_get,
++			 mt7915_fw_debug_level_set, "%lld\n");
++
++#define MAX_TX_MODE 12
++static char *HW_TX_MODE_STR[] = {"CCK", "OFDM", "HT-Mix", "HT-GF", "VHT",
++				 "N/A", "N/A", "N/A", "HE_SU", "HE_EXT_SU",
++				 "HE_TRIG", "HE_MU", "N/A"};
++static char *HW_TX_RATE_CCK_STR[] = {"1M", "2Mlong", "5.5Mlong", "11Mlong",
++				     "N/A", "2Mshort", "5.5Mshort", "11Mshort",
++				     "N/A"};
++static char *HW_TX_RATE_OFDM_STR[] = {"6M", "9M", "12M", "18M", "24M", "36M",
++				      "48M", "54M", "N/A"};
++static char *fcap_str[] =  {"20MHz", "20/40MHz", "20/40/80MHz",
++			    "20/40/80/160/80+80MHz"};
++
++static char *hw_rate_ofdm_str(u16 ofdm_idx)
++{
++	switch (ofdm_idx) {
++	case 11: /* 6M */
++		return HW_TX_RATE_OFDM_STR[0];
++
++	case 15: /* 9M */
++		return HW_TX_RATE_OFDM_STR[1];
++
++	case 10: /* 12M */
++		return HW_TX_RATE_OFDM_STR[2];
++
++	case 14: /* 18M */
++		return HW_TX_RATE_OFDM_STR[3];
++
++	case 9: /* 24M */
++		return HW_TX_RATE_OFDM_STR[4];
++
++	case 13: /* 36M */
++		return HW_TX_RATE_OFDM_STR[5];
++
++	case 8: /* 48M */
++		return HW_TX_RATE_OFDM_STR[6];
++
++	case 12: /* 54M */
++		return HW_TX_RATE_OFDM_STR[7];
++
++	default:
++		return HW_TX_RATE_OFDM_STR[8];
++	}
++}
++
++static char *hw_rate_str(u8 mode, u16 rate_idx)
++{
++	if (mode == 0)
++		return rate_idx < 8 ? HW_TX_RATE_CCK_STR[rate_idx] : HW_TX_RATE_CCK_STR[8];
++	else if (mode == 1)
++		return hw_rate_ofdm_str(rate_idx);
++	else
++		return "MCS";
++}
++
++static void parse_rate(struct seq_file *s, u16 rate_idx, u16 txrate)
++{
++	u16 txmode, mcs, nss, stbc;
++
++	txmode = FIELD_GET(GENMASK(9, 6), txrate);
++	mcs = FIELD_GET(GENMASK(5, 0), txrate);
++	nss = FIELD_GET(GENMASK(12, 10), txrate);
++	stbc = FIELD_GET(BIT(13), txrate);
++
++	seq_printf(s, "\tRate%d(0x%x):TxMode=%d(%s), TxRate=%d(%s), Nsts=%d, STBC=%d\n",
++			rate_idx + 1, txrate,
++			txmode, (txmode < MAX_TX_MODE ? HW_TX_MODE_STR[txmode] : HW_TX_MODE_STR[MAX_TX_MODE]),
++			mcs, hw_rate_str(txmode, mcs), nss, stbc);
++}
++
++#define LWTBL_LEN_IN_DW 32
++#define UWTBL_LEN_IN_DW 8
++#define ONE_KEY_ENTRY_LEN_IN_DW 8
++static int mt7915_wtbl_read(struct seq_file *s, void *data)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u8 lwtbl[LWTBL_LEN_IN_DW*4] = {0};
++	int x;
++	u32 *addr = 0;
++	u32 dw_value = 0;
++
++	mt7915_wtbl_read_raw(dev, dev->wlan_idx, WTBL_TYPE_LMAC, 0,
++				 LWTBL_LEN_IN_DW, lwtbl);
++	seq_printf(s, "Dump WTBL info of WLAN_IDX:%d\n", dev->wlan_idx);
++	seq_printf(s, "LMAC WTBL Addr: group:0x%x=0x%x addr: 0x%lx\n",
++				MT_WTBLON_TOP_WDUCR,
++				mt76_rr(dev, MT_WTBLON_TOP_WDUCR),
++				LWTBL_IDX2BASE(dev->wlan_idx, 0));
++	for (x = 0; x < LWTBL_LEN_IN_DW; x++) {
++		seq_printf(s, "DW%02d: %02x %02x %02x %02x\n",
++					x,
++					lwtbl[x * 4 + 3],
++					lwtbl[x * 4 + 2],
++					lwtbl[x * 4 + 1],
++					lwtbl[x * 4]);
++	}
++
++
++	seq_printf(s, "\n\tAddr: %02x:%02x:%02x:%02x:%02x:%02x(D0[B0~15], D1[B0~31])\n",
++			  lwtbl[4], lwtbl[5], lwtbl[6], lwtbl[7], lwtbl[0], lwtbl[1]);
++
++	// DW0, DW1
++	seq_printf(s, "LWTBL DW 0/1\n\t");
++	addr = (u32 *)&(lwtbl[0]);
++	dw_value = *addr;
++	seq_printf(s, "MUAR_IDX:%lu/ ",	FIELD_GET(GENMASK(21, 16),	dw_value));
++	seq_printf(s, "RCA1:%ld/ ",	FIELD_GET(BIT(22),		dw_value));
++	seq_printf(s, "KID:%lu/ ",	FIELD_GET(GENMASK(24, 23),	dw_value));
++	seq_printf(s, "RCID:%ld/ ",	FIELD_GET(BIT(25),		dw_value));
++	seq_printf(s, "FROM_DS:%ld\n\t",	FIELD_GET(BIT(26),		dw_value));
++	seq_printf(s, "TO_DS:%ld/ ",	FIELD_GET(BIT(27),		dw_value));
++	seq_printf(s, "RV:%ld/ ",	FIELD_GET(BIT(28),		dw_value));
++	seq_printf(s, "RCA2:%ld/ ",	FIELD_GET(BIT(29),		dw_value));
++	seq_printf(s, "WPI_FLAG:%ld\n",	FIELD_GET(BIT(30),		dw_value));
++
++	// DW2
++	seq_printf(s, "LWTBL DW 2\n\t");
++	addr = (u32 *)&(lwtbl[2*4]);
++	dw_value = *addr;
++	seq_printf(s, "AID12:%lu/ ",	FIELD_GET(GENMASK(11, 0),	dw_value));
++	seq_printf(s, "SU:%ld/ ",	FIELD_GET(BIT(12),		dw_value));
++	seq_printf(s, "SPP_EN:%ld/ ",	FIELD_GET(BIT(13),		dw_value));
++	seq_printf(s, "WPI_EVEN:%ld\n\t",FIELD_GET(BIT(14),		dw_value));
++	seq_printf(s, "CIPHER:%lu/ ",	FIELD_GET(GENMASK(20, 16),	dw_value));
++	seq_printf(s, "CIPHER_IGTK:%lu/ ",FIELD_GET(GENMASK(22, 21),	dw_value));
++	seq_printf(s, "AAD_OM:%ld\n\t",	FIELD_GET(BIT(15),		dw_value));
++	seq_printf(s, "SW:%ld/ ",	FIELD_GET(BIT(24),		dw_value));
++	seq_printf(s, "UL:%ld/ ",	FIELD_GET(BIT(25),		dw_value));
++	seq_printf(s, "TX_POWER_SAVE:%ld\n\t", FIELD_GET(BIT(26),	dw_value));
++	seq_printf(s, "QOS:%ld/ ",	FIELD_GET(BIT(27),		dw_value));
++	seq_printf(s, "HT:%ld/ ",	FIELD_GET(BIT(28),		dw_value));
++	seq_printf(s, "VHT:%ld/ ",	FIELD_GET(BIT(29),		dw_value));
++	seq_printf(s, "HE:%ld/ ",	FIELD_GET(BIT(30),		dw_value));
++	seq_printf(s, "MESH:%ld\n",	FIELD_GET(BIT(31),		dw_value));
++
++	// DW3
++	seq_printf(s, "LWTBL DW 3\n\t");
++	addr = (u32 *)&(lwtbl[3*4]);
++	dw_value = *addr;
++	seq_printf(s, "WMM_Q:%lu/ ",	FIELD_GET(GENMASK(1, 0),	dw_value));
++	seq_printf(s, "RXD_DUP_MODE:%lu\n\t", FIELD_GET(GENMASK(3, 2),	dw_value));
++	seq_printf(s, "VLAN2ETH:%ld/ ",	FIELD_GET(BIT(4),		dw_value));
++	seq_printf(s, "BEAM_CHG:%ld/ ",	FIELD_GET(BIT(5),		dw_value));
++	seq_printf(s, "DIS_BA256:%ld\n\t", FIELD_GET(BIT(6),		dw_value));
++	seq_printf(s, "PFMU_IDX:%lu/ ",	FIELD_GET(GENMASK(15, 8),	dw_value));
++	seq_printf(s, "ULPF_IDX:%lu\n\t", FIELD_GET(GENMASK(23, 16),	dw_value));
++	seq_printf(s, "RIBF:%ld/ ",	FIELD_GET(BIT(24),		dw_value));
++	seq_printf(s, "ULPF:%ld\n\t",	FIELD_GET(BIT(25),		dw_value));
++	seq_printf(s, "IGN_FBK:%ld/ ",	FIELD_GET(BIT(26),		dw_value));
++	seq_printf(s, "TBF:%ld/ ",	FIELD_GET(BIT(29),		dw_value));
++	seq_printf(s, "TBF_VHT:%ld/ ",	FIELD_GET(BIT(30),		dw_value));
++	seq_printf(s, "TBF_HE:%ld\n",	FIELD_GET(BIT(31),		dw_value));
++
++	// DW4
++	seq_printf(s, "LWTBL DW 4\n\t");
++	addr = (u32 *)&(lwtbl[4*4]);
++	dw_value = *addr;
++	seq_printf(s, "ANT_ID_STS0:%lu/ ", FIELD_GET(GENMASK(2, 0),	dw_value));
++	seq_printf(s, "STS1:%lu/ ",	FIELD_GET(GENMASK(5, 3),	dw_value));
++	seq_printf(s, "STS2:%lu/ ",	FIELD_GET(GENMASK(8, 6),	dw_value));
++	seq_printf(s, "STS3:%lu\n\t",	FIELD_GET(GENMASK(11, 9),	dw_value));
++	seq_printf(s, "ANT_ID_STS4:%lu/ ", FIELD_GET(GENMASK(14, 12),	dw_value));
++	seq_printf(s, "STS5:%lu/ ",	FIELD_GET(GENMASK(17, 15),	dw_value));
++	seq_printf(s, "STS6:%ld/ ",	FIELD_GET(GENMASK(20, 18),	dw_value));
++	seq_printf(s, "STS7:%lu\n\t",	FIELD_GET(GENMASK(23, 21),	dw_value));
++	seq_printf(s, "CASCAD:%ld/ ",	FIELD_GET(BIT(24),		dw_value));
++	seq_printf(s, "LDPC_HT:%ld/ ",	FIELD_GET(BIT(25),		dw_value));
++	seq_printf(s, "LDPC_VHT:%ld/ ", FIELD_GET(BIT(26),		dw_value));
++	seq_printf(s, "LDPC_HE:%ld\n\t", FIELD_GET(BIT(27),		dw_value));
++	seq_printf(s, "DIS_RHTR:%ld/ ",	FIELD_GET(BIT(28),		dw_value));
++	seq_printf(s, "ALL_ACK:%ld/ ",	FIELD_GET(BIT(29),		dw_value));
++	seq_printf(s, "DROP:%ld/ ",	FIELD_GET(BIT(30),		dw_value));
++	seq_printf(s, "ACK_EN:%ld\n",	FIELD_GET(BIT(31),		dw_value));
++
++	// DW5
++	seq_printf(s, "LWTBL DW 5\n\t");
++	addr = (u32 *)&(lwtbl[5*4]);
++	dw_value = *addr;
++	seq_printf(s, "AF:%lu/ ",	FIELD_GET(GENMASK(2, 0),	dw_value));
++	seq_printf(s, "AF_HE:%lu/ ",	FIELD_GET(GENMASK(4, 3),	dw_value));
++	seq_printf(s, "RTS:%ld/ ",	FIELD_GET(BIT(5),		dw_value));
++	seq_printf(s, "SMPS:%ld/ ",	FIELD_GET(BIT(6),		dw_value));
++	seq_printf(s, "DYN_BW:%ld\n\t",	FIELD_GET(BIT(7),		dw_value));
++	seq_printf(s, "MMSS:%lu/ ",	FIELD_GET(GENMASK(10, 8),	dw_value));
++	seq_printf(s, "USR:%ld/ ",	FIELD_GET(BIT(11),		dw_value));
++	seq_printf(s, "SR_RATE:%lu/ ",	FIELD_GET(GENMASK(14, 12),	dw_value));
++	seq_printf(s, "SR_ABORT:%ld\n\t", FIELD_GET(BIT(15),		dw_value));
++	seq_printf(s, "TX_POWER_OFFSET:%lu/ ", FIELD_GET(GENMASK(21, 16), dw_value));
++	seq_printf(s, "WTBL_MPDU_SIZE:%lu\n\t", FIELD_GET(GENMASK(23, 22), dw_value));
++	seq_printf(s, "PE:%lu/ ",	FIELD_GET(GENMASK(25, 24),	dw_value));
++	seq_printf(s, "DOPPL:%ld/ ",	FIELD_GET(BIT(26),		dw_value));
++	seq_printf(s, "TXOP_PS_CAP:%ld/ ", FIELD_GET(BIT(27),		dw_value));
++	seq_printf(s, "DONOT_UPDATE_I_PSM:%ld\n\t", FIELD_GET(BIT(28),	dw_value));
++	seq_printf(s, "I_PSM:%ld/ ",	FIELD_GET(BIT(29),		dw_value));
++	seq_printf(s, "PSM:%ld/ ",	FIELD_GET(BIT(30),		dw_value));
++	seq_printf(s, "SKIP_TX:%ld\n",	FIELD_GET(BIT(31),		dw_value));
++
++	// DW6
++	seq_printf(s, "LWTBL DW 6\n\t");
++	seq_printf(s, "TID 0/1/2/3/4/5/6/7 BA_WIN_SIZE:");
++	addr = (u32 *)&(lwtbl[6*4]);
++	dw_value = *addr;
++	seq_printf(s, "%lu/ ",	FIELD_GET(GENMASK(3, 0),	dw_value));
++	seq_printf(s, "%lu/ ",	FIELD_GET(GENMASK(7, 4),	dw_value));
++	seq_printf(s, "%lu/ ",	FIELD_GET(GENMASK(11, 8),	dw_value));
++	seq_printf(s, "%lu/ ",	FIELD_GET(GENMASK(15, 12),	dw_value));
++	seq_printf(s, "%lu/ ",	FIELD_GET(GENMASK(19, 16),	dw_value));
++	seq_printf(s, "%lu/ ",	FIELD_GET(GENMASK(23, 20),	dw_value));
++	seq_printf(s, "%lu/ ",	FIELD_GET(GENMASK(27, 24),	dw_value));
++	seq_printf(s, "%lu\n",	FIELD_GET(GENMASK(31, 28),	dw_value));
++
++	// DW7
++	seq_printf(s, "LWTBL DW 7\n\t");
++	addr = (u32 *)&(lwtbl[7*4]);
++	dw_value = *addr;
++	seq_printf(s, "CBRN:%lu/ ",	FIELD_GET(GENMASK(2, 0),	dw_value));
++	seq_printf(s, "DBNSS_EN:%ld/ ",	FIELD_GET(BIT(3),		dw_value));
++	seq_printf(s, "BAF_EN:%ld/ ",	FIELD_GET(BIT(4),		dw_value));
++	seq_printf(s, "RDGBA:%ld\n\t",	FIELD_GET(BIT(5),		dw_value));
++	seq_printf(s, "RDG:%ld/ ",	FIELD_GET(BIT(6),		dw_value));
++	seq_printf(s, "SPE_IDX:%lu/ ",	FIELD_GET(GENMASK(11, 7),	dw_value));
++	seq_printf(s, "G2:%ld/ ",	FIELD_GET(BIT(12),		dw_value));
++	seq_printf(s, "G4:%ld/ ",	FIELD_GET(BIT(13),		dw_value));
++	seq_printf(s, "G8:%ld/ ",	FIELD_GET(BIT(14),		dw_value));
++	seq_printf(s, "G16:%ld\n\t",	FIELD_GET(BIT(15),		dw_value));
++	seq_printf(s, "G2_LTF:%lu/ ", 	FIELD_GET(GENMASK(17, 16),	dw_value));
++	seq_printf(s, "G4_LTF:%lu/ ",	FIELD_GET(GENMASK(19, 18),	dw_value));
++	seq_printf(s, "G8_LTF:%lu/ ",	FIELD_GET(GENMASK(21, 20),	dw_value));
++	seq_printf(s, "G16_LTF:%lu\n\t", FIELD_GET(GENMASK(23, 22),	dw_value));
++	seq_printf(s, "G2_HE:%lu/ ", 	FIELD_GET(GENMASK(25, 24),	dw_value));
++	seq_printf(s, "G4_HE:%lu/ ",	FIELD_GET(GENMASK(27, 26),	dw_value));
++	seq_printf(s, "G8_HE:%lu/ ",	FIELD_GET(GENMASK(29, 28),	dw_value));
++	seq_printf(s, "G16_HE:%lu\n",	FIELD_GET(GENMASK(31, 30),	dw_value));
++
++	// DW8
++	seq_printf(s, "LWTBL DW 8\n\t");
++	addr = (u32 *)&(lwtbl[8*4]);
++	dw_value = *addr;
++	seq_printf(s, "FAIL_CNT_AC0:%lu/ ", FIELD_GET(GENMASK(4, 0),	dw_value));
++	seq_printf(s, "AC1:%lu/ ",	FIELD_GET(GENMASK(9, 5),	dw_value));
++	seq_printf(s, "AC2:%lu/ ",	FIELD_GET(GENMASK(14, 10),	dw_value));
++	seq_printf(s, "AC3:%lu\n\t",	FIELD_GET(GENMASK(19, 15),	dw_value));
++	seq_printf(s, "PARTIAL_AID:%lu/ ", FIELD_GET(GENMASK(28, 20),	dw_value));
++	seq_printf(s, "CHK_PER:%lu\n",	FIELD_GET(BIT(31),		dw_value));
++
++	// DW9
++	seq_printf(s, "LWTBL DW 9\n\t");
++	addr = (u32 *)&(lwtbl[9*4]);
++	dw_value = *addr;
++	seq_printf(s, "RX_AVG_MPDU:%lu/ ",	FIELD_GET(GENMASK(13, 0), dw_value));
++	seq_printf(s, "PRITX_SW_MODE:%ld/ ",	FIELD_GET(BIT(16),	dw_value));
++	seq_printf(s, "PRITX_PLR:%ld\n\t",	FIELD_GET(BIT(17),	dw_value));
++	seq_printf(s, "PRITX_DCM:%ld/ ",		FIELD_GET(BIT(18),	dw_value));
++	seq_printf(s, "PRITX_ER160:%ld/ ",	FIELD_GET(BIT(19),	dw_value));
++	seq_printf(s, "PRITX_ERSU:%lu\n\t",	FIELD_GET(BIT(20),	dw_value));
++	seq_printf(s, "MPDU_FAIL_CNT:%lu/ ",	FIELD_GET(GENMASK(25, 23), dw_value));
++	seq_printf(s, "MPDU_OK_CNT:%lu/ ",	FIELD_GET(GENMASK(28, 26), dw_value));
++	seq_printf(s, "RATE_IDX:%lu\n\t",		FIELD_GET(GENMASK(31, 29), dw_value));
++	seq_printf(s, "FCAP:%s\n", fcap_str[FIELD_GET(GENMASK(22, 21), dw_value)]);
++
++	// DW10
++	seq_printf(s, "LWTBL DW 10\n");
++	addr = (u32 *)&(lwtbl[10*4]);
++	dw_value = *addr;
++	parse_rate(s, 0, FIELD_GET(GENMASK(13, 0), dw_value));
++	parse_rate(s, 1, FIELD_GET(GENMASK(29, 16), dw_value));
++	// DW11
++	seq_printf(s, "LWTBL DW 11\n");
++	addr = (u32 *)&(lwtbl[11*4]);
++	dw_value = *addr;
++	parse_rate(s, 2, FIELD_GET(GENMASK(13, 0), dw_value));
++	parse_rate(s, 3, FIELD_GET(GENMASK(29, 16), dw_value));
++	// DW12
++	seq_printf(s, "LWTBL DW 12\n");
++	addr = (u32 *)&(lwtbl[12*4]);
++	dw_value = *addr;
++	parse_rate(s, 4, FIELD_GET(GENMASK(13, 0), dw_value));
++	parse_rate(s, 5, FIELD_GET(GENMASK(29, 16), dw_value));
++	// DW13
++	seq_printf(s, "LWTBL DW 13\n");
++	addr = (u32 *)&(lwtbl[13*4]);
++	dw_value = *addr;
++	parse_rate(s, 6, FIELD_GET(GENMASK(13, 0), dw_value));
++	parse_rate(s, 7, FIELD_GET(GENMASK(29, 16), dw_value));
++	return 0;
++}
++
++static int mt7915_uwtbl_read(struct seq_file *s, void *data)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u8 uwtbl[UWTBL_LEN_IN_DW * 4] = {0};
++	u8 keytbl[ONE_KEY_ENTRY_LEN_IN_DW*4] = {0};
++	int x;
++	u32 *addr = 0;
++	u32 dw_value = 0;
++	u32 amsdu_len = 0;
++	u32 u2SN = 0;
++	u16 keyloc0, keyloc1;
++
++	mt7915_wtbl_read_raw(dev, dev->wlan_idx, WTBL_TYPE_UMAC, 0,
++				 UWTBL_LEN_IN_DW, uwtbl);
++	seq_printf(s, "Dump WTBL info of WLAN_IDX:%d\n", dev->wlan_idx);
++	seq_printf(s, "UMAC WTBL Addr: group:0x%x=0x%x addr: 0x%lx\n",
++		   MT_WTBLON_TOP_WDUCR,
++		   mt76_rr(dev, MT_WTBLON_TOP_WDUCR),
++		   UWTBL_IDX2BASE(dev->wlan_idx, 0));
++	for (x = 0; x < UWTBL_LEN_IN_DW; x++) {
++		seq_printf(s, "DW%02d: %02x %02x %02x %02x\n",
++			   x,
++			   uwtbl[x * 4 + 3],
++			   uwtbl[x * 4 + 2],
++			   uwtbl[x * 4 + 1],
++			   uwtbl[x * 4]);
++	}
++
++	/* UMAC WTBL DW 0 */
++	seq_printf(s, "\nUWTBL PN\n\t");
++	addr = (u32 *)&(uwtbl[0]);
++	dw_value = *addr;
++	seq_printf(s, "PN0:%lu/ ", FIELD_GET(GENMASK(7, 0), dw_value));
++	seq_printf(s, "PN1:%lu/ ", FIELD_GET(GENMASK(15, 8), dw_value));
++	seq_printf(s, "PN2:%lu\n\t", FIELD_GET(GENMASK(23, 16), dw_value));
++	seq_printf(s, "PN3:%lu/ ", FIELD_GET(GENMASK(31, 24), dw_value));
++
++	addr = (u32 *)&(uwtbl[1 * 4]);
++	dw_value = *addr;
++	seq_printf(s, "PN4:%lu/ ", FIELD_GET(GENMASK(7, 0), dw_value));
++	seq_printf(s, "PN5:%lu\n", FIELD_GET(GENMASK(15, 8), dw_value));
++
++	/* UMAC WTBL DW SN part */
++	seq_printf(s, "\nUWTBL SN\n");
++	addr = (u32 *)&(uwtbl[2 * 4]);
++	dw_value = *addr;
++	seq_printf(s, "TID0_AC0_SN:%lu\n", FIELD_GET(GENMASK(11, 0), dw_value));
++	seq_printf(s, "TID1_AC1_SN:%lu\n", FIELD_GET(GENMASK(23, 12), dw_value));
++
++	u2SN = FIELD_GET(GENMASK(31, 24), dw_value);
++	addr = (u32 *)&(uwtbl[3 * 4]);
++	dw_value = *addr;
++	u2SN |= FIELD_GET(GENMASK(3, 0), dw_value);
++	seq_printf(s, "TID2_AC2_SN:%u\n", u2SN);
++	seq_printf(s, "TID3_AC3_SN:%lu\n", FIELD_GET(GENMASK(15, 4), dw_value));
++	seq_printf(s, "TID4_SN:%lu\n", FIELD_GET(GENMASK(27, 16), dw_value));
++
++	u2SN = FIELD_GET(GENMASK(31, 28), dw_value);
++	addr = (u32 *)&(uwtbl[4 * 4]);
++	dw_value = *addr;
++	u2SN |= FIELD_GET(GENMASK(7, 0), dw_value);
++	seq_printf(s, "TID5_SN:%u\n", u2SN);
++	seq_printf(s, "TID6_SN:%lu\n", FIELD_GET(GENMASK(19, 8), dw_value));
++	seq_printf(s, "TID7_SN:%lu\n", FIELD_GET(GENMASK(31, 20), dw_value));
++
++	addr = (u32 *)&(uwtbl[1 * 4]);
++	dw_value = *addr;
++	seq_printf(s, "COM_SN:%lu\n", FIELD_GET(GENMASK(27, 16), dw_value));
++
++	/* UMAC WTBL DW 0 */
++	seq_printf(s, "\nUWTBL others\n");
++
++	addr = (u32 *)&(uwtbl[5 * 4]);
++	dw_value = *addr;
++	keyloc0 = FIELD_GET(GENMASK(10, 0), dw_value);
++	keyloc1 = FIELD_GET(GENMASK(26, 16), dw_value);
++	seq_printf(s, "\tKey Loc 1/2:%lu/%lu\n",
++		   FIELD_GET(GENMASK(10, 0), dw_value),
++		   FIELD_GET(GENMASK(26, 16), dw_value));
++	seq_printf(s, "\tUWTBL_QOS:%lu\n", FIELD_GET(BIT(27), dw_value));
++	seq_printf(s, "\tUWTBL_HT_VHT_HE:%lu\n", FIELD_GET(BIT(28), dw_value));
++
++	addr = (u32 *)&(uwtbl[6*4]);
++	dw_value = *addr;
++	seq_printf(s, "\tHW AMSDU Enable:%lu\n", FIELD_GET(BIT(9), dw_value));
++
++	amsdu_len = FIELD_GET(GENMASK(5, 0), dw_value);
++	if (amsdu_len == 0)
++		seq_printf(s, "\tHW AMSDU Len:invalid (WTBL value=0x%x)\n", amsdu_len);
++	else if (amsdu_len == 1)
++		seq_printf(s, "\tHW AMSDU Len:%d~%d (WTBL value=0x%x)\n",
++			   1,
++			   255,
++			   amsdu_len);
++	else
++		seq_printf(s, "\tHW AMSDU Len:%d~%d (WTBL value=0x%x)\n",
++			   256 * (amsdu_len - 1),
++			   256 * (amsdu_len - 1) + 255,
++			   amsdu_len
++			   );
++	seq_printf(s, "\tHW AMSDU Num:%lu (WTBL value=0x%lx)\n",
++		   FIELD_GET(GENMASK(8, 6), dw_value) + 1,
++		   FIELD_GET(GENMASK(8, 6), dw_value));
++
++	/* Parse KEY link */
++	seq_printf(s, "\n\tkeyloc0:%d\n", keyloc0);
++	if(keyloc0 != GENMASK(10, 0)) {
++		mt7915_wtbl_read_raw(dev, keyloc0, WTBL_TYPE_KEY,
++					 0, ONE_KEY_ENTRY_LEN_IN_DW, keytbl);
++		seq_printf(s, "KEY WTBL Addr: group:0x%x=0x%x addr: 0x%lx\n",
++			   MT_WTBLON_TOP_WDUCR,
++			   mt76_rr(dev, MT_WTBLON_TOP_WDUCR),
++			   KEYTBL_IDX2BASE(keyloc0, 0));
++
++		for (x = 0; x < ONE_KEY_ENTRY_LEN_IN_DW; x++) {
++			seq_printf(s, "DW%02d: %02x %02x %02x %02x\n",
++				   x,
++				   keytbl[x * 4 + 3],
++				   keytbl[x * 4 + 2],
++				   keytbl[x * 4 + 1],
++				   keytbl[x * 4]);
++		}
++	}
++
++	seq_printf(s, "\n\tkeyloc1:%d\n", keyloc1);
++	if(keyloc1 != GENMASK(10, 0)) {
++		mt7915_wtbl_read_raw(dev, keyloc1, WTBL_TYPE_KEY,
++					 0, ONE_KEY_ENTRY_LEN_IN_DW, keytbl);
++		seq_printf(s, "KEY WTBL Addr: group:0x%x=0x%x addr: 0x%lx\n",
++			   MT_WTBLON_TOP_WDUCR,
++			   mt76_rr(dev, MT_WTBLON_TOP_WDUCR),
++			   KEYTBL_IDX2BASE(keyloc1, 0));
++
++		for (x = 0; x < ONE_KEY_ENTRY_LEN_IN_DW; x++) {
++			seq_printf(s, "DW%02d: %02x %02x %02x %02x\n",
++				   x,
++				   keytbl[x * 4 + 3],
++				   keytbl[x * 4 + 2],
++				   keytbl[x * 4 + 1],
++				   keytbl[x * 4]);
++		}
++	}
++	return 0;
++}
++
++static int
++mt7915_l1reg_set(void *data, u64 val)
++{
++	struct mt7915_dev *dev = data;
++
++	mt76_wr(dev, dev->dbg.l1debugfs_reg, val);
++	return 0;
++}
++
++static int
++mt7915_l1reg_get(void *data, u64 *val)
++{
++	struct mt7915_dev *dev = data;
++
++	*val = mt76_rr(dev, dev->dbg.l1debugfs_reg);
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(fops_l1regval, mt7915_l1reg_get, mt7915_l1reg_set,
++			 "0x%08llx\n");
++
++static int
++mt7915_l2reg_set(void *data, u64 val)
++{
++	struct mt7915_dev *dev = data;
++
++	mt76_wr(dev, dev->dbg.l2debugfs_reg, val);
++	return 0;
++}
++
++static int
++mt7915_l2reg_get(void *data, u64 *val)
++{
++	struct mt7915_dev *dev = data;
++
++	*val = mt76_rr(dev, dev->dbg.l2debugfs_reg);
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(fops_l2regval, mt7915_l2reg_get, mt7915_l2reg_set,
++			 "0x%08llx\n");
++
++static int
++mt7915_mac_reg_set(void *data, u64 val)
++{
++	struct mt7915_dev *dev = data;
++	u8 remap = 0;
++
++	if (mt_mac_cr_range_mapping(dev, &dev->dbg.mac_reg) == true) {
++		mt76_wr(dev, dev->dbg.mac_reg, val);
++	} else {
++		if (pci_io_remap_is_l1_remap(&dev->dbg.mac_reg)) {
++			remap = 1;
++			mt76_wr(dev, dev->dbg.mac_reg, val);
++		} else {
++			remap = 2;
++			mt76_wr(dev, dev->dbg.mac_reg, val);
++		}
++	}
++
++	printk("MacAddr=0x%x, MacValue=0x%llx, IsRemap=%d\n",
++		dev->dbg.mac_reg, val, remap);
++	return 0;
++}
++
++static int
++mt7915_mac_reg_get(void *data, u64 *val)
++{
++	struct mt7915_dev *dev = data;
++	u8 remap = 0;
++
++	if (mt_mac_cr_range_mapping(dev, &dev->dbg.mac_reg) == true) {
++		*val = mt76_rr(dev, dev->dbg.mac_reg);
++	} else {
++		if (pci_io_remap_is_l1_remap(&dev->dbg.mac_reg)) {
++			remap = 1;
++			*val = mt76_rr(dev, dev->dbg.mac_reg);
++		} else {
++			remap = 2;
++			*val = mt76_rr(dev, dev->dbg.mac_reg);
++		}
++	}
++
++	printk("MacAddr=0x%x, MacValue=0x%llx, IsRemap=%d\n",
++		dev->dbg.mac_reg, *val, remap);
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(fops_mac_regval, mt7915_mac_reg_get, mt7915_mac_reg_set,
++			 "0x%08llx\n");
++
++/* copy again */
++static u32 mt7915_eeprom_read(struct mt7915_dev *dev, u32 offset)
++{
++	u8 *data = dev->mt76.eeprom.data;
++
++	if (data[offset] == 0xff)
++		mt7915_mcu_get_eeprom(dev, offset);
++
++	return data[offset];
++}
++
++static int mt7915_read_efuse(struct seq_file *s, void *data)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u8 *buf = dev->mt76.eeprom.data;
++	u16 idx_round = round_down(dev->dbg.eep_idx, 16);
++	u32 val = mt7915_eeprom_read(dev, dev->dbg.eep_idx);
++	int i;
++
++	seq_printf(s, "%08x  ", idx_round);
++	for (i = 0; i < 16; i++) {
++		if (i < 15)
++			seq_printf(s, "%02x ", buf[idx_round + i]);
++		else
++			seq_printf(s, "%02x\n", buf[idx_round + i]);
++	}
++	seq_printf(s, "Value at 0x%x = 0x%x\n", dev->dbg.eep_idx, val);
++
++	return 0;
++}
++
++static ssize_t mt7915_fwlog_server_read(struct file *file,
++					char __user *user_buf,
++					size_t count,
++					loff_t *ppos)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(file->private_data);
++
++	char buf[200]={};
++	int len = 0;
++
++	len = scnprintf(buf, sizeof(buf), "ip=%pI4\nmac=%pM\nif=%s\n",
++			&dev->dbg.fwlog_server_ip,
++			&dev->dbg.fwlog_server_mac,
++			dev->dbg.fwlog_ifname);
++
++	return simple_read_from_buffer(user_buf, count, ppos,
++				       buf, len);
++}
++
++static int mac_aton(char *addr, u8 *n) {
++	int matches = sscanf(addr, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
++				   n, n+1, n+2, n+3, n+4, n+5);
++
++	return (ETH_ALEN == matches ? 0 : -EINVAL);
++}
++
++static ssize_t
++mt7915_fwlog_server_write(struct file *file,
++			 const char __user *user_buf,
++			 size_t count,
++			 loff_t *ppos)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(file->private_data);
++	char buf[100];
++	char ip[16] = {};
++	char mac[20] = {};
++	size_t len;
++
++	if (count > sizeof(buf))
++		return -EINVAL;
++
++	if (copy_from_user(buf, user_buf, count))
++		return -EFAULT;
++
++	buf[sizeof(buf) - 1] = '\0';
++	len = strlen(buf);
++	if (len > 0 && buf[len - 1] == '\n')
++		buf[len - 1] = 0;
++
++	if (sscanf(buf, "ip=%s", ip) == 1) {
++		dev->dbg.fwlog_server_ip = in_aton(ip);
++		return count;
++	} else if (sscanf(buf, "mac=%s", mac) == 1) {
++		if (mac_aton(mac, dev->dbg.fwlog_server_mac))
++			return -EFAULT;
++		return count;
++	} else if (sscanf(buf, "if=%s", dev->dbg.fwlog_ifname) == 1) {
++		return count;
++	}
++
++	printk("usage:\n");
++	printk("\techo ip=192.168.1.100 > fwlog_setting\n");
++	printk("\techo mac=aa:bb:cc:11:22:33 > fwlog_setting\n");
++	printk("\techo if=wlan0 > fwlog_setting\n");
++	printk("\techo 16 or 88 > fw_debug_internal (1953 FW after 20210330)\n");
++	printk("\techo 15 or 87 > fw_debug_internal (older or 2045 FW)\n");
++
++	return -EINVAL;
++}
++
++static const struct file_operations fops_fwlog_server = {
++	.read = mt7915_fwlog_server_read,
++	.write = mt7915_fwlog_server_write,
++	.open = simple_open,
++};
++
++static inline u32
++mt7915_mac_rr(struct mt7915_dev *dev, u32 addr)
++{
++	u32 val;
++	if (mt_mac_cr_range_mapping(dev, &addr) == true) {
++		val = mt76_rr(dev, addr);
++	} else {
++		if (pci_io_remap_is_l1_remap(&addr))
++			val = mt76_rr(dev, addr);
++		else
++			val = mt76_rr(dev, addr);
++	}
++	return val;
++}
++
++static inline void
++mt7915_mac_wr(struct mt7915_dev *dev, u32 addr, u32 val)
++{
++	if (mt_mac_cr_range_mapping(dev, &addr) == true) {
++		mt76_wr(dev, addr, val);
++	} else {
++		if (pci_io_remap_is_l1_remap(&addr))
++			mt76_wr(dev, addr, val);
++		else
++			mt76_wr(dev, addr, val);
++	}
++}
++
++static void
++dump_dma_tx_ring_info(struct seq_file *s, struct mt7915_dev *dev,  char *str, u32 ring_base)
++{
++	u32 base, cnt, cidx, didx, queue_cnt;
++
++	base= mt7915_mac_rr(dev, ring_base);
++	cnt = mt7915_mac_rr(dev, ring_base + 4);
++	cidx = mt7915_mac_rr(dev, ring_base + 8);
++	didx = mt7915_mac_rr(dev, ring_base + 12);
++	queue_cnt = (cidx >= didx) ? (cidx - didx) : (cidx - didx + cnt);
++
++	seq_printf(s, "%20s %10x %10x %10x %10x %10x\n", str, base, cnt, cidx, didx, queue_cnt);
++}
++
++static void
++dump_dma_rx_ring_info(struct seq_file *s, struct mt7915_dev *dev,  char *str, u32 ring_base)
++{
++	u32 base, cnt, cidx, didx, queue_cnt;
++
++	base= mt7915_mac_rr(dev, ring_base);
++	cnt = mt7915_mac_rr(dev, ring_base + 4);
++	cidx = mt7915_mac_rr(dev, ring_base + 8);
++	didx = mt7915_mac_rr(dev, ring_base + 12);
++	queue_cnt = (didx > cidx) ? (didx - cidx - 1) : (didx - cidx + cnt - 1);
++
++	seq_printf(s, "%20s %10x %10x %10x %10x %10x\n", str, base, cnt, cidx, didx, queue_cnt);
++}
++
++static void
++mt7915_show_dma_info(struct seq_file *s, struct mt7915_dev *dev)
++{
++	u32 sys_ctrl[10] = {};
++
++	/* HOST DMA */
++	sys_ctrl[0] = mt76_rr(dev, MT_INT_SOURCE_CSR);
++	sys_ctrl[1] = mt76_rr(dev, MT_INT_MASK_CSR);
++	sys_ctrl[2] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA0_HOST_INT_STA_ADDR);
++	sys_ctrl[3] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA0_HOST_INT_ENA_ADDR);
++	sys_ctrl[4] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA1_HOST_INT_STA_ADDR);
++	sys_ctrl[5] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA1_HOST_INT_ENA_ADDR);
++	sys_ctrl[6] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_ADDR);
++	sys_ctrl[7] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_ADDR);
++	seq_printf(s, "HOST_DMA Configuration\n");
++	seq_printf(s, "%10s %10s %10s %10s %10s %10s\n",
++			"DMA", "IntCSR", "IntMask", "Glocfg", "Tx/RxEn", "Tx/RxBusy");
++	seq_printf(s, "%10s %10x %10x\n",
++			"Merge", sys_ctrl[0], sys_ctrl[1]);
++	seq_printf(s, "%10s %10x %10x %10x %4x/%5x %4x/%5x\n",
++			"DMA0", sys_ctrl[2], sys_ctrl[3], sys_ctrl[6],
++			(sys_ctrl[6] & WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_TX_DMA_EN_MASK) >> WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_TX_DMA_EN_SHFT,
++			(sys_ctrl[6] & WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_RX_DMA_EN_MASK) >> WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_RX_DMA_EN_SHFT,
++			(sys_ctrl[6] & WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK) >> WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT,
++			(sys_ctrl[6] & WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK) >> WF_WFDMA_HOST_DMA0_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT);
++	seq_printf(s, "%10s %10x %10x %10x %4x/%5x %4x/%5x\n",
++			"DMA1", sys_ctrl[4], sys_ctrl[5], sys_ctrl[7],
++			(sys_ctrl[7] & WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_TX_DMA_EN_MASK) >> WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_TX_DMA_EN_SHFT,
++			(sys_ctrl[7] & WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_RX_DMA_EN_MASK) >> WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_RX_DMA_EN_SHFT,
++			(sys_ctrl[7] & WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK) >> WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT,
++			(sys_ctrl[7] & WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK) >> WF_WFDMA_HOST_DMA1_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT);
++
++	sys_ctrl[0] = mt76_rr(dev, MT_INT1_SOURCE_CSR);
++	sys_ctrl[1] = mt76_rr(dev, MT_INT1_MASK_CSR);
++	sys_ctrl[2] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA0_PCIE1_HOST_INT_STA_ADDR);
++	sys_ctrl[3] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA0_PCIE1_HOST_INT_ENA_ADDR);
++	sys_ctrl[4] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA1_PCIE1_HOST_INT_STA_ADDR);
++	sys_ctrl[5] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA1_PCIE1_HOST_INT_ENA_ADDR);
++	sys_ctrl[6] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_ADDR);
++	sys_ctrl[7] = mt7915_mac_rr(dev, WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_ADDR);
++	seq_printf(s, "%10s %10x %10x\n",
++		      "MergeP1", sys_ctrl[0], sys_ctrl[1]);
++	seq_printf(s, "%10s %10x %10x %10x %4x/%5x %4x/%5x\n",
++		      "DMA0P1", sys_ctrl[2], sys_ctrl[3], sys_ctrl[6],
++		      (sys_ctrl[6] & WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_MASK) >> WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_SHFT,
++		      (sys_ctrl[6] & WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_MASK) >> WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_SHFT,
++		      (sys_ctrl[6] & WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK) >> WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT,
++		      (sys_ctrl[6] & WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK) >> WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT);
++	seq_printf(s, "%10s %10x %10x %10x %4x/%5x %4x/%5x\n",
++		      "DMA1P1", sys_ctrl[4], sys_ctrl[5], sys_ctrl[7],
++		      (sys_ctrl[7] & WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_MASK) >> WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_SHFT,
++		      (sys_ctrl[7] & WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_MASK) >> WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_SHFT,
++		      (sys_ctrl[7] & WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK) >> WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT,
++		      (sys_ctrl[7] & WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK) >> WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT);
++
++	seq_printf(s, "HOST_DMA0 Ring Configuration\n");
++	seq_printf(s, "%20s %10s %10s %10s %10s %10s\n",
++		      "Name", "Base", "Cnt", "CIDX", "DIDX", "QCnt");
++	dump_dma_rx_ring_info(s, dev, "R0:Data0(MAC2H)", WF_WFDMA_HOST_DMA0_WPDMA_RX_RING0_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R1:Data1(MAC2H)", WF_WFDMA_HOST_DMA0_WPDMA_RX_RING1_CTRL0_ADDR);
++
++	seq_printf(s, "HOST_DMA0 PCIe 1 Ring Configuration\n");
++	seq_printf(s, "%20s %10s %10s %10s %10s %10s\n",
++		      "Name", "Base", "Cnt", "CIDX", "DIDX", "QCnt");
++	dump_dma_rx_ring_info(s, dev, "R1:Data1(MAC2H)", WF_WFDMA_HOST_DMA0_PCIE1_WPDMA_RX_RING1_CTRL0_ADDR);
++
++	seq_printf(s, "HOST_DMA1 Ring Configuration\n");
++	seq_printf(s, "%20s %10s %10s %10s %10s %10s\n",
++		      "Name", "Base", "Cnt", "CIDX", "DIDX", "QCnt");
++	dump_dma_tx_ring_info(s, dev, "T16:FWDL", WF_WFDMA_HOST_DMA1_WPDMA_TX_RING16_CTRL0_ADDR);
++	dump_dma_tx_ring_info(s, dev, "T17:Cmd(H2WM)", WF_WFDMA_HOST_DMA1_WPDMA_TX_RING17_CTRL0_ADDR);
++	dump_dma_tx_ring_info(s, dev, "T18:TXD0(H2WA)", WF_WFDMA_HOST_DMA1_WPDMA_TX_RING18_CTRL0_ADDR);
++	dump_dma_tx_ring_info(s, dev, "T19:TXD1(H2WA)", WF_WFDMA_HOST_DMA1_WPDMA_TX_RING19_CTRL0_ADDR);
++	dump_dma_tx_ring_info(s, dev, "T20:Cmd(H2WA)", WF_WFDMA_HOST_DMA1_WPDMA_TX_RING20_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R0:Event(WM2H)", WF_WFDMA_HOST_DMA1_WPDMA_RX_RING0_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R1:Event0(WA2H)", WF_WFDMA_HOST_DMA1_WPDMA_RX_RING1_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R2:Event1(WA2H)", WF_WFDMA_HOST_DMA1_WPDMA_RX_RING2_CTRL0_ADDR);
++
++	seq_printf(s, "HOST_DMA1 PCIe 1 Ring Configuration\n");
++	seq_printf(s, "%20s %10s %10s %10s %10s %10s\n",
++		      "Name", "Base", "Cnt", "CIDX", "DIDX", "QCnt");
++	dump_dma_tx_ring_info(s, dev, "T19:TXD1(H2WA)", WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_TX_RING19_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R2:Event1(WA2H)", WF_WFDMA_HOST_DMA1_PCIE1_WPDMA_RX_RING2_CTRL0_ADDR);
++
++	/* MCU DMA information */
++	sys_ctrl[0] = mt7915_mac_rr(dev, WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_ADDR);
++	sys_ctrl[1] = mt7915_mac_rr(dev, WF_WFDMA_MCU_DMA0_HOST_INT_STA_ADDR);
++	sys_ctrl[2] = mt7915_mac_rr(dev, WF_WFDMA_MCU_DMA0_HOST_INT_ENA_ADDR);
++	sys_ctrl[3] = mt7915_mac_rr(dev, WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_ADDR);
++	sys_ctrl[4] = mt7915_mac_rr(dev, WF_WFDMA_MCU_DMA1_HOST_INT_STA_ADDR);
++	sys_ctrl[5] = mt7915_mac_rr(dev, WF_WFDMA_MCU_DMA1_HOST_INT_ENA_ADDR);
++	sys_ctrl[6] = mt7915_mac_rr(dev, WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_ADDR);
++	sys_ctrl[7] = mt7915_mac_rr(dev, WF_WFDMA_MCU_DMA1_PCIE1_HOST_INT_STA_ADDR);
++	sys_ctrl[8] = mt7915_mac_rr(dev, WF_WFDMA_MCU_DMA1_PCIE1_HOST_INT_ENA_ADDR);
++
++	seq_printf(s, "MCU_DMA Configuration\n");
++	seq_printf(s, "%10s %10s %10s %10s %10s %10s\n",
++		      "DMA", "IntCSR", "IntMask", "Glocfg", "Tx/RxEn", "Tx/RxBusy");
++	seq_printf(s, "%10s %10x %10x %10x %4x/%5x %4x/%5x\n",
++		      "DMA0", sys_ctrl[1], sys_ctrl[2], sys_ctrl[0],
++		      (sys_ctrl[0] & WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_TX_DMA_EN_MASK) >> WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_TX_DMA_EN_SHFT,
++		      (sys_ctrl[0] & WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_RX_DMA_EN_MASK) >> WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_RX_DMA_EN_SHFT,
++		      (sys_ctrl[0] & WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK) >> WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT,
++		      (sys_ctrl[0] & WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK) >> WF_WFDMA_MCU_DMA0_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT);
++	seq_printf(s, "%10s %10x %10x %10x %4x/%5x %4x/%5x\n",
++		      "DMA1", sys_ctrl[4], sys_ctrl[5], sys_ctrl[3],
++		      (sys_ctrl[3] & WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_TX_DMA_EN_MASK) >> WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_TX_DMA_EN_SHFT,
++		      (sys_ctrl[3] & WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_RX_DMA_EN_MASK) >> WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_RX_DMA_EN_SHFT,
++		      (sys_ctrl[3] & WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK) >> WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT,
++		      (sys_ctrl[3] & WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK) >> WF_WFDMA_MCU_DMA1_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT);
++	seq_printf(s, "%10s %10x %10x %10x %4x/%5x %4x/%5x\n",
++		      "DMA1P1", sys_ctrl[7], sys_ctrl[8], sys_ctrl[6],
++		      (sys_ctrl[6] & WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_MASK) >> WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_EN_SHFT,
++		      (sys_ctrl[6] & WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_MASK) >> WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_EN_SHFT,
++		      (sys_ctrl[6] & WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK) >> WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT,
++		      (sys_ctrl[6] & WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK) >> WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT);
++
++	seq_printf(s, "MCU_DMA0 Ring Configuration\n");
++	seq_printf(s, "%20s %10s %10s %10s %10s %10s\n",
++		      "Name", "Base", "Cnt", "CIDX", "DIDX", "QCnt");
++	dump_dma_tx_ring_info(s, dev, "T0:TXD(WM2MAC)", WF_WFDMA_MCU_DMA0_WPDMA_TX_RING0_CTRL0_ADDR);
++	dump_dma_tx_ring_info(s, dev, "T1:TXCMD(WM2MAC)", WF_WFDMA_MCU_DMA0_WPDMA_TX_RING1_CTRL0_ADDR);
++	dump_dma_tx_ring_info(s, dev, "T2:TXD(WA2MAC)", WF_WFDMA_MCU_DMA0_WPDMA_TX_RING2_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R0:Data(MAC2WM)", WF_WFDMA_MCU_DMA0_WPDMA_RX_RING0_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R1:TxDone(MAC2WM)", WF_WFDMA_MCU_DMA0_WPDMA_RX_RING1_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R2:SPL(MAC2WM)", WF_WFDMA_MCU_DMA0_WPDMA_RX_RING2_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R3:TxDone(MAC2WA)", WF_WFDMA_MCU_DMA0_WPDMA_RX_RING3_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R4:TXS(MAC2WA)", WF_WFDMA_MCU_DMA0_WPDMA_RX_RING4_CTRL0_ADDR);
++
++	seq_printf(s, "MCU_DMA1 Ring Configuration\n");
++	seq_printf(s, "%20s %10s %10s %10s %10s %10s\n",
++		      "Name", "Base", "Cnt", "CIDX", "DIDX", "QCnt");
++	dump_dma_tx_ring_info(s, dev, "T0:Event(WM2H)", WF_WFDMA_MCU_DMA1_WPDMA_TX_RING0_CTRL0_ADDR);
++	dump_dma_tx_ring_info(s, dev, "T1:Event0(WA2H)", WF_WFDMA_MCU_DMA1_WPDMA_TX_RING1_CTRL0_ADDR);
++	dump_dma_tx_ring_info(s, dev, "T2:Event1(WA2H)", WF_WFDMA_MCU_DMA1_WPDMA_TX_RING2_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R0:FWDL", WF_WFDMA_MCU_DMA1_WPDMA_RX_RING0_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R1:Cmd(H2WM)", WF_WFDMA_MCU_DMA1_WPDMA_RX_RING1_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R2:TXD0(H2WA)", WF_WFDMA_MCU_DMA1_WPDMA_RX_RING2_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R3:TXD1(H2WA)", WF_WFDMA_MCU_DMA1_WPDMA_RX_RING3_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R4:Cmd(H2WA)", WF_WFDMA_MCU_DMA1_WPDMA_RX_RING4_CTRL0_ADDR);
++
++	seq_printf(s, "MCU_DMA1 PCIe 1 Ring Configuration\n");
++	seq_printf(s, "%20s %10s %10s %10s %10s %10s\n",
++		      "Name", "Base", "Cnt", "CIDX", "DIDX", "QCnt");
++	dump_dma_tx_ring_info(s, dev, "T2:Event1(WA2H)", WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_TX_RING2_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R3:TXD1(H2WA)", WF_WFDMA_MCU_DMA1_PCIE1_WPDMA_RX_RING3_CTRL0_ADDR);
++
++	/* MEM DMA information */
++	sys_ctrl[0] = mt7915_mac_rr(dev, WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_ADDR);
++	sys_ctrl[1] = mt7915_mac_rr(dev, WF_WFDMA_MEM_DMA_HOST_INT_STA_ADDR);
++	sys_ctrl[2] = mt7915_mac_rr(dev, WF_WFDMA_MEM_DMA_HOST_INT_ENA_ADDR);
++
++	seq_printf(s, "MEM_DMA Configuration\n");
++	seq_printf(s, "%10s %10s %10s %10s %10s %10s\n",
++		      "DMA", "IntCSR", "IntMask", "Glocfg", "Tx/RxEn", "Tx/RxBusy");
++	seq_printf(s, "%10s %10x %10x %10x %4x/%5x %4x/%5x\n",
++		      "MEM", sys_ctrl[1], sys_ctrl[2], sys_ctrl[0],
++		      (sys_ctrl[0] & WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_TX_DMA_EN_MASK) >> WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_TX_DMA_EN_SHFT,
++		      (sys_ctrl[0] & WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_RX_DMA_EN_MASK) >> WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_RX_DMA_EN_SHFT,
++		      (sys_ctrl[0] & WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_TX_DMA_BUSY_MASK) >> WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_TX_DMA_BUSY_SHFT,
++		      (sys_ctrl[0] & WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_RX_DMA_BUSY_MASK) >> WF_WFDMA_MEM_DMA_WPDMA_GLO_CFG_RX_DMA_BUSY_SHFT);
++
++	seq_printf(s, "MEM_DMA Ring Configuration\n");
++	seq_printf(s, "%20s %10s %10s %10s %10s %10s\n",
++		      "Name", "Base", "Cnt", "CIDX", "DIDX", "QCnt");
++	dump_dma_tx_ring_info(s, dev, "T0:CmdEvent(WM2WA)", WF_WFDMA_MEM_DMA_WPDMA_TX_RING0_CTRL0_ADDR);
++	dump_dma_tx_ring_info(s, dev, "T1:CmdEvent(WA2WM)", WF_WFDMA_MEM_DMA_WPDMA_TX_RING1_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R0:CmdEvent(WM2WA)", WF_WFDMA_MEM_DMA_WPDMA_RX_RING0_CTRL0_ADDR);
++	dump_dma_rx_ring_info(s, dev, "R1:CmdEvent(WA2WM)", WF_WFDMA_MEM_DMA_WPDMA_RX_RING1_CTRL0_ADDR);
++}
++
++static int mt7915_trinfo_read(struct seq_file *s, void *data)
++{
++#define TX_RING_NUM	ARRAY_SIZE(tx_ring_layout)
++#define RX_RING_NUM	ARRAY_SIZE(rx_ring_layout)
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u32 tbase[TX_RING_NUM], tcnt[TX_RING_NUM];
++	u32 tcidx[TX_RING_NUM], tdidx[TX_RING_NUM];
++	u32 rbase[RX_RING_NUM], rcnt[RX_RING_NUM];
++	u32 rcidx[RX_RING_NUM], rdidx[RX_RING_NUM];
++	int idx;
++
++	for (idx = 0; idx < TX_RING_NUM; idx++) {
++		tbase[idx] = mt76_rr(dev, tx_ring_layout[idx].hw_desc_base);
++		tcnt[idx]  = mt76_rr(dev, tx_ring_layout[idx].hw_desc_base + 0x04);
++		tcidx[idx] = mt76_rr(dev, tx_ring_layout[idx].hw_desc_base + 0x08);
++		tdidx[idx] = mt76_rr(dev, tx_ring_layout[idx].hw_desc_base + 0x0c);
++	}
++
++	for (idx = 0; idx < RX_RING_NUM; idx++) {
++		rbase[idx] = mt76_rr(dev, rx_ring_layout[idx].hw_desc_base);
++		rcnt[idx]  = mt76_rr(dev, rx_ring_layout[idx].hw_desc_base + 0x04);
++		rcidx[idx] = mt76_rr(dev, rx_ring_layout[idx].hw_desc_base + 0x08);
++		rdidx[idx] = mt76_rr(dev, rx_ring_layout[idx].hw_desc_base + 0x0c);
++	}
++
++	seq_printf(s, "=================================================\n");
++	seq_printf(s, "TxRing Configuration\n");
++	seq_printf(s, "%4s %8s %8s %10s %6s %6s %6s %6s\n",
++		      "Idx", "Attr", "Reg", "Base", "Cnt", "CIDX", "DIDX",
++		      "QCnt");
++	for (idx = 0; idx < RX_RING_NUM; idx++) {
++		u32 queue_cnt;
++
++		queue_cnt = (tcidx[idx] >= tdidx[idx]) ?
++			    (tcidx[idx] - tdidx[idx]) :
++			    (tcidx[idx] - tdidx[idx] + tcnt[idx]);
++		seq_printf(s, "%4d %8s %8x %10x %6x %6x %6x %6x\n",
++			      idx,
++			      (tx_ring_layout[idx].ring_attr == HIF_TX_DATA) ? "DATA" :
++			      (tx_ring_layout[idx].ring_attr == HIF_TX_CMD) ? "CMD" :
++			      (tx_ring_layout[idx].ring_attr == HIF_TX_CMD_WM) ? "CMD_WM" :
++			      (tx_ring_layout[idx].ring_attr == HIF_TX_FWDL) ? "FWDL" : "UN",
++			      tx_ring_layout[idx].hw_desc_base, tbase[idx],
++			      tcnt[idx], tcidx[idx], tdidx[idx], queue_cnt);
++	}
++
++	seq_printf(s, "RxRing Configuration\n");
++	seq_printf(s, "%4s %8s %8s %10s %6s %6s %6s %6s\n",
++		      "Idx", "Attr", "Reg", "Base", "Cnt", "CIDX", "DIDX",
++		      "QCnt");
++
++	for (idx = 0; idx < RX_RING_NUM; idx++) {
++		u32 queue_cnt;
++
++		queue_cnt = (rdidx[idx] > rcidx[idx]) ?
++			    (rdidx[idx] - rcidx[idx] - 1) :
++			    (rdidx[idx] - rcidx[idx] + rcnt[idx] - 1);
++		seq_printf(s, "%4d %8s %8x %10x %6x %6x %6x %6x\n",
++			      idx,
++			      (rx_ring_layout[idx].ring_attr == HIF_RX_DATA) ? "DATA" :
++			      (rx_ring_layout[idx].ring_attr == HIF_RX_EVENT) ? "EVENT" : "UN",
++			      rx_ring_layout[idx].hw_desc_base, rbase[idx],
++			      rcnt[idx], rcidx[idx], rdidx[idx], queue_cnt);
++	}
++
++	mt7915_show_dma_info(s, dev);
++	return 0;
++}
++
++static int mt7915_drr_info(struct seq_file *s, void *data)
++{
++#define DL_AC_START	0x00
++#define DL_AC_END	0x0F
++#define UL_AC_START	0x10
++#define UL_AC_END	0x1F
++
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u32 drr_sta_status[16];
++	u32 drr_ctrl_def_val = 0x80220000, drr_ctrl_val = 0;
++	bool is_show = false;
++	int idx, sta_line = 0, sta_no = 0, max_sta_line = (MT7915_WTBL_SIZE+31)/32;
++	seq_printf(s, "DRR Table STA Info:\n");
++
++	for (idx = DL_AC_START; idx <= DL_AC_END; idx++) {
++		is_show = true;
++		drr_ctrl_val = (drr_ctrl_def_val | idx);
++		mt76_wr(dev, MT_PLE_DRR_TABLE_CTRL, drr_ctrl_val);
++		drr_sta_status[0] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA0);
++		drr_sta_status[1] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA1);
++		drr_sta_status[2] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA2);
++		drr_sta_status[3] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA3);
++		drr_sta_status[4] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA4);
++		drr_sta_status[5] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA5);
++		drr_sta_status[6] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA6);
++		drr_sta_status[7] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA7);
++
++		if (max_sta_line > 8) {
++			drr_ctrl_val = (drr_ctrl_def_val | idx | 1<<10);
++			mt76_wr(dev, MT_PLE_DRR_TABLE_CTRL, drr_ctrl_val);
++			drr_sta_status[8] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA0);
++			drr_sta_status[9] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA1);
++			drr_sta_status[10] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA2);
++			drr_sta_status[11] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA3);
++			drr_sta_status[12] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA4);
++			drr_sta_status[13] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA5);
++			drr_sta_status[14] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA6);
++			drr_sta_status[15] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA7);
++		}
++
++		for (sta_line = 0; sta_line < max_sta_line; sta_line++) {
++			if (drr_sta_status[sta_line] > 0) {
++				for (sta_no = 0; sta_no < 32; sta_no++) {
++					if (((drr_sta_status[sta_line] & (0x1 << sta_no)) >> sta_no)) {
++						if (is_show) {
++							seq_printf(s, "\n DL AC%02d Queue Non-Empty STA:\n", idx);
++							is_show = false;
++						}
++						seq_printf(s, "%d ", sta_no + (sta_line * 32));
++					}
++				}
++			}
++		}
++	}
++
++	for (idx = UL_AC_START; idx <= UL_AC_END; idx++) {
++		is_show = true;
++		drr_ctrl_val = (drr_ctrl_def_val | idx);
++		mt76_wr(dev, MT_PLE_DRR_TABLE_CTRL, drr_ctrl_val);
++		drr_sta_status[0] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA0);
++		drr_sta_status[1] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA1);
++		drr_sta_status[2] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA2);
++		drr_sta_status[3] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA3);
++		drr_sta_status[4] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA4);
++		drr_sta_status[5] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA5);
++		drr_sta_status[6] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA6);
++		drr_sta_status[7] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA7);
++
++		if (max_sta_line > 8) {
++			drr_ctrl_val = (drr_ctrl_def_val | idx | 1<<10);
++			mt76_wr(dev, MT_PLE_DRR_TABLE_CTRL, drr_ctrl_val);
++			drr_sta_status[8] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA0);
++			drr_sta_status[9] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA1);
++			drr_sta_status[10] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA2);
++			drr_sta_status[11] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA3);
++			drr_sta_status[12] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA4);
++			drr_sta_status[13] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA5);
++			drr_sta_status[14] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA6);
++			drr_sta_status[15] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA7);
++		}
++
++		for (sta_line = 0; sta_line < max_sta_line; sta_line++) {
++			if (drr_sta_status[sta_line] > 0) {
++				for (sta_no = 0; sta_no < 32; sta_no++) {
++					if (((drr_sta_status[sta_line] & (0x1 << sta_no)) >> sta_no)) {
++						if (is_show) {
++							seq_printf(s, "\n UL AC%02d Queue Non-Empty STA:\n", idx);
++							is_show = false;
++						}
++						seq_printf(s, "%d ", sta_no + (sta_line * 32));
++					}
++				}
++			}
++		}
++	}
++
++	for (idx = DL_AC_START; idx <= DL_AC_END; idx++) {
++		drr_ctrl_def_val = 0x80420000;
++		drr_ctrl_val = (drr_ctrl_def_val | idx);
++		mt76_wr(dev, MT_PLE_DRR_TABLE_CTRL, drr_ctrl_val);
++		drr_sta_status[0] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA0);
++		drr_sta_status[1] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA1);
++		drr_sta_status[2] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA2);
++		drr_sta_status[3] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA3);
++		drr_sta_status[4] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA4);
++		drr_sta_status[5] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA5);
++		drr_sta_status[6] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA6);
++		drr_sta_status[7] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA7);
++
++		if (max_sta_line > 8) {
++			drr_ctrl_val = (drr_ctrl_def_val | idx | 1<<10);
++			mt76_wr(dev, MT_PLE_DRR_TABLE_CTRL, drr_ctrl_val);
++			drr_sta_status[8] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA0);
++			drr_sta_status[9] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA1);
++			drr_sta_status[10] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA2);
++			drr_sta_status[11] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA3);
++			drr_sta_status[12] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA4);
++			drr_sta_status[13] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA5);
++			drr_sta_status[14] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA6);
++			drr_sta_status[15] = mt76_rr(dev, MT_PLE_DRR_TABLE_RDATA7);
++		}
++
++		seq_printf(s, "\nBSSGrp[%d]:\n", idx);
++
++		for (sta_line = 0; sta_line < max_sta_line; sta_line++) {
++			seq_printf(s, "0x%08x ", drr_sta_status[sta_line]);
++
++			if ((sta_line % 4) == 3)
++				seq_printf(s, "\n");
++		}
++	}
++
++	return 0;
++}
++
++#define CR_NUM_OF_AC 9
++#define ALL_CR_NUM_OF_ALL_AC (CR_NUM_OF_AC * 4)
++
++
++typedef enum _ENUM_UMAC_PORT_T {
++	ENUM_UMAC_HIF_PORT_0         = 0,
++	ENUM_UMAC_CPU_PORT_1         = 1,
++	ENUM_UMAC_LMAC_PORT_2        = 2,
++	ENUM_PLE_CTRL_PSE_PORT_3     = 3,
++	ENUM_UMAC_PSE_PLE_PORT_TOTAL_NUM = 4
++} ENUM_UMAC_PORT_T, *P_ENUM_UMAC_PORT_T;
++
++/* N9 MCU QUEUE LIST */
++typedef enum _ENUM_UMAC_CPU_P_QUEUE_T {
++	ENUM_UMAC_CTX_Q_0 = 0,
++	ENUM_UMAC_CTX_Q_1 = 1,
++	ENUM_UMAC_CTX_Q_2 = 2,
++	ENUM_UMAC_CTX_Q_3 = 3,
++	ENUM_UMAC_CRX     = 0,
++	ENUM_UMAC_CIF_QUEUE_TOTAL_NUM = 4
++} ENUM_UMAC_CPU_P_QUEUE_T, *P_ENUM_UMAC_CPU_P_QUEUE_T;
++
++/* LMAC PLE TX QUEUE LIST */
++typedef enum _ENUM_UMAC_LMAC_PLE_TX_P_QUEUE_T {
++	ENUM_UMAC_LMAC_PLE_TX_Q_00           = 0x00,
++	ENUM_UMAC_LMAC_PLE_TX_Q_01           = 0x01,
++	ENUM_UMAC_LMAC_PLE_TX_Q_02           = 0x02,
++	ENUM_UMAC_LMAC_PLE_TX_Q_03           = 0x03,
++
++	ENUM_UMAC_LMAC_PLE_TX_Q_10           = 0x04,
++	ENUM_UMAC_LMAC_PLE_TX_Q_11           = 0x05,
++	ENUM_UMAC_LMAC_PLE_TX_Q_12           = 0x06,
++	ENUM_UMAC_LMAC_PLE_TX_Q_13           = 0x07,
++
++	ENUM_UMAC_LMAC_PLE_TX_Q_20           = 0x08,
++	ENUM_UMAC_LMAC_PLE_TX_Q_21           = 0x09,
++	ENUM_UMAC_LMAC_PLE_TX_Q_22           = 0x0a,
++	ENUM_UMAC_LMAC_PLE_TX_Q_23           = 0x0b,
++
++	ENUM_UMAC_LMAC_PLE_TX_Q_30           = 0x0c,
++	ENUM_UMAC_LMAC_PLE_TX_Q_31           = 0x0d,
++	ENUM_UMAC_LMAC_PLE_TX_Q_32           = 0x0e,
++	ENUM_UMAC_LMAC_PLE_TX_Q_33           = 0x0f,
++
++	ENUM_UMAC_LMAC_PLE_TX_Q_ALTX_0      = 0x10,
++	ENUM_UMAC_LMAC_PLE_TX_Q_BMC_0       = 0x11,
++	ENUM_UMAC_LMAC_PLE_TX_Q_BNC_0       = 0x12,
++	ENUM_UMAC_LMAC_PLE_TX_Q_PSMP_0      = 0x13,
++
++	ENUM_UMAC_LMAC_PLE_TX_Q_ALTX_1      = 0x14,
++	ENUM_UMAC_LMAC_PLE_TX_Q_BMC_1       = 0x15,
++	ENUM_UMAC_LMAC_PLE_TX_Q_BNC_1       = 0x16,
++	ENUM_UMAC_LMAC_PLE_TX_Q_PSMP_1      = 0x17,
++	ENUM_UMAC_LMAC_PLE_TX_Q_NAF         = 0x18,
++	ENUM_UMAC_LMAC_PLE_TX_Q_NBCN        = 0x19,
++	ENUM_UMAC_LMAC_PLE_TX_Q_RELEASE     = 0x1f, /* DE suggests not to use 0x1f, it's only for hw free queue */
++	ENUM_UMAC_LMAC_QUEUE_TOTAL_NUM      = 24,
++
++} ENUM_UMAC_LMAC_TX_P_QUEUE_T, *P_ENUM_UMAC_LMAC_TX_P_QUEUE_T;
++
++typedef struct _EMPTY_QUEUE_INFO_T {
++	char *QueueName;
++	u32 Portid;
++	u32 Queueid;
++} EMPTY_QUEUE_INFO_T, *P_EMPTY_QUEUE_INFO_T;
++
++static EMPTY_QUEUE_INFO_T ple_queue_empty_info[] = {
++	{"CPU Q0",  ENUM_UMAC_CPU_PORT_1,     ENUM_UMAC_CTX_Q_0},
++	{"CPU Q1",  ENUM_UMAC_CPU_PORT_1,     ENUM_UMAC_CTX_Q_1},
++	{"CPU Q2",  ENUM_UMAC_CPU_PORT_1,     ENUM_UMAC_CTX_Q_2},
++	{"CPU Q3",  ENUM_UMAC_CPU_PORT_1,     ENUM_UMAC_CTX_Q_3},
++	{NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, /* 4~7 not defined */
++	{"ALTX Q0", ENUM_UMAC_LMAC_PORT_2,    ENUM_UMAC_LMAC_PLE_TX_Q_ALTX_0}, /* Q16 */
++	{"BMC Q0",  ENUM_UMAC_LMAC_PORT_2,    ENUM_UMAC_LMAC_PLE_TX_Q_BMC_0},
++	{"BCN Q0",  ENUM_UMAC_LMAC_PORT_2,    ENUM_UMAC_LMAC_PLE_TX_Q_BNC_0},
++	{"PSMP Q0", ENUM_UMAC_LMAC_PORT_2,    ENUM_UMAC_LMAC_PLE_TX_Q_PSMP_0},
++	{"ALTX Q1", ENUM_UMAC_LMAC_PORT_2,    ENUM_UMAC_LMAC_PLE_TX_Q_ALTX_1},
++	{"BMC Q1",  ENUM_UMAC_LMAC_PORT_2,    ENUM_UMAC_LMAC_PLE_TX_Q_BMC_1},
++	{"BCN Q1",  ENUM_UMAC_LMAC_PORT_2,    ENUM_UMAC_LMAC_PLE_TX_Q_BNC_1},
++	{"PSMP Q1", ENUM_UMAC_LMAC_PORT_2,    ENUM_UMAC_LMAC_PLE_TX_Q_PSMP_1},
++	{"NAF Q",   ENUM_UMAC_LMAC_PORT_2,    ENUM_UMAC_LMAC_PLE_TX_Q_NAF},
++	{"NBCN Q",  ENUM_UMAC_LMAC_PORT_2,    ENUM_UMAC_LMAC_PLE_TX_Q_NBCN},
++	{NULL, 0, 0}, {NULL, 0, 0}, /* 18, 19 not defined */
++	{"FIXFID Q", ENUM_UMAC_LMAC_PORT_2, 0x1a},
++	{NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0},
++	{NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, /* 21~29 not defined */
++	{"RLS Q",   ENUM_PLE_CTRL_PSE_PORT_3, 0x7e},
++	{"RLS2 Q",  ENUM_PLE_CTRL_PSE_PORT_3, 0x7f}
++};
++
++static EMPTY_QUEUE_INFO_T ple_txcmd_queue_empty_info[] = {
++	{"AC00Q", ENUM_UMAC_LMAC_PORT_2, 0x40},
++	{"AC01Q", ENUM_UMAC_LMAC_PORT_2, 0x41},
++	{"AC02Q", ENUM_UMAC_LMAC_PORT_2, 0x42},
++	{"AC03Q", ENUM_UMAC_LMAC_PORT_2, 0x43},
++	{"AC10Q", ENUM_UMAC_LMAC_PORT_2, 0x44},
++	{"AC11Q", ENUM_UMAC_LMAC_PORT_2, 0x45},
++	{"AC12Q", ENUM_UMAC_LMAC_PORT_2, 0x46},
++	{"AC13Q", ENUM_UMAC_LMAC_PORT_2, 0x47},
++	{"AC20Q", ENUM_UMAC_LMAC_PORT_2, 0x48},
++	{"AC21Q", ENUM_UMAC_LMAC_PORT_2, 0x49},
++	{"AC22Q", ENUM_UMAC_LMAC_PORT_2, 0x4a},
++	{"AC23Q", ENUM_UMAC_LMAC_PORT_2, 0x4b},
++	{"AC30Q", ENUM_UMAC_LMAC_PORT_2, 0x4c},
++	{"AC31Q", ENUM_UMAC_LMAC_PORT_2, 0x4d},
++	{"AC32Q", ENUM_UMAC_LMAC_PORT_2, 0x4e},
++	{"AC33Q", ENUM_UMAC_LMAC_PORT_2, 0x4f},
++	{"ALTX Q0", ENUM_UMAC_LMAC_PORT_2, 0x50},
++	{"TF Q0", ENUM_UMAC_LMAC_PORT_2, 0x51},
++	{"TWT TSF-TF Q0", ENUM_UMAC_LMAC_PORT_2, 0x52},
++	{"TWT DL Q0", ENUM_UMAC_LMAC_PORT_2, 0x53},
++	{"TWT UL Q0", ENUM_UMAC_LMAC_PORT_2, 0x54},
++	{"ALTX Q1", ENUM_UMAC_LMAC_PORT_2, 0x55},
++	{"TF Q1", ENUM_UMAC_LMAC_PORT_2, 0x56},
++	{"TWT TSF-TF Q1", ENUM_UMAC_LMAC_PORT_2, 0x57},
++	{"TWT DL Q1", ENUM_UMAC_LMAC_PORT_2, 0x58},
++	{"TWT UL Q1", ENUM_UMAC_LMAC_PORT_2, 0x59},
++	{NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0},
++};
++
++
++
++static char* sta_ctrl_reg[] = {"ENABLE", "DISABLE", "PAUSE"};
++static u32 chip_show_sta_acq_info(struct seq_file *s, struct mt7915_dev *dev, u32 *ple_stat,
++				  u32 *sta_pause, u32 *dis_sta_map,
++				  u32 dumptxd)
++{
++	int i, j;
++	u32 total_nonempty_cnt = 0;
++
++	for (j = 0; j < ALL_CR_NUM_OF_ALL_AC; j++) { /* show AC Q info */
++		for (i = 0; i < 32; i++) {
++			if (((ple_stat[j + 1] & (0x1 << i)) >> i) == 0) {
++				u32 hfid, tfid, pktcnt, ac_num = j / CR_NUM_OF_AC, ctrl = 0;
++				u32 sta_num = i + (j % CR_NUM_OF_AC) * 32, fl_que_ctrl[3] = {0};
++				//struct wifi_dev *wdev = wdev_search_by_wcid(pAd, sta_num);
++				u32 wmmidx = 0;
++				struct mt7915_sta *msta;
++				struct mt76_wcid *wcid;
++				struct ieee80211_sta *sta = NULL;
++
++				wcid = rcu_dereference(dev->mt76.wcid[sta_num]);
++				sta = wcid_to_sta(wcid);
++				if (!sta) {
++					printk("ERROR!! no found STA wcid=%d\n", sta_num);
++					return 0;
++				}
++				msta = container_of(wcid, struct mt7915_sta, wcid);
++				wmmidx = msta->vif->mt76.wmm_idx;
++
++				seq_printf(s, "\tSTA%d AC%d: ", sta_num, ac_num);
++
++				fl_que_ctrl[0] |= WF_PLE_TOP_FL_QUE_CTRL_0_EXECUTE_MASK;
++				fl_que_ctrl[0] |= (ENUM_UMAC_LMAC_PORT_2 << WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_PID_SHFT);
++				fl_que_ctrl[0] |= (ac_num << WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_QID_SHFT);
++				fl_que_ctrl[0] |= (sta_num << WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_WLANID_SHFT);
++				mt7915_mac_wr(dev, WF_PLE_TOP_FL_QUE_CTRL_0_ADDR, fl_que_ctrl[0]);
++				fl_que_ctrl[1] = mt7915_mac_rr(dev, WF_PLE_TOP_FL_QUE_CTRL_2_ADDR);
++				fl_que_ctrl[2] = mt7915_mac_rr(dev, WF_PLE_TOP_FL_QUE_CTRL_3_ADDR);
++				hfid = (fl_que_ctrl[1] & WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_MASK) >>
++					WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_SHFT;
++				tfid = (fl_que_ctrl[1] & WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_MASK) >>
++					WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_SHFT;
++				pktcnt = (fl_que_ctrl[2] & WF_PLE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_MASK) >>
++					WF_PLE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_SHFT;
++				seq_printf(s, "tail/head fid = 0x%03x/0x%03x, pkt cnt = 0x%03x",
++						  tfid, hfid, pktcnt);
++
++				if (((sta_pause[j % 6] & 0x1 << i) >> i) == 1)
++					ctrl = 2;
++
++				if (((dis_sta_map[j % 6] & 0x1 << i) >> i) == 1)
++					ctrl = 1;
++
++				seq_printf(s, " ctrl = %s", sta_ctrl_reg[ctrl]);
++				seq_printf(s, " (wmmidx=%d)\n", wmmidx);
++
++				total_nonempty_cnt++;
++
++				// TODO
++				//if (pktcnt > 0 && dumptxd > 0)
++				//	ShowTXDInfo(pAd, hfid);
++			}
++		}
++	}
++
++	return total_nonempty_cnt;
++}
++
++static void chip_show_txcmdq_info(struct seq_file *s, struct mt7915_dev *dev, u32 ple_txcmd_stat)
++{
++	int i;
++
++	seq_printf(s, "Nonempty TXCMD Q info:\n");
++	for (i = 0; i < 31; i++) {
++		if (((ple_txcmd_stat & (0x1 << i)) >> i) == 0) {
++			u32 hfid, tfid, pktcnt, fl_que_ctrl[3] = {0};
++
++			if (ple_txcmd_queue_empty_info[i].QueueName != NULL) {
++				seq_printf(s, "\t%s: ", ple_txcmd_queue_empty_info[i].QueueName);
++				fl_que_ctrl[0] |= WF_PLE_TOP_FL_QUE_CTRL_0_EXECUTE_MASK;
++				fl_que_ctrl[0] |= (ple_txcmd_queue_empty_info[i].Portid <<
++							WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_PID_SHFT);
++				fl_que_ctrl[0] |= (ple_txcmd_queue_empty_info[i].Queueid <<
++							WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_QID_SHFT);
++			} else
++				continue;
++
++			mt7915_mac_wr(dev, WF_PLE_TOP_FL_QUE_CTRL_0_ADDR, fl_que_ctrl[0]);
++			fl_que_ctrl[1] = mt7915_mac_rr(dev, WF_PLE_TOP_FL_QUE_CTRL_2_ADDR);
++			fl_que_ctrl[2] = mt7915_mac_rr(dev, WF_PLE_TOP_FL_QUE_CTRL_3_ADDR);
++			hfid = (fl_que_ctrl[1] & WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_MASK) >>
++				WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_SHFT;
++			tfid = (fl_que_ctrl[1] & WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_MASK) >>
++				WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_SHFT;
++			pktcnt = (fl_que_ctrl[2] & WF_PLE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_MASK) >>
++				WF_PLE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_SHFT;
++			seq_printf(s, "tail/head fid = 0x%03x/0x%03x, pkt cnt = 0x%03x\n",
++					  tfid, hfid, pktcnt);
++		}
++	}
++}
++
++static void chip_get_ple_acq_stat(struct mt7915_dev *dev, u32 *ple_stat)
++{
++	ple_stat[0] = mt7915_mac_rr(dev, WF_PLE_TOP_QUEUE_EMPTY_ADDR);
++
++	ple_stat[1] = mt7915_mac_rr(dev, WF_PLE_TOP_AC0_QUEUE_EMPTY0_ADDR);
++	ple_stat[2] = mt7915_mac_rr(dev, WF_PLE_TOP_AC0_QUEUE_EMPTY1_ADDR);
++	ple_stat[3] = mt7915_mac_rr(dev, WF_PLE_TOP_AC0_QUEUE_EMPTY2_ADDR);
++	ple_stat[4] = mt7915_mac_rr(dev, WF_PLE_TOP_AC0_QUEUE_EMPTY3_ADDR);
++	ple_stat[5] = mt7915_mac_rr(dev, WF_PLE_TOP_AC0_QUEUE_EMPTY4_ADDR);
++	ple_stat[6] = mt7915_mac_rr(dev, WF_PLE_TOP_AC0_QUEUE_EMPTY5_ADDR);
++	ple_stat[7] = mt7915_mac_rr(dev, WF_PLE_TOP_AC0_QUEUE_EMPTY6_ADDR);
++	ple_stat[8] = mt7915_mac_rr(dev, WF_PLE_TOP_AC0_QUEUE_EMPTY7_ADDR);
++	ple_stat[9] = mt7915_mac_rr(dev, WF_PLE_TOP_AC0_QUEUE_EMPTY8_ADDR);
++
++	ple_stat[10] = mt7915_mac_rr(dev, WF_PLE_TOP_AC1_QUEUE_EMPTY0_ADDR);
++	ple_stat[11] = mt7915_mac_rr(dev, WF_PLE_TOP_AC1_QUEUE_EMPTY1_ADDR);
++	ple_stat[12] = mt7915_mac_rr(dev, WF_PLE_TOP_AC1_QUEUE_EMPTY2_ADDR);
++	ple_stat[13] = mt7915_mac_rr(dev, WF_PLE_TOP_AC1_QUEUE_EMPTY3_ADDR);
++	ple_stat[14] = mt7915_mac_rr(dev, WF_PLE_TOP_AC1_QUEUE_EMPTY4_ADDR);
++	ple_stat[15] = mt7915_mac_rr(dev, WF_PLE_TOP_AC1_QUEUE_EMPTY5_ADDR);
++	ple_stat[16] = mt7915_mac_rr(dev, WF_PLE_TOP_AC1_QUEUE_EMPTY6_ADDR);
++	ple_stat[17] = mt7915_mac_rr(dev, WF_PLE_TOP_AC1_QUEUE_EMPTY7_ADDR);
++	ple_stat[18] = mt7915_mac_rr(dev, WF_PLE_TOP_AC1_QUEUE_EMPTY8_ADDR);
++
++	ple_stat[19] = mt7915_mac_rr(dev, WF_PLE_TOP_AC2_QUEUE_EMPTY0_ADDR);
++	ple_stat[20] = mt7915_mac_rr(dev, WF_PLE_TOP_AC2_QUEUE_EMPTY1_ADDR);
++	ple_stat[21] = mt7915_mac_rr(dev, WF_PLE_TOP_AC2_QUEUE_EMPTY2_ADDR);
++	ple_stat[22] = mt7915_mac_rr(dev, WF_PLE_TOP_AC2_QUEUE_EMPTY3_ADDR);
++	ple_stat[23] = mt7915_mac_rr(dev, WF_PLE_TOP_AC2_QUEUE_EMPTY4_ADDR);
++	ple_stat[24] = mt7915_mac_rr(dev, WF_PLE_TOP_AC2_QUEUE_EMPTY5_ADDR);
++	ple_stat[25] = mt7915_mac_rr(dev, WF_PLE_TOP_AC2_QUEUE_EMPTY6_ADDR);
++	ple_stat[26] = mt7915_mac_rr(dev, WF_PLE_TOP_AC2_QUEUE_EMPTY7_ADDR);
++	ple_stat[27] = mt7915_mac_rr(dev, WF_PLE_TOP_AC2_QUEUE_EMPTY8_ADDR);
++
++	ple_stat[28] = mt7915_mac_rr(dev, WF_PLE_TOP_AC3_QUEUE_EMPTY0_ADDR);
++	ple_stat[29] = mt7915_mac_rr(dev, WF_PLE_TOP_AC3_QUEUE_EMPTY1_ADDR);
++	ple_stat[30] = mt7915_mac_rr(dev, WF_PLE_TOP_AC3_QUEUE_EMPTY2_ADDR);
++	ple_stat[31] = mt7915_mac_rr(dev, WF_PLE_TOP_AC3_QUEUE_EMPTY3_ADDR);
++	ple_stat[32] = mt7915_mac_rr(dev, WF_PLE_TOP_AC3_QUEUE_EMPTY4_ADDR);
++	ple_stat[33] = mt7915_mac_rr(dev, WF_PLE_TOP_AC3_QUEUE_EMPTY5_ADDR);
++	ple_stat[34] = mt7915_mac_rr(dev, WF_PLE_TOP_AC3_QUEUE_EMPTY6_ADDR);
++	ple_stat[35] = mt7915_mac_rr(dev, WF_PLE_TOP_AC3_QUEUE_EMPTY7_ADDR);
++	ple_stat[36] = mt7915_mac_rr(dev, WF_PLE_TOP_AC3_QUEUE_EMPTY8_ADDR);
++}
++
++static void chip_get_dis_sta_map(struct mt7915_dev *dev, u32 *dis_sta_map)
++{
++	dis_sta_map[0] = mt7915_mac_rr(dev, WF_PLE_TOP_DIS_STA_MAP0_ADDR);
++	dis_sta_map[1] = mt7915_mac_rr(dev, WF_PLE_TOP_DIS_STA_MAP1_ADDR);
++	dis_sta_map[2] = mt7915_mac_rr(dev, WF_PLE_TOP_DIS_STA_MAP2_ADDR);
++	dis_sta_map[3] = mt7915_mac_rr(dev, WF_PLE_TOP_DIS_STA_MAP3_ADDR);
++	dis_sta_map[4] = mt7915_mac_rr(dev, WF_PLE_TOP_DIS_STA_MAP4_ADDR);
++	dis_sta_map[5] = mt7915_mac_rr(dev, WF_PLE_TOP_DIS_STA_MAP5_ADDR);
++	dis_sta_map[6] = mt7915_mac_rr(dev, WF_PLE_TOP_DIS_STA_MAP6_ADDR);
++	dis_sta_map[7] = mt7915_mac_rr(dev, WF_PLE_TOP_DIS_STA_MAP7_ADDR);
++	dis_sta_map[8] = mt7915_mac_rr(dev, WF_PLE_TOP_DIS_STA_MAP8_ADDR);
++}
++
++static void chip_get_sta_pause(struct mt7915_dev *dev, u32 *sta_pause)
++{
++	sta_pause[0] = mt7915_mac_rr(dev, WF_PLE_TOP_STATION_PAUSE0_ADDR);
++	sta_pause[1] = mt7915_mac_rr(dev, WF_PLE_TOP_STATION_PAUSE1_ADDR);
++	sta_pause[2] = mt7915_mac_rr(dev, WF_PLE_TOP_STATION_PAUSE2_ADDR);
++	sta_pause[3] = mt7915_mac_rr(dev, WF_PLE_TOP_STATION_PAUSE3_ADDR);
++	sta_pause[4] = mt7915_mac_rr(dev, WF_PLE_TOP_STATION_PAUSE4_ADDR);
++	sta_pause[5] = mt7915_mac_rr(dev, WF_PLE_TOP_STATION_PAUSE5_ADDR);
++	sta_pause[6] = mt7915_mac_rr(dev, WF_PLE_TOP_STATION_PAUSE6_ADDR);
++	sta_pause[7] = mt7915_mac_rr(dev, WF_PLE_TOP_STATION_PAUSE7_ADDR);
++	sta_pause[8] = mt7915_mac_rr(dev, WF_PLE_TOP_STATION_PAUSE8_ADDR);
++}
++
++static int mt7915_pleinfo_read(struct seq_file *s, void *data)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u32 ple_buf_ctrl, pg_sz, pg_num;
++	u32 ple_stat[ALL_CR_NUM_OF_ALL_AC + 1] = {0}, pg_flow_ctrl[8] = {0};
++	u32 ple_native_txcmd_stat;
++	u32 ple_txcmd_stat;
++	u32 sta_pause[CR_NUM_OF_AC] = {0}, dis_sta_map[CR_NUM_OF_AC] = {0};
++	u32 fpg_cnt, ffa_cnt, fpg_head, fpg_tail, hif_max_q, hif_min_q;
++	u32 rpg_hif, upg_hif, cpu_max_q, cpu_min_q, rpg_cpu, upg_cpu;
++	int i, j;
++
++	ple_buf_ctrl = mt7915_mac_rr(dev, WF_PLE_TOP_PBUF_CTRL_ADDR);
++	chip_get_ple_acq_stat(dev, ple_stat);
++	ple_txcmd_stat = mt7915_mac_rr(dev, WF_PLE_TOP_TXCMD_QUEUE_EMPTY_ADDR);
++	ple_native_txcmd_stat = mt7915_mac_rr(dev, WF_PLE_TOP_NATIVE_TXCMD_QUEUE_EMPTY_ADDR);
++	pg_flow_ctrl[0] = mt7915_mac_rr(dev, WF_PLE_TOP_FREEPG_CNT_ADDR);
++	pg_flow_ctrl[1] = mt7915_mac_rr(dev, WF_PLE_TOP_FREEPG_HEAD_TAIL_ADDR);
++	pg_flow_ctrl[2] = mt7915_mac_rr(dev, WF_PLE_TOP_PG_HIF_GROUP_ADDR);
++	pg_flow_ctrl[3] = mt7915_mac_rr(dev, WF_PLE_TOP_HIF_PG_INFO_ADDR);
++	pg_flow_ctrl[4] = mt7915_mac_rr(dev, WF_PLE_TOP_PG_CPU_GROUP_ADDR);
++	pg_flow_ctrl[5] = mt7915_mac_rr(dev, WF_PLE_TOP_CPU_PG_INFO_ADDR);
++	pg_flow_ctrl[6] = mt7915_mac_rr(dev, WF_PLE_TOP_PG_HIF_TXCMD_GROUP_ADDR);
++	pg_flow_ctrl[7] = mt7915_mac_rr(dev, WF_PLE_TOP_HIF_TXCMD_PG_INFO_ADDR);
++	chip_get_dis_sta_map(dev, dis_sta_map);
++	chip_get_sta_pause(dev, sta_pause);
++
++	seq_printf(s, "PLE Configuration Info:\n");
++	seq_printf(s, "\tPacket Buffer Control(0x%x): 0x%08x\n",
++		      WF_PLE_TOP_PBUF_CTRL_ADDR, ple_buf_ctrl);
++	pg_sz = (ple_buf_ctrl & WF_PLE_TOP_PBUF_CTRL_PAGE_SIZE_CFG_MASK) >> WF_PLE_TOP_PBUF_CTRL_PAGE_SIZE_CFG_SHFT;
++	seq_printf(s, "\t\tPage Size=%d(%d bytes per page)\n",
++		       pg_sz, (pg_sz == 1 ? 128 : 64));
++	seq_printf(s, "\t\tPage Offset=%d(in unit of 2KB)\n",
++		        (ple_buf_ctrl & WF_PLE_TOP_PBUF_CTRL_PBUF_OFFSET_MASK) >> WF_PLE_TOP_PBUF_CTRL_PBUF_OFFSET_SHFT);
++	pg_num = (ple_buf_ctrl & WF_PLE_TOP_PBUF_CTRL_TOTAL_PAGE_NUM_MASK) >> WF_PLE_TOP_PBUF_CTRL_TOTAL_PAGE_NUM_SHFT;
++	seq_printf(s, "\t\tTotal Page=%d pages\n", pg_num);
++
++	/* Page Flow Control */
++	seq_printf(s, "PLE Page Flow Control:\n");
++	seq_printf(s, "\tFree page counter(0x%x): 0x%08x\n",
++		      WF_PLE_TOP_FREEPG_CNT_ADDR, pg_flow_ctrl[0]);
++	fpg_cnt = (pg_flow_ctrl[0] & WF_PLE_TOP_FREEPG_CNT_FREEPG_CNT_MASK) >> WF_PLE_TOP_FREEPG_CNT_FREEPG_CNT_SHFT;
++	seq_printf(s, "\t\tThe toal page number of free=0x%03x\n", fpg_cnt);
++	ffa_cnt = (pg_flow_ctrl[0] & WF_PLE_TOP_FREEPG_CNT_FFA_CNT_MASK) >> WF_PLE_TOP_FREEPG_CNT_FFA_CNT_SHFT;
++	seq_printf(s, "\t\tThe free page numbers of free for all=0x%03x\n", ffa_cnt);
++	seq_printf(s, "\tFree page head and tail(0x%x): 0x%08x\n",
++	              WF_PLE_TOP_FREEPG_HEAD_TAIL_ADDR, pg_flow_ctrl[1]);
++	fpg_head = (pg_flow_ctrl[1] & WF_PLE_TOP_FREEPG_HEAD_TAIL_FREEPG_HEAD_MASK) >> WF_PLE_TOP_FREEPG_HEAD_TAIL_FREEPG_HEAD_SHFT;
++	fpg_tail = (pg_flow_ctrl[1] & WF_PLE_TOP_FREEPG_HEAD_TAIL_FREEPG_TAIL_MASK) >> WF_PLE_TOP_FREEPG_HEAD_TAIL_FREEPG_TAIL_SHFT;
++	seq_printf(s, "\t\tThe tail/head page of free page list=0x%03x/0x%03x\n", fpg_tail, fpg_head);
++	seq_printf(s, "\tReserved page counter of HIF group(0x%x): 0x%08x\n",
++	              WF_PLE_TOP_PG_HIF_GROUP_ADDR, pg_flow_ctrl[2]);
++	seq_printf(s, "\tHIF group page status(0x%x): 0x%08x\n",
++	              WF_PLE_TOP_HIF_PG_INFO_ADDR, pg_flow_ctrl[3]);
++	hif_min_q = (pg_flow_ctrl[2] & WF_PLE_TOP_PG_HIF_GROUP_HIF_MIN_QUOTA_MASK) >> WF_PLE_TOP_PG_HIF_GROUP_HIF_MIN_QUOTA_SHFT;
++	hif_max_q = (pg_flow_ctrl[2] & WF_PLE_TOP_PG_HIF_GROUP_HIF_MAX_QUOTA_MASK) >> WF_PLE_TOP_PG_HIF_GROUP_HIF_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of HIF group=0x%03x/0x%03x\n", hif_max_q, hif_min_q);
++	rpg_hif = (pg_flow_ctrl[3] & WF_PLE_TOP_HIF_PG_INFO_HIF_RSV_CNT_MASK) >> WF_PLE_TOP_HIF_PG_INFO_HIF_RSV_CNT_SHFT;
++	upg_hif = (pg_flow_ctrl[3] & WF_PLE_TOP_HIF_PG_INFO_HIF_SRC_CNT_MASK) >> WF_PLE_TOP_HIF_PG_INFO_HIF_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of HIF group=0x%03x/0x%03x\n", upg_hif, rpg_hif);
++
++	seq_printf(s, "\tReserved page counter of HIF_TXCMD group(0x%x): 0x%08x\n",
++		      WF_PLE_TOP_PG_HIF_TXCMD_GROUP_ADDR, pg_flow_ctrl[6]);
++	seq_printf(s, "\tHIF_TXCMD group page status(0x%x): 0x%08x\n",
++	              WF_PLE_TOP_HIF_TXCMD_PG_INFO_ADDR, pg_flow_ctrl[7]);
++	cpu_min_q = (pg_flow_ctrl[6] & WF_PLE_TOP_PG_HIF_TXCMD_GROUP_HIF_TXCMD_MIN_QUOTA_MASK) >> WF_PLE_TOP_PG_HIF_TXCMD_GROUP_HIF_TXCMD_MIN_QUOTA_SHFT;
++	cpu_max_q = (pg_flow_ctrl[6] & WF_PLE_TOP_PG_HIF_TXCMD_GROUP_HIF_TXCMD_MAX_QUOTA_MASK) >> WF_PLE_TOP_PG_HIF_TXCMD_GROUP_HIF_TXCMD_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of HIF_TXCMD group=0x%03x/0x%03x\n", cpu_max_q, cpu_min_q);
++	rpg_cpu = (pg_flow_ctrl[7] & WF_PLE_TOP_HIF_TXCMD_PG_INFO_HIF_TXCMD_RSV_CNT_MASK) >> WF_PLE_TOP_HIF_TXCMD_PG_INFO_HIF_TXCMD_RSV_CNT_SHFT;
++	upg_cpu = (pg_flow_ctrl[7] & WF_PLE_TOP_HIF_TXCMD_PG_INFO_HIF_TXCMD_SRC_CNT_MASK) >> WF_PLE_TOP_HIF_TXCMD_PG_INFO_HIF_TXCMD_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of HIF_TXCMD group=0x%03x/0x%03x\n", upg_cpu, rpg_cpu);
++
++	seq_printf(s, "\tReserved page counter of CPU group(0x820c0150): 0x%08x\n", pg_flow_ctrl[4]);
++	seq_printf(s, "\tCPU group page status(0x820c0154): 0x%08x\n", pg_flow_ctrl[5]);
++	cpu_min_q = (pg_flow_ctrl[4] & WF_PLE_TOP_PG_CPU_GROUP_CPU_MIN_QUOTA_MASK) >> WF_PLE_TOP_PG_CPU_GROUP_CPU_MIN_QUOTA_SHFT;
++	cpu_max_q = (pg_flow_ctrl[4] & WF_PLE_TOP_PG_CPU_GROUP_CPU_MAX_QUOTA_MASK) >> WF_PLE_TOP_PG_CPU_GROUP_CPU_MAX_QUOTA_SHFT;
++	seq_printf(s, "\t\tThe max/min quota pages of CPU group=0x%03x/0x%03x\n", cpu_max_q, cpu_min_q);
++	rpg_cpu = (pg_flow_ctrl[5] & WF_PLE_TOP_CPU_PG_INFO_CPU_RSV_CNT_MASK) >> WF_PLE_TOP_CPU_PG_INFO_CPU_RSV_CNT_SHFT;
++	upg_cpu = (pg_flow_ctrl[5] & WF_PLE_TOP_CPU_PG_INFO_CPU_SRC_CNT_MASK) >> WF_PLE_TOP_CPU_PG_INFO_CPU_SRC_CNT_SHFT;
++	seq_printf(s, "\t\tThe used/reserved pages of CPU group=0x%03x/0x%03x\n", upg_cpu, rpg_cpu);
++
++	if ((ple_stat[0] & WF_PLE_TOP_QUEUE_EMPTY_ALL_AC_EMPTY_MASK) == 0) {
++		for (j = 0; j < ALL_CR_NUM_OF_ALL_AC; j++) {
++			if (j % CR_NUM_OF_AC == 0) {
++				seq_printf(s, "\n\tNonempty AC%d Q of STA#: ", j / CR_NUM_OF_AC);
++			}
++
++			for (i = 0; i < ALL_CR_NUM_OF_ALL_AC; i++) {
++				if (((ple_stat[j + 1] & (0x1 << i)) >> i) == 0) {
++					seq_printf(s, "%d ", i + (j % CR_NUM_OF_AC) * 32);
++				}
++			}
++		}
++
++		seq_printf(s, "\n");
++	}
++
++	seq_printf(s, "non-native/native txcmd queue empty = %d/%d\n", ple_txcmd_stat, ple_native_txcmd_stat);
++
++	seq_printf(s, "Nonempty Q info:\n");
++
++	for (i = 0; i < ALL_CR_NUM_OF_ALL_AC; i++) {
++		if (((ple_stat[0] & (0x1 << i)) >> i) == 0) {
++			u32 hfid, tfid, pktcnt, fl_que_ctrl[3] = {0};
++
++			if (ple_queue_empty_info[i].QueueName != NULL) {
++				seq_printf(s, "\t%s: ", ple_queue_empty_info[i].QueueName);
++				fl_que_ctrl[0] |= WF_PLE_TOP_FL_QUE_CTRL_0_EXECUTE_MASK;
++				fl_que_ctrl[0] |= (ple_queue_empty_info[i].Portid << WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_PID_SHFT);
++				fl_que_ctrl[0] |= (ple_queue_empty_info[i].Queueid << WF_PLE_TOP_FL_QUE_CTRL_0_Q_BUF_QID_SHFT);
++			} else
++				continue;
++
++			if (ple_queue_empty_info[i].Queueid >= ENUM_UMAC_LMAC_PLE_TX_Q_ALTX_0 &&
++				ple_queue_empty_info[i].Queueid <= ENUM_UMAC_LMAC_PLE_TX_Q_PSMP_0)
++				/* band0 set TGID 0, bit31 = 0 */
++				mt7915_mac_wr(dev, WF_PLE_TOP_FL_QUE_CTRL_1_ADDR, 0x0);
++			else if (ple_queue_empty_info[i].Queueid >= ENUM_UMAC_LMAC_PLE_TX_Q_ALTX_1 &&
++				ple_queue_empty_info[i].Queueid <= ENUM_UMAC_LMAC_PLE_TX_Q_PSMP_1)
++				/* band1 set TGID 1, bit31 = 1 */
++				mt7915_mac_wr(dev, WF_PLE_TOP_FL_QUE_CTRL_1_ADDR, 0x80000000);
++
++			mt7915_mac_wr(dev, WF_PLE_TOP_FL_QUE_CTRL_0_ADDR, fl_que_ctrl[0]);
++			fl_que_ctrl[1] = mt7915_mac_rr(dev, WF_PLE_TOP_FL_QUE_CTRL_2_ADDR);
++			fl_que_ctrl[2] = mt7915_mac_rr(dev, WF_PLE_TOP_FL_QUE_CTRL_3_ADDR);
++			hfid = (fl_que_ctrl[1] & WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_MASK) >> WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_HEAD_FID_SHFT;
++			tfid = (fl_que_ctrl[1] & WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_MASK) >> WF_PLE_TOP_FL_QUE_CTRL_2_QUEUE_TAIL_FID_SHFT;
++			pktcnt = (fl_que_ctrl[2] & WF_PLE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_MASK) >> WF_PLE_TOP_FL_QUE_CTRL_3_QUEUE_PKT_NUM_SHFT;
++			seq_printf(s, "tail/head fid = 0x%03x/0x%03x, pkt cnt = 0x%03x\n",
++				      tfid, hfid, pktcnt);
++
++			/* TODO */
++			//if (pktcnt > 0 && dumptxd > 0)
++			//	ShowTXDInfo(pAd, hfid);
++		}
++	}
++
++	chip_show_sta_acq_info(s, dev, ple_stat, sta_pause, dis_sta_map, 0/*dumptxd*/);
++	chip_show_txcmdq_info(s, dev, ple_native_txcmd_stat);
++
++	return 0;
++}
++
++
++static int mt7915_mibinfo_read_per_band(struct seq_file *s, int band_idx)
++{
++#define BSS_NUM	4
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u32 mac_val0, mac_val, mac_val1, idx, band_offset = 0;
++	u32 msdr6, msdr7, msdr8, msdr9, msdr10, msdr16, msdr17, msdr18, msdr19, msdr20, msdr21;
++	u32 mbxsdr[BSS_NUM][4];
++	u32 mbtcr[16], mbtbcr[16], mbrcr[16], mbrbcr[16];
++	u32 btcr[BSS_NUM], btbcr[BSS_NUM], brcr[BSS_NUM], brbcr[BSS_NUM], btdcr[BSS_NUM], brdcr[BSS_NUM];
++	u32 mu_cnt[5];
++	u32 ampdu_cnt[3];
++	unsigned long per;
++
++	band_offset = (BN1_WF_MIB_TOP_BASE - BN0_WF_MIB_TOP_BASE) * band_idx;
++	seq_printf(s, "Band %d MIB Status\n", band_idx);
++	seq_printf(s, "===============================\n");
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SCR0_ADDR + band_offset);
++	seq_printf(s, "MIB Status Control=0x%x\n", mac_val);
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0PBSCR_ADDR + band_offset);
++	seq_printf(s, "MIB Per-BSS Status Control=0x%x\n", mac_val);
++
++	msdr6 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR6_ADDR + band_offset);
++	msdr7 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR7_ADDR + band_offset);
++	msdr8 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR8_ADDR + band_offset);
++	msdr9 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR9_ADDR + band_offset);
++	msdr10 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR10_ADDR + band_offset);
++	msdr16 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR16_ADDR + band_offset);
++	msdr17 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR17_ADDR + band_offset);
++	msdr18 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR18_ADDR + band_offset);
++	msdr19 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR19_ADDR + band_offset);
++	msdr20 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR20_ADDR + band_offset);
++	msdr21 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR21_ADDR + band_offset);
++	ampdu_cnt[0] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR12_ADDR + band_offset);
++	ampdu_cnt[1] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR14_ADDR + band_offset);
++	ampdu_cnt[2] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR15_ADDR + band_offset);
++	ampdu_cnt[1] &= BN0_WF_MIB_TOP_M0SDR14_AMPDU_MPDU_COUNT_MASK;
++	ampdu_cnt[2] &= BN0_WF_MIB_TOP_M0SDR15_AMPDU_ACKED_COUNT_MASK;
++
++	seq_printf(s, "===Phy/Timing Related Counters===\n");
++	seq_printf(s, "\tChannelIdleCnt=0x%x\n", msdr6 & BN0_WF_MIB_TOP_M0SDR6_CHANNEL_IDLE_COUNT_MASK);
++	seq_printf(s, "\tCCA_NAV_Tx_Time=0x%x\n", msdr9 & BN0_WF_MIB_TOP_M0SDR9_CCA_NAV_TX_TIME_MASK);
++	seq_printf(s, "\tRx_MDRDY_CNT=0x%x\n", msdr10 & BN0_WF_MIB_TOP_M0SDR10_RX_MDRDY_COUNT_MASK);
++	seq_printf(s, "\tCCK_MDRDY_TIME=0x%x, OFDM_MDRDY_TIME=0x%x, OFDM_GREEN_MDRDY_TIME=0x%x\n",
++			 msdr19 & BN0_WF_MIB_TOP_M0SDR19_CCK_MDRDY_TIME_MASK,
++			 msdr20 & BN0_WF_MIB_TOP_M0SDR20_OFDM_LG_MIXED_VHT_MDRDY_TIME_MASK,
++			 msdr21 & BN0_WF_MIB_TOP_M0SDR21_OFDM_GREEN_MDRDY_TIME_MASK);
++	seq_printf(s, "\tPrim CCA Time=0x%x\n", msdr16 & BN0_WF_MIB_TOP_M0SDR16_P_CCA_TIME_MASK);
++	seq_printf(s, "\tSec CCA Time=0x%x\n", msdr17 & BN0_WF_MIB_TOP_M0SDR17_S_CCA_TIME_MASK);
++	seq_printf(s, "\tPrim ED Time=0x%x\n", msdr18 & BN0_WF_MIB_TOP_M0SDR18_P_ED_TIME_MASK);
++
++	seq_printf(s, "===Tx Related Counters(Generic)===\n");
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR0_ADDR + band_offset);
++	dev->dbg.bcn_total_cnt[band_idx] += (mac_val & BN0_WF_MIB_TOP_M0SDR0_BEACONTXCOUNT_MASK);
++	seq_printf(s, "\tBeaconTxCnt=0x%x\n",dev->dbg.bcn_total_cnt[band_idx]);
++	dev->dbg.bcn_total_cnt[band_idx] = 0;
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0DR0_ADDR + band_offset);
++	seq_printf(s, "\tTx 20MHz Cnt=0x%x\n", mac_val & BN0_WF_MIB_TOP_M0DR0_TX_20MHZ_CNT_MASK);
++	seq_printf(s, "\tTx 40MHz Cnt=0x%x\n", (mac_val & BN0_WF_MIB_TOP_M0DR0_TX_40MHZ_CNT_MASK) >> BN0_WF_MIB_TOP_M0DR0_TX_40MHZ_CNT_SHFT);
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0DR1_ADDR + band_offset);
++	seq_printf(s, "\tTx 80MHz Cnt=0x%x\n", mac_val & BN0_WF_MIB_TOP_M0DR1_TX_80MHZ_CNT_MASK);
++	seq_printf(s, "\tTx 160MHz Cnt=0x%x\n", (mac_val & BN0_WF_MIB_TOP_M0DR1_TX_160MHZ_CNT_MASK) >> BN0_WF_MIB_TOP_M0DR1_TX_160MHZ_CNT_SHFT);
++	seq_printf(s, "\tAMPDU Cnt=0x%x\n", ampdu_cnt[0]);
++	seq_printf(s, "\tAMPDU MPDU Cnt=0x%x\n", ampdu_cnt[1]);
++	seq_printf(s, "\tAMPDU MPDU Ack Cnt=0x%x\n", ampdu_cnt[2]);
++	per = (ampdu_cnt[2] == 0 ? 0 : 1000 * (ampdu_cnt[1] - ampdu_cnt[2]) / ampdu_cnt[1]);
++	seq_printf(s, "\tAMPDU MPDU PER=%ld.%1ld%%\n", per / 10, per % 10);
++
++	seq_printf(s, "===MU Related Counters===\n");
++	mu_cnt[0] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR34_ADDR + band_offset);
++	mu_cnt[1] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0DR8_ADDR + band_offset);
++	mu_cnt[2] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0DR9_ADDR + band_offset);
++	mu_cnt[3] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0DR10_ADDR + band_offset);
++	mu_cnt[4] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0DR11_ADDR + band_offset);
++	seq_printf(s, "\tMUBF_TX_COUNT=0x%x\n", mu_cnt[0] & BN0_WF_MIB_TOP_M0SDR34_MUBF_TX_COUNT_MASK);
++	seq_printf(s, "\tMU_TX_MPDU_COUNT(Ok+Fail)=0x%x\n", mu_cnt[1]);
++	seq_printf(s, "\tMU_TX_OK_MPDU_COUNT=0x%x\n", mu_cnt[2]);
++	seq_printf(s, "\tMU_TO_SU_PPDU_COUNT=0x%x\n", mu_cnt[3] & BN0_WF_MIB_TOP_M0DR10_MU_FAIL_PPDU_CNT_MASK);
++	seq_printf(s, "\tSU_TX_OK_MPDU_COUNT=0x%x\n", mu_cnt[4]);
++
++	seq_printf(s, "===Rx Related Counters(Generic)===\n");
++	seq_printf(s, "\tVector Mismacth Cnt=0x%x\n", msdr7 & BN0_WF_MIB_TOP_M0SDR7_VEC_MISS_COUNT_MASK);
++	seq_printf(s, "\tDelimiter Fail Cnt=0x%x\n", msdr8 & BN0_WF_MIB_TOP_M0SDR8_DELIMITER_FAIL_COUNT_MASK);
++
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR3_ADDR + band_offset);
++	seq_printf(s, "\tRxFCSErrCnt=0x%x\n", (mac_val & BN0_WF_MIB_TOP_M0SDR3_RX_FCS_ERROR_COUNT_MASK));
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR4_ADDR + band_offset);
++	seq_printf(s, "\tRxFifoFullCnt=0x%x\n", (mac_val & BN0_WF_MIB_TOP_M0SDR4_RX_FIFO_FULL_COUNT_MASK));
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR11_ADDR + band_offset);
++	seq_printf(s, "\tRxLenMismatch=0x%x\n", (mac_val & BN0_WF_MIB_TOP_M0SDR11_RX_LEN_MISMATCH_MASK));
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR5_ADDR + band_offset);
++	seq_printf(s, "\tRxMPDUCnt=0x%x\n", (mac_val & BN0_WF_MIB_TOP_M0SDR5_RX_MPDU_COUNT_MASK));
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR22_ADDR + band_offset);
++	seq_printf(s, "\tRx AMPDU Cnt=0x%x\n", mac_val);
++	/* TODO: shiang-MT7615, is MIB_M0SDR23 used for Rx total byte count for all or just AMPDU only??? */
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0SDR23_ADDR + band_offset);
++	seq_printf(s, "\tRx Total ByteCnt=0x%x\n", mac_val);
++
++	band_offset = WF_WTBLON_TOP_B1BTCRn_ADDR - WF_WTBLON_TOP_B0BTCRn_ADDR;
++	seq_printf(s, "===Per-BSS Related Tx/Rx Counters===\n");
++	seq_printf(s, "BSS Idx   TxCnt/DataCnt  TxByteCnt  RxCnt/DataCnt  RxByteCnt\n");
++
++	for (idx = 0; idx < BSS_NUM; idx++) {
++		btcr[idx] = mt7915_mac_rr(dev, WF_WTBLON_TOP_B0BTCRn_ADDR + band_offset + idx * 4);
++		btbcr[idx] = mt7915_mac_rr(dev, WF_WTBLON_TOP_B0BTBCRn_ADDR + band_offset + idx * 4);
++		brcr[idx] = mt7915_mac_rr(dev, WF_WTBLON_TOP_B0BRCRn_ADDR + band_offset + idx * 4);
++		brbcr[idx] = mt7915_mac_rr(dev, WF_WTBLON_TOP_B0BRBCRn_ADDR + band_offset + idx * 4);
++		btdcr[idx] = mt7915_mac_rr(dev, WF_WTBLON_TOP_B0BTDCRn_ADDR + band_offset + idx * 4);
++		brdcr[idx] = mt7915_mac_rr(dev, WF_WTBLON_TOP_B0BRDCRn_ADDR + band_offset + idx * 4);
++	}
++
++	for (idx = 0; idx < BSS_NUM; idx++) {
++		seq_printf(s, "%d\t 0x%x/0x%x\t 0x%x \t 0x%x/0x%x \t 0x%x\n",
++			      idx, btcr[idx], btdcr[idx], btbcr[idx],
++			      brcr[idx], brdcr[idx], brbcr[idx]);
++	}
++
++	band_offset = (BN1_WF_MIB_TOP_BASE - BN0_WF_MIB_TOP_BASE) * band_idx;
++	seq_printf(s, "===Per-MBSS Related MIB Counters===\n");
++	seq_printf(s, "BSS Idx   RTSTx/RetryCnt  BAMissCnt  AckFailCnt  FrmRetry1/2/3Cnt\n");
++
++	for (idx = 0; idx < BSS_NUM; idx++) {
++		mbxsdr[idx][0] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0B0SDR0_ADDR + band_offset + idx * 0x10);
++		mbxsdr[idx][1] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0B0SDR1_ADDR + band_offset + idx * 0x10);
++		mbxsdr[idx][2] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0B0SDR2_ADDR + band_offset + idx * 0x10);
++		mbxsdr[idx][3] = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0B0SDR3_ADDR + band_offset + idx * 0x10);
++	}
++
++	for (idx = 0; idx < BSS_NUM; idx++) {
++		seq_printf(s, "%d:\t0x%08x/0x%08x  0x%08x \t 0x%08x \t  0x%08x/0x%08x/0x%08x\n",
++			      idx, (mbxsdr[idx][0] & BN0_WF_MIB_TOP_M0B0SDR0_RTSTXCOUNT_MASK),
++			      (mbxsdr[idx][0] & BN0_WF_MIB_TOP_M0B0SDR0_RTSRETRYCOUNT_MASK) >> BN0_WF_MIB_TOP_M0B0SDR0_RTSRETRYCOUNT_SHFT,
++			      (mbxsdr[idx][1] & BN0_WF_MIB_TOP_M0B0SDR1_BAMISSCOUNT_MASK),
++			      (mbxsdr[idx][1] & BN0_WF_MIB_TOP_M0B0SDR1_ACKFAILCOUNT_MASK) >> BN0_WF_MIB_TOP_M0B0SDR1_ACKFAILCOUNT_SHFT,
++			      (mbxsdr[idx][2] & BN0_WF_MIB_TOP_M0B0SDR2_FRAMERETRYCOUNT_MASK),
++			      (mbxsdr[idx][2] & BN0_WF_MIB_TOP_M0B0SDR2_FRAMERETRY2COUNT_MASK) >> BN0_WF_MIB_TOP_M0B0SDR2_FRAMERETRY2COUNT_SHFT,
++			      (mbxsdr[idx][3] & BN0_WF_MIB_TOP_M0B0SDR3_FRAMERETRY3COUNT_MASK));
++	}
++
++	seq_printf(s, "===Dummy delimiter insertion result===\n");
++	mac_val0 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0DR12_ADDR + band_offset);
++	mac_val = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0DR6_ADDR + band_offset);
++	mac_val1 = mt7915_mac_rr(dev, BN0_WF_MIB_TOP_M0DR7_ADDR + band_offset);
++	seq_printf(s, "Range0 = %d\t Range1 = %d\t Range2 = %d\t Range3 = %d\t Range4 = %d\n",
++				(mac_val0 & BN0_WF_MIB_TOP_M0DR12_TX_DDLMT_RNG0_CNT_MASK),
++				(mac_val & BN0_WF_MIB_TOP_M0DR6_TX_DDLMT_RNG1_CNT_MASK),
++				(mac_val & BN0_WF_MIB_TOP_M0DR6_TX_DDLMT_RNG2_CNT_MASK) >> BN0_WF_MIB_TOP_M0DR6_TX_DDLMT_RNG2_CNT_SHFT,
++				(mac_val1 & BN0_WF_MIB_TOP_M0DR7_TX_DDLMT_RNG3_CNT_MASK),
++				(mac_val1 & BN0_WF_MIB_TOP_M0DR7_TX_DDLMT_RNG4_CNT_MASK) >> BN0_WF_MIB_TOP_M0DR7_TX_DDLMT_RNG4_CNT_SHFT);
++
++	band_offset = WF_WTBLON_TOP_B1BTCRn_ADDR - WF_WTBLON_TOP_B0BTCRn_ADDR;
++	seq_printf(s, "===Per-MBSS Related Tx/Rx Counters===\n");
++	seq_printf(s, "MBSSIdx   TxCnt  TxByteCnt  RxCnt  RxByteCnt\n");
++
++	for (idx = 0; idx < 16; idx++) {
++		mbtcr[idx] = mt7915_mac_rr(dev, WF_WTBLON_TOP_B0MBTCRn_ADDR + band_offset + idx * 4);
++		mbtbcr[idx] = mt7915_mac_rr(dev, WF_WTBLON_TOP_B0MBTBCRn_ADDR + band_offset + idx * 4);
++		mbrcr[idx] = mt7915_mac_rr(dev, WF_WTBLON_TOP_B0MBRCRn_ADDR + band_offset + idx * 4);
++		mbrbcr[idx] = mt7915_mac_rr(dev, WF_WTBLON_TOP_B0MBRBCRn_ADDR + band_offset + idx * 4);
++	}
++
++	for (idx = 0; idx < 16; idx++) {
++		seq_printf(s, "%d\t 0x%08x\t 0x%08x \t 0x%08x \t 0x%08x\n",
++					idx, mbtcr[idx], mbtbcr[idx], mbrcr[idx], mbrbcr[idx]);
++	}
++	return 0;
++}
++
++static int mt7915_mibinfo_band0(struct seq_file *s, void *data)
++{
++	mt7915_mibinfo_read_per_band(s, 0);
++	return 0;
++}
++
++static int mt7915_mibinfo_band1(struct seq_file *s, void *data)
++{
++	mt7915_mibinfo_read_per_band(s, 1);
++	return 0;
++}
++
++int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
++{
++	struct mt7915_dev *dev = phy->dev;
++	/* fwlog parser default setting */
++	u8 fwlog_def_mac[ETH_ALEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
++	memcpy(dev->dbg.fwlog_server_mac, fwlog_def_mac, ETH_ALEN);
++	dev->dbg.fwlog_server_ip = 0xFFFFFFFF;
++	scnprintf(dev->dbg.fwlog_ifname, sizeof(dev->dbg.fwlog_ifname), "wlan0");
++
++	debugfs_create_file("fw_debug_internal", 0600, dir, phy, &fops_fw_debug);
++	debugfs_create_file("fw_debug_module", 0600, dir, dev,
++			    &fops_fw_debug_module);
++	debugfs_create_file("fw_debug_level", 0600, dir, dev,
++			    &fops_fw_debug_level);
++	debugfs_create_devm_seqfile(dev->mt76.dev, "wtbl_info", dir,
++				    mt7915_wtbl_read);
++	debugfs_create_devm_seqfile(dev->mt76.dev, "uwtbl_info", dir,
++				    mt7915_uwtbl_read);
++
++	debugfs_create_u32("l1regidx", 0600, dir, &dev->dbg.l1debugfs_reg);
++	debugfs_create_file_unsafe("l1regval", 0600, dir, dev,
++				   &fops_l1regval);
++
++	debugfs_create_u32("l2regidx", 0600, dir, &dev->dbg.l2debugfs_reg);
++	debugfs_create_file_unsafe("l2regval", 0600, dir, dev,
++				   &fops_l2regval);
++
++	debugfs_create_u32("mac_regidx", 0600, dir, &dev->dbg.mac_reg);
++	debugfs_create_file_unsafe("mac_regval", 0600, dir, dev,
++				   &fops_mac_regval);
++
++	debugfs_create_x16("eep_idx", 0600, dir, &dev->dbg.eep_idx);
++	debugfs_create_devm_seqfile(dev->mt76.dev, "eep_val", dir,
++		mt7915_read_efuse);
++
++	debugfs_create_file("fwlog_setting", 0600, dir, dev->mt76.dev,  &fops_fwlog_server);
++
++	debugfs_create_devm_seqfile(dev->mt76.dev, "tr_info", dir,
++				    mt7915_trinfo_read);
++
++	debugfs_create_devm_seqfile(dev->mt76.dev, "drr_info", dir,
++				    mt7915_drr_info);
++
++	debugfs_create_devm_seqfile(dev->mt76.dev, "ple_info", dir,
++				    mt7915_pleinfo_read);
++
++	debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info0", dir,
++				    mt7915_mibinfo_band0);
++	debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info1", dir,
++				    mt7915_mibinfo_band1);
++	return 0;
++}
++#endif
+Index: mt76-2022-02-15-c67df0d3/mt7915/mtk_mcu.c
+===================================================================
+--- /dev/null
++++ mt76-2022-02-15-c67df0d3/mt7915/mtk_mcu.c
+@@ -0,0 +1,485 @@
++#include <linux/firmware.h>
++#include <linux/fs.h>
++#include<linux/inet.h>
++#include "mt7915.h"
++#include "mcu.h"
++#include "mac.h"
++
++#ifdef MTK_DEBUG
++
++#define MT_LPON_FRCR			MT_WF_LPON(0, 0x314)
++
++#define FWLOG_PARSER 1
++#ifdef FWLOG_PARSER
++typedef struct file *RTMP_OS_FD;
++typedef struct _OS_FS_INFO_ {
++	int		fsuid;
++	int		fsgid;
++	mm_segment_t	fs;
++} OS_FS_INFO;
++typedef struct _RTMP_OS_FD {
++	RTMP_OS_FD fsFd;
++	OS_FS_INFO fsInfo;
++	int Status;
++	u32 fsize;
++} RTMP_OS_FD_EXT;
++
++#define RTMP_FILE_RDONLY			0x0F01
++#define RTMP_FILE_WRONLY			0x0F02
++#define RTMP_FILE_CREAT				0x0F03
++#define RTMP_FILE_TRUNC				0x0F04
++#define RTMP_OS_FS_INFO				OS_FS_INFO
++
++#define FW_BIN_LOG_MAGIC_NUM_OLD	0x44E98CAF
++#define FW_BIN_LOG_MAGIC_NUM		0x44D9C99A
++#define FW_BIN_LOG_VERSION		0x01
++#define FW_BIN_LOG_RSV			0
++
++RTMP_OS_FD RtmpOSFileOpen(char *pPath, int flag, int mode)
++{
++	struct file *filePtr;
++
++	if (flag == RTMP_FILE_RDONLY)
++		flag = O_RDONLY;
++	else if (flag == RTMP_FILE_WRONLY)
++		flag = O_WRONLY;
++	else if (flag == RTMP_FILE_CREAT)
++		flag = O_CREAT;
++	else if (flag == RTMP_FILE_TRUNC)
++		flag = O_TRUNC;
++
++	filePtr = filp_open(pPath, flag, 0);
++
++	if (IS_ERR(filePtr)) {
++		printk("%s(): Error %ld opening %s\n", __func__,
++				  -PTR_ERR(filePtr), pPath);
++	}
++
++	return (RTMP_OS_FD) filePtr;
++}
++
++
++int RtmpOSFileClose(RTMP_OS_FD osfd)
++{
++	filp_close(osfd, NULL);
++	return 0;
++}
++#define IS_FILE_OPEN_ERR(_fd)	((_fd == NULL) || IS_ERR((_fd)))
++
++
++
++static inline void __RtmpOSFSInfoChange(OS_FS_INFO *pOSFSInfo, bool bSet)
++{
++	if (bSet) {
++		/* Save uid and gid used for filesystem access. */
++		/* Set user and group to 0 (root) */
++#if (KERNEL_VERSION(2, 6, 29) > LINUX_VERSION_CODE)
++		pOSFSInfo->fsuid = current->fsuid;
++		pOSFSInfo->fsgid = current->fsgid;
++		current->fsuid = current->fsgid = 0;
++#else
++#ifdef CONFIG_UIDGID_STRICT_TYPE_CHECKS
++		kuid_t uid;
++		kgid_t gid;
++
++		uid = current_fsuid();
++		gid = current_fsgid();
++		pOSFSInfo->fsuid = (int)uid.val;
++		pOSFSInfo->fsgid = (int)gid.val;
++#else
++		/* pOSFSInfo->fsuid = (int)(current_fsuid()); */
++		/* pOSFSInfo->fsgid = (int)(current_fsgid()); */
++#endif
++#endif
++		pOSFSInfo->fs = get_fs();
++		set_fs(KERNEL_DS);
++	} else {
++		set_fs(pOSFSInfo->fs);
++#if (KERNEL_VERSION(2, 6, 29) > LINUX_VERSION_CODE)
++		current->fsuid = pOSFSInfo->fsuid;
++		current->fsgid = pOSFSInfo->fsgid;
++#endif
++	}
++}
++
++void RtmpOSFSInfoChange(RTMP_OS_FS_INFO *pOSFSInfoOrg, bool bSet)
++{
++	__RtmpOSFSInfoChange(pOSFSInfoOrg, bSet);
++}
++
++/*Unify Utility APIs*/
++static RTMP_OS_FD_EXT os_file_open(
++	u8 * pPath,
++	int  flag, /* CreateDisposition */
++	int file_mode)
++{
++	RTMP_OS_FD_EXT fd;
++	//os_zero_mem(&fd, sizeof(RTMP_OS_FD_EXT));
++	memset(&fd, 0, sizeof(RTMP_OS_FD_EXT));
++	fd.fsFd = RtmpOSFileOpen(pPath, flag, file_mode);
++	fd.Status = IS_FILE_OPEN_ERR(fd.fsFd);
++
++	if (!fd.Status) {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
++		fd.fsize = (unsigned long)fd.fsFd->f_dentry->d_inode->i_size;
++#else
++		fd.fsize = (unsigned long)fd.fsFd->f_path.dentry->d_inode->i_size;
++#endif
++		RtmpOSFSInfoChange(&fd.fsInfo, true);
++	}
++
++	return fd;
++}
++
++static int os_file_close(
++	RTMP_OS_FD_EXT osfd)
++{
++	int ret;
++	ret = RtmpOSFileClose(osfd.fsFd);
++
++	if (!ret)
++		RtmpOSFSInfoChange(&osfd.fsInfo, false);
++
++	return ret;
++}
++
++static void RtmpOSFileWrite(RTMP_OS_FD osfd, char *pDataPtr, int writeLen)
++{
++	kernel_write(osfd, pDataPtr, (size_t) writeLen, &osfd->f_pos);
++}
++
++static void
++fw_log_to_file(struct mt7915_dev *dev, u8 *fw_log, u16 log_len)
++{
++	RTMP_OS_FD_EXT srcf;
++	u8 Ret;
++#define log_path "/tmp/fwlog.bin"
++	srcf = os_file_open(log_path, O_WRONLY|O_CREAT|O_APPEND, 0);
++	if (srcf.Status) {
++		dev_err(dev->mt76.dev, "Open file \"%s\" failed!\n", log_path);
++		return;
++	}
++
++	RtmpOSFileWrite(srcf.fsFd, fw_log, log_len);
++
++	Ret = os_file_close(srcf);
++
++	if (Ret)
++		dev_err(dev->mt76.dev, "File Close Error ! Ret = %d\n", Ret);
++}
++
++typedef struct ip_v4_hdr {
++#ifdef RT_BIG_ENDIAN
++	u8 version:4, ihl:4;
++#else
++	u8 ihl:4, version:4;
++#endif
++	u8 tos;
++	u16 tot_len;
++	u16 identifier;
++} IP_V4_HDR;
++
++#define LENGTH_802_3_TYPE           2
++#define LENGTH_802_3                14
++
++u16 Checksum16(u8 *pData, int len)
++{
++	int sum = 0;
++
++	while (len > 1) {
++		sum += *((u16 *)pData);
++
++		pData = pData + 2;
++
++		if (sum & 0x80000000)
++			sum = (sum & 0xFFFF) + (sum >> 16);
++		len -= 2;
++	}
++
++	if (len)
++		sum += *((u8 *)pData);
++
++	while (sum >> 16)
++		sum = (sum & 0xFFFF) + (sum >> 16);
++
++	return ~sum;
++}
++
++static void
++fw_log_to_ethernet(struct mt7915_dev *dev, u8 *fw_log, u16 log_len)
++{
++	u8  s_addr[ETH_ALEN];
++	u32 source_ip = 0x00000000, dest_ip = 0xFFFFFFFF;
++	u8  ETH_P_AIR_MONITOR[LENGTH_802_3_TYPE] = {0x08, 0x00};
++	struct sk_buff *skb = NULL;
++	u8 isPadding = 0;
++	u8 *data, *header;
++	u8 *ip_header, *ip_checksum;
++	u8 *udp_header, *udp_checksum, *pseudo_header;
++	u16 data_len, header_len;
++	IP_V4_HDR *ipv4_hdr_ptr;
++	u16 checksum;
++	struct net_device *pNetDev = NULL;
++	static struct net_device *net_dev = NULL;
++	struct net *net= &init_net;
++
++	/* TODO : how to get net_device via mt7915_dev ?? */
++	if (net_dev == NULL)
++	{
++		for_each_netdev(net, pNetDev)
++		{
++			if (!strncmp(pNetDev->name, dev->dbg.fwlog_ifname,
++				     strlen(dev->dbg.fwlog_ifname)))
++			{
++				net_dev = pNetDev;
++				printk("%s: get %s net_dev=%p\n", __func__,
++					dev->dbg.fwlog_ifname, net_dev);
++				break;
++			}
++		}
++	}
++
++	if (net_dev)
++	{
++		/* unicast fwlog pkt - src ip would be x.x.x.254 */
++		if (dev->dbg.fwlog_server_ip != 0xFFFFFFFF) {
++			dest_ip = dev->dbg.fwlog_server_ip;
++			source_ip = (dest_ip & 0x00FFFFFF) | 0xFE000000;
++		}
++
++		header_len = LENGTH_802_3 + 20 + 8;	/* 802.3 + IP + UDP */
++		if ((log_len % 2) == 0)
++			data_len = log_len;
++		else {
++			data_len = log_len + 1;
++			isPadding = 1;
++		}
++
++		skb = dev_alloc_skb(log_len + header_len + 2);
++		skb->dev = net_dev;
++
++		skb_reserve(skb, header_len);
++
++		/* Prepare payload*/
++		data = skb_put(skb, data_len);
++
++		memcpy(data, fw_log, log_len);
++
++		if (isPadding)
++			*(data + log_len) = 0;
++
++		/* Prepare UDP header */
++		header = skb_push(skb, 8);
++
++		udp_header = header;
++		*(u16 *)header = htons(54321);		/* source port */
++		header += sizeof(u16);
++		*(u16 *)header = htons(55688);		/* destination port */
++		header += sizeof(u16);
++		*(u16 *)header = htons(data_len + 8);	/* Length */
++		header += sizeof(u16);
++		udp_checksum = header;
++		*(u16 *)header = htons(0);		/* UDP Checksum */
++		pseudo_header = udp_header - 12;
++		header = pseudo_header;
++		*(u32 *)header = source_ip;		/* Source IP */
++		header += sizeof(u32);
++		*(u32 *)header = dest_ip;		/* Destination IP */
++		header += sizeof(u32);
++		*(u16 *)header = htons(data_len + 8);	/* Length */
++		header += sizeof(u16);
++		*(u16 *)header = htons(17);		/* Length */
++		checksum = Checksum16(pseudo_header, data_len + 8 + 12);
++		*(u16 *)udp_checksum = checksum;
++
++		/* Prepare IP header */
++		header = skb_push(skb, 20);
++
++		ip_header = header;
++		ipv4_hdr_ptr = (IP_V4_HDR *)header;
++		ipv4_hdr_ptr->version = 4;
++		ipv4_hdr_ptr->ihl = 5;
++		ipv4_hdr_ptr->tos = 0;
++		ipv4_hdr_ptr->tot_len = htons(data_len + 20 + 8);
++		ipv4_hdr_ptr->identifier = 0;
++		header += sizeof(IP_V4_HDR);
++		*(u16 *)header = htons(0x4000);		/* Fragmentation flags and offset */
++		header += sizeof(u16);
++		*header = 7;				/* Time to live */
++		header++;
++		*header = 17;				/* Protocol UDP */
++		header++;
++		ip_checksum = header;
++		*(u16 *)header = htons(0);		/* IP Checksum */
++		header += sizeof(u16);
++		*(u32 *)header = source_ip;		/* Source IP */
++		header += sizeof(u32);
++		*(u32 *)header = dest_ip;		/* Destination IP */
++		checksum = Checksum16(ip_header, 20);
++		*(u16 *)ip_checksum = checksum;
++
++		/* Prepare 802.3 header */
++		header = skb_push(skb, LENGTH_802_3);
++
++		/* Fake a Source Address for transmission */
++		memcpy(s_addr, dev->mphy.macaddr, ETH_ALEN);
++
++		if (s_addr[1] == 0xff)
++			s_addr[1] = 0;
++		else
++			s_addr[1]++;
++
++		memcpy(header, dev->dbg.fwlog_server_mac, ETH_ALEN);
++		memcpy((header + ETH_ALEN), s_addr, ETH_ALEN);
++		memcpy((header + (ETH_ALEN*2)), ETH_P_AIR_MONITOR, LENGTH_802_3_TYPE);
++
++		/* Report to upper layer */
++		skb->protocol = eth_type_trans(skb, skb->dev);
++		netif_rx(skb);
++	}
++}
++#else
++static void
++fw_log_to_file(struct mt7915_dev *dev, u8 *fw_log, u32 log_len)
++{
++	return 0;
++}
++
++static void
++fw_log_to_ethernet(struct mt7915_dev *dev, u8 * fw_log, u32 log_len)
++{
++	return 0;
++}
++#endif
++
++void mt7915_mcu_rx_log_message_internal(struct mt7915_dev *dev, struct sk_buff *skb)
++{
++	struct mt7915_mcu_rxd *rxd = (struct mt7915_mcu_rxd *)skb->data;
++	const char *type;
++	u16 len = le16_to_cpu(rxd->len) - (sizeof(struct mt7915_mcu_rxd) - sizeof(rxd->rxd));
++	u32 magic_num = 0;
++
++	skb_pull(skb, sizeof(struct mt7915_mcu_rxd));
++
++	switch (rxd->s2d_index) {
++	case 0:
++		magic_num = le32_to_cpu(*(u32 *)skb->data);
++		if (magic_num == FW_BIN_LOG_MAGIC_NUM ||
++		    magic_num == FW_BIN_LOG_MAGIC_NUM_OLD) {
++			if (dev->dbg.fw_debug == 8)
++				fw_log_to_file(dev, skb->data, len);
++			else if (dev->dbg.fw_debug == 16 || dev->dbg.fw_debug == 15)
++				fw_log_to_ethernet(dev, skb->data, len);
++
++			return;
++		}
++		type = "WM";
++		break;
++	case 2:
++		type = "WA";
++		break;
++	default:
++		type = "unknown";
++		break;
++	}
++
++	wiphy_info(mt76_hw(dev)->wiphy, "%s: %s", type, skb->data);
++}
++
++#ifdef FWLOG_PARSER
++typedef struct _ICS_AGG_HEADER {
++	u16 rxByteCount;
++	u16 frameCount:5;
++	u16 reserved1:6;
++	u16 pktType:5;
++	u16 reserved2;
++	u16 pseFid;
++} ICS_AGG_HEADER, *PICS_AGG_HEADER;
++
++typedef struct _FW_BIN_LOG_HDR_T_OLD {
++	u32 u4MagicNum;
++	u32 u4Timestamp;
++	u16 u2MsgID;
++	u16 u2Length;
++} FW_BIN_LOG_HDR_T_OLD, *P_FW_BIN_LOG_HDR_T_OLD;
++
++typedef struct _FW_BIN_LOG_HDR_T {
++	u32 u4MagicNum;
++	u8 u1Version;
++	u8 u1Rsv;
++	u16 u2SerialID;
++	u32 u4Timestamp;
++	u16 u2MsgID;
++	u16 u2Length;
++} FW_BIN_LOG_HDR_T, *P_FW_BIN_LOG_HDR_T;
++
++typedef enum _ENUM_DGB_LOG_PKT_TYPE_T {
++	DBG_LOG_PKT_TYPE_ICS = 0x0C,
++	DBG_LOG_PKT_TYPE_TXV = 0x11,
++	DBG_LOG_PKT_TYPE_FTRACE = 0x12,
++	DBG_LOG_PKT_TYPE_TRIG_FRAME = 0x13,
++} ENUM_HW_LOG_PKT_TYPE_T;
++
++void mt7915_mcu_rx_ics(struct mt7915_dev *dev, struct sk_buff *skb)
++{
++	u8 *buffer = NULL;
++	u16 msg_len = 0;
++	PICS_AGG_HEADER prIcsAggHeader;
++
++	/* use older fw log header format */
++	if (dev->dbg.fw_debug == 15) {
++		P_FW_BIN_LOG_HDR_T_OLD log_hdr;
++
++		prIcsAggHeader = (PICS_AGG_HEADER)skb->data;
++		msg_len = prIcsAggHeader->rxByteCount + sizeof(FW_BIN_LOG_HDR_T_OLD);
++
++		buffer = kmalloc(msg_len, GFP_ATOMIC);
++		log_hdr = (P_FW_BIN_LOG_HDR_T_OLD)buffer;
++
++		/* prepare ICS header */
++		log_hdr->u4MagicNum = FW_BIN_LOG_MAGIC_NUM_OLD;
++		log_hdr->u4Timestamp = mt76_rr(dev, MT_LPON_FRCR);
++		log_hdr->u2MsgID = DBG_LOG_PKT_TYPE_ICS;
++		log_hdr->u2Length = prIcsAggHeader->rxByteCount;
++
++		/* prepare ICS frame */
++		memcpy(buffer + sizeof(FW_BIN_LOG_HDR_T_OLD), prIcsAggHeader, prIcsAggHeader->rxByteCount);
++	} else {
++		P_FW_BIN_LOG_HDR_T log_hdr;
++
++		prIcsAggHeader = (PICS_AGG_HEADER)skb->data;
++		msg_len = prIcsAggHeader->rxByteCount + sizeof(FW_BIN_LOG_HDR_T);
++
++		buffer = kmalloc(msg_len, GFP_ATOMIC);
++		log_hdr = (P_FW_BIN_LOG_HDR_T)buffer;
++
++		/* prepare ICS header */
++		log_hdr->u4MagicNum = FW_BIN_LOG_MAGIC_NUM;
++		log_hdr->u1Version = FW_BIN_LOG_VERSION;
++		log_hdr->u1Rsv = FW_BIN_LOG_RSV;
++		log_hdr->u2SerialID = dev->dbg.fwlog_seq++;
++		log_hdr->u4Timestamp = mt76_rr(dev, MT_LPON_FRCR);
++		log_hdr->u2MsgID = DBG_LOG_PKT_TYPE_ICS;
++		log_hdr->u2Length = prIcsAggHeader->rxByteCount;
++
++		/* prepare ICS frame */
++		memcpy(buffer + sizeof(FW_BIN_LOG_HDR_T), prIcsAggHeader, prIcsAggHeader->rxByteCount);
++	}
++
++	if (msg_len) {
++		if (dev->dbg.fw_debug == 8)
++			fw_log_to_file(dev, buffer, msg_len);
++		if (dev->dbg.fw_debug == 16 || dev->dbg.fw_debug == 15)
++			fw_log_to_ethernet(dev, buffer, msg_len);
++
++		kfree(buffer);
++	}
++
++	dev_kfree_skb(skb);
++}
++#else
++void mt7915_mcu_rx_ics(struct mt7915_dev *dev, struct sk_buff *skb) {
++	dev_kfree_skb(skb);
++}
++#endif
++#endif
+Index: mt76-2022-02-15-c67df0d3/mt7915/regs.h
+===================================================================
+--- mt76-2022-02-15-c67df0d3.orig/mt7915/regs.h
++++ mt76-2022-02-15-c67df0d3/mt7915/regs.h
+@@ -144,6 +144,16 @@ enum offs_rev {
+ 					       (ac) + ((n) << 2))
+ #define MT_PLE_AMSDU_PACK_MSDU_CNT(n)	MT_PLE(0x10e0 + ((n) << 2))
+ 
++#define MT_PLE_DRR_TABLE_CTRL   MT_PLE(0x388)
++#define MT_PLE_DRR_TABLE_RDATA0 MT_PLE(0x350)
++#define MT_PLE_DRR_TABLE_RDATA1 MT_PLE(0x354)
++#define MT_PLE_DRR_TABLE_RDATA2 MT_PLE(0x358)
++#define MT_PLE_DRR_TABLE_RDATA3 MT_PLE(0x35C)
++#define MT_PLE_DRR_TABLE_RDATA4 MT_PLE(0x690)
++#define MT_PLE_DRR_TABLE_RDATA5 MT_PLE(0x694)
++#define MT_PLE_DRR_TABLE_RDATA6 MT_PLE(0x698)
++#define MT_PLE_DRR_TABLE_RDATA7 MT_PLE(0x69c)
++
+ #define MT_PSE_BASE			0x820c8000
+ #define MT_PSE(ofs)			(MT_PSE_BASE + (ofs))
+ 
