@@ -1,6 +1,8 @@
---- a/mt7915/init.c
-+++ b/mt7915/init.c
-@@ -366,10 +366,12 @@ mt7915_init_wiphy(struct ieee80211_hw *h
+Index: mt76-2022-03-14-c6780c85/mt7915/init.c
+===================================================================
+--- mt76-2022-03-14-c6780c85.orig/mt7915/init.c
++++ mt76-2022-03-14-c6780c85/mt7915/init.c
+@@ -382,10 +382,12 @@ mt7915_init_wiphy(struct ieee80211_hw *h
  				IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_7991 |
  				IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK;
  
@@ -13,19 +15,30 @@
  		} else {
  			phy->mt76->sband_5g.sband.vht_cap.cap |=
  				IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_11454 |
-@@ -820,10 +822,15 @@ mt7915_init_he_caps(struct mt7915_phy *p
+@@ -889,14 +891,20 @@ mt7915_init_he_caps(struct mt7915_phy *p
+ 		he_cap_elem->mac_cap_info[4] =
+ 			IEEE80211_HE_MAC_CAP4_AMSDU_IN_AMPDU;
+ 
+-		if (band == NL80211_BAND_2GHZ)
++		if (band == NL80211_BAND_2GHZ) {
  			he_cap_elem->phy_cap_info[0] =
  				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G;
- 		else if (band == NL80211_BAND_5GHZ)
-+#if 0
- 			he_cap_elem->phy_cap_info[0] =
- 				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G |
- 				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G |
- 				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_80PLUS80_MHZ_IN_5G;
-+#else
-+			he_cap_elem->phy_cap_info[0] =
-+				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G;
-+#endif
+-		else
+-			he_cap_elem->phy_cap_info[0] =
+-				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G |
+-				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G |
+-				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_80PLUS80_MHZ_IN_5G;
++		} else {
++			if (is_mt7915(&dev->mt76)) {
++				he_cap_elem->phy_cap_info[0] =
++					IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G;
++			} else {
++				he_cap_elem->phy_cap_info[0] =
++					IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G |
++					IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G |
++					IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_80PLUS80_MHZ_IN_5G;
++			}
++		}
  
  		he_cap_elem->phy_cap_info[1] =
  			IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD;
