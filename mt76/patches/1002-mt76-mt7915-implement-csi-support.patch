@@ -1,53 +1,63 @@
-From 91d306f7b967f2ea347e020c7d612ffa81e013fc Mon Sep 17 00:00:00 2001
-From: Evelyn Tsai <evelyn.tsai@mediatek.com>
-Date: Mon, 20 Dec 2021 19:51:11 +0800
-Subject: [PATCH 3/4] mt7915: csi: implement csi support
+From f8971f67f0bb2c83a0fa7efe15fb7aa0d843a9f9 Mon Sep 17 00:00:00 2001
+From: Shayne Chen <shayne.chen@mediatek.com>
+Date: Tue, 15 Feb 2022 11:02:22 +0800
+Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
 
-Work with the latest FW (after 202106)
-Last update: 2021/06/22
 ---
- mt7915/Makefile |   3 +-
- mt7915/init.c   |  37 ++++
- mt7915/mcu.c    | 111 ++++++++++++
- mt7915/mcu.h    |  78 +++++++++
- mt7915/mt7915.h |  20 +++
- mt7915/vendor.c | 452 ++++++++++++++++++++++++++++++++++++++++++++++++
- mt7915/vendor.h |  60 +++++++
- 7 files changed, 760 insertions(+), 1 deletion(-)
+ .../wireless/mediatek/mt76/mt76_connac_mcu.h  |   2 +
+ .../wireless/mediatek/mt76/mt7915/Makefile    |   4 +-
+ .../net/wireless/mediatek/mt76/mt7915/init.c  |  39 ++
+ .../net/wireless/mediatek/mt76/mt7915/mcu.c   | 111 +++++
+ .../net/wireless/mediatek/mt76/mt7915/mcu.h   |  76 +++
+ .../wireless/mediatek/mt76/mt7915/mt7915.h    |  20 +
+ .../wireless/mediatek/mt76/mt7915/vendor.c    | 452 ++++++++++++++++++
+ .../wireless/mediatek/mt76/mt7915/vendor.h    |  60 +++
+ 8 files changed, 762 insertions(+), 2 deletions(-)
  create mode 100644 mt7915/vendor.c
  create mode 100644 mt7915/vendor.h
 
-Index: mt76-2022-02-15-c67df0d3/mt7915/Makefile
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt7915/Makefile
-+++ mt76-2022-02-15-c67df0d3/mt7915/Makefile
-@@ -1,11 +1,12 @@
- # SPDX-License-Identifier: ISC
+diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
+index d4a56f3..e959d4c 100644
+--- a/mt76_connac_mcu.h
++++ b/mt76_connac_mcu.h
+@@ -820,6 +820,7 @@ enum {
+ 	MCU_EXT_EVENT_CSA_NOTIFY = 0x4f,
+ 	MCU_EXT_EVENT_BCC_NOTIFY = 0x75,
+ 	MCU_EXT_EVENT_MURU_CTRL = 0x9f,
++	MCU_EXT_EVENT_CSI_REPORT = 0xc2,
+ };
  
+ enum {
+@@ -990,6 +991,7 @@ enum {
+ 	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
+ 	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
+ 	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
++	MCU_EXT_CMD_CSI_CTRL = 0xc2,
+ };
+ 
+ enum {
+diff --git a/mt7915/Makefile b/mt7915/Makefile
+index a3474e2..e272c82 100644
+--- a/mt7915/Makefile
++++ b/mt7915/Makefile
+@@ -1,9 +1,9 @@
+ # SPDX-License-Identifier: ISC
+-
 +EXTRA_CFLAGS += -DCONFIG_MTK_VENDOR
  obj-$(CONFIG_MT7915E) += mt7915e.o
  
  mt7915e-y := pci.o init.o dma.o eeprom.o main.o mcu.o mac.o \
- 	     debugfs.o mmio.o
- 
--mt7915e-y += mtk_debugfs.o mtk_mcu.o
-+mt7915e-y += mtk_debugfs.o mtk_mcu.o vendor.o
+-	     debugfs.o mmio.o mtk_debugfs.o mtk_mcu.o
++	     debugfs.o mmio.o mtk_debugfs.o mtk_mcu.o vendor.o
  
  mt7915e-$(CONFIG_NL80211_TESTMODE) += testmode.o
  mt7915e-$(CONFIG_MT7986_WMAC) += soc.o
-Index: mt76-2022-02-15-c67df0d3/mt7915/init.c
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt7915/init.c
-+++ mt76-2022-02-15-c67df0d3/mt7915/init.c
-@@ -7,6 +7,7 @@
- #include <linux/thermal.h>
- #include <linux/of.h>
- #include "mt7915.h"
-+#include "mcu.h"
- #include "mac.h"
- #include "mcu.h"
- #include "eeprom.h"
-@@ -535,6 +536,11 @@ static int mt7915_register_ext_phy(struc
+\ No newline at end of file
+diff --git a/mt7915/init.c b/mt7915/init.c
+index 553d1f5..96a1bb4 100644
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -532,6 +532,12 @@ static int mt7915_register_ext_phy(struct mt7915_dev *dev)
  	if (ret)
  		goto error;
  
@@ -56,10 +66,11 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/init.c
 +	spin_lock_init(&phy->csi.csi_lock);
 +	mt7915_vendor_register(phy);
 +#endif
++
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1007,6 +1013,25 @@ void mt7915_set_stream_he_caps(struct mt
+@@ -994,6 +1000,25 @@ void mt7915_set_stream_he_caps(struct mt7915_phy *phy)
  	}
  }
  
@@ -85,42 +96,45 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/init.c
  static void mt7915_unregister_ext_phy(struct mt7915_dev *dev)
  {
  	struct mt7915_phy *phy = mt7915_ext_phy(dev);
-@@ -1015,6 +1040,9 @@ static void mt7915_unregister_ext_phy(st
+@@ -1002,6 +1027,10 @@ static void mt7915_unregister_ext_phy(struct mt7915_dev *dev)
  	if (!phy)
  		return;
  
 +#ifdef CONFIG_MTK_VENDOR
 +	mt7915_unregister_features(phy);
 +#endif
++
  	mt7915_unregister_thermal(phy);
  	mt76_unregister_phy(mphy);
  	ieee80211_free_hw(mphy->hw);
-@@ -1047,6 +1075,11 @@ int mt7915_register_device(struct mt7915
- #ifdef CONFIG_NL80211_TESTMODE
+@@ -1035,6 +1064,12 @@ int mt7915_register_device(struct mt7915_dev *dev)
  	dev->mt76.test_ops = &mt7915_testmode_ops;
  #endif
+ 
 +#ifdef CONFIG_MTK_VENDOR
 +	INIT_LIST_HEAD(&dev->phy.csi.csi_list);
 +	spin_lock_init(&dev->phy.csi.csi_lock);
 +	mt7915_vendor_register(&dev->phy);
 +#endif
- 
++
  	/* init led callbacks */
  	if (IS_ENABLED(CONFIG_MT76_LEDS)) {
-@@ -1085,5 +1118,9 @@ void mt7915_unregister_device(struct mt7
- 	if (is_mt7986(&dev->mt76))
- 		mt7986_wmac_disable(dev);
+ 		dev->mt76.led_cdev.brightness_set = mt7915_led_set_brightness;
+@@ -1069,6 +1104,10 @@ void mt7915_unregister_device(struct mt7915_dev *dev)
+ 	mt7915_dma_cleanup(dev);
+ 	tasklet_disable(&dev->irq_tasklet);
  
 +#ifdef CONFIG_MTK_VENDOR
 +	mt7915_unregister_features(&dev->phy);
 +#endif
 +
- 	mt76_free_device(&dev->mt76);
- }
-Index: mt76-2022-02-15-c67df0d3/mt7915/mcu.c
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt7915/mcu.c
-+++ mt76-2022-02-15-c67df0d3/mt7915/mcu.c
+ 	if (is_mt7986(&dev->mt76))
+ 		mt7986_wmac_disable(dev);
+ 
+diff --git a/mt7915/mcu.c b/mt7915/mcu.c
+index f9215f4..f6897bf 100644
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
 @@ -89,6 +89,10 @@ struct mt7915_fw_region {
  #define HE_PHY(p, c)			u8_get_bits(c, IEEE80211_HE_PHY_##p)
  #define HE_MAC(m, c)			u8_get_bits(c, IEEE80211_HE_MAC_##m)
@@ -132,23 +146,22 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/mcu.c
  static u8
  mt7915_mcu_get_sta_nss(u16 mcs_map)
  {
-@@ -497,6 +501,11 @@ mt7915_mcu_rx_unsolicited_event(struct m
- 	case MCU_EVENT_EXT:
- 		mt7915_mcu_rx_ext_event(dev, skb);
+@@ -449,6 +453,11 @@ mt7915_mcu_rx_ext_event(struct mt7915_dev *dev, struct sk_buff *skb)
+ 	case MCU_EXT_EVENT_FW_LOG_2_HOST:
+ 		mt7915_mcu_rx_log_message(dev, skb);
  		break;
 +#ifdef CONFIG_MTK_VENDOR
 +	case MCU_EXT_EVENT_CSI_REPORT:
 +		mt7915_mcu_report_csi(dev, skb);
 +		break;
 +#endif
- 	default:
+ 	case MCU_EXT_EVENT_BCC_NOTIFY:
+ 		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
- 	}
-@@ -3624,3 +3633,105 @@ int mt7915_mcu_twt_agrt_update(struct mt
- 	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(TWT_AGRT_UPDATE),
+@@ -3594,6 +3603,108 @@ int mt7915_mcu_twt_agrt_update(struct mt7915_dev *dev,
  				 &req, sizeof(req), true);
  }
-+
+ 
 +#ifdef CONFIG_MTK_VENDOR
 +int mt7915_mcu_set_csi(struct mt7915_phy *phy, u8 mode,
 +			u8 cfg, u8 v1, u32 v2, u8 *mac_addr)
@@ -207,7 +220,7 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/mcu.c
 +	SET_CSI_DATA(ts);
 +
 +	SET_CSI_DATA(band);
-+	if (csi->band)
++	if (csi->band && !phy->band_idx)
 +		phy = mt7915_ext_phy(dev);
 +#undef SET_CSI_DATA
 +
@@ -250,11 +263,15 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/mcu.c
 +	return 0;
 +}
 +#endif
-Index: mt76-2022-02-15-c67df0d3/mt7915/mcu.h
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt7915/mcu.h
-+++ mt76-2022-02-15-c67df0d3/mt7915/mcu.h
-@@ -488,4 +488,80 @@ enum {
++
+ #ifdef MTK_DEBUG
+ int mt7915_dbg_mcu_wa_cmd(struct mt7915_dev *dev, int cmd, u32 a1, u32 a2, u32 a3, bool wait_resp)
+ {
+diff --git a/mt7915/mcu.h b/mt7915/mcu.h
+index f1fd983..372125a 100644
+--- a/mt7915/mcu.h
++++ b/mt7915/mcu.h
+@@ -492,4 +492,80 @@ enum {
  					 sizeof(struct bss_info_bcn_mbss) + \
  					 sizeof(struct bss_info_bcn_cont))
  
@@ -335,11 +352,11 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/mcu.h
 +#endif
 +
  #endif
-Index: mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt7915/mt7915.h
-+++ mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
-@@ -286,6 +286,20 @@ struct mt7915_phy {
+diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
+index 85c7e5d..477ed43 100644
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -265,6 +265,20 @@ struct mt7915_phy {
  		u8 spe_idx;
  	} test;
  #endif
@@ -360,7 +377,7 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
  };
  
  struct mt7915_dev {
-@@ -614,6 +628,12 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -608,6 +622,12 @@ void mt7915_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  			    struct ieee80211_sta *sta, struct dentry *dir);
  #endif
  
@@ -372,11 +389,12 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
 +
  #ifdef MTK_DEBUG
  int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir);
- void mt7915_mcu_rx_log_message_internal(struct mt7915_dev *dev, struct sk_buff *skb);
-Index: mt76-2022-02-15-c67df0d3/mt7915/vendor.c
-===================================================================
+ int mt7915_dbg_mcu_wa_cmd(struct mt7915_dev *dev, int cmd, u32 a1, u32 a2, u32 a3, bool wait_resp);
+diff --git a/mt7915/vendor.c b/mt7915/vendor.c
+new file mode 100644
+index 0000000..98fd9c2
 --- /dev/null
-+++ mt76-2022-02-15-c67df0d3/mt7915/vendor.c
++++ b/mt7915/vendor.c
 @@ -0,0 +1,452 @@
 +// SPDX-License-Identifier: ISC
 +/*
@@ -830,10 +848,11 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/vendor.c
 +	phy->mt76->hw->wiphy->vendor_commands = mt7915_vendor_commands;
 +	phy->mt76->hw->wiphy->n_vendor_commands = ARRAY_SIZE(mt7915_vendor_commands);
 +}
-Index: mt76-2022-02-15-c67df0d3/mt7915/vendor.h
-===================================================================
+diff --git a/mt7915/vendor.h b/mt7915/vendor.h
+new file mode 100644
+index 0000000..9d3db2a
 --- /dev/null
-+++ mt76-2022-02-15-c67df0d3/mt7915/vendor.h
++++ b/mt7915/vendor.h
 @@ -0,0 +1,60 @@
 +#ifndef __MT7915_VENDOR_H
 +#define __MT7915_VENDOR_H
@@ -895,23 +914,6 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/vendor.h
 +};
 +
 +#endif
-Index: mt76-2022-02-15-c67df0d3/mt76_connac_mcu.h
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt76_connac_mcu.h
-+++ mt76-2022-02-15-c67df0d3/mt76_connac_mcu.h
-@@ -820,6 +820,7 @@ enum {
- 	MCU_EXT_EVENT_CSA_NOTIFY = 0x4f,
- 	MCU_EXT_EVENT_BCC_NOTIFY = 0x75,
- 	MCU_EXT_EVENT_MURU_CTRL = 0x9f,
-+	MCU_EXT_EVENT_CSI_REPORT = 0xc2,
- };
- 
- enum {
-@@ -984,6 +985,7 @@ enum {
- 	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
- 	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
- 	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
-+	MCU_EXT_CMD_CSI_CTRL = 0xc2,
- };
- 
- enum {
+-- 
+2.25.1
+

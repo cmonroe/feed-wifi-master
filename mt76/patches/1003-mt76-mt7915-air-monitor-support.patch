@@ -1,22 +1,35 @@
-From 40fd2c08e1505e643e838e109a5a6b70ba88f78e Mon Sep 17 00:00:00 2001
-From: Evelyn Tsai <evelyn.tsai@mediatek.com>
-Date: Mon, 20 Dec 2021 19:52:40 +0800
-Subject: [PATCH 4/4] mt7915: air monitor support
+From 5dfe20c80a41f6d665e5f911f4254aec5ac311f3 Mon Sep 17 00:00:00 2001
+From: Peter Chiu <chui-hao.chiu@mediatek.com>
+Date: Tue, 11 Jan 2022 12:03:23 +0800
+Subject: [PATCH 1003/1006] mt76: mt7915: air monitor support
 
 ---
- mt7915/mac.c    |   4 +
- mt7915/main.c   |   3 +
- mt7915/mcu.h    |   3 +
- mt7915/mt7915.h |  34 +++++
- mt7915/vendor.c | 359 ++++++++++++++++++++++++++++++++++++++++++++++++
- mt7915/vendor.h |  38 +++++
- 6 files changed, 441 insertions(+)
+ .../wireless/mediatek/mt76/mt76_connac_mcu.h  |   2 +
+ .../net/wireless/mediatek/mt76/mt7915/mac.c   |   4 +
+ .../net/wireless/mediatek/mt76/mt7915/main.c  |   3 +
+ .../wireless/mediatek/mt76/mt7915/mt7915.h    |  34 ++
+ .../wireless/mediatek/mt76/mt7915/vendor.c    | 359 ++++++++++++++++++
+ .../wireless/mediatek/mt76/mt7915/vendor.h    |  38 ++
+ 6 files changed, 440 insertions(+)
 
-Index: mt76-2022-02-15-c67df0d3/mt7915/mac.c
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt7915/mac.c
-+++ mt76-2022-02-15-c67df0d3/mt7915/mac.c
-@@ -825,6 +825,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
+index e959d4c..2173682 100644
+--- a/mt76_connac_mcu.h
++++ b/mt76_connac_mcu.h
+@@ -991,6 +991,8 @@ enum {
+ 	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
+ 	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
+ 	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
++	/* for vendor csi and air monitor */
++	MCU_EXT_CMD_SMESH_CTRL = 0xae,
+ 	MCU_EXT_CMD_CSI_CTRL = 0xc2,
+ };
+ 
+diff --git a/mt7915/mac.c b/mt7915/mac.c
+index 06186c0..9f595ca 100644
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -825,6 +825,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *dev, struct sk_buff *skb)
  			seq_ctrl = le16_to_cpu(hdr->seq_ctrl);
  			qos_ctl = *ieee80211_get_qos_ctl(hdr);
  		}
@@ -27,11 +40,11 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/mac.c
  	} else {
  		status->flag |= RX_FLAG_8023;
  	}
-Index: mt76-2022-02-15-c67df0d3/mt7915/main.c
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt7915/main.c
-+++ mt76-2022-02-15-c67df0d3/mt7915/main.c
-@@ -677,6 +677,9 @@ int mt7915_mac_sta_add(struct mt76_dev *
+diff --git a/mt7915/main.c b/mt7915/main.c
+index c3f44d8..1beadd8 100644
+--- a/mt7915/main.c
++++ b/mt7915/main.c
+@@ -677,6 +677,9 @@ int mt7915_mac_sta_add(struct mt76_dev *mdev, struct ieee80211_vif *vif,
  	if (ret)
  		return ret;
  
@@ -41,11 +54,11 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/main.c
  	return mt7915_mcu_add_rate_ctrl(dev, vif, sta, false);
  }
  
-Index: mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt7915/mt7915.h
-+++ mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
-@@ -242,6 +242,35 @@ struct mt7915_hif {
+diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
+index 477ed43..85d05f7 100644
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -222,6 +222,35 @@ struct mt7915_hif {
  	int irq;
  };
  
@@ -81,7 +94,7 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
  struct mt7915_phy {
  	struct mt76_phy *mt76;
  	struct mt7915_dev *dev;
-@@ -299,6 +328,8 @@ struct mt7915_phy {
+@@ -278,6 +307,8 @@ struct mt7915_phy {
  		u32 interval;
  		u32 last_record;
  	} csi;
@@ -90,7 +103,7 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
  #endif
  };
  
-@@ -632,6 +663,9 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -626,6 +657,9 @@ void mt7915_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  void mt7915_vendor_register(struct mt7915_phy *phy);
  int mt7915_mcu_set_csi(struct mt7915_phy *phy, u8 mode,
  			u8 cfg, u8 v1, u32 v2, u8 *mac_addr);
@@ -100,10 +113,10 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/mt7915.h
  #endif
  
  #ifdef MTK_DEBUG
-Index: mt76-2022-02-15-c67df0d3/mt7915/vendor.c
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt7915/vendor.c
-+++ mt76-2022-02-15-c67df0d3/mt7915/vendor.c
+diff --git a/mt7915/vendor.c b/mt7915/vendor.c
+index 98fd9c2..b94d787 100644
+--- a/mt7915/vendor.c
++++ b/mt7915/vendor.c
 @@ -430,6 +430,353 @@ out:
  	return err;
  }
@@ -458,7 +471,7 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/vendor.c
  static const struct wiphy_vendor_command mt7915_vendor_commands[] = {
  	{
  		.info = {
-@@ -442,6 +789,18 @@ static const struct wiphy_vendor_command
+@@ -442,6 +789,18 @@ static const struct wiphy_vendor_command mt7915_vendor_commands[] = {
  		.dumpit = mt7915_vendor_csi_ctrl_dump,
  		.policy = csi_ctrl_policy,
  		.maxattr = MTK_VENDOR_ATTR_CSI_CTRL_MAX,
@@ -477,10 +490,10 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/vendor.c
  	}
  };
  
-Index: mt76-2022-02-15-c67df0d3/mt7915/vendor.h
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt7915/vendor.h
-+++ mt76-2022-02-15-c67df0d3/mt7915/vendor.h
+diff --git a/mt7915/vendor.h b/mt7915/vendor.h
+index 9d3db2a..976817f 100644
+--- a/mt7915/vendor.h
++++ b/mt7915/vendor.h
 @@ -4,6 +4,7 @@
  #define MTK_NL80211_VENDOR_ID	0x0ce7
  
@@ -531,18 +544,6 @@ Index: mt76-2022-02-15-c67df0d3/mt7915/vendor.h
 +};
 +
  #endif
-Index: mt76-2022-02-15-c67df0d3/mt76_connac_mcu.h
-===================================================================
---- mt76-2022-02-15-c67df0d3.orig/mt76_connac_mcu.h
-+++ mt76-2022-02-15-c67df0d3/mt76_connac_mcu.h
-@@ -985,7 +985,10 @@ enum {
- 	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
- 	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
- 	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
-+#ifdef CONFIG_MTK_VENDOR
-+	MCU_EXT_CMD_SMESH_CTRL = 0xae,
- 	MCU_EXT_CMD_CSI_CTRL = 0xc2,
-+#endif
- };
- 
- enum {
+-- 
+2.25.1
+
