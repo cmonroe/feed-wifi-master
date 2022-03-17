@@ -1,0 +1,25 @@
+Index: mt76-2022-03-14-c6780c85/mt7915/init.c
+===================================================================
+--- mt76-2022-03-14-c6780c85.orig/mt7915/init.c
++++ mt76-2022-03-14-c6780c85/mt7915/init.c
+@@ -571,6 +571,8 @@ static void mt7915_wfsys_reset(struct mt
+ #define MT_MCU_DUMMY_RANDOM	GENMASK(15, 0)
+ #define MT_MCU_DUMMY_DEFAULT	GENMASK(31, 16)
+ 
++	dev_info(dev->mt76.dev, "resetting chip\n");
++
+ 	if (is_mt7915(&dev->mt76)) {
+ 		u32 val = MT_TOP_PWR_KEY | MT_TOP_PWR_SW_PWR_ON | MT_TOP_PWR_PWR_ON;
+ 
+@@ -656,10 +658,7 @@ static int mt7915_init_hardware(struct m
+ 
+ 	dev->dbdc_support = mt7915_band_config(dev);
+ 
+-	/* If MCU was already running, it is likely in a bad state */
+-	if (mt76_get_field(dev, MT_TOP_MISC, MT_TOP_MISC_FW_STATE) >
+-	    FW_STATE_FW_DOWNLOAD)
+-		mt7915_wfsys_reset(dev);
++	mt7915_wfsys_reset(dev);
+ 
+ 	ret = mt7915_dma_init(dev);
+ 	if (ret)
