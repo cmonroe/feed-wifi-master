@@ -23,10 +23,8 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  tx.c       |   3 +-
  17 files changed, 1048 insertions(+), 142 deletions(-)
 
-Index: mt76-2022-03-14-c6780c85/mac80211.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mac80211.c
-+++ mt76-2022-03-14-c6780c85/mac80211.c
+--- a/mac80211.c
++++ b/mac80211.c
 @@ -45,6 +45,9 @@ static const struct ieee80211_channel mt
  };
  
@@ -73,10 +71,8 @@ Index: mt76-2022-03-14-c6780c85/mac80211.c
  		phy->test.rx_stats.packets[q]++;
  		if (status->flag & RX_FLAG_FAILED_FCS_CRC)
  			phy->test.rx_stats.fcs_error[q]++;
-Index: mt76-2022-03-14-c6780c85/mt76.h
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt76.h
-+++ mt76-2022-03-14-c6780c85/mt76.h
+--- a/mt76.h
++++ b/mt76.h
 @@ -581,6 +581,25 @@ struct mt76_testmode_ops {
  	int (*set_params)(struct mt76_phy *phy, struct nlattr **tb,
  			  enum mt76_testmode_state new_state);
@@ -258,10 +254,8 @@ Index: mt76-2022-03-14-c6780c85/mt76.h
  /* internal */
  static inline struct ieee80211_hw *
  mt76_tx_status_get_hw(struct mt76_dev *dev, struct sk_buff *skb)
-Index: mt76-2022-03-14-c6780c85/mt76_connac_mcu.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt76_connac_mcu.c
-+++ mt76-2022-03-14-c6780c85/mt76_connac_mcu.c
+--- a/mt76_connac_mcu.c
++++ b/mt76_connac_mcu.c
 @@ -389,6 +389,7 @@ void mt76_connac_mcu_sta_basic_tlv(struc
  	switch (vif->type) {
  	case NL80211_IFTYPE_MESH_POINT:
@@ -281,10 +275,8 @@ Index: mt76-2022-03-14-c6780c85/mt76_connac_mcu.c
  }
  EXPORT_SYMBOL_GPL(mt76_connac_mcu_wtbl_generic_tlv);
  
-Index: mt76-2022-03-14-c6780c85/mt76_connac_mcu.h
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt76_connac_mcu.h
-+++ mt76-2022-03-14-c6780c85/mt76_connac_mcu.h
+--- a/mt76_connac_mcu.h
++++ b/mt76_connac_mcu.h
 @@ -987,6 +987,7 @@ enum {
  	MCU_EXT_CMD_OFFCH_SCAN_CTRL = 0x9a,
  	MCU_EXT_CMD_SET_RDD_TH = 0x9d,
@@ -293,10 +285,8 @@ Index: mt76-2022-03-14-c6780c85/mt76_connac_mcu.h
  	MCU_EXT_CMD_SET_SPR = 0xa8,
  	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
  	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
-Index: mt76-2022-03-14-c6780c85/mt7915/init.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/init.c
-+++ mt76-2022-03-14-c6780c85/mt7915/init.c
+--- a/mt7915/init.c
++++ b/mt7915/init.c
 @@ -567,7 +567,7 @@ static void mt7915_init_work(struct work
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev,
  				 init_work);
@@ -306,10 +296,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/init.c
  	mt7915_mac_init(dev);
  	mt7915_init_txpower(dev, &dev->mphy.sband_2g.sband);
  	mt7915_init_txpower(dev, &dev->mphy.sband_5g.sband);
-Index: mt76-2022-03-14-c6780c85/mt7915/mac.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/mac.c
-+++ mt76-2022-03-14-c6780c85/mt7915/mac.c
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
 @@ -903,16 +903,28 @@ mt7915_mac_write_txwi_tm(struct mt7915_p
  {
  #ifdef CONFIG_NL80211_TESTMODE
@@ -365,10 +353,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/mac.c
  			spin_lock_bh(&dev->sta_poll_lock);
  			if (list_empty(&msta->poll_list))
  				list_add_tail(&msta->poll_list, &dev->sta_poll_list);
-Index: mt76-2022-03-14-c6780c85/mt7915/mcu.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/mcu.c
-+++ mt76-2022-03-14-c6780c85/mt7915/mcu.c
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
 @@ -314,7 +314,6 @@ mt7915_mcu_send_message(struct mt76_dev
  	if (mcu_txd->ext_cid) {
  		mcu_txd->ext_cid_ack = 1;
@@ -410,10 +396,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/mcu.c
  		return mt7915_mcu_set_eeprom_flash(dev);
  
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(EFUSE_BUFFER_MODE),
-Index: mt76-2022-03-14-c6780c85/mt7915/mcu.h
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/mcu.h
-+++ mt76-2022-03-14-c6780c85/mt7915/mcu.h
+--- a/mt7915/mcu.h
++++ b/mt7915/mcu.h
 @@ -27,7 +27,12 @@ struct mt7915_mcu_txd {
  
  enum {
@@ -427,10 +411,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/mcu.h
  	MCU_ATE_SET_SLOT_TIME = 0x13,
  	MCU_ATE_CLEAN_TXQUEUE = 0x1c,
  };
-Index: mt76-2022-03-14-c6780c85/mt7915/mmio.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/mmio.c
-+++ mt76-2022-03-14-c6780c85/mt7915/mmio.c
+--- a/mt7915/mmio.c
++++ b/mt7915/mmio.c
 @@ -53,6 +53,7 @@ static const u32 mt7986_reg[] = {
  };
  
@@ -447,10 +429,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/mmio.c
  	[TMAC_CDTR]		= 0x0c8,
  	[TMAC_ODTR]		= 0x0cc,
  	[TMAC_ATCR]		= 0x00c,
-Index: mt76-2022-03-14-c6780c85/mt7915/mt7915.h
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/mt7915.h
-+++ mt76-2022-03-14-c6780c85/mt7915/mt7915.h
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
 @@ -543,7 +543,7 @@ int mt7915_mcu_set_fixed_rate_ctrl(struc
  				   struct ieee80211_vif *vif,
  				   struct ieee80211_sta *sta,
@@ -460,10 +440,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/mt7915.h
  int mt7915_mcu_get_eeprom(struct mt7915_dev *dev, u32 offset);
  int mt7915_mcu_get_eeprom_free_block(struct mt7915_dev *dev, u8 *block_num);
  int mt7915_mcu_set_mac(struct mt7915_dev *dev, int band, bool enable,
-Index: mt76-2022-03-14-c6780c85/mt7915/regs.h
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/regs.h
-+++ mt76-2022-03-14-c6780c85/mt7915/regs.h
+--- a/mt7915/regs.h
++++ b/mt7915/regs.h
 @@ -34,6 +34,7 @@ enum reg_rev {
  };
  
@@ -508,10 +486,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/regs.h
  
  #define MT_AGG_ACR0(_band)		MT_WF_AGG(_band, __OFFS(AGG_ACR0))
  #define MT_AGG_ACR_CFEND_RATE		GENMASK(13, 0)
-Index: mt76-2022-03-14-c6780c85/mt7915/testmode.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/testmode.c
-+++ mt76-2022-03-14-c6780c85/mt7915/testmode.c
+--- a/mt7915/testmode.c
++++ b/mt7915/testmode.c
 @@ -9,6 +9,9 @@
  enum {
  	TM_CHANGED_TXPOWER,
@@ -1210,10 +1186,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/testmode.c
  	.dump_stats = mt7915_tm_dump_stats,
 +	.set_eeprom = mt7915_tm_set_eeprom,
  };
-Index: mt76-2022-03-14-c6780c85/mt7915/testmode.h
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/testmode.h
-+++ mt76-2022-03-14-c6780c85/mt7915/testmode.h
+--- a/mt7915/testmode.h
++++ b/mt7915/testmode.h
 @@ -33,6 +33,12 @@ struct mt7915_tm_clean_txq {
  	u8 rsv;
  };
@@ -1271,10 +1245,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/testmode.h
 +};
 +
  #endif
-Index: mt76-2022-03-14-c6780c85/testmode.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/testmode.c
-+++ mt76-2022-03-14-c6780c85/testmode.c
+--- a/testmode.c
++++ b/testmode.c
 @@ -25,18 +25,18 @@ const struct nla_policy mt76_tm_policy[N
  };
  EXPORT_SYMBOL_GPL(mt76_tm_policy);
@@ -1751,10 +1723,8 @@ Index: mt76-2022-03-14-c6780c85/testmode.c
  	if (mt76_testmode_param_present(td, MT76_TM_ATTR_TX_POWER)) {
  		a = nla_nest_start(msg, MT76_TM_ATTR_TX_POWER);
  		if (!a)
-Index: mt76-2022-03-14-c6780c85/testmode.h
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/testmode.h
-+++ mt76-2022-03-14-c6780c85/testmode.h
+--- a/testmode.h
++++ b/testmode.h
 @@ -6,6 +6,8 @@
  #define __MT76_TESTMODE_H
  
@@ -1866,10 +1836,8 @@ Index: mt76-2022-03-14-c6780c85/testmode.h
 +};
 +
  #endif
-Index: mt76-2022-03-14-c6780c85/tools/fields.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/tools/fields.c
-+++ mt76-2022-03-14-c6780c85/tools/fields.c
+--- a/tools/fields.c
++++ b/tools/fields.c
 @@ -10,6 +10,7 @@ static const char * const testmode_state
  	[MT76_TM_STATE_IDLE] = "idle",
  	[MT76_TM_STATE_TX_FRAMES] = "tx_frames",
@@ -1988,10 +1956,8 @@ Index: mt76-2022-03-14-c6780c85/tools/fields.c
  	[MT76_TM_ATTR_STATS] = { .type = NLA_NESTED },
  };
  
-Index: mt76-2022-03-14-c6780c85/tx.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/tx.c
-+++ mt76-2022-03-14-c6780c85/tx.c
+--- a/tx.c
++++ b/tx.c
 @@ -245,8 +245,7 @@ void __mt76_tx_complete_skb(struct mt76_
  	if (mt76_is_testmode_skb(dev, skb, &hw)) {
  		struct mt76_phy *phy = hw->priv;

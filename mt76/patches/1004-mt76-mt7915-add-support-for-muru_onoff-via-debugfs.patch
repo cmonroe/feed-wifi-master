@@ -12,23 +12,19 @@ Subject: [PATCH 1004/1006] mt76: mt7915: add support for muru_onoff via
  .../mediatek/mt76/mt7915/mtk_debugfs.c        | 33 +++++++++++++++++++
  5 files changed, 49 insertions(+), 4 deletions(-)
 
-diff --git a/mt7915/init.c b/mt7915/init.c
-index 96a1bb4..a12b701 100644
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -568,6 +568,7 @@ static void mt7915_init_work(struct work_struct *work)
- 	mt7915_init_txpower(dev, &dev->mphy.sband_2g.sband);
+@@ -573,6 +573,7 @@ static void mt7915_init_work(struct work
  	mt7915_init_txpower(dev, &dev->mphy.sband_5g.sband);
+ 	mt7915_init_txpower(dev, &dev->mphy.sband_6g.sband);
  	mt7915_txbf_init(dev);
 +	dev->dbg.muru_onoff = OFDMA_DL | MUMIMO_UL | MUMIMO_DL;
  }
  
  static void mt7915_wfsys_reset(struct mt7915_dev *dev)
-diff --git a/mt7915/mcu.c b/mt7915/mcu.c
-index f6897bf..f01a2f0 100644
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -939,6 +939,7 @@ mt7915_mcu_sta_muru_tlv(struct sk_buff *skb, struct ieee80211_sta *sta,
+@@ -971,6 +971,7 @@ mt7915_mcu_sta_muru_tlv(struct sk_buff *
  			struct ieee80211_vif *vif)
  {
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
@@ -36,7 +32,7 @@ index f6897bf..f01a2f0 100644
  	struct ieee80211_he_cap_elem *elem = &sta->he_cap.he_cap_elem;
  	struct sta_rec_muru *muru;
  	struct tlv *tlv;
-@@ -951,11 +952,14 @@ mt7915_mcu_sta_muru_tlv(struct sk_buff *skb, struct ieee80211_sta *sta,
+@@ -983,11 +984,14 @@ mt7915_mcu_sta_muru_tlv(struct sk_buff *
  
  	muru = (struct sta_rec_muru *)tlv;
  
@@ -55,8 +51,6 @@ index f6897bf..f01a2f0 100644
  
  	if (sta->vht_cap.vht_supported)
  		muru->mimo_dl.vht_mu_bfee =
-diff --git a/mt7915/mcu.h b/mt7915/mcu.h
-index 372125a..2a88bee 100644
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
 @@ -568,4 +568,10 @@ struct csi_data {
@@ -70,11 +64,9 @@ index 372125a..2a88bee 100644
 +#define MUMIMO_UL			BIT(3)
 +
  #endif
-diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
-index 85d05f7..eddcc6d 100644
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -383,6 +383,7 @@ struct mt7915_dev {
+@@ -386,6 +386,7 @@ struct mt7915_dev {
  		u32 bcn_total_cnt[2];
  		u16 fwlog_seq;
  		u32 token_idx;
@@ -82,11 +74,9 @@ index 85d05f7..eddcc6d 100644
  	} dbg;
  	const struct mt7915_dbg_reg_desc *dbg_reg;
  #endif
-diff --git a/mt7915/mtk_debugfs.c b/mt7915/mtk_debugfs.c
-index 2616fbf..4ebeeb2 100644
 --- a/mt7915/mtk_debugfs.c
 +++ b/mt7915/mtk_debugfs.c
-@@ -2430,6 +2430,38 @@ static int mt7915_token_txd_read(struct seq_file *s, void *data)
+@@ -2430,6 +2430,38 @@ static int mt7915_token_txd_read(struct
  	return 0;
  }
  
@@ -125,7 +115,7 @@ index 2616fbf..4ebeeb2 100644
  static int mt7915_amsduinfo_read(struct seq_file *s, void *data)
  {
  	struct mt7915_dev *dev = dev_get_drvdata(s->private);
-@@ -2807,6 +2839,7 @@ int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
+@@ -2807,6 +2839,7 @@ int mt7915_mtk_init_debugfs(struct mt791
  
  	mt7915_mcu_fw_log_2_host(dev, MCU_FW_LOG_WM, 0);
  
@@ -133,6 +123,3 @@ index 2616fbf..4ebeeb2 100644
  	debugfs_create_file("fw_debug_module", 0600, dir, dev,
  			    &fops_fw_debug_module);
  	debugfs_create_file("fw_debug_level", 0600, dir, dev,
--- 
-2.25.1
-

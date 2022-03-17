@@ -9,8 +9,6 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  mt7915/eeprom.c | 42 ++++++++++++++++++++++++++++++++++++++++++
  1 file changed, 42 insertions(+)
 
-diff --git a/mt7915/eeprom.c b/mt7915/eeprom.c
-index 5b133bcd..cfd4a15c 100644
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
 @@ -96,11 +96,53 @@ out:
@@ -67,6 +65,3 @@ index 5b133bcd..cfd4a15c 100644
  	ret = mt76_eeprom_init(&dev->mt76, eeprom_size);
  	if (ret < 0)
  		return ret;
--- 
-2.32.0 (Apple Git-132)
-

@@ -9,7 +9,7 @@
  
  static int mt7915_eeprom_load_precal(struct mt7915_dev *dev)
  {
-@@ -42,6 +44,7 @@ static int mt7915_check_eeprom(struct mt
+@@ -70,6 +72,7 @@ static char *mt7915_eeprom_name(struct m
  	}
  }
  
@@ -17,15 +17,15 @@
  static int
  mt7915_eeprom_load_default(struct mt7915_dev *dev)
  {
-@@ -74,6 +77,7 @@ out:
+@@ -95,6 +98,7 @@ out:
  
  	return ret;
  }
 +#endif
  
- static int mt7915_eeprom_load(struct mt7915_dev *dev)
+ static int mt7915_efuse_load(struct mt7915_dev *dev, u16 eeprom_size)
  {
-@@ -192,10 +196,23 @@ int mt7915_eeprom_init(struct mt7915_dev
+@@ -280,10 +284,23 @@ int mt7915_eeprom_init(struct mt7915_dev
  		if (ret != -EINVAL)
  			return ret;
  

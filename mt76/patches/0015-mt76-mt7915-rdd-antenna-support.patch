@@ -1,7 +1,5 @@
-Index: mt76-2022-03-14-c6780c85/mt7915/init.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/init.c
-+++ mt76-2022-03-14-c6780c85/mt7915/init.c
+--- a/mt7915/init.c
++++ b/mt7915/init.c
 @@ -5,6 +5,7 @@
  #include <linux/hwmon.h>
  #include <linux/hwmon-sysfs.h>
@@ -22,10 +20,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/init.c
  	mt7915_wfsys_reset(dev);
  
  	ret = mt7915_dma_init(dev);
-Index: mt76-2022-03-14-c6780c85/mt7915/mac.c
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/mac.c
-+++ mt76-2022-03-14-c6780c85/mt7915/mac.c
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
 @@ -2492,6 +2492,11 @@ int mt7915_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
@@ -38,10 +34,8 @@ Index: mt76-2022-03-14-c6780c85/mt7915/mac.c
  		err = mt7915_dfs_start_radar_detector(phy);
  		if (err < 0)
  			return err;
-Index: mt76-2022-03-14-c6780c85/mt7915/mt7915.h
-===================================================================
---- mt76-2022-03-14-c6780c85.orig/mt7915/mt7915.h
-+++ mt76-2022-03-14-c6780c85/mt7915/mt7915.h
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
 @@ -237,6 +237,7 @@ struct mt7915_phy {
  	u32 throttle_temp[2]; /* 0: critical high, 1: maximum */
  

@@ -12,8 +12,6 @@ Subject: [PATCH 1003/1006] mt76: mt7915: air monitor support
  .../wireless/mediatek/mt76/mt7915/vendor.h    |  38 ++
  6 files changed, 440 insertions(+)
 
-diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
-index e959d4c..2173682 100644
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
 @@ -991,6 +991,8 @@ enum {
@@ -25,11 +23,9 @@ index e959d4c..2173682 100644
  	MCU_EXT_CMD_CSI_CTRL = 0xc2,
  };
  
-diff --git a/mt7915/mac.c b/mt7915/mac.c
-index 06186c0..9f595ca 100644
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -825,6 +825,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *dev, struct sk_buff *skb)
+@@ -825,6 +825,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  			seq_ctrl = le16_to_cpu(hdr->seq_ctrl);
  			qos_ctl = *ieee80211_get_qos_ctl(hdr);
  		}
@@ -40,11 +36,9 @@ index 06186c0..9f595ca 100644
  	} else {
  		status->flag |= RX_FLAG_8023;
  	}
-diff --git a/mt7915/main.c b/mt7915/main.c
-index c3f44d8..1beadd8 100644
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -677,6 +677,9 @@ int mt7915_mac_sta_add(struct mt76_dev *mdev, struct ieee80211_vif *vif,
+@@ -677,6 +677,9 @@ int mt7915_mac_sta_add(struct mt76_dev *
  	if (ret)
  		return ret;
  
@@ -54,11 +48,9 @@ index c3f44d8..1beadd8 100644
  	return mt7915_mcu_add_rate_ctrl(dev, vif, sta, false);
  }
  
-diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
-index 477ed43..85d05f7 100644
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -222,6 +222,35 @@ struct mt7915_hif {
+@@ -224,6 +224,35 @@ struct mt7915_hif {
  	int irq;
  };
  
@@ -94,7 +86,7 @@ index 477ed43..85d05f7 100644
  struct mt7915_phy {
  	struct mt76_phy *mt76;
  	struct mt7915_dev *dev;
-@@ -278,6 +307,8 @@ struct mt7915_phy {
+@@ -281,6 +310,8 @@ struct mt7915_phy {
  		u32 interval;
  		u32 last_record;
  	} csi;
@@ -103,7 +95,7 @@ index 477ed43..85d05f7 100644
  #endif
  };
  
-@@ -626,6 +657,9 @@ void mt7915_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+@@ -630,6 +661,9 @@ void mt7915_sta_add_debugfs(struct ieee8
  void mt7915_vendor_register(struct mt7915_phy *phy);
  int mt7915_mcu_set_csi(struct mt7915_phy *phy, u8 mode,
  			u8 cfg, u8 v1, u32 v2, u8 *mac_addr);
@@ -113,8 +105,6 @@ index 477ed43..85d05f7 100644
  #endif
  
  #ifdef MTK_DEBUG
-diff --git a/mt7915/vendor.c b/mt7915/vendor.c
-index 98fd9c2..b94d787 100644
 --- a/mt7915/vendor.c
 +++ b/mt7915/vendor.c
 @@ -430,6 +430,353 @@ out:
@@ -471,7 +461,7 @@ index 98fd9c2..b94d787 100644
  static const struct wiphy_vendor_command mt7915_vendor_commands[] = {
  	{
  		.info = {
-@@ -442,6 +789,18 @@ static const struct wiphy_vendor_command mt7915_vendor_commands[] = {
+@@ -442,6 +789,18 @@ static const struct wiphy_vendor_command
  		.dumpit = mt7915_vendor_csi_ctrl_dump,
  		.policy = csi_ctrl_policy,
  		.maxattr = MTK_VENDOR_ATTR_CSI_CTRL_MAX,
@@ -490,8 +480,6 @@ index 98fd9c2..b94d787 100644
  	}
  };
  
-diff --git a/mt7915/vendor.h b/mt7915/vendor.h
-index 9d3db2a..976817f 100644
 --- a/mt7915/vendor.h
 +++ b/mt7915/vendor.h
 @@ -4,6 +4,7 @@
@@ -544,6 +532,3 @@ index 9d3db2a..976817f 100644
 +};
 +
  #endif
--- 
-2.25.1
-
