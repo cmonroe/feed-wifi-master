@@ -1,0 +1,138 @@
+From c63fc9b1f392dcfc889bf89c410f93e823d4cec9 Mon Sep 17 00:00:00 2001
+From: MeiChia Chiu <meichia.chiu@mediatek.com>
+Date: Thu, 17 Feb 2022 00:28:21 +0800
+Subject: [PATCH 1004/1006] mt76: mt7915: add support for muru_onoff via
+ debugfs
+
+---
+ .../net/wireless/mediatek/mt76/mt7915/init.c  |  1 +
+ .../net/wireless/mediatek/mt76/mt7915/mcu.c   | 12 ++++---
+ .../net/wireless/mediatek/mt76/mt7915/mcu.h   |  6 ++++
+ .../wireless/mediatek/mt76/mt7915/mt7915.h    |  1 +
+ .../mediatek/mt76/mt7915/mtk_debugfs.c        | 33 +++++++++++++++++++
+ 5 files changed, 49 insertions(+), 4 deletions(-)
+
+diff --git a/mt7915/init.c b/mt7915/init.c
+index 96a1bb4..a12b701 100644
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -568,6 +568,7 @@ static void mt7915_init_work(struct work_struct *work)
+ 	mt7915_init_txpower(dev, &dev->mphy.sband_2g.sband);
+ 	mt7915_init_txpower(dev, &dev->mphy.sband_5g.sband);
+ 	mt7915_txbf_init(dev);
++	dev->dbg.muru_onoff = OFDMA_DL | MUMIMO_UL | MUMIMO_DL;
+ }
+ 
+ static void mt7915_wfsys_reset(struct mt7915_dev *dev)
+diff --git a/mt7915/mcu.c b/mt7915/mcu.c
+index f6897bf..f01a2f0 100644
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -939,6 +939,7 @@ mt7915_mcu_sta_muru_tlv(struct sk_buff *skb, struct ieee80211_sta *sta,
+ 			struct ieee80211_vif *vif)
+ {
+ 	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
++	struct mt7915_dev *dev = mvif->phy->dev;
+ 	struct ieee80211_he_cap_elem *elem = &sta->he_cap.he_cap_elem;
+ 	struct sta_rec_muru *muru;
+ 	struct tlv *tlv;
+@@ -951,11 +952,14 @@ mt7915_mcu_sta_muru_tlv(struct sk_buff *skb, struct ieee80211_sta *sta,
+ 
+ 	muru = (struct sta_rec_muru *)tlv;
+ 
+-	muru->cfg.mimo_dl_en = mvif->cap.he_mu_ebfer ||
++	muru->cfg.mimo_dl_en = (mvif->cap.he_mu_ebfer ||
+ 			       mvif->cap.vht_mu_ebfer ||
+-			       mvif->cap.vht_mu_ebfee;
+-	muru->cfg.mimo_ul_en = true;
+-	muru->cfg.ofdma_dl_en = true;
++			       mvif->cap.vht_mu_ebfee) &&
++			       !!(dev->dbg.muru_onoff & MUMIMO_DL);
++
++	muru->cfg.mimo_ul_en = !!(dev->dbg.muru_onoff & MUMIMO_UL);
++	muru->cfg.ofdma_dl_en = !!(dev->dbg.muru_onoff & OFDMA_DL);
++	muru->cfg.ofdma_ul_en = !!(dev->dbg.muru_onoff & OFDMA_UL);
+ 
+ 	if (sta->vht_cap.vht_supported)
+ 		muru->mimo_dl.vht_mu_bfee =
+diff --git a/mt7915/mcu.h b/mt7915/mcu.h
+index 372125a..2a88bee 100644
+--- a/mt7915/mcu.h
++++ b/mt7915/mcu.h
+@@ -568,4 +568,10 @@ struct csi_data {
+ };
+ #endif
+ 
++/* MURU */
++#define OFDMA_DL			BIT(0)
++#define OFDMA_UL			BIT(1)
++#define MUMIMO_DL			BIT(2)
++#define MUMIMO_UL			BIT(3)
++
+ #endif
+diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
+index 85d05f7..eddcc6d 100644
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -383,6 +383,7 @@ struct mt7915_dev {
+ 		u32 bcn_total_cnt[2];
+ 		u16 fwlog_seq;
+ 		u32 token_idx;
++		u8 muru_onoff;
+ 	} dbg;
+ 	const struct mt7915_dbg_reg_desc *dbg_reg;
+ #endif
+diff --git a/mt7915/mtk_debugfs.c b/mt7915/mtk_debugfs.c
+index 2616fbf..4ebeeb2 100644
+--- a/mt7915/mtk_debugfs.c
++++ b/mt7915/mtk_debugfs.c
+@@ -2430,6 +2430,38 @@ static int mt7915_token_txd_read(struct seq_file *s, void *data)
+ 	return 0;
+ }
+ 
++static int mt7915_muru_onoff_get(void *data, u64 *val)
++{
++	struct mt7915_dev *dev = data;
++
++	*val = dev->dbg.muru_onoff;
++
++	printk("mumimo ul:%d, mumimo dl:%d, ofdma ul:%d, ofdma dl:%d\n",
++		!!(dev->dbg.muru_onoff & MUMIMO_UL),
++		!!(dev->dbg.muru_onoff & MUMIMO_DL),
++		!!(dev->dbg.muru_onoff & OFDMA_UL),
++		!!(dev->dbg.muru_onoff & OFDMA_DL));
++
++	return 0;
++}
++
++static int mt7915_muru_onoff_set(void *data, u64 val)
++{
++	struct mt7915_dev *dev = data;
++
++	if (val > 15) {
++		printk("Wrong value! The value is between 0 ~ 15.\n");
++		goto exit;
++	}
++
++	dev->dbg.muru_onoff = val;
++exit:
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(fops_muru_onoff, mt7915_muru_onoff_get,
++			mt7915_muru_onoff_set, "%llx\n");
++
+ static int mt7915_amsduinfo_read(struct seq_file *s, void *data)
+ {
+ 	struct mt7915_dev *dev = dev_get_drvdata(s->private);
+@@ -2807,6 +2839,7 @@ int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
+ 
+ 	mt7915_mcu_fw_log_2_host(dev, MCU_FW_LOG_WM, 0);
+ 
++	debugfs_create_file("muru_onoff", 0600, dir, dev, &fops_muru_onoff);
+ 	debugfs_create_file("fw_debug_module", 0600, dir, dev,
+ 			    &fops_fw_debug_module);
+ 	debugfs_create_file("fw_debug_level", 0600, dir, dev,
+-- 
+2.25.1
+
