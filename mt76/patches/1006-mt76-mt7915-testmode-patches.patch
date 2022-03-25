@@ -287,7 +287,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -567,7 +567,7 @@ static void mt7915_init_work(struct work
+@@ -569,7 +569,7 @@ static void mt7915_init_work(struct work
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev,
  				 init_work);
  
@@ -298,7 +298,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	mt7915_init_txpower(dev, &dev->mphy.sband_5g.sband);
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -903,16 +903,28 @@ mt7915_mac_write_txwi_tm(struct mt7915_p
+@@ -905,16 +905,28 @@ mt7915_mac_write_txwi_tm(struct mt7915_p
  {
  #ifdef CONFIG_NL80211_TESTMODE
  	struct mt76_testmode_data *td = &phy->mt76->test;
@@ -331,7 +331,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  
  	switch (td->tx_rate_mode) {
  	case MT76_TM_TX_MODE_HT:
-@@ -1002,9 +1014,10 @@ mt7915_mac_write_txwi_tm(struct mt7915_p
+@@ -1004,9 +1016,10 @@ mt7915_mac_write_txwi_tm(struct mt7915_p
  	if (mode >= MT_PHY_TYPE_HE_SU)
  		val |= FIELD_PREP(MT_TXD6_HELTF, td->tx_ltf);
  
@@ -343,7 +343,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	txwi[3] &= ~cpu_to_le32(MT_TXD3_SN_VALID);
  	txwi[6] |= cpu_to_le32(val);
  	txwi[7] |= cpu_to_le32(FIELD_PREP(MT_TXD7_SPE_IDX,
-@@ -1466,6 +1479,9 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -1468,6 +1481,9 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  				continue;
  
  			msta = container_of(wcid, struct mt7915_sta, wcid);
@@ -363,7 +363,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  		if (cmd & __MCU_CMD_FIELD_QUERY)
  			mcu_txd->set_query = MCU_Q_QUERY;
  		else
-@@ -2866,14 +2865,9 @@ int mt7915_mcu_set_chan_info(struct mt79
+@@ -2918,14 +2917,9 @@ int mt7915_mcu_set_chan_info(struct mt79
  
  #ifdef CONFIG_NL80211_TESTMODE
  	if (phy->mt76->test.tx_antenna_mask &&
@@ -379,7 +379,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	}
  #endif
  
-@@ -2941,14 +2935,14 @@ static int mt7915_mcu_set_eeprom_flash(s
+@@ -2994,14 +2988,14 @@ static int mt7915_mcu_set_eeprom_flash(s
  	return 0;
  }
  

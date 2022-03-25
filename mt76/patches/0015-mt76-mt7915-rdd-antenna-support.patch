@@ -8,7 +8,7 @@
  #include "mt7915.h"
  #include "mac.h"
  #include "mcu.h"
-@@ -660,6 +661,11 @@ static int mt7915_init_hardware(struct m
+@@ -662,6 +663,11 @@ static int mt7915_init_hardware(struct m
  
  	dev->dbdc_support = mt7915_band_config(dev);
  
@@ -22,7 +22,7 @@
  	ret = mt7915_dma_init(dev);
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -2492,6 +2492,11 @@ int mt7915_dfs_init_radar_detector(struc
+@@ -2494,6 +2494,11 @@ int mt7915_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
  

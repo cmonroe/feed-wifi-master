@@ -14,7 +14,7 @@ Subject: [PATCH 1004/1006] mt76: mt7915: add support for muru_onoff via
 
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -573,6 +573,7 @@ static void mt7915_init_work(struct work
+@@ -575,6 +575,7 @@ static void mt7915_init_work(struct work
  	mt7915_init_txpower(dev, &dev->mphy.sband_5g.sband);
  	mt7915_init_txpower(dev, &dev->mphy.sband_6g.sband);
  	mt7915_txbf_init(dev);
