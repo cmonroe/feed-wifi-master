@@ -50,8 +50,8 @@
  		struct mt76_sdio sdio;
  	};
 +
-+	const char *first_failed_mcu_cmd;
-+	const char *last_successful_mcu_cmd;
++	int first_failed_mcu_cmd;
++	int last_successful_mcu_cmd;
  };
  
  struct mt76_power_limits {
