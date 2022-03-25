@@ -1,0 +1,68 @@
+#!/bin/bash
+
+usage()
+{
+	echo "$MY_NAME <phy> read <reg> "
+	echo "$MY_NAME <phy> write <reg> <val> "
+	echo
+	echo "Examples:"
+	echo "	$MY_NAME phy0 read 0x820ec000"
+	echo "	$MY_NAME phy0 write 0x83082004 0x00000a05"
+	echo
+}
+
+phy_reg_read()
+{
+	echo -ne $1 > ${PHY_PATH}/regidx
+	cat ${PHY_PATH}/regval
+}
+
+phy_reg_write()
+{
+	echo -ne $1 > ${PHY_PATH}/regidx
+	echo -ne $2 > ${PHY_PATH}/regval
+}
+
+#########
+# Begin
+#########
+MY_NAME=`basename $0`
+
+PHY=$1
+if [ -z "$PHY" ]; then
+	usage
+	exit 1 
+fi
+
+PHY_PATH=/sys/kernel/debug/ieee80211/${PHY}/mt76
+
+CMD=$2
+if [ -z "$CMD" ]; then
+	usage
+	exit 1
+fi
+
+REG=$3
+if [ -z "$REG" ]; then
+	usage
+	exit 1
+fi
+
+VAL=$4
+if [[ $CMD == "w"* ]]; then
+	if [ -z "$VAL" ]; then
+		usage
+		exit 1
+	fi
+fi
+
+if [ ! -d $PHY_PATH ]; then
+	echo "invalid PHY"
+	exit 1
+fi
+
+case $CMD in
+	r*) phy_reg_read $REG ;;
+	w*) phy_reg_write $REG $VAL ;;
+	*) usage; exit 1 ;;
+esac

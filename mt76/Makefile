@@ -449,6 +449,7 @@ endef
 
 define Package/mt76-test/install
 	mkdir -p $(1)/usr/sbin
+	$(INSTALL_BIN) ./files/mt76-reg $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tools/mt76-test $(1)/usr/sbin
 endef
 
