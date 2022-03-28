@@ -213,7 +213,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  				   &dev->hw_pattern);
 --- a/mt7915/dma.c
 +++ b/mt7915/dma.c
-@@ -443,6 +443,55 @@ int mt7915_dma_init(struct mt7915_dev *d
+@@ -453,6 +453,55 @@ int mt7915_dma_init(struct mt7915_dev *d
  	return 0;
  }
  
@@ -298,30 +298,19 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  {
  	int ret;
  
-@@ -578,7 +578,7 @@ static void mt7915_init_work(struct work
- 	dev->dbg.muru_onoff = OFDMA_DL | MUMIMO_UL | MUMIMO_DL;
- }
+@@ -1161,7 +1161,11 @@ int mt7915_register_device(struct mt7915
+ 			goto unreg_thermal;
+ 	}
  
--static void mt7915_wfsys_reset(struct mt7915_dev *dev)
-+void mt7915_wfsys_reset(struct mt7915_dev *dev)
- {
- #define MT_MCU_DUMMY_RANDOM	GENMASK(15, 0)
- #define MT_MCU_DUMMY_DEFAULT	GENMASK(31, 16)
-@@ -1148,7 +1148,13 @@ int mt7915_register_device(struct mt7915
- 	if (ret)
- 		return ret;
- 
--	return mt7915_init_debugfs(&dev->phy);
+-	mt7915_init_debugfs(&dev->phy);
 +	ret = mt7915_init_debugfs(&dev->phy);
 +	if (ret)
 +		return ret;
 +
 +	dev->ser.hw_init_done = true;
-+
-+	return 0;
- }
  
- void mt7915_unregister_device(struct mt7915_dev *dev)
+ 	return 0;
+ 
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
 @@ -3,6 +3,7 @@
@@ -698,7 +687,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	/* TODO: make dynamic based on msg type */
  	mdev->mcu.timeout = 20 * HZ;
  
-@@ -2493,25 +2516,14 @@ mt7915_mcu_init_rx_airtime(struct mt7915
+@@ -2499,25 +2522,14 @@ mt7915_mcu_init_rx_airtime(struct mt7915
  				 sizeof(req), true);
  }
  
@@ -726,7 +715,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
  	ret = mt7915_driver_own(dev, 0);
  	if (ret)
-@@ -2553,6 +2565,20 @@ int mt7915_mcu_init(struct mt7915_dev *d
+@@ -2559,6 +2571,20 @@ int mt7915_mcu_init(struct mt7915_dev *d
  				 MCU_WA_PARAM_RED, 0, 0);
  }
  

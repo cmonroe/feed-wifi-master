@@ -14,14 +14,14 @@ Subject: [PATCH 1004/1006] mt76: mt7915: add support for muru_onoff via
 
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -575,6 +575,7 @@ static void mt7915_init_work(struct work
+@@ -574,6 +574,7 @@ static void mt7915_init_work(struct work
  	mt7915_init_txpower(dev, &dev->mphy.sband_5g.sband);
  	mt7915_init_txpower(dev, &dev->mphy.sband_6g.sband);
  	mt7915_txbf_init(dev);
 +	dev->dbg.muru_onoff = OFDMA_DL | MUMIMO_UL | MUMIMO_DL;
  }
  
- static void mt7915_wfsys_reset(struct mt7915_dev *dev)
+ void mt7915_wfsys_reset(struct mt7915_dev *dev)
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
 @@ -971,6 +971,7 @@ mt7915_mcu_sta_muru_tlv(struct sk_buff *

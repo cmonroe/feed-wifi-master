@@ -171,7 +171,7 @@ Subject: [PATCH 1001/1006] mt76: mt7915: add mtk internal debug tools for mt76
  	if (dev->relay_fwlog)
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3702,3 +3702,40 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3708,3 +3708,40 @@ int mt7915_mcu_twt_agrt_update(struct mt
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(TWT_AGRT_UPDATE),
  				 &req, sizeof(req), true);
  }

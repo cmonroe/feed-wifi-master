@@ -8,18 +8,18 @@
  #include "mt7915.h"
  #include "mac.h"
  #include "mcu.h"
-@@ -662,6 +663,11 @@ static int mt7915_init_hardware(struct m
+@@ -658,6 +659,11 @@ mt7915_init_hardware(struct mt7915_dev *
  
- 	dev->dbdc_support = mt7915_band_config(dev);
+ 	INIT_WORK(&dev->init_work, mt7915_init_work);
  
 +	if (of_property_read_u32(dev->mt76.dev->of_node, "rdd_antenna",
 +		&dev->phy.rdd_antenna))
 +		dev_info(dev->mt76.dev, "%s: rdd_antenna = %u\n",
 +			__func__, dev->phy.rdd_antenna);
 +
- 	mt7915_wfsys_reset(dev);
- 
- 	ret = mt7915_dma_init(dev);
+ 	ret = mt7915_dma_init(dev, phy2);
+ 	if (ret)
+ 		return ret;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
 @@ -2494,6 +2494,11 @@ int mt7915_dfs_init_radar_detector(struc

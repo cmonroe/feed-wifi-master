@@ -51,9 +51,9 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
 \ No newline at end of file
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -538,6 +538,12 @@ static int mt7915_register_ext_phy(struc
- 	if (ret)
- 		goto error;
+@@ -539,6 +539,12 @@ mt7915_register_ext_phy(struct mt7915_de
+ 	/* init wiphy according to mphy and phy */
+ 	mt7915_init_wiphy(mphy->hw);
  
 +#ifdef CONFIG_MTK_VENDOR
 +	INIT_LIST_HEAD(&phy->csi.csi_list);
@@ -64,7 +64,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1050,6 +1056,25 @@ void mt7915_set_stream_he_caps(struct mt
+@@ -1038,6 +1044,25 @@ void mt7915_set_stream_he_caps(struct mt
  	}
  }
  
@@ -90,7 +90,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  static void mt7915_unregister_ext_phy(struct mt7915_dev *dev)
  {
  	struct mt7915_phy *phy = mt7915_ext_phy(dev);
-@@ -1058,6 +1083,10 @@ static void mt7915_unregister_ext_phy(st
+@@ -1046,6 +1071,10 @@ static void mt7915_unregister_ext_phy(st
  	if (!phy)
  		return;
  
@@ -101,7 +101,18 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  	mt7915_unregister_thermal(phy);
  	mt76_unregister_phy(mphy);
  	ieee80211_free_hw(mphy->hw);
-@@ -1091,6 +1120,12 @@ int mt7915_register_device(struct mt7915
+@@ -1058,6 +1087,10 @@ static void mt7915_stop_hardware(struct
+ 	mt7915_dma_cleanup(dev);
+ 	tasklet_disable(&dev->irq_tasklet);
+ 
++#ifdef CONFIG_MTK_VENDOR
++	mt7915_unregister_features(&dev->phy);
++#endif
++
+ 	if (is_mt7986(&dev->mt76))
+ 		mt7986_wmac_disable(dev);
+ }
+@@ -1098,6 +1131,12 @@ int mt7915_register_device(struct mt7915
  	dev->mt76.test_ops = &mt7915_testmode_ops;
  #endif
  
@@ -114,17 +125,6 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  	/* init led callbacks */
  	if (IS_ENABLED(CONFIG_MT76_LEDS)) {
  		dev->mt76.led_cdev.brightness_set = mt7915_led_set_brightness;
-@@ -1125,6 +1160,10 @@ void mt7915_unregister_device(struct mt7
- 	mt7915_dma_cleanup(dev);
- 	tasklet_disable(&dev->irq_tasklet);
- 
-+#ifdef CONFIG_MTK_VENDOR
-+	mt7915_unregister_features(&dev->phy);
-+#endif
-+
- 	if (is_mt7986(&dev->mt76))
- 		mt7986_wmac_disable(dev);
- 
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
 @@ -89,6 +89,10 @@ struct mt7915_fw_region {
@@ -150,7 +150,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
-@@ -3703,6 +3712,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3709,6 +3718,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
