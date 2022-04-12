@@ -1,0 +1,79 @@
+From 438b12ddaf98a48a685da6f9a6ccd110c960ddc9 Mon Sep 17 00:00:00 2001
+From: Peter Chiu <chui-hao.chiu@mediatek.com>
+Date: Thu, 31 Mar 2022 19:00:46 +0800
+Subject: [PATCH] mt76: mt7915: dump rf cr
+
+---
+ mt7915/debugfs.c | 34 ++++++++++++++++++++++++++++++++++
+ mt7915/mt7915.h  |  3 +++
+ 2 files changed, 37 insertions(+)
+
+diff --git a/mt7915/debugfs.c b/mt7915/debugfs.c
+index 4e1ecaec..c97c0d95 100644
+--- a/mt7915/debugfs.c
++++ b/mt7915/debugfs.c
+@@ -308,6 +308,36 @@ exit:
+ }
+ DEFINE_SHOW_ATTRIBUTE(mt7915_muru_stats);
+ 
++static int
++mt7915_rf_val_get(void *data, u64 *val)
++{
++	struct mt7915_dev *dev = data;
++	struct sk_buff *skb;
++	int ret;
++	struct mt7915_rf {
++		u32 idx;
++		u32 ofs;
++		u32 data;
++	} __packed;
++	struct mt7915_rf hdr, *res;
++	hdr.idx = cpu_to_le32(dev->debugfs_rf_idx);
++	hdr.ofs = cpu_to_le32(dev->debugfs_rf_ofs);
++	hdr.data = 0;
++
++	ret = mt76_mcu_send_and_get_msg(&dev->mt76, MCU_EXT_QUERY(RF_REG_ACCESS),
++					(const void *)&hdr, sizeof(hdr), true, &skb);
++	if (ret)
++		return ret;
++
++	res = (struct mt7915_rf *)skb->data;
++	*val = le32_to_cpu(res->data);
++
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(fops_rf_val, mt7915_rf_val_get, NULL,
++			 "0x%08llx\n");
++
+ static int
+ mt7915_rdd_monitor(struct seq_file *s, void *data)
+ {
+@@ -907,6 +937,10 @@ int mt7915_init_debugfs(struct mt7915_phy *phy)
+ 					    mt7915_rdd_monitor);
+ 	}
+ 
++	debugfs_create_u32("rf_idx", 0600, dir, &dev->debugfs_rf_idx);
++	debugfs_create_u32("rf_ofs", 0600, dir, &dev->debugfs_rf_ofs);
++	debugfs_create_file("rf_val", 0400, dir, dev, &fops_rf_val);
++
+ 	if (!ext_phy)
+ 		dev->debugfs_dir = dir;
+ 
+diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
+index ca129e5e..6b270dc5 100644
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -313,6 +313,9 @@ struct mt7915_dev {
+ 	u8 fw_debug_wa;
+ 	u8 fw_debug_bin;
+ 
++	u32 debugfs_rf_idx;
++	u32 debugfs_rf_ofs;
++
+ 	struct dentry *debugfs_dir;
+ 	struct rchan *relay_fwlog;
+ 
+-- 
+2.18.0
+
