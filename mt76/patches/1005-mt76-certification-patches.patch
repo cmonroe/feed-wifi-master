@@ -17,11 +17,9 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  .../wireless/mediatek/mt76/mt7915/vendor.h    |  42 ++
  10 files changed, 961 insertions(+), 6 deletions(-)
 
-diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
-index b0f2d97..cb7d096 100644
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -994,6 +994,7 @@ enum {
+@@ -992,6 +992,7 @@ enum {
  	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
  	/* for vendor csi and air monitor */
  	MCU_EXT_CMD_SMESH_CTRL = 0xae,
@@ -29,11 +27,9 @@ index b0f2d97..cb7d096 100644
  	MCU_EXT_CMD_CSI_CTRL = 0xc2,
  };
  
-diff --git a/mt7915/init.c b/mt7915/init.c
-index bb766ed..cd69174 100644
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -367,12 +367,17 @@ mt7915_init_wiphy(struct ieee80211_hw *hw)
+@@ -370,12 +370,17 @@ mt7915_init_wiphy(struct ieee80211_hw *h
  	if (!phy->dev->dbdc_support)
  		wiphy->txq_memory_limit = 32 << 20; /* 32 MiB */
  
@@ -52,8 +48,6 @@ index bb766ed..cd69174 100644
  		phy->mt76->sband_5g.sband.ht_cap.cap |=
  			IEEE80211_HT_CAP_LDPC_CODING |
  			IEEE80211_HT_CAP_MAX_AMSDU;
-diff --git a/mt7915/mac.c b/mt7915/mac.c
-index 78d2a96..fb42446 100644
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
 @@ -7,6 +7,7 @@
@@ -64,7 +58,7 @@ index 78d2a96..fb42446 100644
  
  #define to_rssi(field, rxv)	((FIELD_GET(field, rxv) - 220) / 2)
  
-@@ -2317,6 +2318,21 @@ void mt7915_mac_update_stats(struct mt7915_phy *phy)
+@@ -2398,6 +2399,21 @@ void mt7915_mac_update_stats(struct mt79
  	}
  }
  
@@ -86,7 +80,7 @@ index 78d2a96..fb42446 100644
  void mt7915_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev, rc_work);
-@@ -2339,6 +2355,13 @@ void mt7915_mac_sta_rc_work(struct work_struct *work)
+@@ -2420,6 +2436,13 @@ void mt7915_mac_sta_rc_work(struct work_
  		sta = container_of((void *)msta, struct ieee80211_sta, drv_priv);
  		vif = container_of((void *)msta->vif, struct ieee80211_vif, drv_priv);
  
@@ -100,11 +94,9 @@ index 78d2a96..fb42446 100644
  		if (changed & (IEEE80211_RC_SUPP_RATES_CHANGED |
  			       IEEE80211_RC_NSS_CHANGED |
  			       IEEE80211_RC_BW_CHANGED))
-diff --git a/mt7915/main.c b/mt7915/main.c
-index 1beadd8..a09cd74 100644
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -655,6 +655,9 @@ int mt7915_mac_sta_add(struct mt76_dev *mdev, struct ieee80211_vif *vif,
+@@ -647,6 +647,9 @@ int mt7915_mac_sta_add(struct mt76_dev *
  	struct mt7915_sta *msta = (struct mt7915_sta *)sta->drv_priv;
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
  	bool ext_phy = mvif->phy != &dev->phy;
@@ -114,7 +106,7 @@ index 1beadd8..a09cd74 100644
  	int ret, idx;
  
  	idx = mt76_wcid_alloc(dev->mt76.wcid_mask, MT7915_WTBL_STA);
-@@ -680,7 +683,17 @@ int mt7915_mac_sta_add(struct mt76_dev *mdev, struct ieee80211_vif *vif,
+@@ -672,7 +675,17 @@ int mt7915_mac_sta_add(struct mt76_dev *
  #ifdef CONFIG_MTK_VENDOR
  	mt7915_vendor_amnt_sta_remove(mvif->phy, sta);
  #endif
@@ -133,11 +125,9 @@ index 1beadd8..a09cd74 100644
  }
  
  void mt7915_mac_sta_remove(struct mt76_dev *mdev, struct ieee80211_vif *vif,
-diff --git a/mt7915/mcu.c b/mt7915/mcu.c
-index ecc96f1..d55e9d0 100644
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3735,6 +3735,469 @@ mt7915_mcu_report_csi(struct mt7915_dev *dev, struct sk_buff *skb)
+@@ -3838,6 +3838,469 @@ mt7915_mcu_report_csi(struct mt7915_dev
  
  	return 0;
  }
@@ -607,11 +597,9 @@ index ecc96f1..d55e9d0 100644
  #endif
  
  #ifdef MTK_DEBUG
-diff --git a/mt7915/mcu.h b/mt7915/mcu.h
-index a5e5afa..c15f89b 100644
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -431,9 +431,13 @@ enum {
+@@ -420,9 +420,13 @@ enum {
  	RATE_PARAM_FIXED = 3,
  	RATE_PARAM_MMPS_UPDATE = 5,
  	RATE_PARAM_FIXED_HE_LTF = 7,
@@ -626,7 +614,7 @@ index a5e5afa..c15f89b 100644
  };
  
  #define RATE_CFG_MCS			GENMASK(3, 0)
-@@ -445,6 +449,9 @@ enum {
+@@ -434,6 +438,9 @@ enum {
  #define RATE_CFG_PHY_TYPE		GENMASK(27, 24)
  #define RATE_CFG_HE_LTF			GENMASK(31, 28)
  
@@ -636,7 +624,7 @@ index a5e5afa..c15f89b 100644
  enum {
  	THERMAL_PROTECT_PARAMETER_CTRL,
  	THERMAL_PROTECT_BASIC_INFO,
-@@ -574,5 +581,205 @@ struct csi_data {
+@@ -563,5 +570,205 @@ struct csi_data {
  #define OFDMA_UL			BIT(1)
  #define MUMIMO_DL			BIT(2)
  #define MUMIMO_UL			BIT(3)
@@ -842,11 +830,9 @@ index a5e5afa..c15f89b 100644
 +#endif
  
  #endif
-diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
-index 746e05c..a8726fe 100644
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -655,6 +655,19 @@ void mt7915_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+@@ -661,6 +661,19 @@ void mt7915_sta_add_debugfs(struct ieee8
  #endif
  
  #ifdef CONFIG_MTK_VENDOR
@@ -866,11 +852,9 @@ index 746e05c..a8726fe 100644
  void mt7915_vendor_register(struct mt7915_phy *phy);
  int mt7915_mcu_set_csi(struct mt7915_phy *phy, u8 mode,
  			u8 cfg, u8 v1, u32 v2, u8 *mac_addr);
-diff --git a/mt7915/mtk_debugfs.c b/mt7915/mtk_debugfs.c
-index 4ebeeb2..63853f7 100644
 --- a/mt7915/mtk_debugfs.c
 +++ b/mt7915/mtk_debugfs.c
-@@ -2436,7 +2436,8 @@ static int mt7915_muru_onoff_get(void *data, u64 *val)
+@@ -2436,7 +2436,8 @@ static int mt7915_muru_onoff_get(void *d
  
  	*val = dev->dbg.muru_onoff;
  
@@ -880,7 +864,7 @@ index 4ebeeb2..63853f7 100644
  		!!(dev->dbg.muru_onoff & MUMIMO_UL),
  		!!(dev->dbg.muru_onoff & MUMIMO_DL),
  		!!(dev->dbg.muru_onoff & OFDMA_UL),
-@@ -2449,8 +2450,8 @@ static int mt7915_muru_onoff_set(void *data, u64 val)
+@@ -2449,8 +2450,8 @@ static int mt7915_muru_onoff_set(void *d
  {
  	struct mt7915_dev *dev = data;
  
@@ -891,11 +875,9 @@ index 4ebeeb2..63853f7 100644
  		goto exit;
  	}
  
-diff --git a/mt7915/vendor.c b/mt7915/vendor.c
-index b94d787..7456c57 100644
 --- a/mt7915/vendor.c
 +++ b/mt7915/vendor.c
-@@ -22,6 +22,29 @@ csi_ctrl_policy[NUM_MTK_VENDOR_ATTRS_CSI_CTRL] = {
+@@ -22,6 +22,29 @@ csi_ctrl_policy[NUM_MTK_VENDOR_ATTRS_CSI
  	[MTK_VENDOR_ATTR_CSI_CTRL_DATA] = { .type = NLA_NESTED },
  };
  
@@ -925,7 +907,7 @@ index b94d787..7456c57 100644
  struct csi_null_tone {
  	u8 start;
  	u8 end;
-@@ -777,6 +800,148 @@ mt7915_vendor_amnt_ctrl_dump(struct wiphy *wiphy, struct wireless_dev *wdev,
+@@ -777,6 +800,148 @@ mt7915_vendor_amnt_ctrl_dump(struct wiph
  	return len + 1;
  }
  
@@ -1074,7 +1056,7 @@ index b94d787..7456c57 100644
  static const struct wiphy_vendor_command mt7915_vendor_commands[] = {
  	{
  		.info = {
-@@ -801,6 +966,28 @@ static const struct wiphy_vendor_command mt7915_vendor_commands[] = {
+@@ -801,6 +966,28 @@ static const struct wiphy_vendor_command
  		.dumpit = mt7915_vendor_amnt_ctrl_dump,
  		.policy = amnt_ctrl_policy,
  		.maxattr = MTK_VENDOR_ATTR_AMNT_CTRL_MAX,
@@ -1103,8 +1085,6 @@ index b94d787..7456c57 100644
  	}
  };
  
-diff --git a/mt7915/vendor.h b/mt7915/vendor.h
-index 976817f..1b08321 100644
 --- a/mt7915/vendor.h
 +++ b/mt7915/vendor.h
 @@ -6,6 +6,48 @@
@@ -1156,6 +1136,3 @@ index 976817f..1b08321 100644
  };
  
  enum mtk_vendor_attr_csi_ctrl {
--- 
-2.25.1
-

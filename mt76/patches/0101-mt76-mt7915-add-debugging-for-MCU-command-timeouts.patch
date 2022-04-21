@@ -45,7 +45,7 @@
  		skb_pull(skb, sizeof(*rxd) - 4);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -774,6 +774,9 @@ struct mt76_dev {
+@@ -798,6 +798,9 @@ struct mt76_dev {
  		struct mt76_usb usb;
  		struct mt76_sdio sdio;
  	};

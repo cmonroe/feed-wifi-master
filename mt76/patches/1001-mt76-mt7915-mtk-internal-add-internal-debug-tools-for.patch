@@ -104,7 +104,7 @@ Subject: [PATCH 1001/1006] mt76: mt7915: add mtk internal debug tools for mt76
  
  	return 0;
  }
-@@ -910,6 +929,11 @@ int mt7915_init_debugfs(struct mt7915_ph
+@@ -942,6 +961,11 @@ int mt7915_init_debugfs(struct mt7915_ph
  	if (!ext_phy)
  		dev->debugfs_dir = dir;
  
@@ -116,7 +116,7 @@ Subject: [PATCH 1001/1006] mt76: mt7915: add mtk internal debug tools for mt76
  	return 0;
  }
  
-@@ -950,17 +974,52 @@ void mt7915_debugfs_rx_fw_monitor(struct
+@@ -982,17 +1006,52 @@ void mt7915_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -171,9 +171,9 @@ Subject: [PATCH 1001/1006] mt76: mt7915: add mtk internal debug tools for mt76
  	if (dev->relay_fwlog)
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3708,3 +3708,40 @@ int mt7915_mcu_twt_agrt_update(struct mt
- 	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(TWT_AGRT_UPDATE),
- 				 &req, sizeof(req), true);
+@@ -3724,3 +3724,40 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+ 
+ 	return 0;
  }
 +
 +#ifdef MTK_DEBUG
@@ -258,7 +258,7 @@ Subject: [PATCH 1001/1006] mt76: mt7915: add mtk internal debug tools for mt76
  };
  
  enum {
-@@ -595,4 +612,12 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -597,4 +614,12 @@ void mt7915_sta_add_debugfs(struct ieee8
  			    struct ieee80211_sta *sta, struct dentry *dir);
  #endif
  

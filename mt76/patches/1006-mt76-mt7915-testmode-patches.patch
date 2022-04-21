@@ -61,7 +61,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  };
  
  static const struct ieee80211_channel mt76_channels_6ghz[] = {
-@@ -737,7 +752,8 @@ void mt76_rx(struct mt76_dev *dev, enum
+@@ -739,7 +754,8 @@ void mt76_rx(struct mt76_dev *dev, enum
  	}
  
  #ifdef CONFIG_NL80211_TESTMODE
@@ -73,7 +73,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  			phy->test.rx_stats.fcs_error[q]++;
 --- a/mt76.h
 +++ b/mt76.h
-@@ -581,6 +581,25 @@ struct mt76_testmode_ops {
+@@ -602,6 +602,25 @@ struct mt76_testmode_ops {
  	int (*set_params)(struct mt76_phy *phy, struct nlattr **tb,
  			  enum mt76_testmode_state new_state);
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
@@ -99,7 +99,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  };
  
  struct mt76_testmode_data {
-@@ -590,13 +609,9 @@ struct mt76_testmode_data {
+@@ -611,13 +630,9 @@ struct mt76_testmode_data {
  	struct sk_buff *tx_skb;
  
  	u32 tx_count;
@@ -113,7 +113,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	u8 tx_rate_stbc;
  	u8 tx_ltf;
  
-@@ -614,6 +629,35 @@ struct mt76_testmode_data {
+@@ -635,6 +650,35 @@ struct mt76_testmode_data {
  
  	u8 addr[3][ETH_ALEN];
  
@@ -149,7 +149,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	u32 tx_pending;
  	u32 tx_queued;
  	u16 tx_queued_limit;
-@@ -621,6 +665,7 @@ struct mt76_testmode_data {
+@@ -642,6 +686,7 @@ struct mt76_testmode_data {
  	struct {
  		u64 packets[__MT_RXQ_MAX];
  		u64 fcs_error[__MT_RXQ_MAX];
@@ -157,7 +157,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	} rx_stats;
  };
  
-@@ -1094,22 +1139,69 @@ static inline bool mt76_testmode_enabled
+@@ -1118,22 +1163,69 @@ static inline bool mt76_testmode_enabled
  #endif
  }
  
@@ -237,7 +237,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  
  void mt76_rx(struct mt76_dev *dev, enum mt76_rxq_id q, struct sk_buff *skb);
  void mt76_tx(struct mt76_phy *dev, struct ieee80211_sta *sta,
-@@ -1201,7 +1293,7 @@ int mt76_testmode_cmd(struct ieee80211_h
+@@ -1225,7 +1317,7 @@ int mt76_testmode_cmd(struct ieee80211_h
  int mt76_testmode_dump(struct ieee80211_hw *hw, struct sk_buff *skb,
  		       struct netlink_callback *cb, void *data, int len);
  int mt76_testmode_set_state(struct mt76_phy *phy, enum mt76_testmode_state state);
@@ -246,7 +246,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  
  static inline void mt76_testmode_reset(struct mt76_phy *phy, bool disable)
  {
-@@ -1215,7 +1307,6 @@ static inline void mt76_testmode_reset(s
+@@ -1239,7 +1331,6 @@ static inline void mt76_testmode_reset(s
  #endif
  }
  
@@ -277,7 +277,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -987,6 +987,7 @@ enum {
+@@ -986,6 +986,7 @@ enum {
  	MCU_EXT_CMD_OFFCH_SCAN_CTRL = 0x9a,
  	MCU_EXT_CMD_SET_RDD_TH = 0x9d,
  	MCU_EXT_CMD_MURU_CTRL = 0x9f,
@@ -287,7 +287,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -568,7 +568,7 @@ static void mt7915_init_work(struct work
+@@ -576,7 +576,7 @@ static void mt7915_init_work(struct work
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev,
  				 init_work);
  
@@ -343,7 +343,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	txwi[3] &= ~cpu_to_le32(MT_TXD3_SN_VALID);
  	txwi[6] |= cpu_to_le32(val);
  	txwi[7] |= cpu_to_le32(FIELD_PREP(MT_TXD7_SPE_IDX,
-@@ -1468,6 +1481,9 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -1531,6 +1544,9 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  				continue;
  
  			msta = container_of(wcid, struct mt7915_sta, wcid);
@@ -363,7 +363,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  		if (cmd & __MCU_CMD_FIELD_QUERY)
  			mcu_txd->set_query = MCU_Q_QUERY;
  		else
-@@ -2924,14 +2923,9 @@ int mt7915_mcu_set_chan_info(struct mt79
+@@ -2911,14 +2910,9 @@ int mt7915_mcu_set_chan_info(struct mt79
  
  #ifdef CONFIG_NL80211_TESTMODE
  	if (phy->mt76->test.tx_antenna_mask &&
@@ -379,7 +379,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	}
  #endif
  
-@@ -3000,14 +2994,14 @@ static int mt7915_mcu_set_eeprom_flash(s
+@@ -2987,14 +2981,14 @@ static int mt7915_mcu_set_eeprom_flash(s
  	return 0;
  }
  
@@ -431,7 +431,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	[TMAC_ATCR]		= 0x00c,
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -544,7 +544,7 @@ int mt7915_mcu_set_fixed_rate_ctrl(struc
+@@ -546,7 +546,7 @@ int mt7915_mcu_set_fixed_rate_ctrl(struc
  				   struct ieee80211_vif *vif,
  				   struct ieee80211_sta *sta,
  				   void *data, u32 field);
@@ -450,7 +450,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	TMAC_CDTR,
  	TMAC_ODTR,
  	TMAC_ATCR,
-@@ -172,6 +173,12 @@ enum offs_rev {
+@@ -175,6 +176,12 @@ enum offs_rev {
  #define MT_MDP_TO_HIF			0
  #define MT_MDP_TO_WM			1
  
@@ -463,7 +463,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  /* TMAC: band 0(0x820e4000), band 1(0x820f4000) */
  #define MT_WF_TMAC_BASE(_band)		((_band) ? 0x820f4000 : 0x820e4000)
  #define MT_WF_TMAC(_band, ofs)		(MT_WF_TMAC_BASE(_band) + (ofs))
-@@ -180,6 +187,9 @@ enum offs_rev {
+@@ -183,6 +190,9 @@ enum offs_rev {
  #define MT_TMAC_TCR0_TX_BLINK		GENMASK(7, 6)
  #define MT_TMAC_TCR0_TBTT_STOP_CTRL	BIT(25)
  
@@ -473,7 +473,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  #define MT_TMAC_CDTR(_band)		MT_WF_TMAC(_band, __OFFS(TMAC_CDTR))
   #define MT_TMAC_ODTR(_band)		MT_WF_TMAC(_band, __OFFS(TMAC_ODTR))
  #define MT_TIMEOUT_VAL_PLCP		GENMASK(15, 0)
-@@ -451,8 +461,10 @@ enum offs_rev {
+@@ -454,8 +464,10 @@ enum offs_rev {
  #define MT_AGG_PCR0_VHT_PROT		BIT(13)
  #define MT_AGG_PCR0_PTA_WIN_DIS		BIT(15)
  

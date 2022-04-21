@@ -14,7 +14,7 @@ Subject: [PATCH 1004/1006] mt76: mt7915: add support for muru_onoff via
 
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -574,6 +574,7 @@ static void mt7915_init_work(struct work
+@@ -577,6 +577,7 @@ static void mt7915_init_work(struct work
  	mt7915_init_txpower(dev, &dev->mphy.sband_5g.sband);
  	mt7915_init_txpower(dev, &dev->mphy.sband_6g.sband);
  	mt7915_txbf_init(dev);
@@ -53,7 +53,7 @@ Subject: [PATCH 1004/1006] mt76: mt7915: add support for muru_onoff via
  		muru->mimo_dl.vht_mu_bfee =
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -568,4 +568,10 @@ struct csi_data {
+@@ -558,4 +558,10 @@ struct csi_data {
  };
  #endif
  
