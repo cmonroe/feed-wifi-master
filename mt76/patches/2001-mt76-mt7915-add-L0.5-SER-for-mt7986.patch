@@ -116,25 +116,25 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 +	msleep(100);
 +
 +	seq_printf(s, "::E  R , SER_STATUS        = 0x%08X\n",
-+		   MT_SWDEF_SER_STATUS);
++		   mt76_rr(dev, MT_SWDEF_SER_STATUS));
 +	seq_printf(s, "::E  R , SER_PLE_ERR       = 0x%08X\n",
-+		   MT_SWDEF_PLE_STATUS);
++		   mt76_rr(dev, MT_SWDEF_PLE_STATUS));
 +	seq_printf(s, "::E  R , SER_PLE_ERR_1     = 0x%08X\n",
-+		   MT_SWDEF_PLE1_STATUS);
++		   mt76_rr(dev, MT_SWDEF_PLE1_STATUS));
 +	seq_printf(s, "::E  R , SER_PLE_ERR_AMSDU = 0x%08X\n",
-+		   MT_SWDEF_PLE_AMSDU_STATUS);
++		   mt76_rr(dev, MT_SWDEF_PLE_AMSDU_STATUS));
 +	seq_printf(s, "::E  R , SER_PSE_ERR       = 0x%08X\n",
-+		   MT_SWDEF_PSE_STATUS);
++		   mt76_rr(dev, MT_SWDEF_PSE_STATUS));
 +	seq_printf(s, "::E  R , SER_PSE_ERR_1     = 0x%08X\n",
-+		   MT_SWDEF_PSE1_STATUS);
++		   mt76_rr(dev, MT_SWDEF_PSE1_STATUS));
 +	seq_printf(s, "::E  R , SER_LMAC_WISR6_B0 = 0x%08X\n",
-+		   MT_SWDEF_LAMC_WISR6_BN0_STATUS);
++		   mt76_rr(dev, MT_SWDEF_LAMC_WISR6_BN0_STATUS));
 +	seq_printf(s, "::E  R , SER_LMAC_WISR6_B1 = 0x%08X\n",
-+		   MT_SWDEF_LAMC_WISR6_BN1_STATUS);
++		   mt76_rr(dev, MT_SWDEF_LAMC_WISR6_BN1_STATUS));
 +	seq_printf(s, "::E  R , SER_LMAC_WISR7_B0 = 0x%08X\n",
-+		   MT_SWDEF_LAMC_WISR7_BN0_STATUS);
++		   mt76_rr(dev, MT_SWDEF_LAMC_WISR7_BN0_STATUS));
 +	seq_printf(s, "::E  R , SER_LMAC_WISR7_B1 = 0x%08X\n",
-+		   MT_SWDEF_LAMC_WISR7_BN1_STATUS);
++		   mt76_rr(dev, MT_SWDEF_LAMC_WISR7_BN1_STATUS));
 +
 +	seq_printf(s, "\nWF RESET STATUS: WM %d, WA %d, WO %d\n",
 +		   dev->ser.wf_reset_wm_count,
