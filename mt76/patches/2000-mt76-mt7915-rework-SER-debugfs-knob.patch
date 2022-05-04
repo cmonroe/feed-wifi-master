@@ -1,0 +1,266 @@
+From 40f31a4550ff357468798a5950a62ceec396cbeb Mon Sep 17 00:00:00 2001
+Message-Id: <40f31a4550ff357468798a5950a62ceec396cbeb.1651455707.git.ryder.lee@mediatek.com>
+From: Ryder Lee <ryder.lee@mediatek.com>
+Date: Mon, 25 Apr 2022 11:34:29 +0800
+Subject: [PATCH 1/3] mt76: mt7915: reowrk SER debugfs knob
+
+1. get status of system recovery from firmware.
+2. add more recovery points.
+3. make knob per phy.
+
+Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
+Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
+---
+ .../wireless/mediatek/mt76/mt7915/debugfs.c   | 106 +++++++++++++++---
+ .../net/wireless/mediatek/mt76/mt7915/mcu.c   |   5 +-
+ .../net/wireless/mediatek/mt76/mt7915/mcu.h   |  14 +++
+ .../net/wireless/mediatek/mt76/mt7915/mmio.c  |   3 +
+ .../net/wireless/mediatek/mt76/mt7915/regs.h  |  18 ++-
+ 5 files changed, 126 insertions(+), 20 deletions(-)
+
+--- a/mt7915/debugfs.c
++++ b/mt7915/debugfs.c
+@@ -47,35 +47,113 @@ mt7915_implicit_txbf_get(void *data, u64
+ DEFINE_DEBUGFS_ATTRIBUTE(fops_implicit_txbf, mt7915_implicit_txbf_get,
+ 			 mt7915_implicit_txbf_set, "%lld\n");
+ 
+-/* test knob of system layer 1/2 error recovery */
+-static int mt7915_ser_trigger_set(void *data, u64 val)
++/* test knob of system error recovery */
++static ssize_t
++mt7915_fw_ser_set(struct file *file, const char __user *user_buf,
++		  size_t count, loff_t *ppos)
+ {
+-	enum {
+-		SER_SET_RECOVER_L1 = 1,
+-		SER_SET_RECOVER_L2,
+-		SER_ENABLE = 2,
+-		SER_RECOVER
+-	};
+-	struct mt7915_dev *dev = data;
++	struct mt7915_phy *phy = file->private_data;
++	struct mt7915_dev *dev = phy->dev;
++	bool ext_phy = phy != &dev->phy;
++	char buf[16];
+ 	int ret = 0;
++	u16 val;
++
++	if (count >= sizeof(buf))
++		return -EINVAL;
++
++	if (copy_from_user(buf, user_buf, count))
++		return -EFAULT;
++
++	if (count && buf[count - 1] == '\n')
++		buf[count - 1] = '\0';
++	else
++		buf[count] = '\0';
++
++	if (kstrtou16(buf, 0, &val))
++		return -EINVAL;
+ 
+ 	switch (val) {
++	case SER_QUERY:
++		/* grab firmware SER stats */
++		ret = mt7915_mcu_set_ser(dev, 0, 0, ext_phy);
++		break;
+ 	case SER_SET_RECOVER_L1:
+ 	case SER_SET_RECOVER_L2:
+-		ret = mt7915_mcu_set_ser(dev, SER_ENABLE, BIT(val), 0);
++	case SER_SET_RECOVER_L3_RX_ABORT:
++	case SER_SET_RECOVER_L3_TX_ABORT:
++	case SER_SET_RECOVER_L3_TX_DISABLE:
++	case SER_SET_RECOVER_L3_BF:
++		ret = mt7915_mcu_set_ser(dev, SER_ENABLE, BIT(val), ext_phy);
+ 		if (ret)
+ 			return ret;
+ 
+-		return mt7915_mcu_set_ser(dev, SER_RECOVER, val, 0);
++		ret = mt7915_mcu_set_ser(dev, SER_RECOVER, val, ext_phy);
++		break;
+ 	default:
+ 		break;
+ 	}
+ 
++	return ret ? ret : count;
++}
++
++static ssize_t
++mt7915_fw_ser_get(struct file *file, char __user *user_buf,
++		  size_t count, loff_t *ppos)
++{
++	struct mt7915_phy *phy = file->private_data;
++	struct mt7915_dev *dev = phy->dev;
++	char *buff;
++	int desc = 0;
++	ssize_t ret;
++	static const size_t bufsz = 400;
++
++	buff = kmalloc(bufsz, GFP_KERNEL);
++	if (!buff)
++		return -ENOMEM;
++
++	desc += scnprintf(buff + desc, bufsz - desc,
++			  "::E  R , SER_STATUS        = 0x%08x\n",
++			  mt76_rr(dev, MT_SWDEF_SER_STATS));
++	desc += scnprintf(buff + desc, bufsz - desc,
++			  "::E  R , SER_PLE_ERR       = 0x%08x\n",
++			  mt76_rr(dev, MT_SWDEF_PLE_STATS));
++	desc += scnprintf(buff + desc, bufsz - desc,
++			  "::E  R , SER_PLE_ERR_1     = 0x%08x\n",
++			  mt76_rr(dev, MT_SWDEF_PLE1_STATS));
++	desc += scnprintf(buff + desc, bufsz - desc,
++			  "::E  R , SER_PLE_ERR_AMSDU = 0x%08x\n",
++			  mt76_rr(dev, MT_SWDEF_PLE_AMSDU_STATS));
++	desc += scnprintf(buff + desc, bufsz - desc,
++			  "::E  R , SER_PSE_ERR       = 0x%08x\n",
++			  mt76_rr(dev, MT_SWDEF_PSE_STATS));
++	desc += scnprintf(buff + desc, bufsz - desc,
++			  "::E  R , SER_PSE_ERR_1     = 0x%08x\n",
++			  mt76_rr(dev, MT_SWDEF_PSE1_STATS));
++	desc += scnprintf(buff + desc, bufsz - desc,
++			  "::E  R , SER_LMAC_WISR6_B0 = 0x%08x\n",
++			  mt76_rr(dev, MT_SWDEF_LAMC_WISR6_BN0_STATS));
++	desc += scnprintf(buff + desc, bufsz - desc,
++			  "::E  R , SER_LMAC_WISR6_B1 = 0x%08x\n",
++			  mt76_rr(dev, MT_SWDEF_LAMC_WISR6_BN1_STATS));
++	desc += scnprintf(buff + desc, bufsz - desc,
++			  "::E  R , SER_LMAC_WISR7_B0 = 0x%08x\n",
++			  mt76_rr(dev, MT_SWDEF_LAMC_WISR7_BN0_STATS));
++	desc += scnprintf(buff + desc, bufsz - desc,
++			  "::E  R , SER_LMAC_WISR7_B1 = 0x%08x\n",
++			  mt76_rr(dev, MT_SWDEF_LAMC_WISR7_BN1_STATS));
++
++	ret = simple_read_from_buffer(user_buf, count, ppos, buff, desc);
++	kfree(buff);
+ 	return ret;
+ }
+ 
+-DEFINE_DEBUGFS_ATTRIBUTE(fops_ser_trigger, NULL,
+-			 mt7915_ser_trigger_set, "%lld\n");
++static const struct file_operations mt7915_fw_ser_ops = {
++	.write = mt7915_fw_ser_set,
++	.read = mt7915_fw_ser_get,
++	.open = simple_open,
++	.llseek = default_llseek,
++};
+ 
+ static int
+ mt7915_radar_trigger(void *data, u64 val)
+@@ -933,6 +1011,7 @@ int mt7915_init_debugfs(struct mt7915_ph
+ 	debugfs_create_file("xmit-queues", 0400, dir, phy,
+ 			    &mt7915_xmit_queues_fops);
+ 	debugfs_create_file("tx_stats", 0400, dir, phy, &mt7915_tx_stats_fops);
++	debugfs_create_file("fw_ser", 0600, dir, phy, &mt7915_fw_ser_ops);
+ 	debugfs_create_file("fw_debug_wm", 0600, dir, dev, &fops_fw_debug_wm);
+ 	debugfs_create_file("fw_debug_wa", 0600, dir, dev, &fops_fw_debug_wa);
+ 	debugfs_create_file("fw_debug_bin", 0600, dir, dev, &fops_fw_debug_bin);
+@@ -946,7 +1025,6 @@ int mt7915_init_debugfs(struct mt7915_ph
+ 			    &mt7915_rate_txpower_fops);
+ 	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
+ 				    mt7915_twt_stats);
+-	debugfs_create_file("ser_trigger", 0200, dir, dev, &fops_ser_trigger);
+ 	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
+ 
+ 	if (!dev->dbdc_support || phy->band_idx) {
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -2514,10 +2514,7 @@ int mt7915_mcu_init(struct mt7915_dev *d
+ 	/* force firmware operation mode into normal state,
+ 	 * which should be set before firmware download stage.
+ 	 */
+-	if (is_mt7915(&dev->mt76))
+-		mt76_wr(dev, MT_SWDEF_MODE, MT_SWDEF_NORMAL_MODE);
+-	else
+-		mt76_wr(dev, MT_SWDEF_MODE_MT7916, MT_SWDEF_NORMAL_MODE);
++	mt76_wr(dev, MT_SWDEF_MODE, MT_SWDEF_NORMAL_MODE);
+ 
+ 	ret = mt7915_driver_own(dev, 0);
+ 	if (ret)
+--- a/mt7915/mcu.h
++++ b/mt7915/mcu.h
+@@ -479,6 +479,20 @@ enum {
+ 	MURU_GET_TXC_TX_STATS = 151,
+ };
+ 
++enum {
++	SER_QUERY,
++	/* recovery */
++	SER_SET_RECOVER_L1,
++	SER_SET_RECOVER_L2,
++	SER_SET_RECOVER_L3_RX_ABORT,
++	SER_SET_RECOVER_L3_TX_ABORT,
++	SER_SET_RECOVER_L3_TX_DISABLE,
++	SER_SET_RECOVER_L3_BF,
++	/* action */
++	SER_ENABLE = 2,
++	SER_RECOVER
++};
++
+ #define MT7915_BSS_UPDATE_MAX_SIZE	(sizeof(struct sta_req_hdr) +	\
+ 					 sizeof(struct bss_info_omac) +	\
+ 					 sizeof(struct bss_info_basic) +\
+--- a/mt7915/mmio.c
++++ b/mt7915/mmio.c
+@@ -22,6 +22,7 @@ static const u32 mt7915_reg[] = {
+ 	[WFDMA_EXT_CSR_ADDR]	= 0xd7000,
+ 	[CBTOP1_PHY_END]	= 0x77ffffff,
+ 	[INFRA_MCU_ADDR_END]	= 0x7c3fffff,
++	[SWDEF_BASE_ADDR]	= 0x41f200,
+ };
+ 
+ static const u32 mt7916_reg[] = {
+@@ -36,6 +37,7 @@ static const u32 mt7916_reg[] = {
+ 	[WFDMA_EXT_CSR_ADDR]	= 0xd7000,
+ 	[CBTOP1_PHY_END]	= 0x7fffffff,
+ 	[INFRA_MCU_ADDR_END]	= 0x7c085fff,
++	[SWDEF_BASE_ADDR]	= 0x411400,
+ };
+ 
+ static const u32 mt7986_reg[] = {
+@@ -50,6 +52,7 @@ static const u32 mt7986_reg[] = {
+ 	[WFDMA_EXT_CSR_ADDR]	= 0x27000,
+ 	[CBTOP1_PHY_END]	= 0x7fffffff,
+ 	[INFRA_MCU_ADDR_END]	= 0x7c085fff,
++	[SWDEF_BASE_ADDR]	= 0x411400,
+ };
+ 
+ static const u32 mt7915_offs[] = {
+--- a/mt7915/regs.h
++++ b/mt7915/regs.h
+@@ -30,6 +30,7 @@ enum reg_rev {
+ 	WFDMA_EXT_CSR_ADDR,
+ 	CBTOP1_PHY_END,
+ 	INFRA_MCU_ADDR_END,
++	SWDEF_BASE_ADDR,
+ 	__MT_REG_MAX,
+ };
+ 
+@@ -941,12 +942,25 @@ enum offs_rev {
+ #define MT_ADIE_TYPE_MASK		BIT(1)
+ 
+ /* FW MODE SYNC */
+-#define MT_SWDEF_MODE			0x41f23c
+-#define MT_SWDEF_MODE_MT7916		0x41143c
++#define MT_SWDEF_BASE			__REG(SWDEF_BASE_ADDR)
++
++#define MT_SWDEF(ofs)			(MT_SWDEF_BASE + (ofs))
++#define MT_SWDEF_MODE			MT_SWDEF(0x3c)
+ #define MT_SWDEF_NORMAL_MODE		0
+ #define MT_SWDEF_ICAP_MODE		1
+ #define MT_SWDEF_SPECTRUM_MODE		2
+ 
++#define MT_SWDEF_SER_STATS		MT_SWDEF(0x040)
++#define MT_SWDEF_PLE_STATS		MT_SWDEF(0x044)
++#define MT_SWDEF_PLE1_STATS		MT_SWDEF(0x048)
++#define MT_SWDEF_PLE_AMSDU_STATS	MT_SWDEF(0x04C)
++#define MT_SWDEF_PSE_STATS		MT_SWDEF(0x050)
++#define MT_SWDEF_PSE1_STATS		MT_SWDEF(0x054)
++#define MT_SWDEF_LAMC_WISR6_BN0_STATS	MT_SWDEF(0x058)
++#define MT_SWDEF_LAMC_WISR6_BN1_STATS	MT_SWDEF(0x05C)
++#define MT_SWDEF_LAMC_WISR7_BN0_STATS	MT_SWDEF(0x060)
++#define MT_SWDEF_LAMC_WISR7_BN1_STATS	MT_SWDEF(0x064)
++
+ #define MT_DIC_CMD_REG_BASE		0x41f000
+ #define MT_DIC_CMD_REG(ofs)		(MT_DIC_CMD_REG_BASE + (ofs))
+ #define MT_DIC_CMD_REG_CMD		MT_DIC_CMD_REG(0x10)
