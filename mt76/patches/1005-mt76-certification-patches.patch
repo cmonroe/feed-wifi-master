@@ -58,7 +58,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  
  #define to_rssi(field, rxv)	((FIELD_GET(field, rxv) - 220) / 2)
  
-@@ -2398,6 +2399,21 @@ void mt7915_mac_update_stats(struct mt79
+@@ -2412,6 +2413,21 @@ void mt7915_mac_update_stats(struct mt79
  	}
  }
  
@@ -80,7 +80,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  void mt7915_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev, rc_work);
-@@ -2420,6 +2436,13 @@ void mt7915_mac_sta_rc_work(struct work_
+@@ -2434,6 +2450,13 @@ void mt7915_mac_sta_rc_work(struct work_
  		sta = container_of((void *)msta, struct ieee80211_sta, drv_priv);
  		vif = container_of((void *)msta->vif, struct ieee80211_vif, drv_priv);
  
@@ -127,7 +127,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  void mt7915_mac_sta_remove(struct mt76_dev *mdev, struct ieee80211_vif *vif,
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3838,6 +3838,469 @@ mt7915_mcu_report_csi(struct mt7915_dev
+@@ -3813,6 +3813,469 @@ mt7915_mcu_report_csi(struct mt7915_dev
  
  	return 0;
  }
@@ -832,7 +832,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  #endif
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -661,6 +661,19 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -666,6 +666,19 @@ void mt7915_sta_add_debugfs(struct ieee8
  #endif
  
  #ifdef CONFIG_MTK_VENDOR
@@ -854,7 +854,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  			u8 cfg, u8 v1, u32 v2, u8 *mac_addr);
 --- a/mt7915/mtk_debugfs.c
 +++ b/mt7915/mtk_debugfs.c
-@@ -2436,7 +2436,8 @@ static int mt7915_muru_onoff_get(void *d
+@@ -2460,7 +2460,8 @@ static int mt7915_muru_onoff_get(void *d
  
  	*val = dev->dbg.muru_onoff;
  
@@ -864,7 +864,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  		!!(dev->dbg.muru_onoff & MUMIMO_UL),
  		!!(dev->dbg.muru_onoff & MUMIMO_DL),
  		!!(dev->dbg.muru_onoff & OFDMA_UL),
-@@ -2449,8 +2450,8 @@ static int mt7915_muru_onoff_set(void *d
+@@ -2473,8 +2474,8 @@ static int mt7915_muru_onoff_set(void *d
  {
  	struct mt7915_dev *dev = data;
  

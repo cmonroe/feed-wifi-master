@@ -298,7 +298,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	mt7915_init_txpower(dev, &dev->mphy.sband_5g.sband);
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -905,16 +905,28 @@ mt7915_mac_write_txwi_tm(struct mt7915_p
+@@ -913,16 +913,28 @@ mt7915_mac_write_txwi_tm(struct mt7915_p
  {
  #ifdef CONFIG_NL80211_TESTMODE
  	struct mt76_testmode_data *td = &phy->mt76->test;
@@ -331,7 +331,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  
  	switch (td->tx_rate_mode) {
  	case MT76_TM_TX_MODE_HT:
-@@ -1004,9 +1016,10 @@ mt7915_mac_write_txwi_tm(struct mt7915_p
+@@ -1012,9 +1024,10 @@ mt7915_mac_write_txwi_tm(struct mt7915_p
  	if (mode >= MT_PHY_TYPE_HE_SU)
  		val |= FIELD_PREP(MT_TXD6_HELTF, td->tx_ltf);
  
@@ -343,7 +343,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	txwi[3] &= ~cpu_to_le32(MT_TXD3_SN_VALID);
  	txwi[6] |= cpu_to_le32(val);
  	txwi[7] |= cpu_to_le32(FIELD_PREP(MT_TXD7_SPE_IDX,
-@@ -1531,6 +1544,9 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -1545,6 +1558,9 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  				continue;
  
  			msta = container_of(wcid, struct mt7915_sta, wcid);
@@ -363,7 +363,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  		if (cmd & __MCU_CMD_FIELD_QUERY)
  			mcu_txd->set_query = MCU_Q_QUERY;
  		else
-@@ -2911,14 +2910,9 @@ int mt7915_mcu_set_chan_info(struct mt79
+@@ -2915,14 +2914,9 @@ int mt7915_mcu_set_chan_info(struct mt79
  
  #ifdef CONFIG_NL80211_TESTMODE
  	if (phy->mt76->test.tx_antenna_mask &&
@@ -379,7 +379,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	}
  #endif
  
-@@ -2987,14 +2981,14 @@ static int mt7915_mcu_set_eeprom_flash(s
+@@ -2991,14 +2985,14 @@ static int mt7915_mcu_set_eeprom_flash(s
  	return 0;
  }
  
@@ -431,7 +431,7 @@ Subject: [PATCH 1006/1006] mt76: mt7915: testmode patches
  	[TMAC_ATCR]		= 0x00c,
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -546,7 +546,7 @@ int mt7915_mcu_set_fixed_rate_ctrl(struc
+@@ -551,7 +551,7 @@ int mt7915_mcu_set_fixed_rate_ctrl(struc
  				   struct ieee80211_vif *vif,
  				   struct ieee80211_sta *sta,
  				   void *data, u32 field);

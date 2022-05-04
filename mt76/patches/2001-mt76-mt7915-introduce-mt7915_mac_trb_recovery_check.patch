@@ -18,7 +18,7 @@ Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
 
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -2430,6 +2430,42 @@ void mt7915_capi_sta_rc_work(void *data,
+@@ -2444,6 +2444,42 @@ void mt7915_capi_sta_rc_work(void *data,
  }
  #endif
  
@@ -61,7 +61,7 @@ Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
  void mt7915_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev, rc_work);
-@@ -2489,6 +2525,7 @@ void mt7915_mac_work(struct work_struct
+@@ -2503,6 +2539,7 @@ void mt7915_mac_work(struct work_struct
  		mphy->mac_work_count = 0;
  
  		mt7915_mac_update_stats(phy);

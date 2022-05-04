@@ -147,7 +147,7 @@ Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
  
  static int
  mt7915_radar_trigger(void *data, u64 val)
-@@ -933,6 +1011,7 @@ int mt7915_init_debugfs(struct mt7915_ph
+@@ -943,6 +1021,7 @@ int mt7915_init_debugfs(struct mt7915_ph
  	debugfs_create_file("xmit-queues", 0400, dir, phy,
  			    &mt7915_xmit_queues_fops);
  	debugfs_create_file("tx_stats", 0400, dir, phy, &mt7915_tx_stats_fops);
@@ -155,7 +155,7 @@ Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
  	debugfs_create_file("fw_debug_wm", 0600, dir, dev, &fops_fw_debug_wm);
  	debugfs_create_file("fw_debug_wa", 0600, dir, dev, &fops_fw_debug_wa);
  	debugfs_create_file("fw_debug_bin", 0600, dir, dev, &fops_fw_debug_bin);
-@@ -946,7 +1025,6 @@ int mt7915_init_debugfs(struct mt7915_ph
+@@ -956,7 +1035,6 @@ int mt7915_init_debugfs(struct mt7915_ph
  			    &mt7915_rate_txpower_fops);
  	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
  				    mt7915_twt_stats);
@@ -165,7 +165,7 @@ Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
  	if (!dev->dbdc_support || phy->band_idx) {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2514,10 +2514,7 @@ int mt7915_mcu_init(struct mt7915_dev *d
+@@ -2518,10 +2518,7 @@ int mt7915_mcu_init(struct mt7915_dev *d
  	/* force firmware operation mode into normal state,
  	 * which should be set before firmware download stage.
  	 */

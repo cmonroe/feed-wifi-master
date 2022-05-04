@@ -138,7 +138,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  static u8
  mt7915_mcu_get_sta_nss(u16 mcs_map)
  {
-@@ -480,6 +484,11 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
+@@ -484,6 +488,11 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
  	case MCU_EXT_EVENT_FW_LOG_2_HOST:
  		mt7915_mcu_rx_log_message(dev, skb);
  		break;
@@ -150,8 +150,8 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
-@@ -3725,6 +3734,108 @@ int mt7915_mcu_rf_regval(struct mt7915_d
- 	return 0;
+@@ -3700,6 +3709,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
+ 				 &req, sizeof(req), true);
  }
  
 +#ifdef CONFIG_MTK_VENDOR
@@ -365,7 +365,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  };
  
  struct mt7915_dev {
-@@ -614,6 +628,12 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -619,6 +633,12 @@ void mt7915_sta_add_debugfs(struct ieee8
  			    struct ieee80211_sta *sta, struct dentry *dir);
  #endif
  

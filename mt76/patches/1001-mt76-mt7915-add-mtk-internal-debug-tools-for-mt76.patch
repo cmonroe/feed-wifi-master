@@ -22,8 +22,6 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  create mode 100644 mt7915/mtk_debugfs.c
  create mode 100644 mt7915/mtk_mcu.c
 
-diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
-index aa14d2d4..03134066 100644
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
 @@ -968,6 +968,12 @@ enum {
@@ -39,8 +37,6 @@ index aa14d2d4..03134066 100644
  	MCU_EXT_CMD_TXDPD_CAL = 0x60,
  	MCU_EXT_CMD_CAL_CACHE = 0x67,
  	MCU_EXT_CMD_SET_RADAR_TH = 0x7c,
-diff --git a/mt7915/Makefile b/mt7915/Makefile
-index b794ceb7..a3474e2f 100644
 --- a/mt7915/Makefile
 +++ b/mt7915/Makefile
 @@ -3,7 +3,7 @@
@@ -53,8 +49,6 @@ index b794ceb7..a3474e2f 100644
  mt7915e-$(CONFIG_NL80211_TESTMODE) += testmode.o
  mt7915e-$(CONFIG_MT7986_WMAC) += soc.o
 \ No newline at end of file
-diff --git a/mt7915/debugfs.c b/mt7915/debugfs.c
-index 77bbeeed..e8e26ac1 100644
 --- a/mt7915/debugfs.c
 +++ b/mt7915/debugfs.c
 @@ -8,6 +8,9 @@
@@ -67,7 +61,7 @@ index 77bbeeed..e8e26ac1 100644
  
  /** global debugfs **/
  
-@@ -370,6 +373,9 @@ mt7915_fw_debug_wm_set(void *data, u64 val)
+@@ -370,6 +373,9 @@ mt7915_fw_debug_wm_set(void *data, u64 v
  	int ret;
  
  	dev->fw_debug_wm = val ? MCU_FW_LOG_TO_HOST : 0;
@@ -77,7 +71,7 @@ index 77bbeeed..e8e26ac1 100644
  
  	if (dev->fw_debug_bin)
  		val = 16;
-@@ -394,6 +400,9 @@ mt7915_fw_debug_wm_set(void *data, u64 val)
+@@ -394,6 +400,9 @@ mt7915_fw_debug_wm_set(void *data, u64 v
  		if (ret)
  			return ret;
  	}
@@ -87,7 +81,7 @@ index 77bbeeed..e8e26ac1 100644
  
  	/* WM CPU info record control */
  	mt76_clear(dev, MT_CPU_UTIL_CTRL, BIT(0));
-@@ -401,6 +410,12 @@ mt7915_fw_debug_wm_set(void *data, u64 val)
+@@ -401,6 +410,12 @@ mt7915_fw_debug_wm_set(void *data, u64 v
  	mt76_wr(dev, MT_MCU_WM_CIRQ_IRQ_MASK_CLR_ADDR, BIT(5));
  	mt76_wr(dev, MT_MCU_WM_CIRQ_IRQ_SOFT_ADDR, BIT(5));
  
@@ -100,7 +94,7 @@ index 77bbeeed..e8e26ac1 100644
  	return 0;
  }
  
-@@ -409,7 +424,11 @@ mt7915_fw_debug_wm_get(void *data, u64 *val)
+@@ -409,7 +424,11 @@ mt7915_fw_debug_wm_get(void *data, u64 *
  {
  	struct mt7915_dev *dev = data;
  
@@ -113,7 +107,7 @@ index 77bbeeed..e8e26ac1 100644
  
  	return 0;
  }
-@@ -489,6 +508,16 @@ mt7915_fw_debug_bin_set(void *data, u64 val)
+@@ -489,6 +508,16 @@ mt7915_fw_debug_bin_set(void *data, u64
  
  	relay_reset(dev->relay_fwlog);
  
@@ -130,7 +124,7 @@ index 77bbeeed..e8e26ac1 100644
  	return mt7915_fw_debug_wm_set(dev, dev->fw_debug_wm);
  }
  
-@@ -942,6 +971,11 @@ int mt7915_init_debugfs(struct mt7915_phy *phy)
+@@ -942,6 +971,11 @@ int mt7915_init_debugfs(struct mt7915_ph
  	if (!ext_phy)
  		dev->debugfs_dir = dir;
  
@@ -142,7 +136,7 @@ index 77bbeeed..e8e26ac1 100644
  	return 0;
  }
  
-@@ -982,17 +1016,53 @@ void mt7915_debugfs_rx_fw_monitor(struct mt7915_dev *dev, const void *data, int
+@@ -982,17 +1016,53 @@ void mt7915_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -196,11 +190,9 @@ index 77bbeeed..e8e26ac1 100644
  		return false;
  
  	if (dev->relay_fwlog)
-diff --git a/mt7915/mac.c b/mt7915/mac.c
-index de5f3f10..ce760cdb 100644
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -596,6 +596,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *dev, struct sk_buff *skb)
+@@ -596,6 +596,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  	__le16 fc = 0;
  	int idx;
  
@@ -211,7 +203,7 @@ index de5f3f10..ce760cdb 100644
  	memset(status, 0, sizeof(*status));
  
  	if ((rxd1 & MT_RXD1_NORMAL_BAND_IDX) && !phy->band_idx) {
-@@ -780,6 +784,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *dev, struct sk_buff *skb)
+@@ -780,6 +784,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  	}
  
  	hdr_gap = (u8 *)rxd - skb->data + 2 * remove_pad;
@@ -222,7 +214,7 @@ index de5f3f10..ce760cdb 100644
  	if (hdr_trans && ieee80211_has_morefrags(fc)) {
  		if (mt7915_reverse_frag0_hdr_trans(skb, hdr_gap))
  			return -EINVAL;
-@@ -1352,6 +1360,12 @@ int mt7915_tx_prepare_skb(struct mt76_dev *mdev, void *txwi_ptr,
+@@ -1345,6 +1353,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	tx_info->buf[1].skip_unmap = true;
  	tx_info->nbuf = MT_CT_DMA_BUF_NUM;
  
@@ -235,13 +227,9 @@ index de5f3f10..ce760cdb 100644
  	return 0;
  }
  
-diff --git a/mt7915/mcu.c b/mt7915/mcu.c
-old mode 100644
-new mode 100755
-index c215bc9e..bce14f4b
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -298,6 +298,10 @@ mt7915_mcu_send_message(struct mt76_dev *mdev, struct sk_buff *skb,
+@@ -323,6 +323,10 @@ mt7915_mcu_send_message(struct mt76_dev
  		mcu_txd->s2d_index = MCU_S2D_H2N;
  
  exit:
@@ -252,7 +240,7 @@ index c215bc9e..bce14f4b
  	if (wait_seq)
  		*wait_seq = seq;
  
-@@ -3660,6 +3664,43 @@ int mt7915_mcu_twt_agrt_update(struct mt7915_dev *dev,
+@@ -3696,6 +3700,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -296,11 +284,9 @@ index c215bc9e..bce14f4b
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-diff --git a/mt7915/mcu.h b/mt7915/mcu.h
-index df7aefca..c36cf511 100644
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -296,6 +296,10 @@ enum {
+@@ -295,6 +295,10 @@ enum {
  	MCU_WA_PARAM_PDMA_RX = 0x04,
  	MCU_WA_PARAM_CPU_UTIL = 0x0b,
  	MCU_WA_PARAM_RED = 0x0e,
@@ -311,8 +297,6 @@ index df7aefca..c36cf511 100644
  };
  
  enum mcu_mmps_mode {
-diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
-index e5f89161..92fedaf3 100644
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
 @@ -9,6 +9,7 @@
@@ -323,7 +307,7 @@ index e5f89161..92fedaf3 100644
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_MAX_WMM_SETS		4
  #define MT7915_WTBL_SIZE		288
-@@ -326,6 +327,27 @@ struct mt7915_dev {
+@@ -327,6 +328,27 @@ struct mt7915_dev {
  	struct reset_control *rstc;
  	void __iomem *dcm;
  	void __iomem *sku;
@@ -351,7 +335,7 @@ index e5f89161..92fedaf3 100644
  };
  
  enum {
-@@ -595,4 +617,23 @@ void mt7915_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+@@ -597,4 +619,23 @@ void mt7915_sta_add_debugfs(struct ieee8
  			    struct ieee80211_sta *sta, struct dentry *dir);
  #endif
  
@@ -375,9 +359,6 @@ index e5f89161..92fedaf3 100644
 +#endif
 +
  #endif
-diff --git a/mt7915/mt7915_debug.h b/mt7915/mt7915_debug.h
-new file mode 100644
-index 00000000..ca4b6078
 --- /dev/null
 +++ b/mt7915/mt7915_debug.h
 @@ -0,0 +1,1350 @@
@@ -1731,9 +1712,6 @@ index 00000000..ca4b6078
 +
 +#endif
 +#endif
-diff --git a/mt7915/mtk_debugfs.c b/mt7915/mtk_debugfs.c
-new file mode 100644
-index 00000000..246eb129
 --- /dev/null
 +++ b/mt7915/mtk_debugfs.c
 @@ -0,0 +1,2893 @@
@@ -4630,9 +4608,6 @@ index 00000000..246eb129
 +	return 0;
 +}
 +#endif
-diff --git a/mt7915/mtk_mcu.c b/mt7915/mtk_mcu.c
-new file mode 100644
-index 00000000..145fe785
 --- /dev/null
 +++ b/mt7915/mtk_mcu.c
 @@ -0,0 +1,51 @@
@@ -4687,11 +4662,9 @@ index 00000000..145fe785
 +				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
 +				 sizeof(req), true);
 +}
-diff --git a/tools/fwlog.c b/tools/fwlog.c
-index e5d4a105..58a976a9 100644
 --- a/tools/fwlog.c
 +++ b/tools/fwlog.c
-@@ -26,7 +26,7 @@ static const char *debugfs_path(const char *phyname, const char *file)
+@@ -26,7 +26,7 @@ static const char *debugfs_path(const ch
  	return path;
  }
  
@@ -4700,7 +4673,7 @@ index e5d4a105..58a976a9 100644
  {
  	FILE *f = fopen(debugfs_path(phyname, "fw_debug_bin"), "w");
  
-@@ -35,7 +35,13 @@ static int mt76_set_fwlog_en(const char *phyname, bool en)
+@@ -35,7 +35,13 @@ static int mt76_set_fwlog_en(const char
  		return 1;
  	}
  
@@ -4723,7 +4696,7 @@ index e5d4a105..58a976a9 100644
  	struct sockaddr_in local = {
  		.sin_family = AF_INET,
  		.sin_addr.s_addr = INADDR_ANY,
-@@ -84,9 +91,9 @@ int mt76_fwlog(const char *phyname, int argc, char **argv)
+@@ -84,9 +91,9 @@ int mt76_fwlog(const char *phyname, int
  		.sin_family = AF_INET,
  		.sin_port = htons(55688),
  	};
@@ -4735,7 +4708,7 @@ index e5d4a105..58a976a9 100644
  	int s, fd;
  
  	if (argc < 1) {
-@@ -105,13 +112,13 @@ int mt76_fwlog(const char *phyname, int argc, char **argv)
+@@ -105,13 +112,13 @@ int mt76_fwlog(const char *phyname, int
  		return 1;
  	}
  
@@ -4751,7 +4724,7 @@ index e5d4a105..58a976a9 100644
  		return 1;
  
  	fd = open(debugfs_path(phyname, "fwlog_data"), O_RDONLY);
-@@ -145,8 +152,8 @@ int mt76_fwlog(const char *phyname, int argc, char **argv)
+@@ -145,8 +152,8 @@ int mt76_fwlog(const char *phyname, int
  		if (!r)
  			continue;
  
@@ -4762,7 +4735,7 @@ index e5d4a105..58a976a9 100644
  			ret = 1;
  			break;
  		}
-@@ -171,7 +178,8 @@ int mt76_fwlog(const char *phyname, int argc, char **argv)
+@@ -171,7 +178,8 @@ int mt76_fwlog(const char *phyname, int
  	close(fd);
  
  out:
@@ -4772,6 +4745,3 @@ index e5d4a105..58a976a9 100644
  
  	return ret;
  }
--- 
-2.18.0
-
