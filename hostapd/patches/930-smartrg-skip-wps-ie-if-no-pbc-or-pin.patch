@@ -1,0 +1,19 @@
+---
+ src/wps/wps_registrar.c |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+Index: b/src/wps/wps_registrar.c
+===================================================================
+--- a/src/wps/wps_registrar.c
++++ b/src/wps/wps_registrar.c
+@@ -1312,6 +1312,10 @@ static int wps_set_ie(struct wps_registr
+ 	if (reg->set_ie_cb == NULL)
+ 		return 0;
+ 
++	if (reg->selected_registrar == 0) {     // No PBC or PIN active
++		return wps_cb_set_ie(reg, NULL, NULL);  // free active wps ie if any
++	}
++
+ 	for (i = 0; i < MAX_WPS_VENDOR_EXTENSIONS; i++) {
+ 		if (reg->wps->dev.vendor_ext[i]) {
+ 			vendor_len += 2 + 2;
