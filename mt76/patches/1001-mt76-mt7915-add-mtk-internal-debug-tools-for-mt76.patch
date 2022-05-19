@@ -240,7 +240,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	if (wait_seq)
  		*wait_seq = seq;
  
-@@ -3696,6 +3700,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3705,6 +3709,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
