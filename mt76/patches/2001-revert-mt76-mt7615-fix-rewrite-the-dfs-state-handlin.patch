@@ -10,11 +10,9 @@ This reverts commit e0f9479bf8937bc0ff7322043a7a0554b44af29f.
  mt7615/mac.c  | 51 +++++++++++++++++++++------------------------------
  2 files changed, 22 insertions(+), 30 deletions(-)
 
-diff --git a/mt7615/init.c b/mt7615/init.c
-index a06dcbb8..a753c747 100644
 --- a/mt7615/init.c
 +++ b/mt7615/init.c
-@@ -552,6 +552,7 @@ void mt7615_init_device(struct mt7615_dev *dev)
+@@ -556,6 +556,7 @@ void mt7615_init_device(struct mt7615_de
  	dev->pm.stats.last_wake_event = jiffies;
  	dev->pm.stats.last_doze_event = jiffies;
  	mt7615_cap_dbdc_disable(dev);
@@ -22,11 +20,9 @@ index a06dcbb8..a753c747 100644
  
  #ifdef CONFIG_NL80211_TESTMODE
  	dev->mt76.test_ops = &mt7615_testmode_ops;
-diff --git a/mt7615/mac.c b/mt7615/mac.c
-index f26213c4..612b5a70 100644
 --- a/mt7615/mac.c
 +++ b/mt7615/mac.c
-@@ -2284,50 +2284,43 @@ mt7615_dfs_init_radar_specs(struct mt7615_phy *phy)
+@@ -2285,50 +2285,43 @@ mt7615_dfs_init_radar_specs(struct mt761
  
  int mt7615_dfs_init_radar_detector(struct mt7615_phy *phy)
  {
@@ -98,7 +94,7 @@ index f26213c4..612b5a70 100644
  
  stop:
  	err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_NORMAL_START, ext_phy,
-@@ -2336,8 +2329,6 @@ stop:
+@@ -2337,8 +2330,6 @@ stop:
  		return err;
  
  	mt7615_dfs_stop_radar_detector(phy);
@@ -107,6 +103,3 @@ index f26213c4..612b5a70 100644
  	return 0;
  }
  
--- 
-2.32.1 (Apple Git-133)
-

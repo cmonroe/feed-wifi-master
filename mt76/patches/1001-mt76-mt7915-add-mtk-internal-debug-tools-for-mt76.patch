@@ -21,10 +21,8 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  create mode 100644 drivers/net/wireless/mediatek/mt76/mt7915/mtk_debugfs.c
  create mode 100644 drivers/net/wireless/mediatek/mt76/mt7915/mtk_mcu.c
 
-Index: mt76-2022-06-02-1d8af168/mt76_connac_mcu.h
-===================================================================
---- mt76-2022-06-02-1d8af168.orig/mt76_connac_mcu.h
-+++ mt76-2022-06-02-1d8af168/mt76_connac_mcu.h
+--- a/mt76_connac_mcu.h
++++ b/mt76_connac_mcu.h
 @@ -968,6 +968,12 @@ enum {
  	MCU_EXT_CMD_TX_POWER_FEATURE_CTRL = 0x58,
  	MCU_EXT_CMD_RXDCOC_CAL = 0x59,
@@ -38,10 +36,8 @@ Index: mt76-2022-06-02-1d8af168/mt76_connac_mcu.h
  	MCU_EXT_CMD_TXDPD_CAL = 0x60,
  	MCU_EXT_CMD_CAL_CACHE = 0x67,
  	MCU_EXT_CMD_SET_RADAR_TH = 0x7c,
-Index: mt76-2022-06-02-1d8af168/mt7915/Makefile
-===================================================================
---- mt76-2022-06-02-1d8af168.orig/mt7915/Makefile
-+++ mt76-2022-06-02-1d8af168/mt7915/Makefile
+--- a/mt7915/Makefile
++++ b/mt7915/Makefile
 @@ -3,7 +3,7 @@
  obj-$(CONFIG_MT7915E) += mt7915e.o
  
@@ -52,10 +48,8 @@ Index: mt76-2022-06-02-1d8af168/mt7915/Makefile
  mt7915e-$(CONFIG_NL80211_TESTMODE) += testmode.o
  mt7915e-$(CONFIG_MT7986_WMAC) += soc.o
 \ No newline at end of file
-Index: mt76-2022-06-02-1d8af168/mt7915/debugfs.c
-===================================================================
---- mt76-2022-06-02-1d8af168.orig/mt7915/debugfs.c
-+++ mt76-2022-06-02-1d8af168/mt7915/debugfs.c
+--- a/mt7915/debugfs.c
++++ b/mt7915/debugfs.c
 @@ -8,6 +8,9 @@
  #include "mac.h"
  
@@ -195,10 +189,8 @@ Index: mt76-2022-06-02-1d8af168/mt7915/debugfs.c
  		return false;
  
  	if (dev->relay_fwlog)
-Index: mt76-2022-06-02-1d8af168/mt7915/mac.c
-===================================================================
---- mt76-2022-06-02-1d8af168.orig/mt7915/mac.c
-+++ mt76-2022-06-02-1d8af168/mt7915/mac.c
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
 @@ -596,6 +596,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  	__le16 fc = 0;
  	int idx;
@@ -234,10 +226,8 @@ Index: mt76-2022-06-02-1d8af168/mt7915/mac.c
  	return 0;
  }
  
-Index: mt76-2022-06-02-1d8af168/mt7915/mcu.c
-===================================================================
---- mt76-2022-06-02-1d8af168.orig/mt7915/mcu.c
-+++ mt76-2022-06-02-1d8af168/mt7915/mcu.c
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
 @@ -323,6 +323,10 @@ mt7915_mcu_send_message(struct mt76_dev
  		mcu_txd->s2d_index = MCU_S2D_H2N;
  
@@ -293,10 +283,8 @@ Index: mt76-2022-06-02-1d8af168/mt7915/mcu.c
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-Index: mt76-2022-06-02-1d8af168/mt7915/mcu.h
-===================================================================
---- mt76-2022-06-02-1d8af168.orig/mt7915/mcu.h
-+++ mt76-2022-06-02-1d8af168/mt7915/mcu.h
+--- a/mt7915/mcu.h
++++ b/mt7915/mcu.h
 @@ -295,6 +295,10 @@ enum {
  	MCU_WA_PARAM_PDMA_RX = 0x04,
  	MCU_WA_PARAM_CPU_UTIL = 0x0b,
@@ -308,10 +296,8 @@ Index: mt76-2022-06-02-1d8af168/mt7915/mcu.h
  };
  
  enum mcu_mmps_mode {
-Index: mt76-2022-06-02-1d8af168/mt7915/mt7915.h
-===================================================================
---- mt76-2022-06-02-1d8af168.orig/mt7915/mt7915.h
-+++ mt76-2022-06-02-1d8af168/mt7915/mt7915.h
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
 @@ -9,6 +9,7 @@
  #include "../mt76_connac.h"
  #include "regs.h"
@@ -372,10 +358,8 @@ Index: mt76-2022-06-02-1d8af168/mt7915/mt7915.h
 +#endif
 +
  #endif
-Index: mt76-2022-06-02-1d8af168/mt7915/mt7915_debug.h
-===================================================================
 --- /dev/null
-+++ mt76-2022-06-02-1d8af168/mt7915/mt7915_debug.h
++++ b/mt7915/mt7915_debug.h
 @@ -0,0 +1,1350 @@
 +#ifndef __MT7915_DEBUG_H
 +#define __MT7915_DEBUG_H
@@ -1727,10 +1711,8 @@ Index: mt76-2022-06-02-1d8af168/mt7915/mt7915_debug.h
 +
 +#endif
 +#endif
-Index: mt76-2022-06-02-1d8af168/mt7915/mtk_debugfs.c
-===================================================================
 --- /dev/null
-+++ mt76-2022-06-02-1d8af168/mt7915/mtk_debugfs.c
++++ b/mt7915/mtk_debugfs.c
 @@ -0,0 +1,2921 @@
 +#include<linux/inet.h>
 +#include "mt7915.h"
@@ -4653,10 +4635,8 @@ Index: mt76-2022-06-02-1d8af168/mt7915/mtk_debugfs.c
 +	return 0;
 +}
 +#endif
-Index: mt76-2022-06-02-1d8af168/mt7915/mtk_mcu.c
-===================================================================
 --- /dev/null
-+++ mt76-2022-06-02-1d8af168/mt7915/mtk_mcu.c
++++ b/mt7915/mtk_mcu.c
 @@ -0,0 +1,51 @@
 +#include <linux/firmware.h>
 +#include <linux/fs.h>
@@ -4709,10 +4689,8 @@ Index: mt76-2022-06-02-1d8af168/mt7915/mtk_mcu.c
 +				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
 +				 sizeof(req), true);
 +}
-Index: mt76-2022-06-02-1d8af168/tools/fwlog.c
-===================================================================
---- mt76-2022-06-02-1d8af168.orig/tools/fwlog.c
-+++ mt76-2022-06-02-1d8af168/tools/fwlog.c
+--- a/tools/fwlog.c
++++ b/tools/fwlog.c
 @@ -26,7 +26,7 @@ static const char *debugfs_path(const ch
  	return path;
  }
