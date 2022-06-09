@@ -409,8 +409,8 @@ define KernelPackage/mt7615-firmware/install
 		$(PKG_BUILD_DIR)/firmware/mt7615_n9.bin \
 		$(PKG_BUILD_DIR)/firmware/mt7615_rom_patch.bin \
 		$(if $(CONFIG_TARGET_mediatek_mt7622), \
-			$(PKG_BUILD_DIR)/firmware/mt7622_n9.bin \
-			$(PKG_BUILD_DIR)/firmware/mt7622_rom_patch.bin) \
+			./files/firmware/mt7622_n9.bin \
+			./files/firmware/mt7622_rom_patch.bin) \
 		$(1)/lib/firmware/mediatek
 endef
 
