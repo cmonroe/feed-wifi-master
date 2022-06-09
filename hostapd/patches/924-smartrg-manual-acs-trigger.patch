@@ -1,5 +1,7 @@
---- a/hostapd/ctrl_iface.c
-+++ b/hostapd/ctrl_iface.c
+Index: hostapd-2022-05-08-b859b9bc/hostapd/ctrl_iface.c
+===================================================================
+--- hostapd-2022-05-08-b859b9bc.orig/hostapd/ctrl_iface.c
++++ hostapd-2022-05-08-b859b9bc/hostapd/ctrl_iface.c
 @@ -79,6 +79,8 @@
  #define HOSTAPD_GLOBAL_CTRL_IFACE_PORT_LIMIT	50
  #endif /* CONFIG_CTRL_IFACE_UDP */
@@ -143,7 +145,7 @@
  }
  
  static struct hostapd_config *hostapd_ctrl_iface_config_read(const char *fname)
-@@ -1751,6 +1829,23 @@ static int hostapd_ctrl_iface_reload(str
+@@ -1488,6 +1566,23 @@ static int hostapd_ctrl_iface_reload(str
  }
  
  
@@ -167,7 +169,7 @@
  static int hostapd_ctrl_iface_disable(struct hostapd_iface *iface)
  {
  	if (hostapd_disable_iface(iface) < 0) {
-@@ -3823,6 +3918,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -3486,6 +3581,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "RELOAD", 6) == 0) {
  		if (hostapd_ctrl_iface_reload(hapd->iface))
  			reply_len = -1;
@@ -177,8 +179,10 @@
  	} else if (os_strncmp(buf, "DISABLE", 7) == 0) {
  		if (hostapd_ctrl_iface_disable(hapd->iface))
  			reply_len = -1;
---- a/hostapd/hostapd_cli.c
-+++ b/hostapd/hostapd_cli.c
+Index: hostapd-2022-05-08-b859b9bc/hostapd/hostapd_cli.c
+===================================================================
+--- hostapd-2022-05-08-b859b9bc.orig/hostapd/hostapd_cli.c
++++ hostapd-2022-05-08-b859b9bc/hostapd/hostapd_cli.c
 @@ -1203,6 +1203,12 @@ static int hostapd_cli_cmd_reload(struct
  	return wpa_ctrl_command(ctrl, "RELOAD");
  }
@@ -201,8 +205,10 @@
  #ifdef ANDROID
  	{ "driver", hostapd_cli_cmd_driver, NULL,
  	  "<driver sub command> [<hex formatted data>] = send driver command data" },
---- a/hostapd/main.c
-+++ b/hostapd/main.c
+Index: hostapd-2022-05-08-b859b9bc/hostapd/main.c
+===================================================================
+--- hostapd-2022-05-08-b859b9bc.orig/hostapd/main.c
++++ hostapd-2022-05-08-b859b9bc/hostapd/main.c
 @@ -284,6 +284,7 @@ hostapd_interface_init(struct hapd_inter
  	}
  
@@ -211,9 +217,11 @@
  
  	for (k = 0; k < debug; k++) {
  		if (iface->bss[0]->conf->logger_stdout_level > 0)
---- a/src/ap/hostapd.h
-+++ b/src/ap/hostapd.h
-@@ -619,6 +619,13 @@ struct hostapd_iface {
+Index: hostapd-2022-05-08-b859b9bc/src/ap/hostapd.h
+===================================================================
+--- hostapd-2022-05-08-b859b9bc.orig/src/ap/hostapd.h
++++ hostapd-2022-05-08-b859b9bc/src/ap/hostapd.h
+@@ -648,6 +648,13 @@ struct hostapd_iface {
  
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
@@ -227,8 +235,10 @@
  };
  
  /* hostapd.c */
---- a/src/ap/hw_features.c
-+++ b/src/ap/hw_features.c
+Index: hostapd-2022-05-08-b859b9bc/src/ap/hw_features.c
+===================================================================
+--- hostapd-2022-05-08-b859b9bc.orig/src/ap/hw_features.c
++++ hostapd-2022-05-08-b859b9bc/src/ap/hw_features.c
 @@ -1045,6 +1045,33 @@ int hostapd_acs_completed(struct hostapd
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
  			ACS_EVENT_COMPLETED "freq=%d channel=%d",
@@ -263,8 +273,10 @@
  		break;
  	case HOSTAPD_CHAN_ACS:
  		wpa_printf(MSG_ERROR, "ACS error - reported complete, but no result available");
---- a/src/ap/acs.c
-+++ b/src/ap/acs.c
+Index: hostapd-2022-05-08-b859b9bc/src/ap/acs.c
+===================================================================
+--- hostapd-2022-05-08-b859b9bc.orig/src/ap/acs.c
++++ hostapd-2022-05-08-b859b9bc/src/ap/acs.c
 @@ -245,7 +245,7 @@
  
  static int acs_request_scan(struct hostapd_iface *iface);
@@ -274,7 +286,7 @@
  
  static void acs_clean_chan_surveys(struct hostapd_channel_data *chan)
  {
-@@ -688,7 +688,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -696,7 +696,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  			continue;
  
  		if (!chan_bw_allowed(chan, bw, 1, 1)) {
@@ -283,7 +295,7 @@
  				   "ACS: Channel %d: BW %u is not supported",
  				   chan->chan, bw);
  			continue;
-@@ -701,7 +701,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -709,7 +709,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  		      iface->conf->secondary_channel) ||
  		     is_6ghz_freq(chan->freq)) &&
  		    !acs_usable_bw40_chan(chan)) {
@@ -292,7 +304,7 @@
  				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
  				   chan->chan);
  			continue;
-@@ -712,7 +712,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -720,7 +720,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  			if (hostapd_get_oper_chwidth(iface->conf) ==
  			    CHANWIDTH_80MHZ &&
  			    !acs_usable_bw80_chan(chan)) {
@@ -301,7 +313,7 @@
  					   "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
  					   chan->chan);
  				continue;
-@@ -721,7 +721,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -729,7 +729,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  			if (hostapd_get_oper_chwidth(iface->conf) ==
  			    CHANWIDTH_160MHZ &&
  			    !acs_usable_bw160_chan(chan)) {
@@ -310,7 +322,7 @@
  					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
  					   chan->chan);
  				continue;
-@@ -739,7 +739,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -747,7 +747,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  				break;
  
  			if (!chan_bw_allowed(adj_chan, bw, 1, 0)) {
@@ -319,7 +331,7 @@
  					   "ACS: PRI Channel %d: secondary channel %d BW %u is not supported",
  					   chan->chan, adj_chan->chan, bw);
  				break;
-@@ -752,7 +752,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -760,7 +760,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  		}
  
  		if (j != n_chans) {
@@ -328,7 +340,7 @@
  				   chan->chan);
  			continue;
  		}
-@@ -814,11 +814,11 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -822,11 +822,11 @@ acs_find_ideal_chan_mode(struct hostapd_
  
  		if (bias) {
  			factor *= bias->bias;
@@ -342,7 +354,7 @@
  				   "ACS:  * channel %d: total interference = %Lg",
  				   chan->chan, factor);
  		}
-@@ -861,10 +861,13 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -869,10 +869,13 @@ acs_find_ideal_chan(struct hostapd_iface
  
  	/* TODO: HT40- support */
  
@@ -360,7 +372,7 @@
  	}
  
  	if (iface->conf->ieee80211n &&
-@@ -882,13 +885,16 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -890,13 +893,16 @@ acs_find_ideal_chan(struct hostapd_iface
  		}
  	}
  
@@ -379,7 +391,7 @@
  
  	for (i = 0; i < iface->num_hw_features; i++) {
  		mode = &iface->hw_features[i];
-@@ -899,8 +905,8 @@ bw_selected:
+@@ -907,8 +913,8 @@ bw_selected:
  	}
  
  	if (ideal_chan) {
@@ -390,7 +402,7 @@
  		return ideal_chan;
  	}
  
-@@ -910,6 +916,18 @@ bw_selected:
+@@ -918,6 +924,18 @@ bw_selected:
  
  static void acs_adjust_center_freq(struct hostapd_iface *iface)
  {
@@ -409,7 +421,7 @@
  	int offset;
  
  	wpa_printf(MSG_DEBUG, "ACS: Adjusting VHT center frequency");
-@@ -927,13 +945,12 @@ static void acs_adjust_center_freq(struc
+@@ -935,13 +953,12 @@ static void acs_adjust_center_freq(struc
  	default:
  		/* TODO: How can this be calculated? Adjust
  		 * acs_find_ideal_chan() */
@@ -426,7 +438,7 @@
  }
  
  
-@@ -1016,7 +1033,7 @@ static void acs_scan_complete(struct hos
+@@ -1024,7 +1041,7 @@ static void acs_scan_complete(struct hos
  
  	iface->scan_cb = NULL;
  
@@ -435,7 +447,7 @@
  		   iface->conf->acs_num_scans);
  
  	err = hostapd_drv_get_survey(iface->bss[0], 0);
-@@ -1109,7 +1126,7 @@ static int acs_request_scan(struct hosta
+@@ -1119,7 +1136,7 @@ static int acs_request_scan(struct hosta
  
  	iface->scan_cb = acs_scan_complete;
  
@@ -444,13 +456,16 @@
  		   iface->acs_num_completed_scans + 1,
  		   iface->conf->acs_num_scans);
  
---- a/src/ap/ap_config.h
-+++ b/src/ap/ap_config.h
-@@ -1110,6 +1110,7 @@ struct hostapd_config {
- 	unsigned int airtime_update_interval;
+Index: hostapd-2022-05-08-b859b9bc/src/ap/ap_config.h
+===================================================================
+--- hostapd-2022-05-08-b859b9bc.orig/src/ap/ap_config.h
++++ hostapd-2022-05-08-b859b9bc/src/ap/ap_config.h
+@@ -1138,6 +1138,8 @@ struct hostapd_config {
  #define AIRTIME_MODE_MAX (__AIRTIME_MODE_MAX - 1)
  #endif /* CONFIG_AIRTIME_POLICY */
+ 
 +	u32 bw;
- };
- 
- 
++
+ 	int ieee80211be;
+ #ifdef CONFIG_IEEE80211BE
+ 	u8 eht_oper_chwidth;

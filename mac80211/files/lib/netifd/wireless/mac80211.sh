@@ -29,7 +29,7 @@ drv_mac80211_init_device_config() {
 	config_add_string distance
 	config_add_int beacon_int chanbw frag rts
 	config_add_int rxantenna txantenna antenna_gain txpower
-	config_add_boolean noscan ht_coex acs_exclude_dfs
+	config_add_boolean noscan ht_coex acs_exclude_dfs background_radar
 	config_add_array ht_capab
 	config_add_array channels
 	config_add_array scan_list
@@ -136,6 +136,9 @@ mac80211_hostapd_setup_base() {
 	[ "$auto_channel" -gt 0 ] && json_get_vars acs_exclude_dfs
 	[ -n "$acs_exclude_dfs" ] && [ "$acs_exclude_dfs" -gt 0 ] &&
 		append base_cfg "acs_exclude_dfs=1" "$N"
+
+	json_get_vars background_radar
+	[ "$background_radar" -gt 0 ] && append base_cfg "enable_background_radar=1" "$N"
 
 	json_get_vars noscan ht_coex
 	json_get_values ht_capab_list ht_capab tx_burst
@@ -423,7 +426,6 @@ mac80211_hostapd_setup_base() {
 		he_mac_cap=${he_mac_cap:2}
 
 		append base_cfg "ieee80211ax=1" "$N"
-		[ -n "$he_bss_color" ] && append base_cfg "he_bss_color=$he_bss_color" "$N"
 		[ "$hwmode" = "a" ] && {
 			append base_cfg "he_oper_chwidth=$vht_oper_chwidth" "$N"
 			# vth_center_seg0 ends up being a bogus value if uci channel=auto.
@@ -432,6 +434,9 @@ mac80211_hostapd_setup_base() {
 				append base_cfg "he_oper_centr_freq_seg0_idx=$vht_center_seg0" "$N"
 			fi
 		}
+
+		set_default he_bss_color 128
+		append base_cfg "he_bss_color=$he_bss_color" "$N"
 
 		mac80211_add_he_capabilities \
 			he_su_beamformer:${he_phy_cap:6:2}:0x80:$he_su_beamformer \
