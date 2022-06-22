@@ -1,6 +1,6 @@
 --- a/mt7615/mcu.c
 +++ b/mt7615/mcu.c
-@@ -397,11 +397,20 @@ mt7615_mcu_rx_radar_detected(struct mt76
+@@ -386,11 +386,20 @@ mt7615_mcu_rx_radar_detected(struct mt76
  
  	if (!dev->radar_pattern.n_pulses && !r->long_detected &&
  	    !r->constant_prf_detected && !r->staggered_prf_detected)
@@ -23,7 +23,7 @@
  }
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -371,6 +371,12 @@ mt7915_mcu_rx_radar_detected(struct mt79
+@@ -265,6 +265,12 @@ mt7915_mcu_rx_radar_detected(struct mt79
  	if ((r->band_idx && !dev->phy.band_idx) && dev->mt76.phy2)
  		mphy = dev->mt76.phy2;
  

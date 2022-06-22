@@ -18,7 +18,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -820,6 +820,7 @@ enum {
+@@ -971,6 +971,7 @@ enum {
  	MCU_EXT_EVENT_CSA_NOTIFY = 0x4f,
  	MCU_EXT_EVENT_BCC_NOTIFY = 0x75,
  	MCU_EXT_EVENT_MURU_CTRL = 0x9f,
@@ -26,7 +26,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  };
  
  enum {
-@@ -989,6 +990,7 @@ enum {
+@@ -1140,6 +1141,7 @@ enum {
  	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
  	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
  	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
@@ -51,7 +51,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
 \ No newline at end of file
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -544,6 +544,12 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -545,6 +545,12 @@ mt7915_register_ext_phy(struct mt7915_de
  	/* init wiphy according to mphy and phy */
  	mt7915_init_wiphy(mphy->hw);
  
@@ -64,7 +64,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1044,6 +1050,25 @@ void mt7915_set_stream_he_caps(struct mt
+@@ -1046,6 +1052,25 @@ void mt7915_set_stream_he_caps(struct mt
  	}
  }
  
@@ -90,7 +90,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  static void mt7915_unregister_ext_phy(struct mt7915_dev *dev)
  {
  	struct mt7915_phy *phy = mt7915_ext_phy(dev);
-@@ -1052,6 +1077,10 @@ static void mt7915_unregister_ext_phy(st
+@@ -1054,6 +1079,10 @@ static void mt7915_unregister_ext_phy(st
  	if (!phy)
  		return;
  
@@ -101,7 +101,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  	mt7915_unregister_thermal(phy);
  	mt76_unregister_phy(mphy);
  	ieee80211_free_hw(mphy->hw);
-@@ -1064,6 +1093,10 @@ static void mt7915_stop_hardware(struct
+@@ -1066,6 +1095,10 @@ static void mt7915_stop_hardware(struct
  	mt7915_dma_cleanup(dev);
  	tasklet_disable(&dev->irq_tasklet);
  
@@ -112,7 +112,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  	if (is_mt7986(&dev->mt76))
  		mt7986_wmac_disable(dev);
  }
-@@ -1104,6 +1137,12 @@ int mt7915_register_device(struct mt7915
+@@ -1106,6 +1139,12 @@ int mt7915_register_device(struct mt7915
  	dev->mt76.test_ops = &mt7915_testmode_ops;
  #endif
  
@@ -127,7 +127,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  		dev->mt76.led_cdev.brightness_set = mt7915_led_set_brightness;
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -89,6 +89,10 @@ struct mt7915_fw_region {
+@@ -32,6 +32,10 @@
  #define HE_PHY(p, c)			u8_get_bits(c, IEEE80211_HE_PHY_##p)
  #define HE_MAC(m, c)			u8_get_bits(c, IEEE80211_HE_MAC_##m)
  
@@ -138,7 +138,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  static u8
  mt7915_mcu_get_sta_nss(u16 mcs_map)
  {
-@@ -484,6 +488,11 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
+@@ -382,6 +386,11 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
  	case MCU_EXT_EVENT_FW_LOG_2_HOST:
  		mt7915_mcu_rx_log_message(dev, skb);
  		break;
@@ -150,7 +150,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
-@@ -3775,6 +3784,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3471,6 +3480,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -177,15 +177,15 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
 +static int
 +mt7915_mcu_report_csi(struct mt7915_dev *dev, struct sk_buff *skb)
 +{
-+	struct mt7915_mcu_rxd *rxd = (struct mt7915_mcu_rxd *)skb->data;
++	struct mt76_connac2_mcu_rxd *rxd = (struct mt76_connac2_mcu_rxd *)skb->data;
 +	struct mt7915_phy *phy = &dev->phy;
 +	struct mt7915_mcu_csi_report *cr;
 +	struct csi_data *csi;
 +	int len, i;
 +
-+	skb_pull(skb, sizeof(struct mt7915_mcu_rxd));
++	skb_pull(skb, sizeof(struct mt76_connac2_mcu_rxd));
 +
-+	len = le16_to_cpu(rxd->len) - sizeof(struct mt7915_mcu_rxd) + 24;
++	len = le16_to_cpu(rxd->len) - sizeof(struct mt76_connac2_mcu_rxd) + 24;
 +	if (len < sizeof(*cr))
 +		return -EINVAL;
 +
@@ -261,7 +261,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  {
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -509,4 +509,80 @@ enum {
+@@ -472,4 +472,80 @@ enum {
  					 sizeof(struct bss_info_bcn_cont) + \
  					 sizeof(struct bss_info_inband_discovery))
  
@@ -344,7 +344,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  #endif
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -278,6 +278,20 @@ struct mt7915_phy {
+@@ -277,6 +277,20 @@ struct mt7915_phy {
  		u8 spe_idx;
  	} test;
  #endif
@@ -365,7 +365,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  };
  
  struct mt7915_dev {
-@@ -632,6 +646,12 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -616,6 +630,12 @@ void mt7915_sta_add_debugfs(struct ieee8
  			    struct ieee80211_sta *sta, struct dentry *dir);
  #endif
  

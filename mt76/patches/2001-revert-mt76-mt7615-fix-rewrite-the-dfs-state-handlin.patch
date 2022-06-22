@@ -12,7 +12,7 @@ This reverts commit e0f9479bf8937bc0ff7322043a7a0554b44af29f.
 
 --- a/mt7615/init.c
 +++ b/mt7615/init.c
-@@ -556,6 +556,7 @@ void mt7615_init_device(struct mt7615_de
+@@ -557,6 +557,7 @@ void mt7615_init_device(struct mt7615_de
  	dev->pm.stats.last_wake_event = jiffies;
  	dev->pm.stats.last_doze_event = jiffies;
  	mt7615_cap_dbdc_disable(dev);
@@ -22,7 +22,7 @@ This reverts commit e0f9479bf8937bc0ff7322043a7a0554b44af29f.
  	dev->mt76.test_ops = &mt7615_testmode_ops;
 --- a/mt7615/mac.c
 +++ b/mt7615/mac.c
-@@ -2285,50 +2285,43 @@ mt7615_dfs_init_radar_specs(struct mt761
+@@ -2232,50 +2232,43 @@ mt7615_dfs_init_radar_specs(struct mt761
  
  int mt7615_dfs_init_radar_detector(struct mt7615_phy *phy)
  {
@@ -94,7 +94,7 @@ This reverts commit e0f9479bf8937bc0ff7322043a7a0554b44af29f.
  
  stop:
  	err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_NORMAL_START, ext_phy,
-@@ -2337,8 +2330,6 @@ stop:
+@@ -2284,8 +2277,6 @@ stop:
  		return err;
  
  	mt7615_dfs_stop_radar_detector(phy);

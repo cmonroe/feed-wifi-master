@@ -73,7 +73,7 @@
  		max_nss = 2;
 --- a/mt7615/init.c
 +++ b/mt7615/init.c
-@@ -479,6 +479,7 @@ int mt7615_register_ext_phy(struct mt761
+@@ -480,6 +480,7 @@ int mt7615_register_ext_phy(struct mt761
  
  	mt7615_mac_set_scs(phy, true);
  
@@ -81,7 +81,7 @@
  	/*
  	 * Make the secondary PHY MAC address local without overlapping with
  	 * the usual MAC address allocation scheme on multiple virtual interfaces
-@@ -489,9 +490,6 @@ int mt7615_register_ext_phy(struct mt761
+@@ -490,9 +491,6 @@ int mt7615_register_ext_phy(struct mt761
  	mphy->macaddr[0] ^= BIT(7);
  	mt76_eeprom_override(mphy);
  
