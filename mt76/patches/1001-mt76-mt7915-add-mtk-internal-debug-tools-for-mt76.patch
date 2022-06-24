@@ -1,25 +1,26 @@
-From 235e69804c130fd7381fd44b1853859984e97ac5 Mon Sep 17 00:00:00 2001
-From: Bo Jiao <Bo.Jiao@mediatek.com>
-Date: Thu, 21 Apr 2022 19:42:55 +0800
-Subject: [PATCH] mt76: mt7915: add mtk internal debug tools for mt76
+From 4c1658312392db894fd36bbdc98476d6e6b1e32f Mon Sep 17 00:00:00 2001
+From: Shayne Chen <shayne.chen@mediatek.com>
+Date: Wed, 22 Jun 2022 10:39:47 +0800
+Subject: [PATCH 1001/1008] mt76: mt7915: add mtk internal debug tools for mt76
 
-Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 ---
- mt76_connac_mcu.h     |    6
- mt7915/Makefile       |    2
- mt7915/debugfs.c      |   72 +
- mt7915/mac.c          |   14
- mt7915/mcu.c          |   41
- mt7915/mcu.h          |    4
- mt7915/mt7915.h       |   41
- mt7915/mt7915_debug.h | 1350 +++++++++++++++++++++++
- mt7915/mtk_debugfs.c  | 2921 ++++++++++++++++++++++++++++++++++++++++++++++++++
- mt7915/mtk_mcu.c      |   51
- tools/fwlog.c         |   44
- 11 files changed, 4533 insertions(+), 13 deletions(-)
- create mode 100644 drivers/net/wireless/mediatek/mt76/mt7915/mt7915_debug.h
- create mode 100644 drivers/net/wireless/mediatek/mt76/mt7915/mtk_debugfs.c
- create mode 100644 drivers/net/wireless/mediatek/mt76/mt7915/mtk_mcu.c
+ mt76_connac_mcu.h     |    6 +
+ mt7915/Makefile       |    2 +-
+ mt7915/debugfs.c      |   73 +-
+ mt7915/mac.c          |   14 +
+ mt7915/main.c         |    4 +
+ mt7915/mcu.c          |   44 +
+ mt7915/mcu.h          |    4 +
+ mt7915/mt7915.h       |   43 +
+ mt7915/mt7915_debug.h | 1350 +++++++++++++++++++
+ mt7915/mtk_debugfs.c  | 2923 +++++++++++++++++++++++++++++++++++++++++
+ mt7915/mtk_mcu.c      |   51 +
+ tools/fwlog.c         |   44 +-
+ 12 files changed, 4545 insertions(+), 13 deletions(-)
+ mode change 100644 => 100755 mt7915/mcu.c
+ create mode 100644 mt7915/mt7915_debug.h
+ create mode 100644 mt7915/mtk_debugfs.c
+ create mode 100644 mt7915/mtk_mcu.c
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
@@ -106,7 +107,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
  	return 0;
  }
-@@ -576,6 +595,16 @@ mt7915_fw_debug_bin_set(void *data, u64
+@@ -576,6 +595,17 @@ mt7915_fw_debug_bin_set(void *data, u64
  
  	relay_reset(dev->relay_fwlog);
  
@@ -120,10 +121,11 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 +		return 0;
 +#endif
 +
++
  	return mt7915_fw_debug_wm_set(dev, dev->fw.debug_wm);
  }
  
-@@ -1038,6 +1067,11 @@ int mt7915_init_debugfs(struct mt7915_ph
+@@ -1038,6 +1068,11 @@ int mt7915_init_debugfs(struct mt7915_ph
  	if (!ext_phy)
  		dev->debugfs_dir = dir;
  
@@ -135,7 +137,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	return 0;
  }
  
-@@ -1078,17 +1112,53 @@ void mt7915_debugfs_rx_fw_monitor(struct
+@@ -1078,17 +1113,53 @@ void mt7915_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -226,6 +228,20 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	return 0;
  }
  
+--- a/mt7915/main.c
++++ b/mt7915/main.c
+@@ -62,7 +62,11 @@ static int mt7915_start(struct ieee80211
+ 	if (ret)
+ 		goto out;
+ 
++#ifdef MTK_DEBUG
++	ret = mt7915_mcu_set_sku_en(phy, !dev->dbg.sku_disable);
++#else
+ 	ret = mt7915_mcu_set_sku_en(phy, true);
++#endif
+ 	if (ret)
+ 		goto out;
+ 
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
 @@ -220,6 +220,11 @@ mt7915_mcu_send_message(struct mt76_dev
@@ -240,7 +256,16 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -3466,6 +3471,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3191,6 +3196,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+ 		.sku_enable = enable,
+ 	};
+ 
++	pr_info("%s: enable = %d\n", __func__, enable);
++
+ 	return mt76_mcu_send_msg(&dev->mt76,
+ 				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
+ 				 sizeof(req), true);
+@@ -3466,6 +3473,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -307,7 +332,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_WTBL_SIZE		288
  #define MT7916_WTBL_SIZE		544
-@@ -339,6 +340,27 @@ struct mt7915_dev {
+@@ -339,6 +340,29 @@ struct mt7915_dev {
  	struct reset_control *rstc;
  	void __iomem *dcm;
  	void __iomem *sku;
@@ -329,13 +354,15 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 +		bool dump_rx_pkt;
 +		bool dump_rx_raw;
 +		u32 token_idx;
++		u8 sku_disable;
++		u8 muru_onoff;
 +	} dbg;
 +	const struct mt7915_dbg_reg_desc *dbg_reg;
 +#endif
  };
  
  enum {
-@@ -594,4 +616,23 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -594,4 +618,23 @@ void mt7915_sta_add_debugfs(struct ieee8
  			    struct ieee80211_sta *sta, struct dentry *dir);
  #endif
  
@@ -1714,7 +1741,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 +#endif
 --- /dev/null
 +++ b/mt7915/mtk_debugfs.c
-@@ -0,0 +1,2921 @@
+@@ -0,0 +1,2923 @@
 +#include<linux/inet.h>
 +#include "mt7915.h"
 +#include "mt7915_debug.h"
@@ -4632,6 +4659,8 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 +
 +	debugfs_create_file("txpower_level", 0400, dir, dev,
 +			    &fops_txpower_level);
++
++	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
 +
 +	return 0;
 +}

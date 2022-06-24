@@ -1,18 +1,19 @@
-From f8971f67f0bb2c83a0fa7efe15fb7aa0d843a9f9 Mon Sep 17 00:00:00 2001
-From: Shayne Chen <shayne.chen@mediatek.com>
-Date: Tue, 15 Feb 2022 11:02:22 +0800
-Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
+From c2e0f6df51b9b2e681285523b1c4471c7f613c83 Mon Sep 17 00:00:00 2001
+From: Bo Jiao <Bo.Jiao@mediatek.com>
+Date: Mon, 6 Jun 2022 20:13:02 +0800
+Subject: [PATCH 1002/1008] mt76: mt7915: csi: implement csi support
 
 ---
- .../wireless/mediatek/mt76/mt76_connac_mcu.h  |   2 +
- .../wireless/mediatek/mt76/mt7915/Makefile    |   4 +-
- .../net/wireless/mediatek/mt76/mt7915/init.c  |  39 ++
- .../net/wireless/mediatek/mt76/mt7915/mcu.c   | 111 +++++
- .../net/wireless/mediatek/mt76/mt7915/mcu.h   |  76 +++
- .../wireless/mediatek/mt76/mt7915/mt7915.h    |  20 +
- .../wireless/mediatek/mt76/mt7915/vendor.c    | 452 ++++++++++++++++++
- .../wireless/mediatek/mt76/mt7915/vendor.h    |  60 +++
+ mt76_connac_mcu.h |   2 +
+ mt7915/Makefile   |   4 +-
+ mt7915/init.c     |  39 ++++
+ mt7915/mcu.c      | 111 ++++++++++++
+ mt7915/mcu.h      |  76 ++++++++
+ mt7915/mt7915.h   |  20 ++
+ mt7915/vendor.c   | 452 ++++++++++++++++++++++++++++++++++++++++++++++
+ mt7915/vendor.h   |  60 ++++++
  8 files changed, 762 insertions(+), 2 deletions(-)
+ mode change 100755 => 100644 mt7915/mcu.c
  create mode 100644 mt7915/vendor.c
  create mode 100644 mt7915/vendor.h
 
@@ -150,7 +151,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
-@@ -3471,6 +3480,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3473,6 +3482,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -365,7 +366,7 @@ Subject: [PATCH 1002/1006] mt76: mt7915: csi: implement csi support
  };
  
  struct mt7915_dev {
-@@ -616,6 +630,12 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -618,6 +632,12 @@ void mt7915_sta_add_debugfs(struct ieee8
  			    struct ieee80211_sta *sta, struct dentry *dir);
  #endif
  
