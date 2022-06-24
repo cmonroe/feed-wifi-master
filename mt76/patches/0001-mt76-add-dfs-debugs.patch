@@ -1,6 +1,6 @@
 --- a/mt7615/mcu.c
 +++ b/mt7615/mcu.c
-@@ -386,11 +386,20 @@ mt7615_mcu_rx_radar_detected(struct mt76
+@@ -386,7 +386,10 @@ mt7615_mcu_rx_radar_detected(struct mt76
  
  	if (!dev->radar_pattern.n_pulses && !r->long_detected &&
  	    !r->constant_prf_detected && !r->staggered_prf_detected)
@@ -11,6 +11,9 @@
  
  	if (r->band_idx && dev->mt76.phy2)
  		mphy = dev->mt76.phy2;
+@@ -394,6 +397,12 @@ mt7615_mcu_rx_radar_detected(struct mt76
+ 	if (mt76_phy_dfs_state(mphy) < MT_DFS_STATE_CAC)
+ 		return;
  
 +	dev_info(dev->mt76.dev, "%s: RADAR DETECTED\n", __func__);
 +	dev_info(dev->mt76.dev, "%s: n_pulses=%u long_detected=%u constant_prf_detected=%u staggered_prf_detected=%u\n",
