@@ -8,9 +8,9 @@ PKG_LICENSE_FILES:=
 
 PKG_SOURCE_URL:=https://github.com/openwrt/mt76
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_DATE:=2022-06-24
-PKG_SOURCE_VERSION:=b6e865e2cc7080c91ec34a9dd3648d25f7ce04c6
-PKG_MIRROR_HASH:=4d311e55431400266a1d58534ea22421b080670f937df3d9ad1fb9a9d0362bda
+PKG_SOURCE_DATE:=2022-07-01
+PKG_SOURCE_VERSION:=c07f45927839289f5bf7cd88d328b001f883794f
+PKG_MIRROR_HASH:=54e57097102e9509e05d513696ab19ae29782773eb5f1488411cfb9d006eef0a
 
 PKG_MAINTAINER:=Felix Fietkau <nbd@nbd.name>
 PKG_USE_NINJA:=0
@@ -409,8 +409,8 @@ define KernelPackage/mt7615-firmware/install
 		$(PKG_BUILD_DIR)/firmware/mt7615_n9.bin \
 		$(PKG_BUILD_DIR)/firmware/mt7615_rom_patch.bin \
 		$(if $(CONFIG_TARGET_mediatek_mt7622), \
-			./files/firmware/mt7622_n9.bin \
-			./files/firmware/mt7622_rom_patch.bin) \
+			$(PKG_BUILD_DIR)/firmware/mt7622_n9.bin \
+			$(PKG_BUILD_DIR)/firmware/mt7622_rom_patch.bin) \
 		$(1)/lib/firmware/mediatek
 endef
 
