@@ -22,7 +22,7 @@
  		return ret;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1900,6 +1900,11 @@ int mt7915_dfs_init_radar_detector(struc
+@@ -1902,6 +1902,11 @@ int mt7915_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
  

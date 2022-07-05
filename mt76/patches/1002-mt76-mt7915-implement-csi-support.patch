@@ -366,7 +366,7 @@ Subject: [PATCH 1002/1008] mt76: mt7915: csi: implement csi support
  };
  
  struct mt7915_dev {
-@@ -618,6 +632,12 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -619,6 +633,12 @@ void mt7915_sta_add_debugfs(struct ieee8
  			    struct ieee80211_sta *sta, struct dentry *dir);
  #endif
  
