@@ -1,0 +1,11 @@
+--- a/include/net/cfg80211.h
++++ b/include/net/cfg80211.h
+@@ -8351,7 +8351,7 @@ int cfg80211_bss_color_notify(struct net
+ static inline int cfg80211_obss_color_collision_notify(struct net_device *dev,
+ 						       u64 color_bitmap)
+ {
+-	return cfg80211_bss_color_notify(dev, GFP_KERNEL,
++	return cfg80211_bss_color_notify(dev, GFP_ATOMIC,
+ 					 NL80211_CMD_OBSS_COLOR_COLLISION,
+ 					 0, color_bitmap);
+ }
