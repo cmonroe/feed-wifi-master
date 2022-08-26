@@ -1,0 +1,19 @@
+From 270b493736a3f552b9fc2da8d6741c7e0168b470 Mon Sep 17 00:00:00 2001
+From: Evelyn Tsai <evelyn.tsai@mediatek.com>
+Date: Fri, 6 May 2022 15:58:42 +0800
+Subject: [PATCH 1114/1119] mt76: airtime fairness feature off in mac80211
+
+---
+ drivers/net/wireless/mediatek/mt76/mac80211.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -416,7 +416,6 @@ mt76_phy_init(struct mt76_phy *phy, stru
+ 			WIPHY_FLAG_AP_UAPSD;
+ 
+ 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_CQM_RSSI_LIST);
+-	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_AIRTIME_FAIRNESS);
+ 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_AQL);
+ 
+ 	wiphy->available_antennas_tx = phy->antenna_mask;
