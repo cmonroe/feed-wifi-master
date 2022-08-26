@@ -8,7 +8,7 @@
  #include "mt7915.h"
  #include "mac.h"
  #include "mcu.h"
-@@ -665,6 +666,11 @@ mt7915_init_hardware(struct mt7915_dev *
+@@ -670,6 +671,11 @@ mt7915_init_hardware(struct mt7915_dev *
  
  	INIT_WORK(&dev->init_work, mt7915_init_work);
  
@@ -22,7 +22,7 @@
  		return ret;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1902,6 +1902,11 @@ int mt7915_dfs_init_radar_detector(struc
+@@ -1905,6 +1905,11 @@ int mt7915_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
  

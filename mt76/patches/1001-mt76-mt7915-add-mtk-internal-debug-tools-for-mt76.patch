@@ -215,7 +215,7 @@ Subject: [PATCH 1001/1008] mt76: mt7915: add mtk internal debug tools for mt76
  	if (hdr_trans && ieee80211_has_morefrags(fc)) {
  		struct ieee80211_vif *vif;
  		int err;
-@@ -755,6 +763,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -756,6 +764,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	tx_info->buf[1].skip_unmap = true;
  	tx_info->nbuf = MT_CT_DMA_BUF_NUM;
  
@@ -256,7 +256,7 @@ Subject: [PATCH 1001/1008] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -3197,6 +3202,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3194,6 +3199,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -265,7 +265,7 @@ Subject: [PATCH 1001/1008] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -3472,6 +3479,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3469,6 +3476,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
