@@ -1,7 +1,7 @@
-From 4c1658312392db894fd36bbdc98476d6e6b1e32f Mon Sep 17 00:00:00 2001
+From 6e089768a68a8cc86526d61d34730043fee724af Mon Sep 17 00:00:00 2001
 From: Shayne Chen <shayne.chen@mediatek.com>
 Date: Wed, 22 Jun 2022 10:39:47 +0800
-Subject: [PATCH 1001/1008] mt76: mt7915: add mtk internal debug tools for mt76
+Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
 
 ---
  mt76_connac_mcu.h     |    6 +
@@ -17,14 +17,13 @@ Subject: [PATCH 1001/1008] mt76: mt7915: add mtk internal debug tools for mt76
  mt7915/mtk_mcu.c      |   51 +
  tools/fwlog.c         |   44 +-
  12 files changed, 4545 insertions(+), 13 deletions(-)
- mode change 100644 => 100755 mt7915/mcu.c
  create mode 100644 mt7915/mt7915_debug.h
  create mode 100644 mt7915/mtk_debugfs.c
  create mode 100644 mt7915/mtk_mcu.c
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1119,6 +1119,12 @@ enum {
+@@ -1127,6 +1127,12 @@ enum {
  	MCU_EXT_CMD_TX_POWER_FEATURE_CTRL = 0x58,
  	MCU_EXT_CMD_RXDCOC_CAL = 0x59,
  	MCU_EXT_CMD_GET_MIB_INFO = 0x5a,
@@ -256,7 +255,7 @@ Subject: [PATCH 1001/1008] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -3194,6 +3199,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3196,6 +3201,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -265,7 +264,7 @@ Subject: [PATCH 1001/1008] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -3469,6 +3476,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3471,6 +3478,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -332,7 +331,7 @@ Subject: [PATCH 1001/1008] mt76: mt7915: add mtk internal debug tools for mt76
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_WTBL_SIZE		288
  #define MT7916_WTBL_SIZE		544
-@@ -339,6 +340,29 @@ struct mt7915_dev {
+@@ -337,6 +338,29 @@ struct mt7915_dev {
  	struct reset_control *rstc;
  	void __iomem *dcm;
  	void __iomem *sku;
@@ -362,7 +361,7 @@ Subject: [PATCH 1001/1008] mt76: mt7915: add mtk internal debug tools for mt76
  };
  
  enum {
-@@ -595,4 +619,23 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -593,4 +617,23 @@ void mt7915_sta_add_debugfs(struct ieee8
  			    struct ieee80211_sta *sta, struct dentry *dir);
  #endif
  

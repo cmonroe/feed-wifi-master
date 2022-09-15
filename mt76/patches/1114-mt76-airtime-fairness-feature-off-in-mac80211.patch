@@ -9,7 +9,7 @@ Subject: [PATCH 1114/1119] mt76: airtime fairness feature off in mac80211
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -416,7 +416,6 @@ mt76_phy_init(struct mt76_phy *phy, stru
+@@ -417,7 +417,6 @@ mt76_phy_init(struct mt76_phy *phy, stru
  			WIPHY_FLAG_AP_UAPSD;
  
  	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_CQM_RSSI_LIST);
