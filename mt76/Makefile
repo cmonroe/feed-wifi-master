@@ -226,6 +226,12 @@ define KernelPackage/mt7915e
   AUTOLOAD:=$(call AutoProbe,mt7915e)
 endef
 
+define KernelPackage/mt7986-firmware
+  $(KernelPackage/mt76-default)
+  DEPENDS:=@TARGET_mediatek_filogic
+  TITLE:=MediaTek MT7986 firmware
+endef
+
 define KernelPackage/mt7921-common
   $(KernelPackage/mt76-default)
   TITLE:=MediaTek MT7615 wireless driver common code
@@ -234,9 +240,17 @@ define KernelPackage/mt7921-common
   FILES:= $(PKG_BUILD_DIR)/mt7921/mt7921-common.ko
 endef
 
+define KernelPackage/mt7921u
+  $(KernelPackage/mt76-default)
+  TITLE:=MediaTek MT7921U wireless driver
+  DEPENDS+=+kmod-mt76-usb +kmod-mt7921-common
+  FILES:= $(PKG_BUILD_DIR)/mt7921/mt7921u.ko
+  AUTOLOAD:=$(call AutoProbe,mt7921u)
+endef
+
 define KernelPackage/mt7921s
   $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7921s wireless driver
+  TITLE:=MediaTek MT7921S wireless driver
   DEPENDS+=+kmod-mt76-sdio +kmod-mt7921-common
   FILES:= $(PKG_BUILD_DIR)/mt7921/mt7921s.ko
   AUTOLOAD:=$(call AutoProbe,mt7921s)
@@ -335,9 +349,16 @@ ifdef CONFIG_PACKAGE_kmod-mt7663u
 endif
 ifdef CONFIG_PACKAGE_kmod-mt7915e
   PKG_MAKE_FLAGS += CONFIG_MT7915E=m
+  ifdef CONFIG_TARGET_mediatek_filogic
+    PKG_MAKE_FLAGS += CONFIG_MT7986_WMAC=y
+    NOSTDINC_FLAGS += -DCONFIG_MT7986_WMAC
+  endif
 endif
 ifdef CONFIG_PACKAGE_kmod-mt7921-common
   PKG_MAKE_FLAGS += CONFIG_MT7921_COMMON=m
+endif
+ifdef CONFIG_PACKAGE_kmod-mt7921u
+  PKG_MAKE_FLAGS += CONFIG_MT7921U=m
 endif
 ifdef CONFIG_PACKAGE_kmod-mt7921s
   PKG_MAKE_FLAGS += CONFIG_MT7921S=m
@@ -439,6 +460,19 @@ define KernelPackage/mt7915e/install
 		$(1)/lib/firmware/mediatek
 endef
 
+define KernelPackage/mt7986-firmware/install
+	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
+	cp \
+		$(PKG_BUILD_DIR)/firmware/mt7986_wa.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_wm_mt7975.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_wm.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_rom_patch_mt7975.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_rom_patch.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_eeprom_mt7975_dual.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_eeprom_mt7976_dual.bin \
+		$(1)/lib/firmware/mediatek
+endef
+
 define KernelPackage/mt7921e/install
 	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
 	cp \
@@ -475,7 +509,9 @@ $(eval $(call KernelPackage,mt7663-usb-sdio))
 $(eval $(call KernelPackage,mt7663u))
 $(eval $(call KernelPackage,mt7663s))
 $(eval $(call KernelPackage,mt7915e))
+$(eval $(call KernelPackage,mt7986-firmware))
 $(eval $(call KernelPackage,mt7921-common))
+$(eval $(call KernelPackage,mt7921u))
 $(eval $(call KernelPackage,mt7921s))
 $(eval $(call KernelPackage,mt7921e))
 $(eval $(call KernelPackage,mt76))
