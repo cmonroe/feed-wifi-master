@@ -457,6 +457,9 @@ define KernelPackage/mt7915e/install
 		./files/firmware/mt7915_wa.bin \
 		./files/firmware/mt7915_wm.bin \
 		./files/firmware/mt7915_rom_patch.bin \
+		./files/firmware/mt7916_wa.bin \
+		./files/firmware/mt7916_wm.bin \
+		./files/firmware/mt7916_rom_patch.bin \
 		$(1)/lib/firmware/mediatek
 endef
 
