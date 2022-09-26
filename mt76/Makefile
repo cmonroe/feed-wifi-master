@@ -466,11 +466,11 @@ endef
 define KernelPackage/mt7986-firmware/install
 	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
 	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7986_wa.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7986_wm_mt7975.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7986_wm.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7986_rom_patch_mt7975.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7986_rom_patch.bin \
+		./files/firmware/mt7986_wa.bin \
+		./files/firmware/mt7986_wm_mt7975.bin \
+		./files/firmware/mt7986_wm.bin \
+		./files/firmware/mt7986_rom_patch_mt7975.bin \
+		./files/firmware/mt7986_rom_patch.bin \
 		$(PKG_BUILD_DIR)/firmware/mt7986_eeprom_mt7975_dual.bin \
 		$(PKG_BUILD_DIR)/firmware/mt7986_eeprom_mt7976_dual.bin \
 		$(1)/lib/firmware/mediatek
