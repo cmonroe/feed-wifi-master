@@ -1,6 +1,6 @@
 --- a/mt7915/mmio.c
 +++ b/mt7915/mmio.c
-@@ -518,7 +518,7 @@ static int mt7915_mmio_init(struct mt76_
+@@ -645,7 +645,7 @@ static int mt7915_mmio_init(struct mt76_
  
  	mdev->rev = (device_id << 16) |
  		    (mt76_rr(dev, MT_HW_REV) & 0xff);

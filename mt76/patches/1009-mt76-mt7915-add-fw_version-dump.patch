@@ -11,7 +11,7 @@ Subject: [PATCH] mt76: mt7915: add fw_version dump
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -833,6 +833,10 @@ struct mt76_dev {
+@@ -824,6 +824,10 @@ struct mt76_dev {
  		struct mt76_sdio sdio;
  	};
  

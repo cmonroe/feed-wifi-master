@@ -9,14 +9,14 @@
  
  static int mt7915_eeprom_load_precal(struct mt7915_dev *dev)
  {
-@@ -70,6 +72,7 @@ static char *mt7915_eeprom_name(struct m
+@@ -43,6 +45,7 @@ static int mt7915_check_eeprom(struct mt
  	}
  }
  
 +#if 0
- static int
- mt7915_eeprom_load_default(struct mt7915_dev *dev)
+ static char *mt7915_eeprom_name(struct mt7915_dev *dev)
  {
+ 	switch (mt76_chip(&dev->mt76)) {
 @@ -95,6 +98,7 @@ out:
  
  	return ret;
@@ -25,7 +25,7 @@
  
  static int mt7915_efuse_load(struct mt7915_dev *dev, u16 eeprom_size)
  {
-@@ -282,10 +286,23 @@ int mt7915_eeprom_init(struct mt7915_dev
+@@ -269,10 +273,23 @@ int mt7915_eeprom_init(struct mt7915_dev
  		if (ret != -EINVAL)
  			return ret;
  

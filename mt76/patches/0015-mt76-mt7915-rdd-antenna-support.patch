@@ -8,7 +8,7 @@
  #include "mt7915.h"
  #include "mac.h"
  #include "mcu.h"
-@@ -670,6 +671,11 @@ mt7915_init_hardware(struct mt7915_dev *
+@@ -674,6 +675,11 @@ mt7915_init_hardware(struct mt7915_dev *
  
  	INIT_WORK(&dev->init_work, mt7915_init_work);
  
@@ -22,7 +22,7 @@
  		return ret;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1792,6 +1792,27 @@ static void mt7915_dfs_stop_radar_detect
+@@ -1889,6 +1889,27 @@ static void mt7915_dfs_stop_radar_detect
  					MT_RX_SEL0, 0);
  }
  
@@ -50,20 +50,38 @@
  static int mt7915_dfs_start_rdd(struct mt7915_dev *dev, int chain)
  {
  	int err, region;
-@@ -1814,6 +1835,10 @@ static int mt7915_dfs_start_rdd(struct m
+@@ -1911,12 +1932,18 @@ static int mt7915_dfs_start_rdd(struct m
  	if (err < 0)
  		return err;
  
++#if 0
+ 	if (is_mt7915(&dev->mt76)) {
+ 		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT, chain,
+ 					      0, dev->dbdc_support ? 2 : 0);
+ 		if (err < 0)
+ 			return err;
+ 	}
++#endif
++
 +	err = mt7915_dfs_set_wf_ant(dev, chain, 1);
 +	if (err < 0)
 +		return err;
-+
+ 
  	return mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_DET_MODE, chain,
  				       MT_RX_SEL0, 1);
- }
-@@ -1934,6 +1959,7 @@ stop:
+@@ -2038,6 +2065,7 @@ stop:
  	if (err < 0)
  		return err;
+ 
++#if 0
+ 	if (is_mt7915(&dev->mt76)) {
+ 		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT,
+ 					      phy->band_idx, 0,
+@@ -2045,7 +2073,9 @@ stop:
+ 		if (err < 0)
+ 			return err;
+ 	}
++#endif
  
 +	mt7915_dfs_set_wf_ant(dev, phy->band_idx, 0);
  	mt7915_dfs_stop_radar_detector(phy);
@@ -79,11 +97,3 @@
  	u64 omac_mask;
  	u8 band_idx;
  
-@@ -357,6 +358,7 @@ enum mt7915_rdd_cmd {
- 	RDD_DET_MODE,
- 	RDD_RADAR_EMULATE,
- 	RDD_START_TXQ = 20,
-+	RDD_SET_WF_ANT = 30,
- 	RDD_CAC_START = 50,
- 	RDD_CAC_END,
- 	RDD_NORMAL_START,

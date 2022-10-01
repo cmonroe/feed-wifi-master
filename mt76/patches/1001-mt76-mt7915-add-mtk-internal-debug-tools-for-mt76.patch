@@ -255,7 +255,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -3196,6 +3201,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3209,6 +3214,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -264,7 +264,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -3471,6 +3478,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3484,6 +3491,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -361,9 +361,9 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  };
  
  enum {
-@@ -593,4 +617,23 @@ void mt7915_sta_add_debugfs(struct ieee8
- 			    struct ieee80211_sta *sta, struct dentry *dir);
- #endif
+@@ -595,4 +619,23 @@ void mt7915_sta_add_debugfs(struct ieee8
+ int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
+ 			 bool pci, int *irq);
  
 +#ifdef MTK_DEBUG
 +int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir);
