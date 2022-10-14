@@ -1,0 +1,103 @@
+From c0fbe6aea8d2d3f8aee0fd5f17643d52e0469fa8 Mon Sep 17 00:00:00 2001
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Fri, 7 Oct 2022 22:56:59 +0800
+Subject: [PATCH 99920/99920] Fix the issue of AP and STA starting on DFS
+ channel concurrently
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+---
+ src/ap/hostapd.c             |  4 +++-
+ src/drivers/driver.h         |  7 +++++++
+ src/drivers/driver_nl80211.c | 29 +++++++++++++++++++++++++++++
+ src/drivers/nl80211_copy.h   |  1 +
+ 4 files changed, 40 insertions(+), 1 deletion(-)
+
+Index: hostapd-2022-07-29-b704dc72/src/ap/hostapd.c
+===================================================================
+--- hostapd-2022-07-29-b704dc72.orig/src/ap/hostapd.c
++++ hostapd-2022-07-29-b704dc72/src/ap/hostapd.c
+@@ -1463,7 +1463,9 @@ static int hostapd_setup_bss(struct host
+ 		return -1;
+ 	}
+ 
+-	if (!conf->start_disabled && ieee802_11_set_beacon(hapd) < 0)
++	if (conf->start_disabled)
++		hapd->driver->start_disabled(hapd->drv_priv);
++	else if (ieee802_11_set_beacon(hapd) < 0)
+ 		return -1;
+ 
+ 	if (flush_old_stations && !conf->start_disabled &&
+Index: hostapd-2022-07-29-b704dc72/src/drivers/driver.h
+===================================================================
+--- hostapd-2022-07-29-b704dc72.orig/src/drivers/driver.h
++++ hostapd-2022-07-29-b704dc72/src/drivers/driver.h
+@@ -4676,6 +4676,12 @@ struct wpa_driver_ops {
+ 			      const u8 *match, size_t match_len,
+ 			      bool multicast);
+ #endif /* CONFIG_TESTING_OPTIONS */
++
++	/**
++	 * start_disabled - set start_disabled to cfg80211
++	 * @priv: Private driver interface data
++	 */
++	int (*start_disabled)(void *priv);
+ };
+ 
+ /**
+Index: hostapd-2022-07-29-b704dc72/src/drivers/driver_nl80211.c
+===================================================================
+--- hostapd-2022-07-29-b704dc72.orig/src/drivers/driver_nl80211.c
++++ hostapd-2022-07-29-b704dc72/src/drivers/driver_nl80211.c
+@@ -12365,6 +12365,34 @@ static int testing_nl80211_radio_disable
+ #endif /* CONFIG_TESTING_OPTIONS */
+ 
+ 
++static int nl80211_start_disabled(void *priv)
++{
++	struct i802_bss *bss = priv;
++	struct wpa_driver_nl80211_data *drv = bss->drv;
++	struct nl_msg *msg;
++	struct nlattr *data;
++	int ret;
++
++	msg = nl80211_bss_msg(bss, 0, NL80211_CMD_NEW_BEACON);
++	if (!msg)
++		goto fail;
++
++	if (nla_put_flag(msg, NL80211_ATTR_START_DISABLED))
++		goto fail;
++
++	ret = send_and_recv_msgs_connect_handle(drv, msg, bss, 1);
++
++	if (ret)
++		wpa_printf(MSG_ERROR, "Failed to set start_disabled. ret=%d (%s)",
++			   ret, strerror(-ret));
++
++	return ret;
++
++fail:
++	nlmsg_free(msg);
++	return ret;
++}
++
+ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+ 	.name = "nl80211",
+ 	.desc = "Linux nl80211/cfg80211",
+@@ -12510,4 +12538,5 @@ const struct wpa_driver_ops wpa_driver_n
+ 	.register_frame = testing_nl80211_register_frame,
+ 	.radio_disable = testing_nl80211_radio_disable,
+ #endif /* CONFIG_TESTING_OPTIONS */
++	.start_disabled = nl80211_start_disabled,
+ };
+Index: hostapd-2022-07-29-b704dc72/src/drivers/nl80211_copy.h
+===================================================================
+--- hostapd-2022-07-29-b704dc72.orig/src/drivers/nl80211_copy.h
++++ hostapd-2022-07-29-b704dc72/src/drivers/nl80211_copy.h
+@@ -3176,6 +3176,7 @@ enum nl80211_attrs {
+ 	NL80211_ATTR_EHT_CAPABILITY,
+ 
+ 	/* add attributes here, update the policy in nl80211.c */
++	NL80211_ATTR_START_DISABLED = 999,
+ 
+ 	__NL80211_ATTR_AFTER_LAST,
+ 	NUM_NL80211_ATTR = __NL80211_ATTR_AFTER_LAST,
