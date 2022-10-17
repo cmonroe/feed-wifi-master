@@ -51,6 +51,8 @@ drv_mac80211_init_device_config() {
 		rx_antenna_pattern \
 		tx_antenna_pattern \
 		he_spr_sr_control \
+		he_spr_psr_enabled \
+		he_bss_color_enabled \
 		he_twt_required
 	config_add_int \
 		beamformer_antennas \
@@ -138,8 +140,8 @@ mac80211_hostapd_setup_base() {
 	[ -n "$acs_exclude_dfs" ] && [ "$acs_exclude_dfs" -gt 0 ] &&
 		append base_cfg "acs_exclude_dfs=1" "$N"
 
-	json_get_vars noscan ht_coex min_tx_power:0
-	json_get_values ht_capab_list ht_capab tx_burst
+	json_get_vars noscan ht_coex min_tx_power:0 tx_burst
+	json_get_values ht_capab_list ht_capab
 	json_get_values channel_list channels
 
 	[ "$auto_channel" = 0 ] && [ -z "$channel_list" ] && \
@@ -418,12 +420,14 @@ mac80211_hostapd_setup_base() {
 	if [ "$enable_ax" != "0" ]; then
 		json_get_vars \
 			he_su_beamformer:1 \
-			he_su_beamformee:0 \
+			he_su_beamformee:1 \
 			he_mu_beamformer:1 \
 			he_twt_required:0 \
-			he_spr_sr_control:0 \
-			he_spr_non_srg_obss_pd_max_offset:1 \
-			he_bss_color
+			he_spr_sr_control:3 \
+			he_spr_psr_enabled:0 \
+			he_spr_non_srg_obss_pd_max_offset:0 \
+			he_bss_color:128 \
+			he_bss_color_enabled:1
 
 		he_phy_cap=$(iw phy "$phy" info | sed -n '/HE Iftypes: AP/,$p' | awk -F "[()]" '/HE PHY Capabilities/ { print $2 }' | head -1)
 		he_phy_cap=${he_phy_cap:2}
@@ -440,17 +444,25 @@ mac80211_hostapd_setup_base() {
 			fi
 		}
 
-		set_default he_bss_color 128
-		append base_cfg "he_bss_color=$he_bss_color" "$N"
-
 		mac80211_add_he_capabilities \
 			he_su_beamformer:${he_phy_cap:6:2}:0x80:$he_su_beamformer \
 			he_su_beamformee:${he_phy_cap:8:2}:0x1:$he_su_beamformee \
 			he_mu_beamformer:${he_phy_cap:8:2}:0x2:$he_mu_beamformer \
-			he_spr_sr_control:${he_phy_cap:14:2}:0x1:$he_spr_sr_control \
+			he_spr_psr_enabled:${he_phy_cap:14:2}:0x1:$he_spr_psr_enabled \
 			he_twt_required:${he_mac_cap:0:2}:0x6:$he_twt_required
 
-		[ "$he_spr_sr_control" -gt 0 ] && append base_cfg "he_spr_non_srg_obss_pd_max_offset=$he_spr_non_srg_obss_pd_max_offset" "$N"
+		if [ "$he_bss_color_enabled" -gt 0 ]; then
+			append base_cfg "he_bss_color=$he_bss_color" "$N"
+			[ "$he_spr_non_srg_obss_pd_max_offset" -gt 0 ] && { \
+				append base_cfg "he_spr_non_srg_obss_pd_max_offset=$he_spr_non_srg_obss_pd_max_offset" "$N"
+				he_spr_sr_control=$((he_spr_sr_control | (1 << 2)))
+			}
+			[ "$he_spr_psr_enabled" -gt 0 ] || he_spr_sr_control=$((he_spr_sr_control | (1 << 0)))
+			append base_cfg "he_spr_sr_control=$he_spr_sr_control" "$N"
+		else
+			append base_cfg "he_bss_color_disabled=1" "$N"
+		fi
+
 
 		append base_cfg "he_default_pe_duration=4" "$N"
 		append base_cfg "he_rts_threshold=1023" "$N"
