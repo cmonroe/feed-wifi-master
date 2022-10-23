@@ -10,7 +10,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -4848,6 +4848,19 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
+@@ -4864,6 +4864,19 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
  				 err);
  			goto exit;
  		}
@@ -30,7 +30,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  		if (!mbss) {
  			/* Firmware 10.x requires setting channel after enabling
  			 * AP and before bringing interface up.
-@@ -7505,6 +7518,22 @@ static void brcmf_cfg80211_reg_notifier(
+@@ -7613,6 +7626,22 @@ static void brcmf_cfg80211_reg_notifier(
  			return;
  		}
  
@@ -55,7 +55,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
-@@ -364,6 +364,7 @@ struct brcmf_cfg80211_info {
+@@ -370,6 +370,7 @@ struct brcmf_cfg80211_info {
  	struct brcmf_assoclist_le assoclist;
  	struct brcmf_cfg80211_wowl wowl;
  	struct brcmf_pno_info *pno;

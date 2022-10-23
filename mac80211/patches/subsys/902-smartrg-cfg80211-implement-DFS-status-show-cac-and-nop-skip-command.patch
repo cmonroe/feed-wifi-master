@@ -9,11 +9,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  net/wireless/debugfs.c | 228 +++++++++++++++++++++++++++++++++++++++--
  1 file changed, 221 insertions(+), 7 deletions(-)
 
-diff --git a/net/wireless/debugfs.c b/net/wireless/debugfs.c
-index aab4346..19c3091 100644
 --- a/net/wireless/debugfs.c
 +++ b/net/wireless/debugfs.c
-@@ -95,16 +95,230 @@ static const struct file_operations ht40allow_map_ops = {
+@@ -96,16 +96,230 @@ static const struct file_operations ht40
  	.llseek = default_llseek,
  };
  
@@ -251,6 +249,3 @@ index aab4346..19c3091 100644
 +	DEBUGFS_ADD(dfs_skip_nop, 0600);
 +	DEBUGFS_ADD(dfs_skip_cac, 0600);
  }
--- 
-2.18.0
-

@@ -1,7 +1,5 @@
-Index: mt76-2022-10-05-269df4b0/mt7915/init.c
-===================================================================
---- mt76-2022-10-05-269df4b0.orig/mt7915/init.c
-+++ mt76-2022-10-05-269df4b0/mt7915/init.c
+--- a/mt7915/init.c
++++ b/mt7915/init.c
 @@ -451,6 +451,23 @@ mt7915_mac_init_band(struct mt7915_dev *
  
  	/* mt7915: disable rx rate report by default due to hw issues */
@@ -26,10 +24,8 @@ Index: mt76-2022-10-05-269df4b0/mt7915/init.c
  }
  
  static void mt7915_mac_init(struct mt7915_dev *dev)
-Index: mt76-2022-10-05-269df4b0/mt7915/mcu.c
-===================================================================
---- mt76-2022-10-05-269df4b0.orig/mt7915/mcu.c
-+++ mt76-2022-10-05-269df4b0/mt7915/mcu.c
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
 @@ -2985,25 +2985,36 @@ int mt7915_mcu_get_chan_mib_info(struct
  {
  	/* strict order */
@@ -102,10 +98,8 @@ Index: mt76-2022-10-05-269df4b0/mt7915/mcu.c
  #undef __res_u64
  
  	dev_kfree_skb(skb);
-Index: mt76-2022-10-05-269df4b0/mt7915/mcu.h
-===================================================================
---- mt76-2022-10-05-269df4b0.orig/mt7915/mcu.h
-+++ mt76-2022-10-05-269df4b0/mt7915/mcu.h
+--- a/mt7915/mcu.h
++++ b/mt7915/mcu.h
 @@ -160,15 +160,17 @@ struct mt7915_mcu_mib {
  
  enum mt7915_chan_mib_offs {
@@ -127,10 +121,8 @@ Index: mt76-2022-10-05-269df4b0/mt7915/mcu.h
  };
  
  struct edca {
-Index: mt76-2022-10-05-269df4b0/mt7915/regs.h
-===================================================================
---- mt76-2022-10-05-269df4b0.orig/mt7915/regs.h
-+++ mt76-2022-10-05-269df4b0/mt7915/regs.h
+--- a/mt7915/regs.h
++++ b/mt7915/regs.h
 @@ -529,8 +529,23 @@ enum offs_rev {
  #define MT_WF_RFCR1_DROP_CFEND		BIT(7)
  #define MT_WF_RFCR1_DROP_CFACK		BIT(8)

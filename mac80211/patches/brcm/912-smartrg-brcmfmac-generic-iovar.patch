@@ -10,7 +10,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -36,10 +36,6 @@
+@@ -37,10 +37,6 @@
  
  #define	D11_PHY_HDR_LEN				6
  
@@ -21,7 +21,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  struct d11rxhdr_le {
  	__le16 RxFrameSize;
  	u16 PAD;
-@@ -302,12 +298,6 @@ static int brcmf_netdev_ioctl(struct net
+@@ -308,12 +304,6 @@ static int brcmf_netdev_ioctl(struct net
  		// bphy_err(drvr, "ioc.len %d ioc.cmd %d", ioc.len, ioc.cmd);
  	}
  
@@ -34,7 +34,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  	if (ioc.buf == NULL) {
  		bphy_err(drvr, "Unexpected NULL ioc.buf, cmd %d on %s\n", ioc.cmd, brcmf_ifname(ifp));
  		ret = -EFAULT;
-@@ -328,43 +318,42 @@ static int brcmf_netdev_ioctl(struct net
+@@ -334,43 +324,42 @@ static int brcmf_netdev_ioctl(struct net
  		goto done;
  	}
  
@@ -110,7 +110,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  			goto done;
  		}
  
-@@ -376,24 +365,41 @@ static int brcmf_netdev_ioctl(struct net
+@@ -382,24 +371,41 @@ static int brcmf_netdev_ioctl(struct net
  		}
  		else {
  #if 0

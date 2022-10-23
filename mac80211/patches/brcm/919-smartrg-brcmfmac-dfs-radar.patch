@@ -12,7 +12,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -4861,6 +4861,21 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
+@@ -4877,6 +4877,21 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
  			}
  		}
  
@@ -36,7 +36,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  			 * AP and before bringing interface up.
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -286,6 +286,559 @@ static const struct file_operations ledd
+@@ -292,6 +292,559 @@ static const struct file_operations ledd
  	.write	= leddc_write,
  };
  
@@ -596,7 +596,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  /* Linux network driver ioctl encoding - this is same as wl_ioctl from libwmd/src/api/broadcom.h, similar to dhd_ioctl */
  typedef struct brcmf_ioctl {
-@@ -1561,6 +2114,10 @@ static int brcmf_bus_started(struct brcm
+@@ -1568,6 +2121,10 @@ static int brcmf_bus_started(struct brcm
  			    &console_fops);
  	debugfs_create_file("leddc", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
  			    &leddc_fops);

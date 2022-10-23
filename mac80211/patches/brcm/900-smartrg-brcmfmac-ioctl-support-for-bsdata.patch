@@ -11,7 +11,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -36,6 +36,10 @@
+@@ -37,6 +37,10 @@
  
  #define	D11_PHY_HDR_LEN				6
  
@@ -22,7 +22,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  struct d11rxhdr_le {
  	__le16 RxFrameSize;
  	u16 PAD;
-@@ -251,6 +255,146 @@ static void brcmf_netdev_set_multicast_l
+@@ -257,6 +261,146 @@ static void brcmf_netdev_set_multicast_l
  	schedule_work(&ifp->multicast_work);
  }
  
@@ -169,7 +169,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  /**
   * brcmf_skb_is_iapp - checks if skb is an IAPP packet
   *
-@@ -630,7 +774,8 @@ static const struct net_device_ops brcmf
+@@ -636,7 +780,8 @@ static const struct net_device_ops brcmf
  	.ndo_stop = brcmf_netdev_stop,
  	.ndo_start_xmit = brcmf_netdev_start_xmit,
  	.ndo_set_mac_address = brcmf_netdev_set_mac_address,
@@ -193,7 +193,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
   * ethernet frame size. This limitation is to be applied by protocol layer.
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil.c
-@@ -117,6 +117,10 @@ brcmf_fil_cmd_data(struct brcmf_if *ifp,
+@@ -118,6 +118,10 @@ brcmf_fil_cmd_data(struct brcmf_if *ifp,
  	} else if (fwerr < 0) {
  		brcmf_dbg(FIL, "Firmware error: %s (%d)\n",
  			  brcmf_fil_get_errstr((u32)(-fwerr)), fwerr);

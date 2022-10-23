@@ -9,7 +9,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -271,7 +271,7 @@ static int brcmf_netdev_ioctl(struct net
+@@ -277,7 +277,7 @@ static int brcmf_netdev_ioctl(struct net
  	struct brcmf_pub *drvr = ifp->drvr;
  	brcmf_ioctl_t ioc;
  	void *local_buf = NULL;
@@ -18,7 +18,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  	char *request="";
  
  	memset(&ioc, 0, sizeof(ioc));
-@@ -309,7 +309,7 @@ static int brcmf_netdev_ioctl(struct net
+@@ -315,7 +315,7 @@ static int brcmf_netdev_ioctl(struct net
  	}
  
  	if (ioc.buf == NULL) {
@@ -27,7 +27,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  		ret = -EFAULT;
  		goto done;
  	}
-@@ -331,25 +331,27 @@ static int brcmf_netdev_ioctl(struct net
+@@ -337,25 +337,27 @@ static int brcmf_netdev_ioctl(struct net
  	/* First NULL terminated string in the ioc.buf is the requested data */
  	if (strncmp (local_buf, "bs_data", strlen("bs_data")) == 0) {
  		/* retrieve the table from firmware */
@@ -62,7 +62,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
          }
  	else {
  		bphy_err(drvr, "Unsupported request in ioctl buf\n");
-@@ -359,22 +361,29 @@ static int brcmf_netdev_ioctl(struct net
+@@ -365,22 +367,29 @@ static int brcmf_netdev_ioctl(struct net
  
  	if (ioc.cmd == WLC_GET_VAR) {
  		if (ret) {

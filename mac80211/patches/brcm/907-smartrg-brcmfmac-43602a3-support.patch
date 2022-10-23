@@ -9,16 +9,16 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-@@ -46,6 +46,7 @@ enum brcmf_pcie_state {
+@@ -47,6 +47,7 @@ enum brcmf_pcie_state {
  };
  
  BRCMF_FW_DEF(43602, "brcmfmac43602-pcie");
 +BRCMF_FW_DEF(43602A3, "brcmfmac43602a3-pcie");
  BRCMF_FW_DEF(4350, "brcmfmac4350-pcie");
  BRCMF_FW_DEF(4350C, "brcmfmac4350c2-pcie");
- BRCMF_FW_DEF(4356, "brcmfmac4356-pcie");
-@@ -60,7 +61,8 @@ BRCMF_FW_DEF(4366C, "brcmfmac4366c-pcie"
- BRCMF_FW_DEF(4371, "brcmfmac4371-pcie");
+ BRCMF_FW_CLM_DEF(4356, "brcmfmac4356-pcie");
+@@ -68,7 +69,8 @@ MODULE_FIRMWARE(BRCMF_FW_DEFAULT_PATH "b
+ MODULE_FIRMWARE(BRCMF_FW_DEFAULT_PATH "brcmfmac*-pcie.*.bin");
  
  static const struct brcmf_firmware_mapping brcmf_pcie_fwnames[] = {
 -	BRCMF_FW_ENTRY(BRCM_CC_43602_CHIP_ID, 0xFFFFFFFF, 43602),
