@@ -1,6 +1,6 @@
 --- a/mt7615/eeprom.c
 +++ b/mt7615/eeprom.c
-@@ -93,45 +93,48 @@ static int mt7615_check_eeprom(struct mt
+@@ -98,45 +98,48 @@ static int mt7615_check_eeprom(struct mt
  	}
  }
  
@@ -62,7 +62,7 @@
  		break;
  	}
  }
-@@ -141,7 +144,7 @@ static void mt7615_eeprom_parse_hw_cap(s
+@@ -146,7 +149,7 @@ static void mt7615_eeprom_parse_hw_cap(s
  	u8 *eeprom = dev->mt76.eeprom.data;
  	u8 tx_mask, max_nss;
  
@@ -93,7 +93,7 @@
  		mphy->q_tx[i] = dev->mphy.q_tx[i];
 --- a/mt7615/mt7615.h
 +++ b/mt7615/mt7615.h
-@@ -385,6 +385,7 @@ int mt7615_eeprom_init(struct mt7615_dev
+@@ -386,6 +386,7 @@ int mt7615_eeprom_init(struct mt7615_dev
  int mt7615_eeprom_get_target_power_index(struct mt7615_dev *dev,
  					 struct ieee80211_channel *chan,
  					 u8 chain_idx);

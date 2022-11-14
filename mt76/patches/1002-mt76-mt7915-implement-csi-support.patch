@@ -18,7 +18,7 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -979,6 +979,7 @@ enum {
+@@ -984,6 +984,7 @@ enum {
  	MCU_EXT_EVENT_CSA_NOTIFY = 0x4f,
  	MCU_EXT_EVENT_BCC_NOTIFY = 0x75,
  	MCU_EXT_EVENT_MURU_CTRL = 0x9f,
@@ -26,7 +26,7 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
  };
  
  enum {
-@@ -1148,6 +1149,7 @@ enum {
+@@ -1153,6 +1154,7 @@ enum {
  	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
  	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
  	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
@@ -48,10 +48,9 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
  
  mt7915e-$(CONFIG_NL80211_TESTMODE) += testmode.o
  mt7915e-$(CONFIG_MT7986_WMAC) += soc.o
-\ No newline at end of file
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -554,6 +554,12 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -578,6 +578,12 @@ mt7915_register_ext_phy(struct mt7915_de
  	/* init wiphy according to mphy and phy */
  	mt7915_init_wiphy(mphy->hw);
  
@@ -64,7 +63,7 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1054,6 +1060,25 @@ void mt7915_set_stream_he_caps(struct mt
+@@ -1085,6 +1091,25 @@ void mt7915_set_stream_he_caps(struct mt
  	}
  }
  
@@ -90,7 +89,7 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
  static void mt7915_unregister_ext_phy(struct mt7915_dev *dev)
  {
  	struct mt7915_phy *phy = mt7915_ext_phy(dev);
-@@ -1062,6 +1087,10 @@ static void mt7915_unregister_ext_phy(st
+@@ -1093,6 +1118,10 @@ static void mt7915_unregister_ext_phy(st
  	if (!phy)
  		return;
  
@@ -101,7 +100,7 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
  	mt7915_unregister_thermal(phy);
  	mt76_unregister_phy(mphy);
  	ieee80211_free_hw(mphy->hw);
-@@ -1074,6 +1103,10 @@ static void mt7915_stop_hardware(struct
+@@ -1105,6 +1134,10 @@ static void mt7915_stop_hardware(struct
  	mt7915_dma_cleanup(dev);
  	tasklet_disable(&dev->irq_tasklet);
  
@@ -112,7 +111,7 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
  	if (is_mt7986(&dev->mt76))
  		mt7986_wmac_disable(dev);
  }
-@@ -1114,6 +1147,12 @@ int mt7915_register_device(struct mt7915
+@@ -1147,6 +1180,12 @@ int mt7915_register_device(struct mt7915
  	dev->mt76.test_ops = &mt7915_testmode_ops;
  #endif
  
@@ -150,7 +149,7 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
-@@ -3491,6 +3500,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3512,6 +3521,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -261,7 +260,7 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
  {
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -479,4 +479,80 @@ enum {
+@@ -483,4 +483,80 @@ enum {
  					 sizeof(struct bss_info_bcn_cont) + \
  					 sizeof(struct bss_info_inband_discovery))
  
@@ -344,7 +343,7 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
  #endif
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -275,6 +275,20 @@ struct mt7915_phy {
+@@ -288,6 +288,20 @@ struct mt7915_phy {
  		u8 spe_idx;
  	} test;
  #endif
@@ -365,7 +364,7 @@ Subject: [PATCH 1002/1009] mt76: mt7915: csi: implement csi support
  };
  
  struct mt7915_dev {
-@@ -619,6 +633,12 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -663,6 +677,12 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  
