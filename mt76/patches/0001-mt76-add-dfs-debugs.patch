@@ -26,7 +26,7 @@
  }
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -265,6 +265,12 @@ mt7915_mcu_rx_radar_detected(struct mt79
+@@ -269,6 +269,12 @@ mt7915_mcu_rx_radar_detected(struct mt79
  	if ((r->band_idx && !dev->phy.band_idx) && dev->mt76.phys[MT_BAND1])
  		mphy = dev->mt76.phys[MT_BAND1];
  
