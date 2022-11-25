@@ -9,8 +9,8 @@ PKG_LICENSE_FILES:=
 PKG_SOURCE_URL:=https://github.com/openwrt/mt76
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_DATE:=2022-11-23
-PKG_SOURCE_VERSION:=6196f6080506de3332f3a65dbcef6f68886922ec
-PKG_MIRROR_HASH:=d37b8955da2841853ac36d39558c65295f6ed9b6a095b7ed50b3f39b7224a7c0
+PKG_SOURCE_VERSION:=daae6ca5d81fceed2dbbfcfca49be3f0727386e3
+PKG_MIRROR_HASH:=154cf754e0859cd5bb61f1fda73497dad850111deccfee2dddd5a7c2eb51685a
 
 PKG_MAINTAINER:=Felix Fietkau <nbd@nbd.name>
 PKG_USE_NINJA:=0
@@ -483,11 +483,11 @@ endef
 define KernelPackage/mt7986-firmware/install
 	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
 	cp \
-		./files/firmware/mt7986_wa.bin \
-		./files/firmware/mt7986_wm_mt7975.bin \
-		./files/firmware/mt7986_wm.bin \
-		./files/firmware/mt7986_rom_patch_mt7975.bin \
-		./files/firmware/mt7986_rom_patch.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_wa.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_wm_mt7975.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_wm.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_rom_patch_mt7975.bin \
+		$(PKG_BUILD_DIR)/firmware/mt7986_rom_patch.bin \
 		$(PKG_BUILD_DIR)/firmware/mt7986_eeprom_mt7975_dual.bin \
 		$(PKG_BUILD_DIR)/firmware/mt7986_eeprom_mt7976_dual.bin \
 		$(1)/lib/firmware/mediatek
