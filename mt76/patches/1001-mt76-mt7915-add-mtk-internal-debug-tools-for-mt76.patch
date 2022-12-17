@@ -1,29 +1,37 @@
-From 6e089768a68a8cc86526d61d34730043fee724af Mon Sep 17 00:00:00 2001
+From 6f3fdaaef8dcd1d95017aaf1755cf001168d0836 Mon Sep 17 00:00:00 2001
 From: Shayne Chen <shayne.chen@mediatek.com>
 Date: Wed, 22 Jun 2022 10:39:47 +0800
-Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
+Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 
 ---
- mt76_connac_mcu.h     |    6 +
+ mt76_connac_mcu.h     |    7 +
  mt7915/Makefile       |    2 +-
  mt7915/debugfs.c      |   73 +-
  mt7915/mac.c          |   14 +
  mt7915/main.c         |    4 +
- mt7915/mcu.c          |   44 +
+ mt7915/mcu.c          |   63 +
  mt7915/mcu.h          |    4 +
- mt7915/mt7915.h       |   43 +
+ mt7915/mt7915.h       |   44 +
  mt7915/mt7915_debug.h | 1350 +++++++++++++++++++
- mt7915/mtk_debugfs.c  | 2923 +++++++++++++++++++++++++++++++++++++++++
+ mt7915/mtk_debugfs.c  | 2925 +++++++++++++++++++++++++++++++++++++++++
  mt7915/mtk_mcu.c      |   51 +
  tools/fwlog.c         |   44 +-
- 12 files changed, 4545 insertions(+), 13 deletions(-)
+ 12 files changed, 4568 insertions(+), 13 deletions(-)
  create mode 100644 mt7915/mt7915_debug.h
  create mode 100644 mt7915/mtk_debugfs.c
  create mode 100644 mt7915/mtk_mcu.c
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1158,6 +1158,12 @@ enum {
+@@ -1146,6 +1146,7 @@ enum {
+ 	MCU_EXT_CMD_SET_TX_POWER_CTRL = 0x11,
+ 	MCU_EXT_CMD_FW_LOG_2_HOST = 0x13,
+ 	MCU_EXT_CMD_TXBF_ACTION = 0x1e,
++	MCU_EXT_CMD_MEC_CTRL = 0x1f,
+ 	MCU_EXT_CMD_EFUSE_BUFFER_MODE = 0x21,
+ 	MCU_EXT_CMD_THERMAL_PROT = 0x23,
+ 	MCU_EXT_CMD_STA_REC_UPDATE = 0x25,
+@@ -1169,6 +1170,12 @@ enum {
  	MCU_EXT_CMD_TX_POWER_FEATURE_CTRL = 0x58,
  	MCU_EXT_CMD_RXDCOC_CAL = 0x59,
  	MCU_EXT_CMD_GET_MIB_INFO = 0x5a,
@@ -123,7 +131,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt7915_fw_debug_wm_set(dev, dev->fw.debug_wm);
  }
  
-@@ -1103,6 +1133,11 @@ int mt7915_init_debugfs(struct mt7915_ph
+@@ -1257,6 +1287,11 @@ int mt7915_init_debugfs(struct mt7915_ph
  	if (!ext_phy)
  		dev->debugfs_dir = dir;
  
@@ -135,7 +143,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  	return 0;
  }
  
-@@ -1143,17 +1178,53 @@ void mt7915_debugfs_rx_fw_monitor(struct
+@@ -1297,17 +1332,53 @@ void mt7915_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -191,7 +199,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  	if (dev->relay_fwlog)
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -301,6 +301,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+@@ -300,6 +300,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  	__le16 fc = 0;
  	int idx;
  
@@ -201,8 +209,8 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
 +#endif
  	memset(status, 0, sizeof(*status));
  
- 	if ((rxd1 & MT_RXD1_NORMAL_BAND_IDX) && !phy->band_idx) {
-@@ -484,6 +488,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+ 	if ((rxd1 & MT_RXD1_NORMAL_BAND_IDX) && !phy->mt76->band_idx) {
+@@ -483,6 +487,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  	}
  
  	hdr_gap = (u8 *)rxd - skb->data + 2 * remove_pad;
@@ -213,7 +221,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  	if (hdr_trans && ieee80211_has_morefrags(fc)) {
  		struct ieee80211_vif *vif;
  		int err;
-@@ -821,6 +829,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -820,6 +828,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	tx_info->buf[1].skip_unmap = true;
  	tx_info->nbuf = MT_CT_DMA_BUF_NUM;
  
@@ -228,7 +236,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -58,7 +58,11 @@ int mt7915_run(struct ieee80211_hw *hw)
+@@ -62,7 +62,11 @@ int mt7915_run(struct ieee80211_hw *hw)
  	if (ret)
  		goto out;
  
@@ -254,7 +262,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -3338,6 +3343,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3354,6 +3359,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -263,7 +271,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -3775,6 +3782,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3791,6 +3798,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -307,9 +315,32 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
+@@ -3819,3 +3863,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+ 
+ 	return 0;
+ }
++
++#ifdef MTK_DEBUG
++int mt7915_mcu_set_amsdu_algo(struct mt7915_dev *dev, u16 wcid, u8 enable)
++{
++	struct {
++		u16 action;
++		u8 _rsv1[2];
++		u16 wcid;
++		u8 enable;
++		u8 _rsv2[5];
++	} __packed req = {
++		.action = cpu_to_le16(1),
++		.wcid = cpu_to_le16(wcid),
++		.enable = enable,
++	};
++
++	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(MEC_CTRL), &req, sizeof(req), true);
++}
++#endif
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -271,6 +271,10 @@ enum {
+@@ -278,6 +278,10 @@ enum {
  	MCU_WA_PARAM_PDMA_RX = 0x04,
  	MCU_WA_PARAM_CPU_UTIL = 0x0b,
  	MCU_WA_PARAM_RED = 0x0e,
@@ -330,7 +361,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_WTBL_SIZE		288
  #define MT7916_WTBL_SIZE		544
-@@ -369,6 +370,29 @@ struct mt7915_dev {
+@@ -368,6 +369,29 @@ struct mt7915_dev {
  	struct reset_control *rstc;
  	void __iomem *dcm;
  	void __iomem *sku;
@@ -360,7 +391,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
  };
  
  enum {
-@@ -646,4 +670,23 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -645,4 +669,24 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  
@@ -371,6 +402,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
 +void mt7915_dump_tmac_info(u8 *tmac_info);
 +int mt7915_mcu_set_txpower_level(struct mt7915_phy *phy, u8 drop_level);
 +void mt7915_packet_log_to_host(struct mt7915_dev *dev, const void *data, int len, int type, int des_len);
++int mt7915_mcu_set_amsdu_algo(struct mt7915_dev *dev, u16 wcid, u8 enable);
 +
 +#define PKT_BIN_DEBUG_MAGIC	0xc8763123
 +enum {
@@ -1010,7 +1042,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
 +#define MT_DBG_UWTBL_TOP_BASE			0x820C4000
 +#define MT_DBG_UWTBL_TOP(ofs)			(MT_DBG_UWTBL_TOP_BASE + (ofs))
 +
-+#define MT_DBG_UWTBL_TOP_WDUCR			MT_DBG_WTBLON_TOP(__DBG_REG_OFFS(dev, DBG_UWTBL_WDUCR))
++#define MT_DBG_UWTBL_TOP_WDUCR			MT_DBG_UWTBL_TOP(__DBG_REG_OFFS(dev, DBG_UWTBL_WDUCR))
 +
 +#define MT_UWTBL_TOP_WDUCR_TARGET		BIT(31)
 +#define MT_UWTBL_TOP_WDUCR_GROUP		GENMASK(3, 0)
@@ -1739,7 +1771,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
 +#endif
 --- /dev/null
 +++ b/mt7915/mtk_debugfs.c
-@@ -0,0 +1,2923 @@
+@@ -0,0 +1,2925 @@
 +#include<linux/inet.h>
 +#include "mt7915.h"
 +#include "mt7915_debug.h"
@@ -4447,6 +4479,8 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
 +	u32 num = FIELD_GET(GENMASK(15, 8), tx_amsdu);
 +	u32 uwtbl;
 +
++	mt7915_mcu_set_amsdu_algo(dev, dev->wlan_idx, 0);
++
 +	mt7915_wtbl_read_raw(dev, dev->wlan_idx, WTBL_TYPE_UMAC,
 +			UWTBL_HW_AMSDU_DW, 1, &uwtbl);
 +
@@ -4683,7 +4717,7 @@ Subject: [PATCH 1001/1009] mt76: mt7915: add mtk internal debug tools for mt76
 +		u8 _rsv;
 +	} __packed req = {
 +		.format_id = 1,
-+		.band = phy->band_idx,
++		.band = phy->mt76->band_idx,
 +		.val = !!drop_level,
 +	};
 +	int ret;

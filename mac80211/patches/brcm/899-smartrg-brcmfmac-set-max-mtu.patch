@@ -7,13 +7,15 @@ Signed-off-by: Colin Whittaker <colin.whittaker@smartrg.com>
  core.c |    1 +
  1 file changed, 1 insertion(+)
 
---- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-+++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -911,6 +911,7 @@ struct brcmf_if *brcmf_add_if(struct brc
- #else
- 		netdev_set_def_destructor(ndev);
- #endif
+Index: backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+===================================================================
+--- backports-6.1-rc4.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -878,6 +878,7 @@ struct brcmf_if *brcmf_add_if(struct brc
+ 		if (!ndev)
+ 			return ERR_PTR(-ENOMEM);
+ 
 +		ndev->max_mtu = IEEE80211_MAX_DATA_LEN;
+ 		ndev->needs_free_netdev = true;
  		ifp = netdev_priv(ndev);
  		ifp->ndev = ndev;
- 		/* store mapping ifidx to bsscfgidx */
