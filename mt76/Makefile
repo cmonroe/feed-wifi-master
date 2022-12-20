@@ -344,7 +344,7 @@ ifdef CONFIG_PACKAGE_kmod-mt7615-common
 endif
 ifdef CONFIG_PACKAGE_kmod-mt7615e
   PKG_MAKE_FLAGS += CONFIG_MT7615E=m
-  ifdef CONFIG_TARGET_mediatek_mt7622
+  ifneq ($(CONFIG_TARGET_mediatek_mt7622)$(CONFIG_TARGET_mediatek_filogic),)
     PKG_MAKE_FLAGS += CONFIG_MT7622_WMAC=y
     NOSTDINC_FLAGS += -DCONFIG_MT7622_WMAC
   endif
