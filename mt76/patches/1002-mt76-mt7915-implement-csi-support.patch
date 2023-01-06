@@ -36,10 +36,11 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  enum {
 --- a/mt7915/Makefile
 +++ b/mt7915/Makefile
-@@ -1,9 +1,9 @@
+@@ -1,10 +1,10 @@
  # SPDX-License-Identifier: ISC
--
-+EXTRA_CFLAGS += -DCONFIG_MTK_VENDOR
+ 
+-EXTRA_CFLAGS += -DCONFIG_MT76_LEDS
++EXTRA_CFLAGS += -DCONFIG_MT76_LEDS -DCONFIG_MTK_VENDOR
  obj-$(CONFIG_MT7915E) += mt7915e.o
  
  mt7915e-y := pci.o init.o dma.o eeprom.o main.o mcu.o mac.o \

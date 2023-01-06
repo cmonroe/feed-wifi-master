@@ -251,7 +251,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  	"v_tx_mode_ht",
 --- a/mt7921/main.c
 +++ b/mt7921/main.c
-@@ -1104,6 +1104,10 @@ static const char mt7921_gstrings_stats[
+@@ -1099,6 +1099,10 @@ static const char mt7921_gstrings_stats[
  	"rx_ampdu_bytes_cnt",
  	"rx_ba_cnt",
  	/* per vif counters */

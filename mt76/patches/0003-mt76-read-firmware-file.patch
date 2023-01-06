@@ -8,10 +8,8 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  1 file changed, 102 insertions(+), 1 deletion(-)
 
 ===================================================================
-Index: mt76-2022-11-23-daae6ca5/eeprom.c
-===================================================================
---- mt76-2022-11-23-daae6ca5.orig/eeprom.c
-+++ mt76-2022-11-23-daae6ca5/eeprom.c
+--- a/eeprom.c
++++ b/eeprom.c
 @@ -9,6 +9,70 @@
  #include <linux/etherdevice.h>
  #include "mt76.h"
@@ -83,7 +81,7 @@ Index: mt76-2022-11-23-daae6ca5/eeprom.c
  int mt76_get_of_eeprom(struct mt76_dev *dev, void *eep, int offset, int len)
  {
  #if defined(CONFIG_OF) && defined(CONFIG_MTD)
-@@ -349,11 +413,21 @@ EXPORT_SYMBOL_GPL(mt76_get_rate_power_li
+@@ -348,11 +412,21 @@ EXPORT_SYMBOL_GPL(mt76_get_rate_power_li
  int
  mt76_eeprom_init(struct mt76_dev *dev, int len)
  {
