@@ -31,19 +31,18 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	MCU_EXT_CMD_EFUSE_BUFFER_MODE = 0x21,
  	MCU_EXT_CMD_THERMAL_PROT = 0x23,
  	MCU_EXT_CMD_STA_REC_UPDATE = 0x25,
-@@ -1169,6 +1170,12 @@ enum {
- 	MCU_EXT_CMD_TX_POWER_FEATURE_CTRL = 0x58,
- 	MCU_EXT_CMD_RXDCOC_CAL = 0x59,
- 	MCU_EXT_CMD_GET_MIB_INFO = 0x5a,
+@@ -1172,6 +1173,11 @@ enum {
+ 	MCU_EXT_CMD_TXDPD_CAL = 0x60,
+ 	MCU_EXT_CMD_CAL_CACHE = 0x67,
+ 	MCU_EXT_CMD_RED_ENABLE = 0x68,
 +#ifdef MTK_DEBUG
-+	MCU_EXT_CMD_RED_ENABLE = 0x68,
 +	MCU_EXT_CMD_RED_SHOW_STA = 0x69,
 +	MCU_EXT_CMD_RED_TARGET_DELAY = 0x6A,
 +	MCU_EXT_CMD_RED_TX_RPT = 0x6B,
 +#endif
- 	MCU_EXT_CMD_TXDPD_CAL = 0x60,
- 	MCU_EXT_CMD_CAL_CACHE = 0x67,
  	MCU_EXT_CMD_SET_RADAR_TH = 0x7c,
+ 	MCU_EXT_CMD_SET_RDD_PATTERN = 0x7d,
+ 	MCU_EXT_CMD_MWDS_SUPPORT = 0x80,
 --- a/mt7915/Makefile
 +++ b/mt7915/Makefile
 @@ -4,7 +4,7 @@ EXTRA_CFLAGS += -DCONFIG_MT76_LEDS
@@ -262,7 +261,16 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -3362,6 +3367,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -2346,7 +2351,7 @@ static int mt7915_red_set_watermark(stru
+ 				 sizeof(req), false);
+ }
+ 
+-static int mt7915_mcu_set_red(struct mt7915_dev *dev, bool enabled)
++int mt7915_mcu_set_red(struct mt7915_dev *dev, bool enabled)
+ {
+ #define RED_DISABLE		0
+ #define RED_BY_WA_ENABLE	2
+@@ -3408,6 +3413,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -271,7 +279,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -3799,6 +3806,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3845,6 +3852,23 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -290,32 +298,12 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +
 +	return mt76_mcu_send_msg(&dev->mt76, cmd, &req, sizeof(req), wait_resp);
 +}
-+
-+int mt7915_mcu_set_red(struct mt7915_dev *dev, bool enabled)
-+{
-+#define RED_DISABLE		0
-+#define RED_BY_HOST_ENABLE	1
-+#define RED_BY_WA_ENABLE	2
-+	int ret;
-+	u32 red_type = enabled > 0 ? RED_BY_WA_ENABLE : RED_DISABLE;
-+	__le32 req = cpu_to_le32(red_type);
-+
-+	ret = mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(RED_ENABLE), &req,
-+				 sizeof(req), false);
-+	if (ret < 0)
-+		return ret;
-+
-+	mt7915_dbg_mcu_wa_cmd(dev, MCU_WA_PARAM_CMD(SET),
-+			  MCU_WA_PARAM_RED, enabled, 0, true);
-+
-+	return 0;
-+}
 +#endif
 +
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-@@ -3827,3 +3871,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+@@ -3873,3 +3897,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
  
  	return 0;
  }
@@ -348,9 +336,9 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +	MCU_WA_PARAM_RED_SHOW_STA = 0xf,
 +	MCU_WA_PARAM_RED_TARGET_DELAY = 0x10,
 +#endif
+ 	MCU_WA_PARAM_RED_SETTING = 0x40,
  };
  
- enum mcu_mmps_mode {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
 @@ -9,6 +9,7 @@
@@ -361,7 +349,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_WTBL_SIZE		288
  #define MT7916_WTBL_SIZE		544
-@@ -373,6 +374,29 @@ struct mt7915_dev {
+@@ -374,6 +375,29 @@ struct mt7915_dev {
  	struct reset_control *rstc;
  	void __iomem *dcm;
  	void __iomem *sku;
@@ -391,7 +379,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  };
  
  enum {
-@@ -651,4 +675,24 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -652,4 +676,24 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  

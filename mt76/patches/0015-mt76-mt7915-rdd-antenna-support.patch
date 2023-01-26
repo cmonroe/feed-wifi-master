@@ -22,7 +22,7 @@
  		return ret;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -2163,6 +2163,27 @@ static void mt7915_dfs_stop_radar_detect
+@@ -2160,6 +2160,27 @@ static void mt7915_dfs_stop_radar_detect
  					MT_RX_SEL0, 0);
  }
  
@@ -50,7 +50,7 @@
  static int mt7915_dfs_start_rdd(struct mt7915_dev *dev, int chain)
  {
  	int err, region;
-@@ -2185,12 +2206,18 @@ static int mt7915_dfs_start_rdd(struct m
+@@ -2182,12 +2203,18 @@ static int mt7915_dfs_start_rdd(struct m
  	if (err < 0)
  		return err;
  
@@ -69,7 +69,7 @@
  
  	return mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_DET_MODE, chain,
  				       MT_RX_SEL0, 1);
-@@ -2312,6 +2339,7 @@ stop:
+@@ -2309,6 +2336,7 @@ stop:
  	if (err < 0)
  		return err;
  
@@ -77,7 +77,7 @@
  	if (is_mt7915(&dev->mt76)) {
  		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT,
  					      phy->mt76->band_idx, 0,
-@@ -2319,7 +2347,9 @@ stop:
+@@ -2316,7 +2344,9 @@ stop:
  		if (err < 0)
  			return err;
  	}
@@ -89,7 +89,7 @@
  
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -262,6 +262,7 @@ struct mt7915_phy {
+@@ -263,6 +263,7 @@ struct mt7915_phy {
  	u32 throttle_temp[2]; /* 0: critical high, 1: maximum */
  
  	u32 rxfilter;

@@ -31,7 +31,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -1674,6 +1674,10 @@ void mt76_ethtool_worker(struct mt76_eth
+@@ -1716,6 +1716,10 @@ void mt76_ethtool_worker(struct mt76_eth
  
  	wi->sta_count++;
  
@@ -214,7 +214,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  	}
  
  	mt7915_mac_tx_free_done(dev, &free_list, wake);
-@@ -1371,7 +1457,7 @@ void mt7915_tx_token_put(struct mt7915_d
+@@ -1368,7 +1454,7 @@ void mt7915_tx_token_put(struct mt7915_d
  
  	spin_lock_bh(&dev->mt76.token_lock);
  	idr_for_each_entry(&dev->mt76.token, txwi, id) {
@@ -251,7 +251,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  	"v_tx_mode_ht",
 --- a/mt7921/main.c
 +++ b/mt7921/main.c
-@@ -1101,6 +1101,10 @@ static const char mt7921_gstrings_stats[
+@@ -1059,6 +1059,10 @@ static const char mt7921_gstrings_stats[
  	"rx_ampdu_bytes_cnt",
  	"rx_ba_cnt",
  	/* per vif counters */
