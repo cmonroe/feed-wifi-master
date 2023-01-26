@@ -199,7 +199,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	if (dev->relay_fwlog)
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -300,6 +300,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+@@ -299,6 +299,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  	__le16 fc = 0;
  	int idx;
  
@@ -210,7 +210,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	memset(status, 0, sizeof(*status));
  
  	if ((rxd1 & MT_RXD1_NORMAL_BAND_IDX) && !phy->mt76->band_idx) {
-@@ -483,6 +487,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+@@ -482,6 +486,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  	}
  
  	hdr_gap = (u8 *)rxd - skb->data + 2 * remove_pad;
@@ -221,7 +221,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	if (hdr_trans && ieee80211_has_morefrags(fc)) {
  		struct ieee80211_vif *vif;
  		int err;
-@@ -820,6 +828,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -819,6 +827,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	tx_info->buf[1].skip_unmap = true;
  	tx_info->nbuf = MT_CT_DMA_BUF_NUM;
  
@@ -236,7 +236,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -62,7 +62,11 @@ int mt7915_run(struct ieee80211_hw *hw)
+@@ -73,7 +73,11 @@ int mt7915_run(struct ieee80211_hw *hw)
  	if (ret)
  		goto out;
  
@@ -262,7 +262,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -3354,6 +3359,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3362,6 +3367,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -271,7 +271,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -3791,6 +3798,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3799,6 +3806,43 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -315,7 +315,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-@@ -3819,3 +3863,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+@@ -3827,3 +3871,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
  
  	return 0;
  }
@@ -361,7 +361,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_WTBL_SIZE		288
  #define MT7916_WTBL_SIZE		544
-@@ -368,6 +369,29 @@ struct mt7915_dev {
+@@ -373,6 +374,29 @@ struct mt7915_dev {
  	struct reset_control *rstc;
  	void __iomem *dcm;
  	void __iomem *sku;
@@ -391,7 +391,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  };
  
  enum {
-@@ -645,4 +669,24 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -651,4 +675,24 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  

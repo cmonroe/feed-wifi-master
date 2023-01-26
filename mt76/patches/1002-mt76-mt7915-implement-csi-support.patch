@@ -51,7 +51,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  mt7915e-$(CONFIG_MT7986_WMAC) += soc.o
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -425,6 +425,12 @@ mt7915_init_wiphy(struct mt7915_phy *phy
+@@ -430,6 +430,12 @@ mt7915_init_wiphy(struct mt7915_phy *phy
  	wiphy->available_antennas_rx = phy->mt76->antenna_mask;
  	wiphy->available_antennas_tx = phy->mt76->antenna_mask;
  
@@ -64,7 +64,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  	/* init led callbacks */
  	if (IS_ENABLED(CONFIG_MT76_LEDS)) {
  		mphy->leds.cdev.brightness_set = mt7915_led_set_brightness;
-@@ -652,6 +658,12 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -657,6 +663,12 @@ mt7915_register_ext_phy(struct mt7915_de
  	/* init wiphy according to mphy and phy */
  	mt7915_init_wiphy(phy);
  
@@ -77,7 +77,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1160,6 +1172,25 @@ void mt7915_set_stream_he_caps(struct mt
+@@ -1154,6 +1166,25 @@ void mt7915_set_stream_he_caps(struct mt
  	}
  }
  
@@ -103,7 +103,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  static void mt7915_unregister_ext_phy(struct mt7915_dev *dev)
  {
  	struct mt7915_phy *phy = mt7915_ext_phy(dev);
-@@ -1168,6 +1199,10 @@ static void mt7915_unregister_ext_phy(st
+@@ -1162,6 +1193,10 @@ static void mt7915_unregister_ext_phy(st
  	if (!phy)
  		return;
  
@@ -114,7 +114,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  	mt7915_unregister_thermal(phy);
  	mt76_unregister_phy(mphy);
  	ieee80211_free_hw(mphy->hw);
-@@ -1180,6 +1215,10 @@ static void mt7915_stop_hardware(struct
+@@ -1174,6 +1209,10 @@ static void mt7915_stop_hardware(struct
  	mt7915_dma_cleanup(dev);
  	tasklet_disable(&dev->irq_tasklet);
  
@@ -150,7 +150,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
-@@ -3798,6 +3807,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3806,6 +3815,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -344,7 +344,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  #endif
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -289,6 +289,20 @@ struct mt7915_phy {
+@@ -294,6 +294,20 @@ struct mt7915_phy {
  		u8 spe_idx;
  	} test;
  #endif
@@ -365,7 +365,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  };
  
  struct mt7915_dev {
-@@ -669,6 +683,12 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -675,6 +689,12 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  
