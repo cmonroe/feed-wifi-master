@@ -2,8 +2,6 @@
  src/wps/wps_registrar.c |    4 ++++
  1 file changed, 4 insertions(+)
 
-Index: b/src/wps/wps_registrar.c
-===================================================================
 --- a/src/wps/wps_registrar.c
 +++ b/src/wps/wps_registrar.c
 @@ -1312,6 +1312,10 @@ static int wps_set_ie(struct wps_registr

@@ -12,11 +12,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  src/drivers/nl80211_copy.h   |  1 +
  4 files changed, 40 insertions(+), 1 deletion(-)
 
-Index: hostapd-2022-07-29-b704dc72/src/ap/hostapd.c
-===================================================================
---- hostapd-2022-07-29-b704dc72.orig/src/ap/hostapd.c
-+++ hostapd-2022-07-29-b704dc72/src/ap/hostapd.c
-@@ -1463,7 +1463,9 @@ static int hostapd_setup_bss(struct host
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -1464,7 +1464,9 @@ static int hostapd_setup_bss(struct host
  		return -1;
  	}
  
@@ -27,10 +25,8 @@ Index: hostapd-2022-07-29-b704dc72/src/ap/hostapd.c
  		return -1;
  
  	if (flush_old_stations && !conf->start_disabled &&
-Index: hostapd-2022-07-29-b704dc72/src/drivers/driver.h
-===================================================================
---- hostapd-2022-07-29-b704dc72.orig/src/drivers/driver.h
-+++ hostapd-2022-07-29-b704dc72/src/drivers/driver.h
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
 @@ -4676,6 +4676,12 @@ struct wpa_driver_ops {
  			      const u8 *match, size_t match_len,
  			      bool multicast);
@@ -44,10 +40,8 @@ Index: hostapd-2022-07-29-b704dc72/src/drivers/driver.h
  };
  
  /**
-Index: hostapd-2022-07-29-b704dc72/src/drivers/driver_nl80211.c
-===================================================================
---- hostapd-2022-07-29-b704dc72.orig/src/drivers/driver_nl80211.c
-+++ hostapd-2022-07-29-b704dc72/src/drivers/driver_nl80211.c
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
 @@ -12365,6 +12365,34 @@ static int testing_nl80211_radio_disable
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -89,10 +83,8 @@ Index: hostapd-2022-07-29-b704dc72/src/drivers/driver_nl80211.c
  #endif /* CONFIG_TESTING_OPTIONS */
 +	.start_disabled = nl80211_start_disabled,
  };
-Index: hostapd-2022-07-29-b704dc72/src/drivers/nl80211_copy.h
-===================================================================
---- hostapd-2022-07-29-b704dc72.orig/src/drivers/nl80211_copy.h
-+++ hostapd-2022-07-29-b704dc72/src/drivers/nl80211_copy.h
+--- a/src/drivers/nl80211_copy.h
++++ b/src/drivers/nl80211_copy.h
 @@ -3176,6 +3176,7 @@ enum nl80211_attrs {
  	NL80211_ATTR_EHT_CAPABILITY,
  

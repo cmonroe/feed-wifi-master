@@ -1,6 +1,6 @@
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -145,6 +145,71 @@ static char *get_option(char *opt, char
+@@ -145,6 +145,75 @@ static char *get_option(char *opt, char
  		return NULL;
  }
  
@@ -28,6 +28,10 @@
 +	ch = conf->channel;
 +
 +	s40 = ch + (ch & 0x4) - 2;
++#ifdef CONFIG_IEEE80211AX
++	if( is_6ghz_op_class(conf->op_class) )
++		s40 = ch + 2 - (ch & 0x4);
++#endif
 +	s80 = s40 + 4 - (s40 & 0x8);
 +	s160 = s80 + 8 - (s80 & 0x10);
 +
@@ -72,7 +76,7 @@
  static struct hostapd_config *hostapd_ctrl_iface_config_read(const char *fname)
  {
  	struct hostapd_config *conf;
-@@ -174,6 +239,8 @@ static struct hostapd_config *hostapd_ct
+@@ -174,6 +243,8 @@ static struct hostapd_config *hostapd_ct
  			break;
  	}
  
