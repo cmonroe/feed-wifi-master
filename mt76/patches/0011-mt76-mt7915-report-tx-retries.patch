@@ -44,7 +44,7 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
  	data[ei++] += stats->tx_mode[MT_PHY_TYPE_HT];
 --- a/mt76.h
 +++ b/mt76.h
-@@ -268,6 +268,11 @@ enum mt76_phy_type {
+@@ -271,6 +271,11 @@ enum mt76_phy_type {
  };
  
  struct mt76_sta_stats {
@@ -53,8 +53,8 @@ Signed-off-by: Ben Greear <greearb@candelatech.com>
 +	/* frames that succeeded, perhaps after retry */
 +	unsigned long tx_mpdu_ok;
 +	unsigned long tx_mpdu_retry; /* number of times frames were retried */
- 	u64 tx_mode[__MT_PHY_TYPE_HE_MAX];
- 	u64 tx_bw[4];		/* 20, 40, 80, 160 */
+ 	u64 tx_mode[__MT_PHY_TYPE_MAX];
+ 	u64 tx_bw[5];		/* 20, 40, 80, 160, 320 */
  	u64 tx_nss[4];		/* 1, 2, 3, 4 */
 --- a/mt7915/init.c
 +++ b/mt7915/init.c

@@ -11,7 +11,7 @@ Subject: [PATCH] mt76: mt7915: add fw_version dump
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -843,6 +843,10 @@ struct mt76_dev {
+@@ -849,6 +849,10 @@ struct mt76_dev {
  		struct mt76_sdio sdio;
  	};
  
@@ -24,7 +24,7 @@ Subject: [PATCH] mt76: mt7915: add fw_version dump
  };
 --- a/mt76_connac_mcu.c
 +++ b/mt76_connac_mcu.c
-@@ -2964,6 +2964,9 @@ int mt76_connac2_load_ram(struct mt76_de
+@@ -3010,6 +3010,9 @@ int mt76_connac2_load_ram(struct mt76_de
  		goto out;
  	}
  
@@ -34,7 +34,7 @@ Subject: [PATCH] mt76: mt7915: add fw_version dump
  	snprintf(dev->hw->wiphy->fw_version,
  		 sizeof(dev->hw->wiphy->fw_version),
  		 "%.10s-%.15s", hdr->fw_ver, hdr->build_date);
-@@ -2993,6 +2996,9 @@ int mt76_connac2_load_ram(struct mt76_de
+@@ -3039,6 +3042,9 @@ int mt76_connac2_load_ram(struct mt76_de
  		goto out;
  	}
  
@@ -44,7 +44,7 @@ Subject: [PATCH] mt76: mt7915: add fw_version dump
  	snprintf(dev->hw->wiphy->fw_version,
  		 sizeof(dev->hw->wiphy->fw_version),
  		 "%.10s-%.15s", hdr->fw_ver, hdr->build_date);
-@@ -3063,6 +3069,9 @@ int mt76_connac2_load_patch(struct mt76_
+@@ -3109,6 +3115,9 @@ int mt76_connac2_load_patch(struct mt76_
  	dev_info(dev->dev, "HW/SW Version: 0x%x, Build Time: %.16s\n",
  		 be32_to_cpu(hdr->hw_sw_ver), hdr->build_date);
  
