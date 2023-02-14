@@ -1,0 +1,78 @@
+Index: hostapd-2020-06-08-5a8b3662/src/ap/ctrl_iface_ap.c
+===================================================================
+--- hostapd-2020-06-08-5a8b3662.orig/src/ap/ctrl_iface_ap.c
++++ hostapd-2020-06-08-5a8b3662/src/ap/ctrl_iface_ap.c
+@@ -202,6 +202,53 @@ static const char * timeout_next_str(int
+ 	return "?";
+ }
+ 
++#ifdef CONFIG_IEEE80211AX
++static int hostapd_write_he_capab(char* buf, size_t buflen,
++		struct ieee80211_he_capabilities* he_capab, size_t he_capab_len) {
++	int ret;
++	int len = 0;
++
++	ret = os_snprintf(buf, buflen,
++			  "he_mac_capab_info=");
++	if (os_snprintf_error(buflen, ret))
++		return 0;
++	len += ret;
++
++	len += wpa_snprintf_hex(buf + len, buflen - len, he_capab->he_mac_capab_info, 6);
++	ret = os_snprintf(buf + len, buflen - len, "\n");
++	if (os_snprintf_error(buflen - len, ret))
++		return len;
++	len += ret;
++
++	ret = os_snprintf(buf + len, buflen - len,
++			  "he_phy_capab_info=");
++	if (os_snprintf_error(buflen - len, ret))
++		return len;
++	len += ret;
++
++	len += wpa_snprintf_hex(buf + len, buflen - len, he_capab->he_phy_capab_info, 11);
++	ret = os_snprintf(buf + len, buflen - len, "\n");
++	if (os_snprintf_error(buflen - len, ret))
++		return len;
++	len += ret;
++
++	if (he_capab_len - 17 > 0) {
++		ret = os_snprintf(buf + len, buflen - len,
++				"he_capab_optional=");
++		if (os_snprintf_error(buflen - len, ret))
++			return len;
++		len += ret;
++
++		len += wpa_snprintf_hex(buf + len, buflen - len, he_capab->optional, he_capab_len - 17);
++		ret = os_snprintf(buf + len, buflen - len, "\n");
++		if (os_snprintf_error(buflen - len, ret))
++			return len;
++		len += ret;
++	}
++
++	return len;
++}
++#endif /* CONFIG_IEEE80211AX */
+ 
+ static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
+ 				      struct sta_info *sta,
+@@ -377,6 +424,16 @@ static int hostapd_ctrl_iface_sta_mib(st
+ 		if (!os_snprintf_error(buflen - len, ret))
+ 			len += ret;
+ 	}
++#ifdef CONFIG_IEEE80211AX
++	if ((sta->flags & WLAN_STA_HE) && sta->he_capab) {
++		res = os_snprintf(buf + len, buflen - len, "he_capab_len=%d\n",
++				  sta->he_capab_len);
++		if (!os_snprintf_error(buflen - len, res))
++			len += res;
++		len += hostapd_write_he_capab(buf + len, buflen - len,
++								sta->he_capab, sta->he_capab_len);
++	}
++#endif
+ 
+ 	return len;
+ }
+-- 
+2.32.0.windows.1
+
