@@ -1,0 +1,12 @@
+--- a/mt7921/usb.c
++++ b/mt7921/usb.c
+@@ -18,6 +18,9 @@ static const struct usb_device_id mt7921
+ 	/* Comfast CF-952AX */
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(0x3574, 0x6211, 0xff, 0xff, 0xff),
+ 		.driver_info = (kernel_ulong_t)MT7921_FIRMWARE_WM },
++	/* Netgear A8000 */
++	{ USB_DEVICE_AND_INTERFACE_INFO(0x0846, 0x9060, 0xff, 0xff, 0xff),
++		.driver_info = (kernel_ulong_t)MT7921_FIRMWARE_WM },
+ 	{ },
+ };
+ 
