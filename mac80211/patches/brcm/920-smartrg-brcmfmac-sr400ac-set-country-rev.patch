@@ -9,7 +9,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/of.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/of.c
-@@ -68,6 +68,11 @@ static void brcmf_of_probe_cc(struct dev
+@@ -74,6 +74,11 @@ static void brcmf_of_probe_cc(struct dev
  		{ "JP", "JP", 78 },
  		{ "US", "Q2", 86 },
  	};
@@ -21,7 +21,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  	struct brcmfmac_pd_cc_entry *cc_ent = NULL;
  	int table_size = 0;
  
-@@ -76,6 +81,11 @@ static void brcmf_of_probe_cc(struct dev
+@@ -82,6 +87,11 @@ static void brcmf_of_probe_cc(struct dev
  		table_size = ARRAY_SIZE(netgear_r8000_cc_ent);
  	}
  

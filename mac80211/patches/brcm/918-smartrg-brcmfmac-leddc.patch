@@ -9,7 +9,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -257,6 +257,42 @@ static void brcmf_netdev_set_multicast_l
+@@ -253,6 +253,42 @@ static void brcmf_netdev_set_multicast_l
  	schedule_work(&ifp->multicast_work);
  }
  
@@ -52,7 +52,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  /* Linux network driver ioctl encoding - this is same as wl_ioctl from libwmd/src/api/broadcom.h, similar to dhd_ioctl */
  typedef struct brcmf_ioctl {
          u32   cmd;    /* common ioctl definition */
-@@ -1530,6 +1566,8 @@ static int brcmf_bus_started(struct brcm
+@@ -1498,6 +1534,8 @@ static int brcmf_bus_started(struct brcm
  			    &bus_reset_fops);
  	debugfs_create_file("console", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
  			    &console_fops);

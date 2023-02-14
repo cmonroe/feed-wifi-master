@@ -9,10 +9,8 @@ Subject: [PATCH] OWRT-4809 flowring msgbuf add_peer() function added
  .../wireless/broadcom/brcm80211/brcmfmac/proto.h   |  7 ++++
  3 files changed, 68 insertions(+), 3 deletions(-)
 
-Index: backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-===================================================================
---- backports-6.1-rc4.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-+++ backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 @@ -6205,6 +6205,24 @@ brcmf_notify_connect_status(struct brcmf
  	struct brcmf_cfg80211_profile *profile = &ifp->vif->profile;
  	struct ieee80211_channel *chan;
@@ -38,10 +36,8 @@ Index: backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg802
  
  	if ((e->event_code == BRCMF_E_DEAUTH) ||
  	    (e->event_code == BRCMF_E_DEAUTH_IND) ||
-Index: backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
-===================================================================
---- backports-6.1-rc4.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
-+++ backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
 @@ -844,12 +844,12 @@ static int brcmf_msgbuf_tx_queue_data(st
  
  	flowid = brcmf_flowring_lookup(flow, eh->h_dest, skb->priority, ifidx);
@@ -110,10 +106,8 @@ Index: backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf
  	drvr->proto->add_tdls_peer = brcmf_msgbuf_add_tdls_peer;
  	drvr->proto->rxreorder = brcmf_msgbuf_rxreorder;
  	drvr->proto->debugfs_create = brcmf_msgbuf_debugfs_create;
-Index: backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
-===================================================================
---- backports-6.1-rc4.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
-+++ backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/proto.h
 @@ -30,6 +30,8 @@ struct brcmf_proto {
  				    enum proto_addr_mode addr_mode);
  	void (*delete_peer)(struct brcmf_pub *drvr, int ifidx,

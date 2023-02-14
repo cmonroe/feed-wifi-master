@@ -7,10 +7,8 @@ Signed-off-by: Colin Whittaker <colin.whittaker@smartrg.com>
  core.c |    1 +
  1 file changed, 1 insertion(+)
 
-Index: backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-===================================================================
---- backports-6.1-rc4.orig/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-+++ backports-6.1-rc4/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 @@ -878,6 +878,7 @@ struct brcmf_if *brcmf_add_if(struct brc
  		if (!ndev)
  			return ERR_PTR(-ENOMEM);

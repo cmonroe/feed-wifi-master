@@ -22,7 +22,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  struct d11rxhdr_le {
  	__le16 RxFrameSize;
  	u16 PAD;
-@@ -257,6 +261,146 @@ static void brcmf_netdev_set_multicast_l
+@@ -253,6 +257,146 @@ static void brcmf_netdev_set_multicast_l
  	schedule_work(&ifp->multicast_work);
  }
  
@@ -169,7 +169,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  /**
   * brcmf_skb_is_iapp - checks if skb is an IAPP packet
   *
-@@ -636,7 +780,8 @@ static const struct net_device_ops brcmf
+@@ -625,7 +769,8 @@ static const struct net_device_ops brcmf
  	.ndo_stop = brcmf_netdev_stop,
  	.ndo_start_xmit = brcmf_netdev_start_xmit,
  	.ndo_set_mac_address = brcmf_netdev_set_mac_address,
@@ -178,7 +178,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 +	.ndo_do_ioctl = brcmf_netdev_ioctl
  };
  
- #undef netdev_set_priv_destructor
+ int brcmf_net_attach(struct brcmf_if *ifp, bool locked)
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
 @@ -23,7 +23,8 @@

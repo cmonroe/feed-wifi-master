@@ -9,7 +9,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
-@@ -281,6 +281,7 @@ struct brcmf_msgbuf_pktid {
+@@ -282,6 +282,7 @@ struct brcmf_msgbuf_pktid {
  	u16 data_offset;
  	struct sk_buff *skb;
  	dma_addr_t physaddr;
@@ -17,7 +17,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  };
  
  struct brcmf_msgbuf_pktids {
-@@ -320,7 +321,7 @@ static int
+@@ -321,7 +322,7 @@ static int
  brcmf_msgbuf_alloc_pktid(struct device *dev,
  			 struct brcmf_msgbuf_pktids *pktids,
  			 struct sk_buff *skb, u16 data_offset,
@@ -26,7 +26,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  {
  	struct brcmf_msgbuf_pktid *array;
  	u32 count;
-@@ -354,6 +355,7 @@ brcmf_msgbuf_alloc_pktid(struct device *
+@@ -355,6 +356,7 @@ brcmf_msgbuf_alloc_pktid(struct device *
  	array[*idx].data_offset = data_offset;
  	array[*idx].physaddr = *physaddr;
  	array[*idx].skb = skb;
@@ -34,7 +34,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  
  	pktids->last_allocated_idx = *idx;
  
-@@ -388,6 +390,38 @@ brcmf_msgbuf_get_pktid(struct device *de
+@@ -389,6 +391,38 @@ brcmf_msgbuf_get_pktid(struct device *de
  	return NULL;
  }
  
@@ -91,9 +91,9 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  			brcmf_flowring_reinsert(flow, flowid, skb);
  			bphy_err(drvr, "No PKTID available !!\n");
  			break;
-@@ -812,6 +848,11 @@ static int brcmf_msgbuf_tx_queue_data(st
- 		if (flowid == BRCMF_FLOWRING_INVALID_ID)
- 			return -ENOMEM;
+@@ -816,6 +852,11 @@ static int brcmf_msgbuf_tx_queue_data(st
+ 			return 0;
+ 		}
  	}
 +
 +	if(msgbuf->flow->rings[flowid]->status != RING_OPEN) {
@@ -103,7 +103,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  	queue_count = brcmf_flowring_enqueue(flow, flowid, skb);
  	force = ((queue_count % BRCMF_MSGBUF_TRICKLE_TXWORKER_THRS) == 0);
  	brcmf_msgbuf_schedule_txdata(msgbuf, flowid, force);
-@@ -933,7 +974,7 @@ static u32 brcmf_msgbuf_rxbuf_data_post(
+@@ -937,7 +978,7 @@ static u32 brcmf_msgbuf_rxbuf_data_post(
  		pktlen = skb->len;
  		if (brcmf_msgbuf_alloc_pktid(msgbuf->drvr->bus_if->dev,
  					     msgbuf->rx_pktids, skb, 0,
@@ -112,7 +112,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  			dev_kfree_skb_any(skb);
  			bphy_err(drvr, "No PKTID available !!\n");
  			brcmf_commonring_write_cancel(commonring, alloced - i);
-@@ -1043,7 +1084,7 @@ brcmf_msgbuf_rxbuf_ctrl_post(struct brcm
+@@ -1047,7 +1088,7 @@ brcmf_msgbuf_rxbuf_ctrl_post(struct brcm
  		pktlen = skb->len;
  		if (brcmf_msgbuf_alloc_pktid(msgbuf->drvr->bus_if->dev,
  					     msgbuf->rx_pktids, skb, 0,
@@ -121,9 +121,9 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  			dev_kfree_skb_any(skb);
  			bphy_err(drvr, "No PKTID available !!\n");
  			brcmf_commonring_write_cancel(commonring, alloced - i);
-@@ -1402,6 +1443,8 @@ void brcmf_msgbuf_delete_flowring(struct
- 	u8 ifidx;
- 	int err;
+@@ -1424,6 +1465,8 @@ void brcmf_msgbuf_delete_flowring(struct
+ 		atomic_set(&commonring_del->outstanding_tx, 0);
+ 	}
  
 +	msgbuf->flow->rings[flowid]->status=RING_CLOSED;
 +

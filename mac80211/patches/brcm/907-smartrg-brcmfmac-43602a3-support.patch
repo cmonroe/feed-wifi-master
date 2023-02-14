@@ -17,8 +17,8 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  BRCMF_FW_DEF(4350, "brcmfmac4350-pcie");
  BRCMF_FW_DEF(4350C, "brcmfmac4350c2-pcie");
  BRCMF_FW_CLM_DEF(4356, "brcmfmac4356-pcie");
-@@ -68,7 +69,8 @@ MODULE_FIRMWARE(BRCMF_FW_DEFAULT_PATH "b
- MODULE_FIRMWARE(BRCMF_FW_DEFAULT_PATH "brcmfmac*-pcie.*.bin");
+@@ -71,7 +72,8 @@ MODULE_FIRMWARE(BRCMF_FW_DEFAULT_PATH "b
+ MODULE_FIRMWARE(BRCMF_FW_DEFAULT_PATH "brcmfmac*-pcie.*.clm_blob");
  
  static const struct brcmf_firmware_mapping brcmf_pcie_fwnames[] = {
 -	BRCMF_FW_ENTRY(BRCM_CC_43602_CHIP_ID, 0xFFFFFFFF, 43602),
