@@ -1185,7 +1185,10 @@ drv_mac80211_setup() {
 			local hostapd_res="$(ubus call hostapd config_add "{\"iface\":\"$primary_ap\", \"config\":\"${hostapd_conf_file}\"}")"
 			ret="$?"
 			[ "$ret" != 0 -o -z "$hostapd_res" ] && {
-				wireless_setup_failed HOSTAPD_START_FAILED
+				echo "mac80211.sh: Device setup failed: HOSTAPD_START_FAILED; removing $primary_ap config and will retry"
+				local hostapd_res="$(ubus call hostapd config_remove "{\"iface\":\"$primary_ap\"}")"
+				echo "mac80211.sh: hostapd returned: $hostapd_res removing $primary_ap config"
+
 				return
 			}
 			wireless_add_process "$(jsonfilter -s "$hostapd_res" -l 1 -e @.pid)" "/usr/sbin/hostapd" 1 1
