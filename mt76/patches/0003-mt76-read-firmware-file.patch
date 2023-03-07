@@ -81,7 +81,7 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  int mt76_get_of_eeprom(struct mt76_dev *dev, void *eep, int offset, int len)
  {
  #if defined(CONFIG_OF) && defined(CONFIG_MTD)
-@@ -348,11 +412,21 @@ EXPORT_SYMBOL_GPL(mt76_get_rate_power_li
+@@ -349,11 +413,21 @@ EXPORT_SYMBOL_GPL(mt76_get_rate_power_li
  int
  mt76_eeprom_init(struct mt76_dev *dev, int len)
  {
