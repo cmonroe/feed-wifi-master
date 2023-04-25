@@ -48,7 +48,7 @@ Signed-off-by: Sujuan Chen <sujuan.chen@mediatek.com>
  	if (idx < 0)
  		return -ENOSPC;
  
-@@ -1139,6 +1146,13 @@ static void mt7915_sta_set_4addr(struct
+@@ -1146,6 +1153,13 @@ static void mt7915_sta_set_4addr(struct
  	else
  		clear_bit(MT_WCID_FLAG_4ADDR, &msta->wcid.flags);
  
@@ -62,7 +62,7 @@ Signed-off-by: Sujuan Chen <sujuan.chen@mediatek.com>
  	mt76_connac_mcu_wtbl_update_hdr_trans(&dev->mt76, vif, sta);
  }
  
-@@ -1516,8 +1530,12 @@ mt7915_net_fill_forward_path(struct ieee
+@@ -1523,8 +1537,12 @@ mt7915_net_fill_forward_path(struct ieee
  	path->dev = ctx->dev;
  	path->mtk_wdma.wdma_idx = wed->wdma_idx;
  	path->mtk_wdma.bss = mvif->mt76.idx;
@@ -103,7 +103,7 @@ Signed-off-by: Sujuan Chen <sujuan.chen@mediatek.com>
  	if (ret)
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -279,6 +279,7 @@ enum {
+@@ -319,6 +319,7 @@ enum {
  	MCU_WA_PARAM_PDMA_RX = 0x04,
  	MCU_WA_PARAM_CPU_UTIL = 0x0b,
  	MCU_WA_PARAM_RED = 0x0e,
