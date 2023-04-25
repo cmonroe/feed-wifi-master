@@ -1,18 +1,18 @@
-From 3913add871ba0d7b4b6a997109ee2acb6d7e5ed3 Mon Sep 17 00:00:00 2001
+From 3dbd27d810bca208af96102d52ac71d5ce8a44bb Mon Sep 17 00:00:00 2001
 From: Bo Jiao <Bo.Jiao@mediatek.com>
 Date: Mon, 6 Jun 2022 20:13:02 +0800
-Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
+Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
 
 ---
  mt76_connac_mcu.h |   2 +
  mt7915/Makefile   |   4 +-
  mt7915/init.c     |  39 ++++
  mt7915/mcu.c      | 111 ++++++++++++
- mt7915/mcu.h      |  76 ++++++++
+ mt7915/mcu.h      |  77 ++++++++
  mt7915/mt7915.h   |  20 ++
  mt7915/vendor.c   | 452 ++++++++++++++++++++++++++++++++++++++++++++++
  mt7915/vendor.h   |  60 ++++++
- 8 files changed, 762 insertions(+), 2 deletions(-)
+ 8 files changed, 763 insertions(+), 2 deletions(-)
  create mode 100644 mt7915/vendor.c
  create mode 100644 mt7915/vendor.h
 
@@ -51,20 +51,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  mt7915e-$(CONFIG_MT7986_WMAC) += soc.o
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -430,6 +430,12 @@ mt7915_init_wiphy(struct mt7915_phy *phy
- 	wiphy->available_antennas_rx = phy->mt76->antenna_mask;
- 	wiphy->available_antennas_tx = phy->mt76->antenna_mask;
- 
-+#ifdef CONFIG_MTK_VENDOR
-+	INIT_LIST_HEAD(&dev->phy.csi.csi_list);
-+	spin_lock_init(&dev->phy.csi.csi_lock);
-+	mt7915_vendor_register(&dev->phy);
-+#endif
-+
- 	/* init led callbacks */
- 	if (IS_ENABLED(CONFIG_MT76_LEDS)) {
- 		mphy->leds.cdev.brightness_set = mt7915_led_set_brightness;
-@@ -654,6 +660,12 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -654,6 +654,12 @@ mt7915_register_ext_phy(struct mt7915_de
  	/* init wiphy according to mphy and phy */
  	mt7915_init_wiphy(phy);
  
@@ -77,7 +64,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1151,6 +1163,25 @@ void mt7915_set_stream_he_caps(struct mt
+@@ -1151,6 +1157,25 @@ void mt7915_set_stream_he_caps(struct mt
  	}
  }
  
@@ -103,7 +90,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  static void mt7915_unregister_ext_phy(struct mt7915_dev *dev)
  {
  	struct mt7915_phy *phy = mt7915_ext_phy(dev);
-@@ -1159,6 +1190,10 @@ static void mt7915_unregister_ext_phy(st
+@@ -1159,6 +1184,10 @@ static void mt7915_unregister_ext_phy(st
  	if (!phy)
  		return;
  
@@ -114,7 +101,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  	mt7915_unregister_thermal(phy);
  	mt76_unregister_phy(mphy);
  	ieee80211_free_hw(mphy->hw);
-@@ -1171,6 +1206,10 @@ static void mt7915_stop_hardware(struct
+@@ -1171,6 +1200,10 @@ static void mt7915_stop_hardware(struct
  	mt7915_dma_cleanup(dev);
  	tasklet_disable(&dev->irq_tasklet);
  
@@ -125,6 +112,19 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  	if (is_mt7986(&dev->mt76))
  		mt7986_wmac_disable(dev);
  }
+@@ -1211,6 +1244,12 @@ int mt7915_register_device(struct mt7915
+ 	dev->mt76.test_ops = &mt7915_testmode_ops;
+ #endif
+ 
++#ifdef CONFIG_MTK_VENDOR
++	INIT_LIST_HEAD(&dev->phy.csi.csi_list);
++	spin_lock_init(&dev->phy.csi.csi_lock);
++	mt7915_vendor_register(&dev->phy);
++#endif
++
+ 	ret = mt76_register_device(&dev->mt76, true, mt76_rates,
+ 				   ARRAY_SIZE(mt76_rates));
+ 	if (ret)
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
 @@ -36,6 +36,10 @@ static bool sr_scene_detect = true;
@@ -150,7 +150,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
-@@ -3854,6 +3863,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3857,6 +3866,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -365,7 +365,7 @@ Subject: [PATCH 1002/1010] mt76: mt7915: csi: implement csi support
  };
  
  struct mt7915_dev {
-@@ -676,6 +690,12 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -675,6 +689,12 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  

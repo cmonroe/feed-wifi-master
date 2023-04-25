@@ -26,7 +26,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  {
  	struct brcmf_msgbuf_pktid *array;
  	u32 count;
-@@ -355,6 +356,7 @@ brcmf_msgbuf_alloc_pktid(struct device *
+@@ -358,6 +359,7 @@ brcmf_msgbuf_alloc_pktid(struct device *
  	array[*idx].data_offset = data_offset;
  	array[*idx].physaddr = *physaddr;
  	array[*idx].skb = skb;
@@ -34,7 +34,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  
  	pktids->last_allocated_idx = *idx;
  
-@@ -389,6 +391,38 @@ brcmf_msgbuf_get_pktid(struct device *de
+@@ -392,6 +394,38 @@ brcmf_msgbuf_get_pktid(struct device *de
  	return NULL;
  }
  
@@ -73,7 +73,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  
  static void
  brcmf_msgbuf_release_array(struct device *dev,
-@@ -680,6 +714,8 @@ static u32 brcmf_msgbuf_flowring_create(
+@@ -683,6 +717,8 @@ static u32 brcmf_msgbuf_flowring_create(
  		return flowid;
  	}
  
@@ -82,7 +82,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  	create->flowid = flowid;
  	create->ifidx = ifidx;
  	memcpy(create->sa, eh->h_source, ETH_ALEN);
-@@ -724,7 +760,7 @@ static void brcmf_msgbuf_txflow(struct b
+@@ -727,7 +763,7 @@ static void brcmf_msgbuf_txflow(struct b
  		skb_orphan(skb);
  		if (brcmf_msgbuf_alloc_pktid(msgbuf->drvr->bus_if->dev,
  					     msgbuf->tx_pktids, skb, ETH_HLEN,
@@ -91,7 +91,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  			brcmf_flowring_reinsert(flow, flowid, skb);
  			bphy_err(drvr, "No PKTID available !!\n");
  			break;
-@@ -816,6 +852,11 @@ static int brcmf_msgbuf_tx_queue_data(st
+@@ -819,6 +855,11 @@ static int brcmf_msgbuf_tx_queue_data(st
  			return 0;
  		}
  	}
@@ -103,7 +103,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  	queue_count = brcmf_flowring_enqueue(flow, flowid, skb);
  	force = ((queue_count % BRCMF_MSGBUF_TRICKLE_TXWORKER_THRS) == 0);
  	brcmf_msgbuf_schedule_txdata(msgbuf, flowid, force);
-@@ -937,7 +978,7 @@ static u32 brcmf_msgbuf_rxbuf_data_post(
+@@ -940,7 +981,7 @@ static u32 brcmf_msgbuf_rxbuf_data_post(
  		pktlen = skb->len;
  		if (brcmf_msgbuf_alloc_pktid(msgbuf->drvr->bus_if->dev,
  					     msgbuf->rx_pktids, skb, 0,
@@ -112,7 +112,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  			dev_kfree_skb_any(skb);
  			bphy_err(drvr, "No PKTID available !!\n");
  			brcmf_commonring_write_cancel(commonring, alloced - i);
-@@ -1047,7 +1088,7 @@ brcmf_msgbuf_rxbuf_ctrl_post(struct brcm
+@@ -1050,7 +1091,7 @@ brcmf_msgbuf_rxbuf_ctrl_post(struct brcm
  		pktlen = skb->len;
  		if (brcmf_msgbuf_alloc_pktid(msgbuf->drvr->bus_if->dev,
  					     msgbuf->rx_pktids, skb, 0,
@@ -121,7 +121,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
  			dev_kfree_skb_any(skb);
  			bphy_err(drvr, "No PKTID available !!\n");
  			brcmf_commonring_write_cancel(commonring, alloced - i);
-@@ -1424,6 +1465,8 @@ void brcmf_msgbuf_delete_flowring(struct
+@@ -1427,6 +1468,8 @@ void brcmf_msgbuf_delete_flowring(struct
  		atomic_set(&commonring_del->outstanding_tx, 0);
  	}
  

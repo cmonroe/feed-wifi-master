@@ -1,22 +1,23 @@
-From 6f3fdaaef8dcd1d95017aaf1755cf001168d0836 Mon Sep 17 00:00:00 2001
+From e5032ab43839e8f9c601bc929f9851ce2492a553 Mon Sep 17 00:00:00 2001
 From: Shayne Chen <shayne.chen@mediatek.com>
 Date: Wed, 22 Jun 2022 10:39:47 +0800
-Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
+Subject: [PATCH 1000/1009] wifi: mt76: mt7915: add mtk internal debug tools
+ for mt76
 
 ---
- mt76_connac_mcu.h     |    7 +
+ mt76_connac_mcu.h     |    6 +
  mt7915/Makefile       |    2 +-
- mt7915/debugfs.c      |   73 +-
+ mt7915/debugfs.c      |   89 +-
  mt7915/mac.c          |   14 +
  mt7915/main.c         |    4 +
- mt7915/mcu.c          |   63 +
+ mt7915/mcu.c          |   48 +-
  mt7915/mcu.h          |    4 +
- mt7915/mt7915.h       |   44 +
- mt7915/mt7915_debug.h | 1350 +++++++++++++++++++
- mt7915/mtk_debugfs.c  | 2925 +++++++++++++++++++++++++++++++++++++++++
+ mt7915/mt7915.h       |   43 +
+ mt7915/mt7915_debug.h | 1418 ++++++++++++++++
+ mt7915/mtk_debugfs.c  | 3606 +++++++++++++++++++++++++++++++++++++++++
  mt7915/mtk_mcu.c      |   51 +
  tools/fwlog.c         |   44 +-
- 12 files changed, 4568 insertions(+), 13 deletions(-)
+ 12 files changed, 5310 insertions(+), 19 deletions(-)
  create mode 100644 mt7915/mt7915_debug.h
  create mode 100644 mt7915/mtk_debugfs.c
  create mode 100644 mt7915/mtk_mcu.c
@@ -31,18 +32,18 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	MCU_EXT_CMD_EFUSE_BUFFER_MODE = 0x21,
  	MCU_EXT_CMD_THERMAL_PROT = 0x23,
  	MCU_EXT_CMD_STA_REC_UPDATE = 0x25,
-@@ -1174,6 +1175,11 @@ enum {
- 	MCU_EXT_CMD_TXDPD_CAL = 0x60,
- 	MCU_EXT_CMD_CAL_CACHE = 0x67,
- 	MCU_EXT_CMD_RED_ENABLE = 0x68,
+@@ -1171,6 +1172,11 @@ enum {
+ 	MCU_EXT_CMD_TX_POWER_FEATURE_CTRL = 0x58,
+ 	MCU_EXT_CMD_RXDCOC_CAL = 0x59,
+ 	MCU_EXT_CMD_GET_MIB_INFO = 0x5a,
 +#ifdef MTK_DEBUG
 +	MCU_EXT_CMD_RED_SHOW_STA = 0x69,
 +	MCU_EXT_CMD_RED_TARGET_DELAY = 0x6A,
 +	MCU_EXT_CMD_RED_TX_RPT = 0x6B,
 +#endif
- 	MCU_EXT_CMD_SET_RADAR_TH = 0x7c,
- 	MCU_EXT_CMD_SET_RDD_PATTERN = 0x7d,
- 	MCU_EXT_CMD_MWDS_SUPPORT = 0x80,
+ 	MCU_EXT_CMD_TXDPD_CAL = 0x60,
+ 	MCU_EXT_CMD_CAL_CACHE = 0x67,
+ 	MCU_EXT_CMD_RED_ENABLE = 0x68,
 --- a/mt7915/Makefile
 +++ b/mt7915/Makefile
 @@ -4,7 +4,7 @@ EXTRA_CFLAGS += -DCONFIG_MT76_LEDS
@@ -112,7 +113,21 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  
  	return 0;
  }
-@@ -632,6 +651,17 @@ mt7915_fw_debug_bin_set(void *data, u64
+@@ -622,16 +641,30 @@ mt7915_fw_debug_bin_set(void *data, u64
+ 	};
+ 	struct mt7915_dev *dev = data;
+ 
+-	if (!dev->relay_fwlog)
++	if (!dev->relay_fwlog && val) {
+ 		dev->relay_fwlog = relay_open("fwlog_data", dev->debugfs_dir,
+ 					    1500, 512, &relay_cb, NULL);
+-	if (!dev->relay_fwlog)
+-		return -ENOMEM;
++		if (!dev->relay_fwlog)
++			return -ENOMEM;
++	}
+ 
+ 	dev->fw.debug_bin = val;
  
  	relay_reset(dev->relay_fwlog);
  
@@ -122,15 +137,17 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +	dev->dbg.dump_tx_pkt = val & BIT(6) ? true : false;
 +	dev->dbg.dump_rx_pkt = val & BIT(7) ? true : false;
 +	dev->dbg.dump_rx_raw = val & BIT(8) ? true : false;
-+	if (!(val & GENMASK(3, 0)))
-+		return 0;
 +#endif
 +
++	if (dev->relay_fwlog && !val) {
++		relay_close(dev->relay_fwlog);
++		dev->relay_fwlog = NULL;
++	}
 +
  	return mt7915_fw_debug_wm_set(dev, dev->fw.debug_wm);
  }
  
-@@ -1257,6 +1287,11 @@ int mt7915_init_debugfs(struct mt7915_ph
+@@ -1257,6 +1290,11 @@ int mt7915_init_debugfs(struct mt7915_ph
  	if (!ext_phy)
  		dev->debugfs_dir = dir;
  
@@ -142,10 +159,25 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	return 0;
  }
  
-@@ -1297,17 +1332,53 @@ void mt7915_debugfs_rx_fw_monitor(struct
+@@ -1269,6 +1307,12 @@ mt7915_debugfs_write_fwlog(struct mt7915
+ 	void *dest;
+ 
+ 	spin_lock_irqsave(&lock, flags);
++
++	if (!dev->relay_fwlog) {
++		spin_unlock_irqrestore(&lock, flags);
++		return;
++	}
++
+ 	dest = relay_reserve(dev->relay_fwlog, hdrlen + len + 4);
+ 	if (dest) {
+ 		*(u32 *)dest = hdrlen + len;
+@@ -1297,17 +1341,50 @@ void mt7915_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
+-	if (!dev->relay_fwlog)
+-		return;
 +#ifdef MTK_DEBUG
 +	struct {
 +		__le32 magic;
@@ -161,9 +193,6 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +		.msg_type = PKT_TYPE_RX_FW_MONITOR,
 +	};
 +#endif
-+
- 	if (!dev->relay_fwlog)
- 		return;
  
 +#ifdef MTK_DEBUG
 +	/* old magic num */
@@ -261,16 +290,19 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -2346,7 +2351,7 @@ static int mt7915_red_set_watermark(stru
+@@ -2346,7 +2351,10 @@ static int mt7915_red_set_watermark(stru
  				 sizeof(req), false);
  }
  
 -static int mt7915_mcu_set_red(struct mt7915_dev *dev, bool enabled)
++#ifndef MTK_DEBUG
++static
++#endif
 +int mt7915_mcu_set_red(struct mt7915_dev *dev, bool enabled)
  {
  #define RED_DISABLE		0
  #define RED_BY_WA_ENABLE	2
-@@ -3410,6 +3415,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3410,6 +3418,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -279,7 +311,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -3847,6 +3854,23 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3847,6 +3857,23 @@ int mt7915_mcu_twt_agrt_update(struct mt
  				 &req, sizeof(req), true);
  }
  
@@ -303,7 +335,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-@@ -3875,3 +3899,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+@@ -3875,3 +3902,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
  
  	return 0;
  }
@@ -349,7 +381,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_WTBL_SIZE		288
  #define MT7916_WTBL_SIZE		544
-@@ -374,6 +375,29 @@ struct mt7915_dev {
+@@ -374,6 +375,28 @@ struct mt7915_dev {
  	struct reset_control *rstc;
  	void __iomem *dcm;
  	void __iomem *sku;
@@ -372,14 +404,13 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +		bool dump_rx_raw;
 +		u32 token_idx;
 +		u8 sku_disable;
-+		u8 muru_onoff;
 +	} dbg;
 +	const struct mt7915_dbg_reg_desc *dbg_reg;
 +#endif
  };
  
  enum {
-@@ -652,4 +676,24 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -652,4 +675,24 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  
@@ -406,7 +437,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
  #endif
 --- /dev/null
 +++ b/mt7915/mt7915_debug.h
-@@ -0,0 +1,1350 @@
+@@ -0,0 +1,1418 @@
 +#ifndef __MT7915_DEBUG_H
 +#define __MT7915_DEBUG_H
 +
@@ -542,6 +573,8 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +	DBG_MIB_M0ARNG0,
 +	DBG_MIB_M0DR2,
 +	DBG_MIB_M0DR13,
++	DBG_WFDMA_WED_TX_CTRL,
++	DBG_WFDMA_WED_RX_CTRL,
 +	__MT_DBG_REG_REV_MAX,
 +};
 +
@@ -586,6 +619,8 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +
 +/* mt7915 regs with different base and offset */
 +static const struct __dbg_reg mt7915_dbg_reg[] = {
++	[DBG_WFDMA_WED_TX_CTRL]		= { MT_DBG_WFDMA_EXT_CSR_BASE, 0x300 },
++	[DBG_WFDMA_WED_RX_CTRL]		= { MT_DBG_WFDMA_EXT_CSR_BASE, 0x400 },
 +	[DBG_INT_SOURCE_CSR]		= { MT_DBG_WFDMA_EXT_CSR_BASE, 0x10 },
 +	[DBG_INT_MASK_CSR]		= { MT_DBG_WFDMA_EXT_CSR_BASE, 0x14 },
 +	[DBG_INT1_SOURCE_CSR]		= { MT_DBG_WFDMA_EXT_CSR_BASE, 0x88 },
@@ -690,6 +725,8 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +
 +/* mt7986/mt7916 regs with different base and offset */
 +static const struct __dbg_reg mt7916_dbg_reg[] = {
++	[DBG_WFDMA_WED_TX_CTRL]		= { MT_DBG_WFDMA_EXT_CSR_BASE, 0x300 },
++	[DBG_WFDMA_WED_RX_CTRL]		= { MT_DBG_WFDMA_EXT_CSR_BASE, 0x400 },
 +	[DBG_INT_SOURCE_CSR]		= { MT_DBG_WFDMA0_BASE, 0x200 },
 +	[DBG_INT_MASK_CSR]		= { MT_DBG_WFDMA0_BASE, 0x204 },
 +	[DBG_INT1_SOURCE_CSR]		= { MT_DBG_WFDMA0_PCIE1_BASE, 0x200 },
@@ -840,6 +877,61 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +	__le16 des_len;	/* descriptor len for rxd */
 +} __packed;
 +
++/* fw wm info related strcture */
++struct cos_msg_trace_t {
++	u32 dest_id;
++	u8 msg_id;
++	u32 pcount;
++	u32 qread;
++	u32 ts_enq;
++	u32 ts_deq;
++	u32 ts_finshq;
++};
++
++struct cos_task_info_struct {
++	u32	task_name_ptr;
++	u32	task_qname_ptr;
++	u32	task_priority;
++	u16	task_stack_size;
++	u8 	task_ext_qsize;
++	u32	task_id;
++	u32	task_ext_qid;
++	u32 	task_main_func;
++	u32	task_init_func;
++};
++
++struct cos_program_trace_t{
++	u32    dest_id;
++	u32    msg_id;
++	u32    msg_sn;
++	u32    ts_gpt2;
++	u32    LP;
++	char   name[12];
++} ;
++
++struct cos_msg_type {
++	u32	finish_cnt;
++	u32	exe_time;
++	u32 	exe_peak;
++};
++
++struct cos_task_type{
++	u32           tc_stack_start;
++	u32           tc_stack_end;
++	u32           tc_stack_pointer;
++	u32           tc_stack_size;
++	u32           tc_schedule_count;
++	u8            tc_status;
++	u8            tc_priority;
++	u8            tc_weight;
++	u8            RSVD[28];
++	u32    		 tc_entry_func;
++	u32           tc_exe_start;
++	u32           tc_exe_time;
++	u32           tc_exe_peak;
++	u32           tc_pcount;
++};
++
 +#define __DBG_REG_MAP(_dev, id, ofs)	((_dev)->dbg_reg->base_rev[(id)] + (ofs))
 +#define __DBG_REG_BASE(_dev, id)	((_dev)->dbg_reg->reg_rev[(id)].base)
 +#define __DBG_REG_OFFS(_dev, id)	((_dev)->dbg_reg->reg_rev[(id)].offs)
@@ -859,11 +951,15 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +#define MT_DBG_RX_EVENT_RING_BASE		__DBG_REG(dev, DBG_RX_EVENT_RING_BASE)
 +#define MT_DBG_RX_STS_RING_BASE			__DBG_REG(dev, DBG_RX_STS_RING_BASE)
 +#define MT_DBG_RX_DATA_RING_BASE		__DBG_REG(dev, DBG_RX_DATA_RING_BASE)
++#define MT_DBG_WFDMA_WED_TX_CTRL_BASE		__DBG_REG(dev, DBG_WFDMA_WED_TX_CTRL)
++#define MT_DBG_WFDMA_WED_RX_CTRL_BASE		__DBG_REG(dev, DBG_WFDMA_WED_RX_CTRL)
 +
 +#define MT_DBG_TX_RING_CTRL(n)			(MT_DBG_TX_RING_BASE + (0x10 * (n)))
 +#define MT_DBG_RX_DATA_RING_CTRL(n)		(MT_DBG_RX_DATA_RING_BASE + (0x10 * (n)))
 +#define MT_DBG_RX_EVENT_RING_CTRL(n)		(MT_DBG_RX_EVENT_RING_BASE + (0x10 * (n)))
 +
++#define MT_DBG_WFDMA_WED_TX_CTRL(n)		(MT_DBG_WFDMA_WED_TX_CTRL_BASE + (0x10 * (n)))
++#define MT_DBG_WFDMA_WED_RX_CTRL(n)		(MT_DBG_WFDMA_WED_RX_CTRL_BASE + (0x10 * (n)))
 +/* WFDMA COMMON */
 +#define MT_DBG_INT_SOURCE_CSR			__DBG_REG(dev, DBG_INT_SOURCE_CSR)
 +#define MT_DBG_INT_MASK_CSR			__DBG_REG(dev, DBG_INT_MASK_CSR)
@@ -1456,6 +1552,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +	u16 max_rx_process_cnt;
 +	u16 max_sw_read_idx_inc;
 +	char *const ring_info;
++	bool flags;
 +};
 +
 +const struct hif_pci_tx_ring_desc mt7915_tx_ring_layout[] = {
@@ -1514,7 +1611,8 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +	 .hw_int_mask = MT_DBG_INT_DMA1_R1_DONE,
 +	 .ring_size = 1024,
 +	 .ring_attr = HIF_RX_EVENT,
-+	 .ring_info = "event from WA band0"
++	 .ring_info = "event from WA band0",
++	 .flags = true
 +	},
 +	{
 +	 .hw_int_mask = MT_DBG_INT_DMA1_R2_DONE,
@@ -1586,7 +1684,8 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +	 .hw_int_mask = MT_DBG_INT_DMA0_R2_DONE,
 +	 .ring_size = 1024,
 +	 .ring_attr = HIF_RX_EVENT,
-+	 .ring_info = "STS WA band0"
++	 .ring_info = "STS WA band0",
++	 .flags = true
 +	},
 +	{
 +	 .hw_int_mask = MT_DBG_INT_DMA0_R3_DONE,
@@ -1759,7 +1858,7 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +#endif
 --- /dev/null
 +++ b/mt7915/mtk_debugfs.c
-@@ -0,0 +1,2925 @@
+@@ -0,0 +1,3606 @@
 +#include<linux/inet.h>
 +#include "mt7915.h"
 +#include "mt7915_debug.h"
@@ -2273,8 +2372,8 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +				 UWTBL_LEN_IN_DW, uwtbl);
 +	seq_printf(s, "Dump WTBL info of WLAN_IDX:%d\n", dev->wlan_idx);
 +	seq_printf(s, "UMAC WTBL Addr: group:0x%x=0x%x addr: 0x%lx\n",
-+		   MT_DBG_WTBLON_TOP_WDUCR,
-+		   mt76_rr(dev, MT_DBG_WTBLON_TOP_WDUCR),
++		   MT_DBG_UWTBL_TOP_WDUCR,
++		   mt76_rr(dev, MT_DBG_UWTBL_TOP_BASE),
 +		   UWTBL_IDX2BASE(dev->wlan_idx, 0));
 +	for (x = 0; x < UWTBL_LEN_IN_DW; x++) {
 +		seq_printf(s, "DW%02d: %02x %02x %02x %02x\n",
@@ -2367,8 +2466,8 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +		mt7915_wtbl_read_raw(dev, keyloc0, WTBL_TYPE_KEY,
 +					 0, ONE_KEY_ENTRY_LEN_IN_DW, keytbl);
 +		seq_printf(s, "KEY WTBL Addr: group:0x%x=0x%x addr: 0x%lx\n",
-+			   MT_DBG_WTBLON_TOP_WDUCR,
-+			   mt76_rr(dev, MT_DBG_WTBLON_TOP_WDUCR),
++			   MT_DBG_UWTBL_TOP_WDUCR,
++			   mt76_rr(dev, MT_DBG_UWTBL_TOP_BASE),
 +			   KEYTBL_IDX2BASE(keyloc0, 0));
 +
 +		for (x = 0; x < ONE_KEY_ENTRY_LEN_IN_DW; x++) {
@@ -2386,8 +2485,8 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +		mt7915_wtbl_read_raw(dev, keyloc1, WTBL_TYPE_KEY,
 +					 0, ONE_KEY_ENTRY_LEN_IN_DW, keytbl);
 +		seq_printf(s, "KEY WTBL Addr: group:0x%x=0x%x addr: 0x%lx\n",
-+			   MT_DBG_WTBLON_TOP_WDUCR,
-+			   mt76_rr(dev, MT_DBG_WTBLON_TOP_WDUCR),
++			   MT_DBG_UWTBL_TOP_WDUCR,
++			   mt76_rr(dev, MT_DBG_UWTBL_TOP_BASE),
 +			   KEYTBL_IDX2BASE(keyloc1, 0));
 +
 +		for (x = 0; x < ONE_KEY_ENTRY_LEN_IN_DW; x++) {
@@ -2502,11 +2601,19 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +		      "Name", "Base", "Cnt", "CIDX", "DIDX", "QCnt");
 +	dump_dma_tx_ring_info(s, dev, "T16:FWDL", MT_DBG_TX_RING_CTRL(0));
 +	dump_dma_tx_ring_info(s, dev, "T17:Cmd(H2WM)", MT_DBG_TX_RING_CTRL(1));
-+	dump_dma_tx_ring_info(s, dev, "T18:TXD0(H2WA)", MT_DBG_TX_RING_CTRL(2));
-+	dump_dma_tx_ring_info(s, dev, "T19:TXD1(H2WA)", MT_DBG_TX_RING_CTRL(3));
++	if (mtk_wed_device_active(&dev->mt76.mmio.wed)) {
++		dump_dma_tx_ring_info(s, dev, "T18:TXD0(H2WA)",  MT_DBG_WFDMA_WED_TX_CTRL(0));
++		dump_dma_tx_ring_info(s, dev, "T19:TXD1(H2WA)",  MT_DBG_WFDMA_WED_TX_CTRL(1));
++	} else {
++		dump_dma_tx_ring_info(s, dev, "T18:TXD0(H2WA)", MT_DBG_TX_RING_CTRL(2));
++		dump_dma_tx_ring_info(s, dev, "T19:TXD1(H2WA)", MT_DBG_TX_RING_CTRL(3));
++	}
 +	dump_dma_tx_ring_info(s, dev, "T20:Cmd(H2WA)", MT_DBG_TX_RING_CTRL(4));
 +	dump_dma_rx_ring_info(s, dev, "R0:Event(WM2H)", MT_DBG_RX_EVENT_RING_CTRL(0));
-+	dump_dma_rx_ring_info(s, dev, "R1:Event0(WA2H)", MT_DBG_RX_EVENT_RING_CTRL(1));
++	if (mtk_wed_device_active(&dev->mt76.mmio.wed))
++		dump_dma_rx_ring_info(s, dev, "R1:TxDone(WA2H)", MT_DBG_WFDMA_WED_RX_CTRL(1));
++	else
++		dump_dma_rx_ring_info(s, dev, "R1:Event0(WA2H)", MT_DBG_RX_EVENT_RING_CTRL(1));
 +	dump_dma_rx_ring_info(s, dev, "R2:Event1(WA2H)", MT_DBG_RX_EVENT_RING_CTRL(2));
 +
 +	seq_printf(s, "HOST_DMA1 PCIe 1 Ring Configuration\n");
@@ -2617,12 +2724,22 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +		      "Name", "Base", "Cnt", "CIDX", "DIDX", "QCnt");
 +	dump_dma_tx_ring_info(s, dev, "T16:FWDL", MT_DBG_TX_RING_CTRL(0));
 +	dump_dma_tx_ring_info(s, dev, "T17:Cmd(H2WM)",	MT_DBG_TX_RING_CTRL(1));
-+	dump_dma_tx_ring_info(s, dev, "T18:TXD0(H2WA)",  MT_DBG_TX_RING_CTRL(2));
-+	dump_dma_tx_ring_info(s, dev, "T19:TXD1(H2WA)",  MT_DBG_TX_RING_CTRL(3));
++
++	if (is_mt7916(&dev->mt76) && mtk_wed_device_active(&dev->mt76.mmio.wed)) {
++		dump_dma_tx_ring_info(s, dev, "T18:TXD0(H2WA)",  MT_DBG_WFDMA_WED_TX_CTRL(0));
++		dump_dma_tx_ring_info(s, dev, "T19:TXD1(H2WA)",  MT_DBG_WFDMA_WED_TX_CTRL(1));
++	} else {
++		dump_dma_tx_ring_info(s, dev, "T18:TXD0(H2WA)",  MT_DBG_TX_RING_CTRL(2));
++		dump_dma_tx_ring_info(s, dev, "T19:TXD1(H2WA)",  MT_DBG_TX_RING_CTRL(3));
++	}
++
 +	dump_dma_tx_ring_info(s, dev, "T20:Cmd(H2WA)",	MT_DBG_TX_RING_CTRL(4));
 +	dump_dma_rx_ring_info(s, dev, "R0:Event(WM2H)", MT_DBG_RX_DATA_RING_CTRL(0));
 +	dump_dma_rx_ring_info(s, dev, "R1:Event(WA2H)", MT_DBG_RX_EVENT_RING_CTRL(1));
-+	dump_dma_rx_ring_info(s, dev, "R2:TxDone(WA2H)", MT_DBG_RX_EVENT_RING_CTRL(2));
++	if (is_mt7916(&dev->mt76) && mtk_wed_device_active(&dev->mt76.mmio.wed))
++		dump_dma_rx_ring_info(s, dev, "R2:TxDone(WA2H)", MT_DBG_WFDMA_WED_RX_CTRL(1));
++	else
++		dump_dma_rx_ring_info(s, dev, "R2:TxDone(WA2H)", MT_DBG_RX_EVENT_RING_CTRL(2));
 +	dump_dma_rx_ring_info(s, dev, "R3:TxDone1(WA2H)", MT_DBG_RX_EVENT_RING_CTRL(3));
 +	dump_dma_rx_ring_info(s, dev, "R4:Data0(MAC2H)", MT_DBG_RX_DATA_RING_CTRL(0));
 +	dump_dma_rx_ring_info(s, dev, "R5:Data1(MAC2H)", MT_DBG_RX_DATA_RING_CTRL(1));
@@ -2713,12 +2830,14 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
 +	const struct hif_pci_tx_ring_desc *tx_ring_layout;
 +	const struct hif_pci_rx_ring_desc *rx_ring_layout;
++	struct mtk_wed_device *wed = &dev->mt76.mmio.wed;
 +	u32 tx_ring_num, rx_ring_num;
 +	u32 tbase[5], tcnt[5];
 +	u32 tcidx[5], tdidx[5];
 +	u32 rbase[6], rcnt[6];
 +	u32 rcidx[6], rdidx[6];
 +	int idx;
++	bool flags = false;
 +
 +	if(is_mt7915(&dev->mt76)) {
 +		tx_ring_layout = &mt7915_tx_ring_layout[0];
@@ -2733,23 +2852,80 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +	}
 +
 +	for (idx = 0; idx < tx_ring_num; idx++) {
-+		tbase[idx] = mt76_rr(dev, MT_DBG_TX_RING_CTRL(idx));
-+		tcnt[idx]  = mt76_rr(dev, MT_DBG_TX_RING_CTRL(idx) + 0x04);
-+		tcidx[idx] = mt76_rr(dev, MT_DBG_TX_RING_CTRL(idx) + 0x08);
-+		tdidx[idx] = mt76_rr(dev, MT_DBG_TX_RING_CTRL(idx) + 0x0c);
++		if (mtk_wed_device_active(wed) &&
++		    (tx_ring_layout[idx].ring_attr == HIF_TX_DATA)) {
++			struct mt76_phy *phy = dev->mt76.phys[MT_BAND0];
++			struct mt76_phy *ext_phy = dev->mt76.phys[MT_BAND1];
++			struct mt76_queue *q;
++
++			tbase[idx] = tcnt[idx] = tcidx[idx] = tdidx[idx] = 0;
++
++			if (!phy)
++				continue;
++
++			if (flags && !ext_phy)
++				continue;
++
++			if (flags && ext_phy)
++				phy = ext_phy;
++
++			q = phy->q_tx[0];
++
++			if (q->wed_regs) {
++				tbase[idx] = mtk_wed_device_reg_read(wed, q->wed_regs);
++				tcnt[idx]  = mtk_wed_device_reg_read(wed, q->wed_regs + 0x04);
++				tcidx[idx] = mtk_wed_device_reg_read(wed, q->wed_regs + 0x08);
++				tdidx[idx] = mtk_wed_device_reg_read(wed, q->wed_regs + 0x0c);
++			}
++
++			flags = true;
++		} else {
++			tbase[idx] = mt76_rr(dev, MT_DBG_TX_RING_CTRL(idx));
++			tcnt[idx]  = mt76_rr(dev, MT_DBG_TX_RING_CTRL(idx) + 0x04);
++			tcidx[idx] = mt76_rr(dev, MT_DBG_TX_RING_CTRL(idx) + 0x08);
++			tdidx[idx] = mt76_rr(dev, MT_DBG_TX_RING_CTRL(idx) + 0x0c);}
 +	}
 +
 +	for (idx = 0; idx < rx_ring_num; idx++) {
-+		if (idx < 2) {
-+			rbase[idx] = mt76_rr(dev, MT_DBG_RX_DATA_RING_CTRL(idx));
-+			rcnt[idx]  = mt76_rr(dev, MT_DBG_RX_DATA_RING_CTRL(idx) + 0x04);
-+			rcidx[idx] = mt76_rr(dev, MT_DBG_RX_DATA_RING_CTRL(idx) + 0x08);
-+			rdidx[idx] = mt76_rr(dev, MT_DBG_RX_DATA_RING_CTRL(idx) + 0x0c);
++		if (rx_ring_layout[idx].ring_attr == HIF_RX_DATA) {
++			if (mtk_wed_device_active(wed) && mtk_wed_get_rx_capa(wed)) {
++				struct mt76_queue *q = &dev->mt76.q_rx[MT_RXQ_MAIN];
++
++				rbase[idx] = rcnt[idx] = rcidx[idx] = rdidx[idx] = 0;
++
++				if (idx == 1)
++					q = &dev->mt76.q_rx[MT_RXQ_BAND1];
++
++				if (q->wed_regs) {
++					rbase[idx] = mtk_wed_device_reg_read(wed, q->wed_regs);
++					rcnt[idx]  = mtk_wed_device_reg_read(wed, q->wed_regs + 0x04);
++					rcidx[idx] = mtk_wed_device_reg_read(wed, q->wed_regs + 0x08);
++					rdidx[idx] = mtk_wed_device_reg_read(wed, q->wed_regs + 0x0c);
++				}
++			} else {
++				rbase[idx] = mt76_rr(dev, MT_DBG_RX_DATA_RING_CTRL(idx));
++				rcnt[idx]  = mt76_rr(dev, MT_DBG_RX_DATA_RING_CTRL(idx) + 0x04);
++				rcidx[idx] = mt76_rr(dev, MT_DBG_RX_DATA_RING_CTRL(idx) + 0x08);
++				rdidx[idx] = mt76_rr(dev, MT_DBG_RX_DATA_RING_CTRL(idx) + 0x0c);
++			}
 +		} else {
-+			rbase[idx] = mt76_rr(dev, MT_DBG_RX_EVENT_RING_CTRL(idx - 2));
-+			rcnt[idx]  = mt76_rr(dev, MT_DBG_RX_EVENT_RING_CTRL(idx - 2) + 0x04);
-+			rcidx[idx] = mt76_rr(dev, MT_DBG_RX_EVENT_RING_CTRL(idx - 2) + 0x08);
-+			rdidx[idx] = mt76_rr(dev, MT_DBG_RX_EVENT_RING_CTRL(idx - 2) + 0x0c);
++			if (mtk_wed_device_active(wed) && rx_ring_layout[idx].flags) {
++				struct mt76_queue *q = &dev->mt76.q_rx[MT_RXQ_MAIN_WA];
++
++				if (is_mt7915(&dev->mt76))
++					q = &dev->mt76.q_rx[MT_RXQ_MCU_WA];
++
++				rbase[idx] = mtk_wed_device_reg_read(wed, q->wed_regs);
++				rcnt[idx]  = mtk_wed_device_reg_read(wed, q->wed_regs + 0x04);
++				rcidx[idx] = mtk_wed_device_reg_read(wed, q->wed_regs + 0x08);
++				rdidx[idx] = mtk_wed_device_reg_read(wed, q->wed_regs + 0x0c);
++
++			} else {
++				rbase[idx] = mt76_rr(dev, MT_DBG_RX_EVENT_RING_CTRL(idx - 2));
++				rcnt[idx]  = mt76_rr(dev, MT_DBG_RX_EVENT_RING_CTRL(idx - 2) + 0x04);
++				rcidx[idx] = mt76_rr(dev, MT_DBG_RX_EVENT_RING_CTRL(idx - 2) + 0x08);
++				rdidx[idx] = mt76_rr(dev, MT_DBG_RX_EVENT_RING_CTRL(idx - 2) + 0x0c);
++			}
 +		}
 +	}
 +
@@ -4143,7 +4319,8 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +
 +	if (txd->txd_2 & MT_TXD2_FIX_RATE) {
 +		/* Fixed BandWidth mode [2:0] */
-+		printk("\t\tbw = %ld\n", FIELD_GET(MT_TXD6_BW, txd->txd_6));
++		printk("\t\tbw = %ld\n",
++		       FIELD_GET(MT_TXD6_BW, txd->txd_6) | (txd->txd_6 & MT_TXD6_FIXED_BW));
 +
 +		/* DYN_BW [3] */
 +		printk("\t\tdyn_bw = %d\n", (txd->txd_6 & MT_TXD6_DYN_BW) ? 1 : 0);
@@ -4606,6 +4783,607 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +DEFINE_DEBUGFS_ATTRIBUTE(fops_wa_debug, NULL, mt7915_wa_debug,
 +			 "0x%llx\n");
 +
++static inline int mt7915_snprintf_error(size_t size, int res)
++{
++	return res < 0 || (unsigned int) res >= size;
++}
++
++static void mt7915_show_lp_history(struct seq_file *s, bool fgIsExp)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u32 macVal = 0, gpr_log_idx = 0, oldest_idx = 0;
++	u32 idx = 0, i = 0;
++
++	if (!fgIsExp) {
++		/* disable LP recored */
++		macVal = mt76_rr(dev, 0x89050200);
++		macVal &= (~0x1);
++		mt76_wr(dev, 0x89050200, macVal);
++		udelay(100);
++	}
++
++	macVal = 0;
++	macVal = mt76_rr(dev, 0x89050200);
++	gpr_log_idx = ((macVal >> 16) & 0x1f);
++	oldest_idx = gpr_log_idx + 2;
++
++	seq_printf(s, "       lp history (from old to new):\n");
++	for (i = 0; i < 16; i++) {
++		idx = ((oldest_idx + 2*i + 1)%32);
++		macVal = mt76_rr(dev, (0x89050204 + idx*4));
++		seq_printf(s, "       %d: 0x%x\n", i, macVal);
++	}
++
++	if (!fgIsExp) {
++		/* enable LP recored */
++		macVal = mt76_rr(dev, 0x89050200);
++		macVal |= 0x1;
++		mt76_wr(dev, 0x89050200, macVal);
++	}
++}
++
++static void mt7915_show_irq_history(struct seq_file *s)
++{
++#define SYSIRQ_INTERRUPT_HISTORY_NUM	10
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u32 macVal = 0;
++	u32 i = 0;
++	u32 start = 0;
++	u32 idx = 0;
++	u8 ucIrqDisIdx = 0;
++	u8 ucIrqResIdx = 0;
++	u32 irq_dis_time[10];
++	u32 irq_dis_lp[10];
++	u32 irq_res_time[10];
++	u32 irq_res_lp[10];
++
++	macVal = 0;
++	macVal = mt76_rr(dev, 0x022051C0);
++	ucIrqResIdx = (macVal & 0xff);
++	ucIrqDisIdx = ((macVal >> 8) & 0xff);
++
++	seq_printf(s, "\n\n\n       Irq Idx (Dis=%d Res=%d):\n",
++		   ucIrqDisIdx, ucIrqResIdx);
++
++	start = mt76_rr(dev, 0x022051C8);
++	for (i = 0; i < SYSIRQ_INTERRUPT_HISTORY_NUM; i++) {
++		macVal = mt76_rr(dev, (start + (i * 8)));
++		irq_dis_time[i] = macVal;
++		macVal = mt76_rr(dev, (start + (i * 8) + 4));
++		irq_dis_lp[i] = macVal;
++	}
++
++	start = mt76_rr(dev, 0x022051C4);
++
++	for (i = 0; i < SYSIRQ_INTERRUPT_HISTORY_NUM; i++) {
++		macVal = mt76_rr(dev, (start + (i * 8)));
++		irq_res_time[i] = macVal;
++		macVal = mt76_rr(dev, (start + (i * 8) + 4));
++		irq_res_lp[i] = macVal;
++	}
++
++	seq_printf(s, "\n       Dis Irq history (from old to new):\n");
++	for (i = 0; i < SYSIRQ_INTERRUPT_HISTORY_NUM; i++) {
++		idx = (i + ucIrqDisIdx) % SYSIRQ_INTERRUPT_HISTORY_NUM;
++		seq_printf(s, "      [%d].LP = 0x%x   time=%u\n",
++			idx, irq_dis_lp[idx], irq_dis_time[idx]);
++	}
++
++	seq_printf(s, "\n       Restore Irq history (from old to new):\n");
++	for (i = 0; i < SYSIRQ_INTERRUPT_HISTORY_NUM; i++) {
++		idx = (i + ucIrqResIdx) % SYSIRQ_INTERRUPT_HISTORY_NUM;
++		seq_printf(s, "      [%d].LP = 0x%x   time=%u\n",
++			idx, irq_res_lp[idx], irq_res_time[idx]);
++	}
++}
++
++static void MemSectionRead(struct mt7915_dev *dev, char *buf, u32 length, u32 addr)
++{
++	int idx = 0;
++	u32 *ptr =(u32 *)buf;
++
++	while (idx < length) {
++		*ptr = mt76_rr(dev, (addr + idx));
++		idx += 4;
++		ptr++;
++	}
++}
++
++static void mt7915_show_msg_trace(struct seq_file *s)
++{
++#define MSG_HISTORY_NUM	64
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	struct cos_msg_trace_t *msg_trace = NULL;
++	u32 ptr_addr = 0;
++	u32 length = 0;
++	u32 idx = 0, i = 0;
++	u32 cnt = 0;
++	u32 msg_history_num = 0;
++
++	msg_trace = kmalloc(MSG_HISTORY_NUM * sizeof(struct cos_msg_trace_t), GFP_KERNEL);
++	if (!msg_trace) {
++		seq_printf(s, "can not allocate cmd msg_trace\n");
++		return;
++	}
++
++	memset(msg_trace, 0,  MSG_HISTORY_NUM * sizeof(struct cos_msg_trace_t));
++
++	ptr_addr = mt76_rr(dev, 0x02205188);
++	msg_history_num = mt76_rr(dev, 0x0220518C);
++
++	idx = (msg_history_num >> 8) & 0xff;
++	msg_history_num = msg_history_num & 0xff;
++
++	if (idx >= msg_history_num) {
++		kfree(msg_trace);
++		return;
++	}
++
++	length = msg_history_num * sizeof(struct cos_msg_trace_t);
++	MemSectionRead(dev, (char *)&(msg_trace[0]), length, ptr_addr);
++	seq_printf(s,"\n");
++	seq_printf(s, "       msg trace:\n");
++	seq_printf(s, "       format: t_id=task_id/task_prempt_cnt/msg_read_idx\n");
++
++	while (1) {
++		seq_printf(s, "       (m_%d)t_id=%x/%d/%d, m_id=%d, ts_en=%u, ts_de = %u, ts_fin=%u, wait=%d, exe=%d\n",
++			idx,
++			msg_trace[idx].dest_id,
++			msg_trace[idx].pcount,
++			msg_trace[idx].qread,
++			msg_trace[idx].msg_id,
++			msg_trace[idx].ts_enq,
++			msg_trace[idx].ts_deq,
++			msg_trace[idx].ts_finshq,
++			(msg_trace[idx].ts_deq - msg_trace[idx].ts_enq),
++			(msg_trace[idx].ts_finshq - msg_trace[idx].ts_deq));
++
++		if (++idx >= msg_history_num)
++			idx = 0;
++
++		if (++cnt >= msg_history_num)
++			break;
++	}
++	if (msg_trace)
++		kfree(msg_trace);
++}
++
++static int mt7915_show_assert_line(struct seq_file *s)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	char *msg;
++	u32 addr;
++	u32 macVal = 0;
++	char *ptr;
++	char idx;
++
++	msg = kmalloc(256, GFP_KERNEL);
++	if (!msg)
++		return 0;
++
++	memset(msg, 0, 256);
++	addr = 0x00400000;
++	ptr = msg;
++	for (idx = 0 ; idx < 32; idx++) {
++		macVal = 0;
++		macVal = mt76_rr(dev, addr);
++		memcpy(ptr, &macVal, 4);
++		addr += 4;
++		ptr += 4;
++	}
++
++	*ptr = 0;
++	seq_printf(s,"\n\n");
++	seq_printf(s,"       Assert line\n");
++	seq_printf(s,"       %s\n", msg);
++	if (msg)
++		kfree(msg);
++
++	return 0;
++}
++
++
++static void mt7915_show_sech_trace(struct seq_file *s)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	struct cos_task_info_struct  task_info_g[2];
++	u32 length = 0, i = 0;
++	u32 idx = 0;
++	u32 km_total_time = 0;
++	u32 addr = 0;
++	struct cos_task_type tcb;
++	struct cos_task_type *tcb_ptr;
++	char   name[2][15] = {
++		"WIFI	", "WIFI2   "
++	};
++
++	length = 2 * sizeof(struct cos_task_info_struct);
++	MemSectionRead(dev, (char *)&(task_info_g[0]), length, 0x02202A18);
++
++	/*while(i < length) {
++		task_info_g[i] = mt76_rr(dev, 0x02202A18 + i * 0x4);
++		i++;
++	}*/
++	km_total_time = mt76_rr(dev, 0x022051B4);
++	if (km_total_time == 0) {
++		seq_printf(s, "km_total_time zero!\n");
++		return;
++	}
++
++	seq_printf(s,"\n\n\n	  TASK	 XTIME	  RATIO    PREMPT CNT\n");
++	for (idx = 0 ;	idx < 2 ; idx++) {
++		addr = task_info_g[idx].task_id;
++		i = 0;
++		MemSectionRead(dev, (char *)&(tcb), sizeof(struct cos_task_type), addr);
++
++		length = sizeof(struct cos_task_type);
++
++		tcb_ptr = &(tcb);
++
++		if (tcb_ptr) {
++			seq_printf(s, "	   %s	 %d    %d	%d\n",
++				name[idx],
++				tcb_ptr->tc_exe_time,
++				(tcb_ptr->tc_exe_time*100/km_total_time),
++				tcb_ptr->tc_pcount);
++		}
++	}
++
++}
++
++static void mt7915_show_prog_trace(struct seq_file *s)
++{
++#define PROGRAM_TRACE_HISTORY_NUM 32
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	struct cos_program_trace_t *cos_program_trace_ptr = NULL;
++	u32 trace_ptr = 0;
++	u32 idx = 0, i = 0;
++	u32 old_idx = 0;
++	u32 old_idx_addr = 0;
++	u32 prev_idx = 0;
++	u32 prev_time = 0;
++	u32 curr_time = 0;
++	u32 diff = 0;
++	u32 length = 0;
++
++	cos_program_trace_ptr = kmalloc(PROGRAM_TRACE_HISTORY_NUM * sizeof(struct cos_program_trace_t), GFP_KERNEL);
++	if (!cos_program_trace_ptr) {
++		seq_printf(s, "can not allocate cos_program_trace_ptr memory\n");
++		return;
++	}
++	memset(cos_program_trace_ptr, 0, PROGRAM_TRACE_HISTORY_NUM * sizeof(struct cos_program_trace_t));
++
++	trace_ptr = mt76_rr(dev, 0x0220514C);
++	old_idx_addr = mt76_rr(dev, 0x02205148);
++
++	old_idx = (old_idx_addr >> 8) & 0xff;
++
++	MemSectionRead(dev, (char *)&cos_program_trace_ptr[0], PROGRAM_TRACE_HISTORY_NUM * sizeof(struct cos_program_trace_t), trace_ptr);
++
++	/*length = PROGRAM_TRACE_HISTORY_NUM * sizeof(struct cos_program_trace_t);
++	while(i < length) {
++		cos_program_trace_ptr[i] = mt76_rr(dev, trace_ptr + i * 0x4);
++		i++;
++	}*/
++	seq_printf(s, "\n");
++	seq_printf(s, "       program trace:\n");
++	for (idx = 0 ; idx < PROGRAM_TRACE_HISTORY_NUM ; idx++) {
++		prev_idx = ((old_idx + 32 - 1) % 32);
++
++		seq_printf(s, "       (p_%d)t_id=%x/%d, m_id=%d, LP=0x%x, name=%s, ts2=%d, ",
++			old_idx,
++			cos_program_trace_ptr[old_idx].dest_id,
++			cos_program_trace_ptr[old_idx].msg_sn,
++			cos_program_trace_ptr[old_idx].msg_id,
++			cos_program_trace_ptr[old_idx].LP,
++			cos_program_trace_ptr[old_idx].name,
++			cos_program_trace_ptr[old_idx].ts_gpt2);
++
++		/* diff for gpt2 */
++		prev_time = cos_program_trace_ptr[prev_idx].ts_gpt2;
++		curr_time = cos_program_trace_ptr[old_idx].ts_gpt2;
++
++		if (prev_time) {
++			if ((cos_program_trace_ptr[prev_idx].dest_id == cos_program_trace_ptr[old_idx].dest_id) &&
++				(cos_program_trace_ptr[prev_idx].msg_sn == cos_program_trace_ptr[old_idx].msg_sn)) {
++				if (curr_time > prev_time)
++					diff = curr_time - prev_time;
++				else
++					diff = 0xFFFFFFFF - prev_time + curr_time + 1;
++			} else
++				diff = 0xFFFFFFFF;
++		} else
++			diff = 0xFFFFFFFF;
++
++		if (diff == 0xFFFFFFFF)
++			seq_printf(s, "diff2=NA, \n");
++		else
++			seq_printf(s, "diff2=%8d\n", diff);
++
++		old_idx++;
++		if (old_idx >= 32)
++			old_idx = 0;
++	}
++	if (cos_program_trace_ptr)
++		kfree(cos_program_trace_ptr);
++}
++
++static int mt7915_fw_wm_info_read(struct seq_file *s, void *data)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u32 macVal = 0, g_exp_type = 0, COS_Interrupt_Count = 0;
++	u8 exp_assert_proc_entry_cnt = 0, exp_assert_state = 0, g_irq_history_num = 0;;
++	u16 processing_irqx = 0;
++	u32 processing_lisr = 0, Current_Task_Id = 0, Current_Task_Indx = 0;
++	u8 km_irq_info_idx = 0, km_eint_info_idx = 0, km_sched_info_idx = 0, g_sched_history_num = 0;
++	u32 km_sched_trace_ptr = 0,km_irq_trace_ptr = 0, km_total_time  = 0, TaskStart[3] = {0};
++	bool fgIsExp = false, fgIsAssert = false;
++	u32 TaskEnd[3] = {0}, exp_assert_state_addr = 0, g1_exp_counter_addr = 0;
++	u32 g_exp_type_addr = 0, cos_interrupt_count_addr = 0;
++	u32 processing_irqx_addr = 0, processing_lisr_addr = 0;
++	u32 Current_Task_Id_addr = 0, Current_Task_Indx_addr = 0, last_dequeued_msg_id_addr = 0;
++	u32 km_irq_info_idx_addr = 0, km_eint_info_idx_addr = 0, km_sched_info_idx_addr = 0;
++	u32 g_sched_history_num_addr = 0, km_sched_trace_ptr_addr = 0;
++	u32 km_irq_trace_ptr_addr = 0, km_total_time_addr  = 0, last_dequeued_msg_id = 0;
++	u32 i = 0 ,t1 = 0, t2 = 0, t3 = 0;
++	u8 idx = 0, str[32], exp_type[64];;
++	int ret;
++
++	g_exp_type_addr = 0x022050DC;
++	exp_assert_state_addr = 0x02204B54;
++	g1_exp_counter_addr = 0x02204FFC;
++	cos_interrupt_count_addr = 0x022001AC;
++	processing_irqx_addr = 0x02204EC4;
++	processing_lisr_addr = 0x02205010;
++	Current_Task_Id_addr = 0x02204FAC;
++	Current_Task_Indx_addr = 0x02204F4C;
++	last_dequeued_msg_id_addr = 0x02204F28;
++	km_irq_info_idx_addr = 0x0220519C;
++	km_eint_info_idx_addr = 0x02205194;
++	km_sched_info_idx_addr = 0x022051A4;
++	g_sched_history_num_addr = 0x022051A4;
++	km_sched_trace_ptr_addr = 0x022051A0;
++	km_irq_trace_ptr_addr = 0x02205198;
++	km_total_time_addr = 0x022051B4;
++
++	macVal = 0;
++	macVal = mt76_rr(dev, exp_assert_state_addr);
++	exp_assert_state = (macVal & 0xff);
++
++	macVal = 0;
++	macVal = mt76_rr(dev, g1_exp_counter_addr);
++	exp_assert_proc_entry_cnt = (macVal & 0xff);
++
++	macVal = 0;
++	macVal = mt76_rr(dev, g_exp_type_addr);
++	g_exp_type = macVal;
++
++	macVal = 0;
++	macVal = mt76_rr(dev, cos_interrupt_count_addr);
++	COS_Interrupt_Count = macVal;
++
++	macVal = 0;
++	macVal = mt76_rr(dev, processing_irqx_addr);
++	processing_irqx = (macVal & 0xffff);
++
++	macVal = 0;
++	macVal = mt76_rr(dev, processing_lisr_addr);
++	processing_lisr = macVal;
++
++	macVal = 0;
++	macVal = mt76_rr(dev, Current_Task_Id_addr);
++	Current_Task_Id = macVal;
++
++	macVal = 0;
++	macVal = mt76_rr(dev, Current_Task_Indx_addr);
++	Current_Task_Indx = macVal;
++
++	macVal = 0;
++	macVal = mt76_rr(dev, last_dequeued_msg_id_addr);
++	last_dequeued_msg_id = macVal;
++
++	macVal = 0;
++	macVal = mt76_rr(dev, km_eint_info_idx_addr);
++	km_eint_info_idx = ((macVal >> 8) & 0xff);
++
++	macVal = 0;
++	macVal = mt76_rr(dev, g_sched_history_num_addr);
++	g_sched_history_num = (macVal & 0xff);
++	km_sched_info_idx = ((macVal >> 8) & 0xff);
++
++	macVal = 0;
++	macVal = mt76_rr(dev, km_sched_trace_ptr_addr);
++	km_sched_trace_ptr = macVal;
++
++	macVal = 0;
++	macVal = mt76_rr(dev, km_irq_info_idx_addr);
++	g_irq_history_num = (macVal & 0xff);
++	km_irq_info_idx = ((macVal >> 16) & 0xff);
++
++	macVal = 0;
++	macVal = mt76_rr(dev, km_irq_trace_ptr_addr);
++	km_irq_trace_ptr = macVal;
++
++	macVal = 0;
++	macVal = mt76_rr(dev, km_total_time_addr);
++	km_total_time = macVal;
++
++	TaskStart[0] = mt76_rr(dev, 0x02202814);
++	TaskEnd[0] = mt76_rr(dev, 0x02202810);
++	TaskStart[1] = mt76_rr(dev, 0x02202984);
++	TaskEnd[1] = mt76_rr(dev, 0x02202980);
++
++	seq_printf(s, "================FW DBG INFO===================\n");
++	seq_printf(s, "       exp_assert_proc_entry_cnt = 0x%x\n",
++		   exp_assert_proc_entry_cnt);
++	seq_printf(s, "       exp_assert_state = 0x%x\n",
++		  exp_assert_state);
++
++	if (exp_assert_proc_entry_cnt == 0) {
++		ret = snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Normal");
++		if (mt7915_snprintf_error(sizeof(exp_type), ret)) {
++			seq_printf(s, " exp_type Snprintf failed!\n");
++			return 0;
++		}
++	} else if (exp_assert_proc_entry_cnt == 1 &&
++		exp_assert_state > 1 && g_exp_type == 5) {
++		ret = snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Assert");
++		if (mt7915_snprintf_error(sizeof(exp_type), ret)) {
++			seq_printf(s, " exp_type Snprintf failed!\n");
++			return 0;
++		}
++		fgIsExp = true;
++		fgIsAssert = true;
++	} else if (exp_assert_proc_entry_cnt == 1 && exp_assert_state > 1) {
++		ret = snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Exception");
++		if (mt7915_snprintf_error(sizeof(exp_type), ret)) {
++			seq_printf(s, " exp_type Snprintf failed!\n");
++			return 0;
++		}
++		fgIsExp = true;
++	} else if (exp_assert_proc_entry_cnt > 1) {
++		ret = snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Exception re-entry");
++		if (mt7915_snprintf_error(sizeof(exp_type), ret)) {
++			seq_printf(s, " exp_type Snprintf failed!\n");
++			return 0;
++		}
++		fgIsExp = true;
++	} else {
++		ret = snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Unknown'?");
++		if (mt7915_snprintf_error(sizeof(exp_type), ret)) {
++			seq_printf(s, " exp_type Snprintf failed!\n");
++			return 0;
++		}
++	}
++
++	seq_printf(s, "       COS_Interrupt_Count = 0x%x\n", COS_Interrupt_Count);
++	seq_printf(s, "       processing_irqx = 0x%x\n", processing_irqx);
++	seq_printf(s, "       processing_lisr = 0x%x\n", processing_lisr);
++	seq_printf(s, "       Current_Task_Id = 0x%x\n", Current_Task_Id);
++	seq_printf(s, "       Current_Task_Indx = 0x%x\n", Current_Task_Indx);
++	seq_printf(s, "       last_dequeued_msg_id = %d\n", last_dequeued_msg_id);
++
++	seq_printf(s, "       km_irq_info_idx = 0x%x\n", km_irq_info_idx);
++	seq_printf(s, "       km_eint_info_idx = 0x%x\n", km_eint_info_idx);
++	seq_printf(s, "       km_sched_info_idx = 0x%x\n", km_sched_info_idx);
++	seq_printf(s, "       g_sched_history_num = %d\n", g_sched_history_num);
++	seq_printf(s, "       km_sched_trace_ptr = 0x%x\n", km_sched_trace_ptr);
++
++	if (fgIsExp) {
++		seq_printf(s, "\n        <1>print sched trace\n");
++		if (g_sched_history_num > 60)
++			g_sched_history_num = 60;
++
++		idx = km_sched_info_idx;
++		for (i = 0 ; i < g_sched_history_num ; i++) {
++			t1 = mt76_rr(dev, (km_sched_trace_ptr+(idx*12)));
++			t2 = mt76_rr(dev,  (km_sched_trace_ptr+(idx*12)+4));
++			t3 = mt76_rr(dev,  (km_sched_trace_ptr+(idx*12)+8));
++			seq_printf(s, "       (sched_info_%d)sched_t=0x%x, sched_start=%d, PC=0x%x\n",
++				idx, t1, t2, t3);
++			idx++;
++			if (idx >= g_sched_history_num)
++				idx = 0;
++		}
++
++		seq_printf(s, "\n        <2>print irq trace\n");
++		if (g_irq_history_num > 60)
++			g_irq_history_num = 60;
++
++		idx = km_irq_info_idx;
++		for (i = 0 ; i < g_irq_history_num ; i++) {
++			t1 = mt76_rr(dev, (km_irq_trace_ptr+(idx*16)));
++			t2 = mt76_rr(dev, (km_irq_trace_ptr+(idx*16) + 4));
++			seq_printf(s, "       (irq_info_%d)irq_t=%x, sched_start=%d\n",
++				   idx, t1, t2);
++			idx++;
++			if (idx >= g_irq_history_num)
++				idx = 0;
++		}
++	}
++
++	seq_printf(s, "\n       <3>task q_id.read q_id.write\n");
++	seq_printf(s, "       (WIFI )1 0x%x 0x%x\n", TaskStart[0], TaskEnd[0]);
++	seq_printf(s, "       (WIFI2 )2 0x%x 0x%x\n", TaskStart[1], TaskEnd[1]);
++	seq_printf(s, "\n       <4>TASK STACK INFO (size in byte)\n");
++	seq_printf(s, "       TASK  START       END       SIZE  PEAK  INTEGRITY\n");
++
++	for (i = 0 ; i < 2 ; i++) {
++		t1 = mt76_rr(dev,  0x022027B8+(i*368));
++		t2 = mt76_rr(dev,  0x022027BC+(i*368));
++		t3 = mt76_rr(dev,  0x022027C4+(i*368));
++
++		if (i == 0) {
++			ret = snprintf(str, sizeof(str), "%s", "WIFI");
++			if (mt7915_snprintf_error(sizeof(str), ret)) {
++				seq_printf(s, " str Snprintf failed!\n");
++				return 0;
++			}
++		} else if (i == 1) {
++			ret = snprintf(str, sizeof(str), "%s", "WIFI2");
++			if (mt7915_snprintf_error(sizeof(str), ret)) {
++				seq_printf(s, " str Snprintf failed!\n");
++				return 0;
++			}
++		}
++
++		seq_printf(s, "       %s  0x%x  0x%x  %d\n",
++			str, t1, t2, t3);
++	}
++
++	seq_printf(s, "\n       <5>fw state\n");
++	seq_printf(s, "       %s\n", exp_type);
++	if (COS_Interrupt_Count > 0)
++		seq_printf(s, "       FW in Interrupt CIRQ index (0x%x) CIRQ handler(0x%x)\n"
++			 , processing_irqx, processing_lisr);
++	else {
++		if (Current_Task_Id == 0 && Current_Task_Indx == 3)
++			seq_printf(s, "       FW in IDLE\n");
++
++		if (Current_Task_Id != 0 && Current_Task_Indx != 3)
++			seq_printf(s, "       FW in Task , Task id(0x%x) Task index(0x%x)\n",
++				Current_Task_Id, Current_Task_Indx);
++	}
++
++	macVal = 0;
++	macVal= mt76_rr(dev, g1_exp_counter_addr);
++	seq_printf(s, "       EXCP_CNT = 0x%x\n", macVal);
++
++	seq_printf(s, "       EXCP_TYPE = 0x%x\n", g_exp_type);
++
++	macVal = 0;
++	macVal = mt76_rr(dev, 0x022050E0);
++	seq_printf(s, "       CPU_ITYPE = 0x%x\n", macVal);
++
++	macVal = 0;
++	macVal = mt76_rr(dev,  0x022050E8);
++	seq_printf(s, "       CPU_EVA = 0x%x\n", macVal);
++
++	macVal = 0;
++	macVal = mt76_rr(dev, 0x022050E4);
++	seq_printf(s, "       CPU_IPC = 0x%x\n", macVal);
++
++	macVal = 0;
++	macVal = mt76_rr(dev, 0x7C060204);
++	seq_printf(s, "       PC = 0x%x\n\n\n", macVal);
++
++	mt7915_show_lp_history(s, fgIsExp);
++	mt7915_show_irq_history(s);
++
++	seq_printf(s, "\n\n       cpu ultility\n");
++	seq_printf(s, "       Busy:%d%% Peak:%d%%\n\n",
++		   mt76_rr(dev, 0x7C053B20), mt76_rr(dev, 0x7C053B24));
++
++	mt7915_show_msg_trace(s);
++	mt7915_show_sech_trace(s);
++	mt7915_show_prog_trace(s);
++	if (fgIsAssert)
++		mt7915_show_assert_line(s);
++
++	seq_printf(s, "============================================\n");
++	return 0;
++}
++
 +int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
 +{
 +	struct mt7915_dev *dev = phy->dev;
@@ -4669,6 +5447,8 @@ Subject: [PATCH 1001/1010] mt76: mt7915: add mtk internal debug tools for mt76
 +	debugfs_create_file("fw_wa_query", 0600, dir, dev, &fops_wa_query);
 +	debugfs_create_file("fw_wa_set", 0600, dir, dev, &fops_wa_set);
 +	debugfs_create_file("fw_wa_debug", 0600, dir, dev, &fops_wa_debug);
++	debugfs_create_devm_seqfile(dev->mt76.dev, "fw_wm_info", dir,
++				    mt7915_fw_wm_info_read);
 +
 +	debugfs_create_file("red_en", 0600, dir, dev,
 +			    &fops_red_en);

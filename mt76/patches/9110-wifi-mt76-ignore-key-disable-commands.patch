@@ -34,7 +34,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  	return mt7603_wtbl_set_key(dev, wcid->idx, key);
 --- a/mt7615/mac.c
 +++ b/mt7615/mac.c
-@@ -1193,8 +1193,7 @@ EXPORT_SYMBOL_GPL(mt7615_mac_enable_rtsc
+@@ -1194,8 +1194,7 @@ EXPORT_SYMBOL_GPL(mt7615_mac_enable_rtsc
  static int
  mt7615_mac_wtbl_update_key(struct mt7615_dev *dev, struct mt76_wcid *wcid,
  			   struct ieee80211_key_conf *key,
@@ -44,7 +44,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  {
  	u32 addr = mt7615_mac_wtbl_addr(dev, wcid->idx) + 30 * 4;
  	u8 data[32] = {};
-@@ -1203,27 +1202,18 @@ mt7615_mac_wtbl_update_key(struct mt7615
+@@ -1204,27 +1203,18 @@ mt7615_mac_wtbl_update_key(struct mt7615
  		return -EINVAL;
  
  	mt76_rr_copy(dev, addr, data, sizeof(data));
@@ -82,7 +82,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  	}
  
  	mt76_wr_copy(dev, addr, data, sizeof(data));
-@@ -1234,7 +1224,7 @@ mt7615_mac_wtbl_update_key(struct mt7615
+@@ -1235,7 +1225,7 @@ mt7615_mac_wtbl_update_key(struct mt7615
  static int
  mt7615_mac_wtbl_update_pk(struct mt7615_dev *dev, struct mt76_wcid *wcid,
  			  enum mt76_cipher_type cipher, u16 cipher_mask,
@@ -91,7 +91,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  {
  	u32 addr = mt7615_mac_wtbl_addr(dev, wcid->idx), w0, w1;
  
-@@ -1253,9 +1243,7 @@ mt7615_mac_wtbl_update_pk(struct mt7615_
+@@ -1254,9 +1244,7 @@ mt7615_mac_wtbl_update_pk(struct mt7615_
  	else
  		w0 &= ~MT_WTBL_W0_RX_IK_VALID;
  
@@ -102,7 +102,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  		w0 &= ~MT_WTBL_W0_KEY_IDX;
  		w0 |= FIELD_PREP(MT_WTBL_W0_KEY_IDX, keyidx);
  	}
-@@ -1272,19 +1260,10 @@ mt7615_mac_wtbl_update_pk(struct mt7615_
+@@ -1273,19 +1261,10 @@ mt7615_mac_wtbl_update_pk(struct mt7615_
  
  static void
  mt7615_mac_wtbl_update_cipher(struct mt7615_dev *dev, struct mt76_wcid *wcid,
@@ -123,7 +123,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  	if (cipher == MT_CIPHER_BIP_CMAC_128 &&
  	    cipher_mask & ~BIT(MT_CIPHER_BIP_CMAC_128))
  		return;
-@@ -1295,8 +1274,7 @@ mt7615_mac_wtbl_update_cipher(struct mt7
+@@ -1296,8 +1275,7 @@ mt7615_mac_wtbl_update_cipher(struct mt7
  
  int __mt7615_mac_wtbl_set_key(struct mt7615_dev *dev,
  			      struct mt76_wcid *wcid,
@@ -133,7 +133,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  {
  	enum mt76_cipher_type cipher;
  	u16 cipher_mask = wcid->cipher;
-@@ -1306,19 +1284,14 @@ int __mt7615_mac_wtbl_set_key(struct mt7
+@@ -1307,19 +1285,14 @@ int __mt7615_mac_wtbl_set_key(struct mt7
  	if (cipher == MT_CIPHER_NONE)
  		return -EOPNOTSUPP;
  
@@ -157,7 +157,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  	if (err < 0)
  		return err;
  
-@@ -1329,13 +1302,12 @@ int __mt7615_mac_wtbl_set_key(struct mt7
+@@ -1330,13 +1303,12 @@ int __mt7615_mac_wtbl_set_key(struct mt7
  
  int mt7615_mac_wtbl_set_key(struct mt7615_dev *dev,
  			    struct mt76_wcid *wcid,
@@ -203,7 +203,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  	mt7615_mutex_release(dev);
 --- a/mt7615/mt7615.h
 +++ b/mt7615/mt7615.h
-@@ -491,11 +491,9 @@ int mt7615_mac_write_txwi(struct mt7615_
+@@ -492,11 +492,9 @@ int mt7615_mac_write_txwi(struct mt7615_
  void mt7615_mac_set_timing(struct mt7615_phy *phy);
  int __mt7615_mac_wtbl_set_key(struct mt7615_dev *dev,
  			      struct mt76_wcid *wcid,
@@ -251,7 +251,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -410,16 +410,15 @@ static int mt7915_set_key(struct ieee802
+@@ -414,16 +414,15 @@ static int mt7915_set_key(struct ieee802
  		mt7915_mcu_add_bss_info(phy, vif, true);
  	}
  

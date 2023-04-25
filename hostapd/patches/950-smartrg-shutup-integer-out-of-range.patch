@@ -1,7 +1,5 @@
-Index: hostapd-2022-07-29-b704dc72/src/drivers/driver_nl80211.c
-===================================================================
---- hostapd-2022-07-29-b704dc72.orig/src/drivers/driver_nl80211.c
-+++ hostapd-2022-07-29-b704dc72/src/drivers/driver_nl80211.c
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
 @@ -335,6 +335,7 @@ static int error_handler(struct sockaddr
  	struct nlattr *tb[NLMSGERR_ATTR_MAX + 1];
  	int *ret = arg;

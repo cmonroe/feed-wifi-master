@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  
  #define BRCMF_MSGBUF_MAX_PKT_SIZE		2048
  #define BRCMF_MSGBUF_MAX_CTL_PKT_SIZE           8192
-@@ -455,7 +457,7 @@ static int brcmf_msgbuf_tx_ioctl(struct
+@@ -458,7 +460,7 @@ static int brcmf_msgbuf_tx_ioctl(struct
  	request->output_buf_len = cpu_to_le16(len);
  	request->trans_id = cpu_to_le16(msgbuf->reqid);
  

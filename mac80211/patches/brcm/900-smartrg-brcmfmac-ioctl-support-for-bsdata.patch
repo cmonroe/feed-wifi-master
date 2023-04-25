@@ -169,7 +169,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  /**
   * brcmf_skb_is_iapp - checks if skb is an IAPP packet
   *
-@@ -625,7 +769,8 @@ static const struct net_device_ops brcmf
+@@ -626,7 +770,8 @@ static const struct net_device_ops brcmf
  	.ndo_stop = brcmf_netdev_stop,
  	.ndo_start_xmit = brcmf_netdev_start_xmit,
  	.ndo_set_mac_address = brcmf_netdev_set_mac_address,

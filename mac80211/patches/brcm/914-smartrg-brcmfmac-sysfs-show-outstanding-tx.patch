@@ -9,7 +9,7 @@ Signed-off-by: Scott Iveland <scott.iveland@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/msgbuf.c
-@@ -1503,10 +1503,10 @@ static int brcmf_msgbuf_stats_read(struc
+@@ -1506,10 +1506,10 @@ static int brcmf_msgbuf_stats_read(struc
  		commonring = msgbuf->flowrings[i];
  		hash = &msgbuf->flow->hash[ring->hash_id];
  		seq_printf(seq, "id %3u: rp %4u, wp %4u, qlen %4u, blocked %u\n"

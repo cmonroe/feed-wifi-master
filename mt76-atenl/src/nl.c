@@ -26,6 +26,7 @@ static struct nla_policy testdata_policy[NUM_MT76_TM_ATTRS] = {
 	[MT76_TM_ATTR_STATE] = { .type = NLA_U8 },
 	[MT76_TM_ATTR_MTD_PART] = { .type = NLA_STRING },
 	[MT76_TM_ATTR_MTD_OFFSET] = { .type = NLA_U32 },
+	[MT76_TM_ATTR_BAND_IDX] = { .type = NLA_U8 },
 	[MT76_TM_ATTR_TX_COUNT] = { .type = NLA_U32 },
 	[MT76_TM_ATTR_TX_LENGTH] = { .type = NLA_U32 },
 	[MT76_TM_ATTR_TX_RATE_MODE] = { .type = NLA_U8 },
@@ -39,6 +40,8 @@ static struct nla_policy testdata_policy[NUM_MT76_TM_ATTRS] = {
 	[MT76_TM_ATTR_TX_ANTENNA] = { .type = NLA_U8 },
 	[MT76_TM_ATTR_FREQ_OFFSET] = { .type = NLA_U32 },
 	[MT76_TM_ATTR_STATS] = { .type = NLA_NESTED },
+	[MT76_TM_ATTR_PRECAL] = { .type = NLA_NESTED },
+	[MT76_TM_ATTR_PRECAL_INFO] = { .type = NLA_NESTED },
 };
 
 static struct nla_policy stats_policy[NUM_MT76_TM_STATS_ATTRS] = {
@@ -123,11 +126,7 @@ atenl_set_attr_antenna(struct atenl *an, struct nl_msg *msg, u8 tx_antenna)
 	if (!tx_antenna)
 		return;
 
-	if (is_mt7915(an))
-		nla_put_u8(msg, MT76_TM_ATTR_TX_ANTENNA,
-			   tx_antenna << (2 * an->cur_band));
-	else if (is_mt7916(an) || is_mt7986(an))
-		nla_put_u8(msg, MT76_TM_ATTR_TX_ANTENNA, tx_antenna);
+	nla_put_u8(msg, MT76_TM_ATTR_TX_ANTENNA, tx_antenna);
 }
 
 static int
@@ -214,28 +213,25 @@ atenl_nl_set_tx(struct atenl *an, struct atenl_data *data,
 	u8 *addr1 = hdr->data + 36;
 	u8 *addr2 = addr1 + ETH_ALEN;
 	u8 *addr3 = addr2 + ETH_ALEN;
-	u8 default_addr[ETH_ALEN] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+	u8 def_mac[ETH_ALEN] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
 	void *ptr, *a;
+
+	if (get_band_val(an, an->cur_band, use_tx_time))
+		set_band_val(an, an->cur_band, tx_time, ntohl(v[7]));
+	else
+		set_band_val(an, an->cur_band, tx_mpdu_len, ntohl(v[7]));
 
 	ptr = nla_nest_start(msg, NL80211_ATTR_TESTDATA);
 	if (!ptr)
 		return -ENOMEM;
 
-	if (get_band_val(an, an->cur_band, use_tx_time))
-		nla_put_u32(msg, MT76_TM_ATTR_TX_TIME, ntohl(v[7]));
-	else
-		nla_put_u32(msg, MT76_TM_ATTR_TX_LENGTH, ntohl(v[7]));
-
 	a = nla_nest_start(msg, MT76_TM_ATTR_MAC_ADDRS);
 	if (!a)
 		return -ENOMEM;
 
-	if (is_multicast_ether_addr(addr1))
-		nla_put(msg, 0, ETH_ALEN, default_addr);
-	else
-		nla_put(msg, 0, ETH_ALEN, addr1);
-	nla_put(msg, 1, ETH_ALEN, addr2);
-	nla_put(msg, 2, ETH_ALEN, addr3);
+	nla_put(msg, 0, ETH_ALEN, use_default_addr(addr1) ? def_mac : addr1);
+	nla_put(msg, 1, ETH_ALEN, use_default_addr(addr2) ? def_mac : addr2);
+	nla_put(msg, 2, ETH_ALEN, use_default_addr(addr3) ? def_mac : addr3);
 
 	nla_nest_end(msg, a);
 
@@ -287,6 +283,13 @@ atenl_nl_tx(struct atenl *an, struct atenl_data *data, struct atenl_nl_priv *nl_
 		nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_STBC, ntohl(v[7]));
 		nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_LDPC, ntohl(v[8]));
 		nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_NSS, ntohl(v[15]));
+
+		if (get_band_val(an, band, use_tx_time))
+			nla_put_u32(msg, MT76_TM_ATTR_TX_TIME,
+				    get_band_val(an, band, tx_time));
+		else
+			nla_put_u32(msg, MT76_TM_ATTR_TX_LENGTH,
+				    get_band_val(an, band, tx_mpdu_len));
 
 		/* for chips after 7915, tx need to use at least wcid = 1 */
 		if (!is_mt7915(an) && !aid)
@@ -405,7 +408,7 @@ atenl_off_ch_scan(struct atenl *an, struct atenl_data *data,
 
 	nla_nest_end(msg, ptr);
 
-	memcpy(hdr->data + 2, &data->ext_id, 4);
+	*(u32 *)(hdr->data + 2) = data->ext_id;
 
 	return 0;
 }
@@ -421,7 +424,7 @@ static int atenl_nl_dump_cb(struct nl_msg *msg, void *arg)
 
 	nl_attr = unl_find_attr(&nl_priv->unl, msg, NL80211_ATTR_TESTDATA);
 	if (!nl_attr) {
-		fprintf(stderr, "Testdata attribute not found\n");
+		atenl_err("Testdata attribute not found\n");
 		return NL_SKIP;
 	}
 
@@ -572,7 +575,7 @@ static int atenl_nl_get_rx_info_cb(struct nl_msg *msg, void *arg)
 
 	nl_attr = unl_find_attr(&nl_priv->unl, msg, NL80211_ATTR_TESTDATA);
 	if (!nl_attr) {
-		fprintf(stderr, "Testdata attribute not found\n");
+		atenl_err("Testdata attribute not found\n");
 		return NL_SKIP;
 	}
 
@@ -585,9 +588,10 @@ static int atenl_nl_get_rx_info_cb(struct nl_msg *msg, void *arg)
 	rx_cur.len_mismatch = nla_get_u64(tb2[MT76_TM_STATS_ATTR_RX_LEN_MISMATCH]);
 	rx_cur.ok_cnt = rx_cur.total - rx_cur.err_cnt - rx_cur.len_mismatch;
 
-	if (!anb->reset_rx_cnt) {
+	if (!anb->reset_rx_cnt ||
+	    get_band_val(an, an->cur_band, cur_state) == MT76_TM_STATE_RX_FRAMES) {
 #define RX_COUNT_DIFF(_field)	\
-	rx_diff._field = (rx_cur._field) - (anb->rx_stat._field)
+	rx_diff._field = (rx_cur._field) - (anb->rx_stat._field);
 		RX_COUNT_DIFF(total);
 		RX_COUNT_DIFF(err_cnt);
 		RX_COUNT_DIFF(len_mismatch);
@@ -691,7 +695,7 @@ atenl_nl_set_ru(struct atenl *an, struct atenl_data *data,
 		char buf[10];
 
 		if (unl_genl_init(&nl_priv->unl, "nl80211") < 0) {
-			fprintf(stderr, "Failed to connect to nl80211\n");
+			atenl_err("Failed to connect to nl80211\n");
 			return 2;
 		}
 
@@ -728,8 +732,107 @@ atenl_nl_set_ru(struct atenl *an, struct atenl_data *data,
 	return 0;
 }
 
-static int atenl_nl_ibf_set_val(struct atenl *an, struct atenl_data *data,
-				struct atenl_nl_priv *nl_priv)
+static int
+atenl_nl_ibf_init(struct atenl *an, u8 band)
+{
+	struct atenl_nl_priv nl_priv = {};
+	struct nl_msg *msg;
+	void *ptr, *a;
+	int ret;
+
+	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
+		atenl_err("Failed to connect to nl80211\n");
+		return 2;
+	}
+
+	msg = unl_genl_msg(&nl_priv.unl, NL80211_CMD_TESTMODE, false);
+	nla_put_u32(msg, NL80211_ATTR_WIPHY, get_band_val(an, band, phy_idx));
+
+	ptr = nla_nest_start(msg, NL80211_ATTR_TESTDATA);
+	if (!ptr) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_MODE, MT76_TM_TX_MODE_HT);
+	nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_IDX, an->ibf_mcs);
+	nla_put_u8(msg, MT76_TM_ATTR_TX_ANTENNA, an->ibf_ant);
+	nla_put_u8(msg, MT76_TM_ATTR_TXBF_ACT, MT76_TM_TXBF_ACT_INIT);
+
+	a = nla_nest_start(msg, MT76_TM_ATTR_TXBF_PARAM);
+	if (!a) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	nla_put_u16(msg, 0, 1);
+	nla_nest_end(msg, a);
+
+	nla_nest_end(msg, ptr);
+
+	ret = unl_genl_request(&nl_priv.unl, msg, NULL, NULL);
+
+out:
+	unl_free(&nl_priv.unl);
+	return ret;
+}
+
+static int
+atenl_nl_ibf_e2p_update(struct atenl *an)
+{
+	struct atenl_nl_priv nl_priv = {};
+	struct nl_msg *msg;
+	void *ptr, *a;
+	int ret;
+
+	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
+		atenl_err("Failed to connect to nl80211\n");
+		return 2;
+	}
+
+	msg = unl_genl_msg(&nl_priv.unl, NL80211_CMD_TESTMODE, false);
+	nla_put_u32(msg, NL80211_ATTR_WIPHY, get_band_val(an, an->cur_band, phy_idx));
+
+	ptr = nla_nest_start(msg, NL80211_ATTR_TESTDATA);
+	if (!ptr) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	nla_put_u8(msg, MT76_TM_ATTR_TXBF_ACT, MT76_TM_TXBF_ACT_E2P_UPDATE);
+	a = nla_nest_start(msg, MT76_TM_ATTR_TXBF_PARAM);
+	if (!a) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	nla_put_u16(msg, 0, 0);
+	nla_nest_end(msg, a);
+
+	nla_nest_end(msg, ptr);
+
+	ret = unl_genl_request(&nl_priv.unl, msg, NULL, NULL);
+
+out:
+	unl_free(&nl_priv.unl);
+	return ret;
+}
+
+static void
+atenl_get_ibf_cal_result(struct atenl *an)
+{
+	u16 offset;
+
+	if (an->adie_id == 0x7975)
+		offset = 0x651;
+	else if (an->adie_id == 0x7976)
+		offset = 0x60a;
+
+	/* per group size = 40, for group 0-8 */
+	atenl_eeprom_read_from_driver(an, offset, 40 * 9);
+}
+
+static int
+atenl_nl_ibf_set_val(struct atenl *an, struct atenl_data *data,
+		     struct atenl_nl_priv *nl_priv)
 {
 #define MT_IBF(_act)	MT76_TM_TXBF_ACT_##_act
 	static const u8 bf_act_map[] = {
@@ -743,7 +846,8 @@ static int atenl_nl_ibf_set_val(struct atenl *an, struct atenl_data *data,
 	struct nl_msg *msg = nl_priv->msg;
 	u32 *v = (u32 *)(hdr->data + 4);
 	u32 action = ntohl(v[0]);
-	u16 val[8];
+	u16 val[8], is_atenl = 1;
+	u8 tmp_ant;
 	void *ptr, *a;
 	char cmd[64];
 	int i;
@@ -759,24 +863,15 @@ static int atenl_nl_ibf_set_val(struct atenl *an, struct atenl_data *data,
 		return -ENOMEM;
 
 	switch (action) {
-	case TXBF_ACT_INIT:
-		nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_MODE, MT76_TM_TX_MODE_HT);
-		nla_put_u8(msg, MT76_TM_ATTR_AID, 1);
-		nla_put_u8(msg, MT76_TM_ATTR_TXBF_ACT, MT76_TM_TXBF_ACT_INIT);
-
-		a = nla_nest_start(msg, MT76_TM_ATTR_TXBF_PARAM);
-		if (!a)
-			return -ENOMEM;
-		nla_put_u16(msg, 0, 1);
-		if (!val[0])
-			nla_put_u16(msg, 1, 1);	/* init */
-		nla_nest_end(msg, a);
-		break;
 	case TXBF_ACT_CHANNEL:
-		sprintf(cmd, "iw dev mon%d set channel %u HT20",
-			get_band_val(an, an->cur_band, phy_idx), val[0]);
-		system(cmd);
-		printf("%s: %s", __func__, cmd);
+		an->cur_band = val[1];
+		/* a sanity to prevent script band idx error */
+		if (val[0] > 14)
+			an->cur_band = 1;
+		atenl_nl_ibf_init(an, an->cur_band);
+		atenl_set_channel(an, 0, an->cur_band, val[0], 0, 0);
+
+		nla_put_u8(msg, MT76_TM_ATTR_AID, 0);
 		nla_put_u8(msg, MT76_TM_ATTR_TXBF_ACT, MT76_TM_TXBF_ACT_UPDATE_CH);
 		a = nla_nest_start(msg, MT76_TM_ATTR_TXBF_PARAM);
 		if (!a)
@@ -785,10 +880,14 @@ static int atenl_nl_ibf_set_val(struct atenl *an, struct atenl_data *data,
 		nla_nest_end(msg, a);
 		break;
 	case TXBF_ACT_MCS:
-		nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_IDX, val[0]);
-		nla_put_u8(msg, MT76_TM_ATTR_TX_ANTENNA, (1 << DIV_ROUND_UP(val[0], 8)) - 1);
-		break;
-	case TXBF_ACT_POWER:
+		tmp_ant = (1 << DIV_ROUND_UP(val[0], 8)) - 1 ?: 1;
+		/* sometimes the correct band idx will be set after this action,
+		 * so maintain a temp variable to allow mcs update in anthor action.
+		 */
+		an->ibf_mcs = val[0];
+		an->ibf_ant = tmp_ant;
+		nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_IDX, an->ibf_mcs);
+		nla_put_u8(msg, MT76_TM_ATTR_TX_ANTENNA, an->ibf_ant);
 		break;
 	case TXBF_ACT_TX_ANT:
 		nla_put_u8(msg, MT76_TM_ATTR_TX_ANTENNA, val[0]);
@@ -801,8 +900,9 @@ static int atenl_nl_ibf_set_val(struct atenl *an, struct atenl_data *data,
 		break;
 	case TXBF_ACT_TX_PKT:
 		nla_put_u8(msg, MT76_TM_ATTR_AID, val[1]);
-		nla_put_u32(msg, MT76_TM_ATTR_TX_COUNT, 10000000);
 		nla_put_u8(msg, MT76_TM_ATTR_TXBF_ACT, MT76_TM_TXBF_ACT_TX_PREP);
+		nla_put_u32(msg, MT76_TM_ATTR_TX_COUNT, 10000000);
+		nla_put_u32(msg, MT76_TM_ATTR_TX_LENGTH, 1024);
 		a = nla_nest_start(msg, MT76_TM_ATTR_TXBF_PARAM);
 		if (!a)
 			return -ENOMEM;
@@ -814,6 +914,7 @@ static int atenl_nl_ibf_set_val(struct atenl *an, struct atenl_data *data,
 		atenl_set_attr_state(an, msg, an->cur_band, MT76_TM_STATE_TX_FRAMES);
 		break;
 	case TXBF_ACT_IBF_PHASE_COMP:
+		nla_put_u8(msg, MT76_TM_ATTR_AID, 1);
 	case TXBF_ACT_IBF_PROF_UPDATE:
 	case TXBF_ACT_EBF_PROF_UPDATE:
 	case TXBF_ACT_IBF_PHASE_CAL:
@@ -821,14 +922,18 @@ static int atenl_nl_ibf_set_val(struct atenl *an, struct atenl_data *data,
 		a = nla_nest_start(msg, MT76_TM_ATTR_TXBF_PARAM);
 		if (!a)
 			return -ENOMEM;
-
+		/* Note: litepoint may send random number for lna_gain_level, reset to 0 */
+		if (action == TXBF_ACT_IBF_PHASE_CAL)
+			val[4] = 0;
 		for (i = 0; i < 5; i++)
 			nla_put_u16(msg, i, val[i]);
+		/* Used to distinguish between command mode and HQADLL mode */
+		nla_put_u16(msg, 5, is_atenl);
 		nla_nest_end(msg, a);
 		break;
 	case TXBF_ACT_IBF_PHASE_E2P_UPDATE:
-		atenl_eeprom_read_from_driver(an, 0x651, 0x28 * 9);
-		atenl_eeprom_write_mtd(an);
+		atenl_nl_ibf_e2p_update(an);
+		atenl_get_ibf_cal_result(an);
 
 		nla_put_u8(msg, MT76_TM_ATTR_AID, 0);
 		nla_put_u8(msg, MT76_TM_ATTR_TXBF_ACT, MT76_TM_TXBF_ACT_INIT);
@@ -839,13 +944,15 @@ static int atenl_nl_ibf_set_val(struct atenl *an, struct atenl_data *data,
 		nla_put_u16(msg, 0, 0);
 		nla_nest_end(msg, a);
 		break;
+	case TXBF_ACT_INIT:
+	case TXBF_ACT_POWER:
 	default:
 		break;
 	}
 
 	nla_nest_end(msg, ptr);
 
-	memcpy(hdr->data + 2, &data->ext_id, 4);
+	*(u32 *)(hdr->data + 2) = data->ext_id;
 
 	return unl_genl_request(&nl_priv->unl, msg, NULL, NULL);
 }
@@ -857,7 +964,7 @@ atenl_nl_ibf_get_status(struct atenl *an, struct atenl_data *data,
 	struct atenl_cmd_hdr *hdr = atenl_hdr(data);
 	u32 status = htonl(1);
 
-	memcpy(hdr->data + 2, &data->ext_id, 4);
+	*(u32 *)(hdr->data + 2) = data->ext_id;
 	memcpy(hdr->data + 6, &status, 4);
 
 	return 0;
@@ -878,7 +985,7 @@ atenl_nl_ibf_profile_update_all(struct atenl *an, struct atenl_data *data,
 		int j;
 
 		if (unl_genl_init(&nl_priv->unl, "nl80211") < 0) {
-			fprintf(stderr, "Failed to connect to nl80211\n");
+			atenl_err("Failed to connect to nl80211\n");
 			return 2;
 		}
 
@@ -907,7 +1014,7 @@ atenl_nl_ibf_profile_update_all(struct atenl *an, struct atenl_data *data,
 		unl_free(&nl_priv->unl);
 	}
 
-	memcpy(hdr->data + 2, &data->ext_id, 4);
+	*(u32 *)(hdr->data + 2) = data->ext_id;
 
 	return 0;
 }
@@ -954,7 +1061,7 @@ int atenl_nl_process(struct atenl *an, struct atenl_data *data)
 		ops = &nl_ops[data->cmd];
 
 	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
-		fprintf(stderr, "Failed to connect to nl80211\n");
+		atenl_err("Failed to connect to nl80211\n");
 		return -1;
 	}
 
@@ -973,7 +1080,7 @@ int atenl_nl_process(struct atenl *an, struct atenl_data *data)
 	}
 
 	if (ret)
-		atenl_err("command process error: %d (%d)\n", data->cmd, data->ext_cmd);
+		atenl_err("command process error: 0x%x (0x%x)\n", data->cmd_id, data->ext_id);
 
 	unl_free(&nl_priv.unl);
 
@@ -1005,7 +1112,7 @@ int atenl_nl_set_state(struct atenl *an, u8 band,
 	void *ptr;
 
 	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
-		fprintf(stderr, "Failed to connect to nl80211\n");
+		atenl_err("Failed to connect to nl80211\n");
 		return 2;
 	}
 
@@ -1017,6 +1124,35 @@ int atenl_nl_set_state(struct atenl *an, u8 band,
 		return -ENOMEM;
 
 	atenl_set_attr_state(an, msg, band, state);
+
+	nla_nest_end(msg, ptr);
+
+	unl_genl_request(&nl_priv.unl, msg, NULL, NULL);
+
+	unl_free(&nl_priv.unl);
+
+	return 0;
+}
+
+int atenl_nl_set_aid(struct atenl *an, u8 band, u8 aid)
+{
+	struct atenl_nl_priv nl_priv = {};
+	struct nl_msg *msg;
+	void *ptr;
+
+	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
+		atenl_err("Failed to connect to nl80211\n");
+		return 2;
+	}
+
+	msg = unl_genl_msg(&nl_priv.unl, NL80211_CMD_TESTMODE, false);
+	nla_put_u32(msg, NL80211_ATTR_WIPHY, get_band_val(an, band, phy_idx));
+
+	ptr = nla_nest_start(msg, NL80211_ATTR_TESTDATA);
+	if (!ptr)
+		return -ENOMEM;
+
+	nla_put_u8(msg, MT76_TM_ATTR_AID, aid);
 
 	nla_nest_end(msg, ptr);
 
@@ -1044,6 +1180,7 @@ static int atenl_nl_check_mtd_cb(struct nl_msg *msg, void *arg)
 
 	an->mtd_part = strdup(nla_get_string(tb[MT76_TM_ATTR_MTD_PART]));
 	an->mtd_offset = nla_get_u32(tb[MT76_TM_ATTR_MTD_OFFSET]);
+	an->band_idx = nla_get_u32(tb[MT76_TM_ATTR_BAND_IDX]);
 
 	return NL_SKIP;
 }
@@ -1054,7 +1191,7 @@ int atenl_nl_check_mtd(struct atenl *an)
 	struct nl_msg *msg;
 
 	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
-		fprintf(stderr, "Failed to connect to nl80211\n");
+		atenl_err("Failed to connect to nl80211\n");
 		return 2;
 	}
 
@@ -1075,7 +1212,7 @@ int atenl_nl_write_eeprom(struct atenl *an, u32 offset, u8 *val, int len)
 	int i;
 
 	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
-		fprintf(stderr, "Failed to connect to nl80211\n");
+		atenl_err("Failed to connect to nl80211\n");
 		return 2;
 	}
 
@@ -1120,7 +1257,7 @@ int atenl_nl_write_efuse_all(struct atenl *an)
 	void *ptr;
 
 	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
-		fprintf(stderr, "Failed to connect to nl80211\n");
+		atenl_err("Failed to connect to nl80211\n");
 		return 2;
 	}
 
@@ -1150,7 +1287,7 @@ int atenl_nl_update_buffer_mode(struct atenl *an)
 	void *ptr;
 
 	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
-		fprintf(stderr, "Failed to connect to nl80211\n");
+		atenl_err("Failed to connect to nl80211\n");
 		return 2;
 	}
 
@@ -1173,3 +1310,209 @@ int atenl_nl_update_buffer_mode(struct atenl *an)
 	return 0;
 }
 
+static int atenl_nl_precal_sync_from_driver_cb(struct nl_msg *msg, void *arg)
+{
+	struct atenl_nl_priv *nl_priv = (struct atenl_nl_priv *)arg;
+	struct atenl *an = nl_priv->an;
+	struct nlattr *tb[NUM_MT76_TM_ATTRS];
+	struct nlattr *attr, *cur;
+	int i, rem, prek_offset = nl_priv->attr;
+
+
+	attr = unl_find_attr(&nl_priv->unl, msg, NL80211_ATTR_TESTDATA);
+	if (!attr)
+		return NL_SKIP;
+
+	nla_parse_nested(tb, MT76_TM_ATTR_MAX, attr, testdata_policy);
+
+	if (!tb[MT76_TM_ATTR_PRECAL_INFO] && !tb[MT76_TM_ATTR_PRECAL]) {
+		atenl_info("No Pre cal data or info!\n");
+		return NL_SKIP;
+	}
+
+	if (tb[MT76_TM_ATTR_PRECAL_INFO]) {
+		i = 0;
+		nla_for_each_nested(cur, tb[MT76_TM_ATTR_PRECAL_INFO], rem) {
+			an->cal_info[i] = (u32) nla_get_u32(cur);
+			i++;
+		}
+		return NL_SKIP;
+	}
+
+	if (tb[MT76_TM_ATTR_PRECAL] && an->cal) {
+		i = prek_offset;
+		nla_for_each_nested(cur, tb[MT76_TM_ATTR_PRECAL], rem) {
+			an->cal[i] = (u8) nla_get_u8(cur);
+			i++;
+		}
+		return NL_SKIP;
+	}
+	atenl_info("No data found for pre-cal!\n");
+
+	return NL_SKIP;
+}
+
+static int
+atenl_nl_precal_sync_partition(struct atenl_nl_priv *nl_priv, enum mt76_testmode_attr attr,
+			       int prek_type, int prek_offset)
+{
+	int ret;
+	void *ptr;
+	struct nl_msg *msg;
+	struct atenl *an = nl_priv->an;
+
+	msg = unl_genl_msg(&(nl_priv->unl), NL80211_CMD_TESTMODE, true);
+	nla_put_u32(msg, NL80211_ATTR_WIPHY, get_band_val(an, an->cur_band, phy_idx));
+	nl_priv->msg = msg;
+	nl_priv->attr = prek_offset;
+
+	ptr = nla_nest_start(msg, NL80211_ATTR_TESTDATA);
+	if (!ptr)
+		return -ENOMEM;
+
+	nla_put_flag(msg, attr);
+	if (attr == MT76_TM_ATTR_PRECAL)
+		nla_put_u8(msg, MT76_TM_ATTR_PRECAL_INFO, prek_type);
+	nla_nest_end(msg, ptr);
+
+	ret = unl_genl_request(&(nl_priv->unl), msg, atenl_nl_precal_sync_from_driver_cb, (void *)nl_priv);
+
+	if (ret) {
+		atenl_err("command process error!\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+int atenl_nl_precal_sync_from_driver(struct atenl *an, enum prek_ops ops)
+{
+#define GROUP_IND_MASK		BIT(0)
+#define GROUP_IND_MASK_7996	GENMASK(2, 0)
+#define DPD_IND_MASK		GENMASK(3, 1)
+#define DPD_IND_MASK_7996	GENMASK(5, 3)
+	int ret;
+	u32 i, times, group_size, dpd_size, total_size, transmit_size, offs;
+	u32 dpd_per_chan_size, dpd_chan_ratio[3], total_ratio;
+	u32 size, base, base_idx, dpd_base_map, *size_ptr;
+	u8 cal_indicator, group_ind_mask, dpd_ind_mask, *precal_info;
+	struct atenl_nl_priv nl_priv = { .an = an };
+
+	offs = an->eeprom_prek_offs;
+	cal_indicator = an->eeprom_data[offs];
+	group_ind_mask = is_mt7996(an) ? GROUP_IND_MASK_7996 : GROUP_IND_MASK;
+	dpd_ind_mask = is_mt7996(an) ? DPD_IND_MASK_7996 : DPD_IND_MASK;
+
+	if (cal_indicator) {
+		precal_info = an->eeprom_data + an->eeprom_size;
+		memcpy(an->cal_info, precal_info, PRE_CAL_INFO);
+		group_size = an->cal_info[0];
+		dpd_size = an->cal_info[1];
+		total_size = group_size + dpd_size;
+		dpd_chan_ratio[0] = (an->cal_info[2] >> DPD_INFO_6G_SHIFT) &
+				    DPD_INFO_MASK;
+		dpd_chan_ratio[1] = (an->cal_info[2] >> DPD_INFO_5G_SHIFT) &
+				    DPD_INFO_MASK;
+		dpd_chan_ratio[2] = (an->cal_info[2] >> DPD_INFO_2G_SHIFT) &
+				    DPD_INFO_MASK;
+		dpd_per_chan_size = (an->cal_info[2] >> DPD_INFO_CH_SHIFT) &
+				    DPD_INFO_MASK;
+		total_ratio = dpd_chan_ratio[0] + dpd_chan_ratio[1] +
+			      dpd_chan_ratio[2];
+	}
+
+	switch (ops){
+	case PREK_SYNC_ALL:
+		size_ptr = &total_size;
+		base_idx = 0;
+		dpd_base_map = 0;
+		goto start;
+	case PREK_SYNC_GROUP:
+		size_ptr = &group_size;
+		base_idx = 0;
+		dpd_base_map = 0;
+		goto start;
+	case PREK_SYNC_DPD_6G:
+		size_ptr = &dpd_size;
+		base_idx = 0;
+		dpd_base_map = is_mt7996(an) ? GENMASK(2, 1) : 0;
+		goto start;
+	case PREK_SYNC_DPD_5G:
+		size_ptr = &dpd_size;
+		base_idx = 1;
+		dpd_base_map = is_mt7996(an) ? BIT(2) : BIT(0);
+		goto start;
+	case PREK_SYNC_DPD_2G:
+		size_ptr = &dpd_size;
+		base_idx = 2;
+		dpd_base_map = is_mt7996(an) ? 0 : GENMASK(1, 0);
+
+start:
+		if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
+			atenl_err("Failed to connect to nl80211\n");
+			return 2;
+		}
+
+		ret = atenl_nl_precal_sync_partition(&nl_priv, MT76_TM_ATTR_PRECAL_INFO, 0, 0);
+		if (ret || !an->cal_info)
+			goto out;
+
+		group_size = an->cal_info[0];
+		dpd_size = an->cal_info[1];
+		total_size = group_size + dpd_size;
+		dpd_chan_ratio[0] = (an->cal_info[2] >> DPD_INFO_6G_SHIFT) &
+				    DPD_INFO_MASK;
+		dpd_chan_ratio[1] = (an->cal_info[2] >> DPD_INFO_5G_SHIFT) &
+				    DPD_INFO_MASK;
+		dpd_chan_ratio[2] = (an->cal_info[2] >> DPD_INFO_2G_SHIFT) &
+				    DPD_INFO_MASK;
+		dpd_per_chan_size = (an->cal_info[2] >> DPD_INFO_CH_SHIFT) &
+				    DPD_INFO_MASK;
+		total_ratio = dpd_chan_ratio[0] + dpd_chan_ratio[1] +
+			      dpd_chan_ratio[2];
+		transmit_size = an->cal_info[3];
+
+		size = *size_ptr;
+		if (size_ptr == &dpd_size)
+			size = size / total_ratio * dpd_chan_ratio[base_idx];
+
+		base = 0;
+		for (i = 0; i < 3; i++) {
+			if (dpd_base_map & BIT(i))
+				base += dpd_chan_ratio[i] * dpd_per_chan_size *
+					MT_EE_CAL_UNIT;
+		}
+		base += (size_ptr == &dpd_size) ? group_size : 0;
+
+		if (!an->cal)
+			an->cal = (u8 *) calloc(size, sizeof(u8));
+		times = size / transmit_size + 1;
+		for (i = 0; i < times; i++) {
+			ret = atenl_nl_precal_sync_partition(&nl_priv, MT76_TM_ATTR_PRECAL, ops,
+							     i * transmit_size);
+			if (ret)
+				goto out;
+		}
+
+		ret = atenl_eeprom_update_precal(an, base, size);
+		break;
+	case PREK_CLEAN_GROUP:
+		if (!(cal_indicator & group_ind_mask))
+			return 0;
+		an->cal_info[4] = cal_indicator & group_ind_mask;
+		ret = atenl_eeprom_update_precal(an, 0, group_size);
+		break;
+	case PREK_CLEAN_DPD:
+		if (!(cal_indicator & dpd_ind_mask))
+			return 0;
+		an->cal_info[4] = cal_indicator & dpd_ind_mask;
+		ret = atenl_eeprom_update_precal(an, group_size, dpd_size);
+		break;
+	default:
+		break;
+	}
+
+out:
+	unl_free(&nl_priv.unl);
+	return ret;
+}

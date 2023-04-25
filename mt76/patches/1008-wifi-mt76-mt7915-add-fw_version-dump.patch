@@ -1,7 +1,7 @@
-From 611d781ff9e39b474e71a59ec0ea7761a4274456 Mon Sep 17 00:00:00 2001
+From dc39156305177d08dc19deecf98155262fe82059 Mon Sep 17 00:00:00 2001
 From: Evelyn Tsai <evelyn.tsai@mediatek.com>
 Date: Wed, 17 Aug 2022 13:40:24 +0800
-Subject: [PATCH] mt76: mt7915: add fw_version dump
+Subject: [PATCH 1008/1031] wifi: mt76: mt7915: add fw_version dump
 
 ---
  mt76.h               |  4 ++++
@@ -11,29 +11,29 @@ Subject: [PATCH] mt76: mt7915: add fw_version dump
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -845,6 +845,10 @@ struct mt76_dev {
- 		struct mt76_sdio sdio;
- 	};
+@@ -847,6 +847,10 @@ struct mt76_dev {
  
+ 	int first_failed_mcu_cmd;
+ 	int last_successful_mcu_cmd;
++
 +	struct mt76_connac2_patch_hdr *patch_hdr;
 +	struct mt76_connac2_fw_trailer *wm_hdr;
 +	struct mt76_connac2_fw_trailer *wa_hdr;
-+
- 	int first_failed_mcu_cmd;
- 	int last_successful_mcu_cmd;
  };
+ 
+ struct mt76_power_limits {
 --- a/mt76_connac_mcu.c
 +++ b/mt76_connac_mcu.c
-@@ -3010,6 +3010,9 @@ int mt76_connac2_load_ram(struct mt76_de
- 		goto out;
- 	}
+@@ -3014,6 +3014,9 @@ int mt76_connac2_load_ram(struct mt76_de
+ 		 sizeof(dev->hw->wiphy->fw_version),
+ 		 "%.10s-%.15s", hdr->fw_ver, hdr->build_date);
  
 +	dev->wm_hdr = devm_kzalloc(dev->dev, sizeof(*hdr), GFP_KERNEL);
 +	memcpy(dev->wm_hdr, hdr, sizeof(*hdr));
 +
- 	snprintf(dev->hw->wiphy->fw_version,
- 		 sizeof(dev->hw->wiphy->fw_version),
- 		 "%.10s-%.15s", hdr->fw_ver, hdr->build_date);
+ 	release_firmware(fw);
+ 
+ 	if (!fw_wa)
 @@ -3039,6 +3042,9 @@ int mt76_connac2_load_ram(struct mt76_de
  		goto out;
  	}
@@ -56,7 +56,7 @@ Subject: [PATCH] mt76: mt7915: add fw_version dump
  		u32 len, addr, mode;
 --- a/mt7915/mtk_debugfs.c
 +++ b/mt7915/mtk_debugfs.c
-@@ -2688,6 +2688,22 @@ static int mt7915_agginfo_read_band1(str
+@@ -2766,6 +2766,22 @@ static int mt7915_agginfo_read_band1(str
  	return 0;
  }
  
@@ -64,7 +64,7 @@ Subject: [PATCH] mt76: mt7915: add fw_version dump
 +{
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
 +	struct mt76_dev *mdev = NULL;
-+	seq_printf(s, "Version: 2.2.3.0\n");
++	seq_printf(s, "Version: 2.2.10.0\n");
 +
 +	if (!test_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state))
 +		return 0;
@@ -79,7 +79,7 @@ Subject: [PATCH] mt76: mt7915: add fw_version dump
  /*usage: <en> <num> <len>
  	en: BIT(16) 0: sw amsdu  1: hw amsdu
  	num: GENMASK(15, 8) range 1-8
-@@ -2920,6 +2936,9 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3601,6 +3617,9 @@ int mt7915_mtk_init_debugfs(struct mt791
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  

@@ -485,6 +485,8 @@ define KernelPackage/mt7915-firmware/install
 		./files/firmware/mt7915_wa.bin \
 		./files/firmware/mt7915_wm.bin \
 		./files/firmware/mt7915_rom_patch.bin \
+		./files/firmware/mt7915_eeprom.bin \
+		./files/firmware/mt7915_eeprom_dbdc.bin \
 		$(1)/lib/firmware/mediatek
 endef
 
@@ -507,6 +509,9 @@ define KernelPackage/mt7986-firmware/install
 		./files/firmware/mt7986_rom_patch.bin \
 		$(PKG_BUILD_DIR)/firmware/mt7986_eeprom_mt7975_dual.bin \
 		$(PKG_BUILD_DIR)/firmware/mt7986_eeprom_mt7976_dual.bin \
+		./files/firmware/mt7986_eeprom_mt7975.bin \
+		./files/firmware/mt7986_eeprom_mt7976.bin \
+		./files/firmware/mt7986_eeprom_mt7976_dbdc.bin \
 		$(1)/lib/firmware/mediatek
 endef
 

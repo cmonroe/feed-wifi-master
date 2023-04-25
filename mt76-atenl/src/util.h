@@ -43,6 +43,10 @@ typedef int64_t s64, ktime_t;
 	({								\
 		(typeof(_mask))(((_reg) & (_mask)) >> __bf_shf(_mask));	\
 	})
+#define FIELD_PREP(_mask, _val)						\
+	({								\
+		((typeof(_mask))(_val) << __bf_shf(_mask)) & (_mask);	\
+	})
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
@@ -76,6 +80,24 @@ static inline bool is_broadcast_ether_addr(const u8 *addr)
 static inline bool is_multicast_ether_addr(const u8 *addr)
 {
 	return 0x01 & addr[0];
+}
+
+static inline bool is_unicast_ether_addr(const u8 *addr)
+{
+	return !is_multicast_ether_addr(addr);
+}
+
+static inline bool is_zero_ether_addr(const u8 *addr)
+{
+	return (*(const u16 *)(addr + 0) |
+		*(const u16 *)(addr + 2) |
+		*(const u16 *)(addr + 4)) == 0;
+}
+
+static inline bool use_default_addr(const u8 *addr)
+{
+	return !is_unicast_ether_addr(addr) ||
+	       is_zero_ether_addr(addr);
 }
 
 static inline void eth_broadcast_addr(u8 *addr)

@@ -1,10 +1,11 @@
-From 270b493736a3f552b9fc2da8d6741c7e0168b470 Mon Sep 17 00:00:00 2001
+From 190ce15abcef8fbc19f9b7e87cdfd7fcf3e6ef8a Mon Sep 17 00:00:00 2001
 From: Evelyn Tsai <evelyn.tsai@mediatek.com>
 Date: Fri, 6 May 2022 15:58:42 +0800
-Subject: [PATCH 1114/1119] mt76: airtime fairness feature off in mac80211
+Subject: [PATCH 1016/1031] wifi: mt76: connac: airtime fairness feature off in
+ mac80211
 
 ---
- drivers/net/wireless/mediatek/mt76/mac80211.c | 1 -
+ mac80211.c | 1 -
  1 file changed, 1 deletion(-)
 
 --- a/mac80211.c

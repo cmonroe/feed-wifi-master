@@ -106,6 +106,9 @@ static int mt76_ap_wireless_set_attr(struct nl_msg *msg, int argc, char **argv)
 		nla_put_u8(msg, MTK_VENDOR_ATTR_WIRELESS_CTRL_AMSDU, strtoul(val, NULL, 0));
 	} else if (!strncmp(argv[0], "cert", 4)) {
 		nla_put_u8(msg, MTK_VENDOR_ATTR_WIRELESS_CTRL_CERT, strtoul(val, NULL, 0));
+	} else if (!strncmp(argv[0], "rts_sigta", 9)) {
+		nla_put_u8(msg, MTK_VENDOR_ATTR_WIRELESS_CTRL_RTS_SIGTA,
+			strtoul(val, NULL, 0));
 	}
 
 	return 0;

@@ -78,7 +78,7 @@ Signed-off-by: Sujuan Chen <sujuan.chen@mediatek.com>
  
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2415,10 +2415,18 @@ int mt7915_mcu_init_firmware(struct mt79
+@@ -2418,10 +2418,18 @@ int mt7915_mcu_init_firmware(struct mt79
  	if (ret)
  		return ret;
  
@@ -103,7 +103,7 @@ Signed-off-by: Sujuan Chen <sujuan.chen@mediatek.com>
  	if (ret)
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -278,6 +278,7 @@ enum {
+@@ -279,6 +279,7 @@ enum {
  	MCU_WA_PARAM_PDMA_RX = 0x04,
  	MCU_WA_PARAM_CPU_UTIL = 0x0b,
  	MCU_WA_PARAM_RED = 0x0e,

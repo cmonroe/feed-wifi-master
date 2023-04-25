@@ -30,6 +30,7 @@ define Package/mt76-atenl/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/atenl $(1)/usr/sbin
 	$(INSTALL_BIN) ./files/ated.sh $(1)/usr/sbin/ated
 	$(INSTALL_BIN) ./files/iwpriv.sh $(1)/usr/sbin/iwpriv
+	$(INSTALL_BIN) ./files/iwpriv.sh $(1)/usr/sbin/mwctl
 endef
 
 $(eval $(call BuildPackage,mt76-atenl))

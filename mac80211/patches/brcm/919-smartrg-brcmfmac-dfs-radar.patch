@@ -12,7 +12,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -4870,6 +4870,21 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
+@@ -4873,6 +4873,21 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
  			}
  		}
  
@@ -596,7 +596,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  /* Linux network driver ioctl encoding - this is same as wl_ioctl from libwmd/src/api/broadcom.h, similar to dhd_ioctl */
  typedef struct brcmf_ioctl {
-@@ -1536,6 +2089,10 @@ static int brcmf_bus_started(struct brcm
+@@ -1537,6 +2090,10 @@ static int brcmf_bus_started(struct brcm
  			    &console_fops);
  	debugfs_create_file("leddc", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
  			    &leddc_fops);

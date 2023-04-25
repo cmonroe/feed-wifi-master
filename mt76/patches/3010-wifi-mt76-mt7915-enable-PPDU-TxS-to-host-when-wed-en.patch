@@ -25,7 +25,7 @@ Calculate tx bytes and tx retries from PPDU-TxS
  	}
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -497,6 +497,12 @@ mt7915_mac_init_band(struct mt7915_dev *
+@@ -491,6 +491,12 @@ mt7915_mac_init_band(struct mt7915_dev *
  	set = FIELD_PREP(MT_WTBLOFF_TOP_RSCR_RCPI_MODE, 0) |
  	      FIELD_PREP(MT_WTBLOFF_TOP_RSCR_RCPI_PARAM, 0x3);
  	mt76_rmw(dev, MT_WTBLOFF_TOP_RSCR(band), mask, set);
@@ -40,7 +40,7 @@ Calculate tx bytes and tx retries from PPDU-TxS
  static void
 --- a/mt7915/mmio.c
 +++ b/mt7915/mmio.c
-@@ -545,7 +545,6 @@ static u32 mt7915_rmw(struct mt76_dev *m
+@@ -547,7 +547,6 @@ static u32 mt7915_rmw(struct mt76_dev *m
  static int mt7915_mmio_wed_offload_enable(struct mtk_wed_device *wed)
  {
  	struct mt7915_dev *dev;
@@ -48,7 +48,7 @@ Calculate tx bytes and tx retries from PPDU-TxS
  	int ret;
  
  	dev = container_of(wed, struct mt7915_dev, mt76.mmio.wed);
-@@ -559,38 +558,18 @@ static int mt7915_mmio_wed_offload_enabl
+@@ -561,38 +560,18 @@ static int mt7915_mmio_wed_offload_enabl
  	if (!ret)
  		return -EAGAIN;
  

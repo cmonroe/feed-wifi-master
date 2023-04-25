@@ -1,8 +1,6 @@
-Index: hostapd-2020-06-08-5a8b3662/src/ap/ctrl_iface_ap.c
-===================================================================
---- hostapd-2020-06-08-5a8b3662.orig/src/ap/ctrl_iface_ap.c
-+++ hostapd-2020-06-08-5a8b3662/src/ap/ctrl_iface_ap.c
-@@ -202,6 +202,53 @@ static const char * timeout_next_str(int
+--- a/src/ap/ctrl_iface_ap.c
++++ b/src/ap/ctrl_iface_ap.c
+@@ -212,6 +212,53 @@ static const char * timeout_next_str(int
  	return "?";
  }
  
@@ -56,7 +54,7 @@ Index: hostapd-2020-06-08-5a8b3662/src/ap/ctrl_iface_ap.c
  
  static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
  				      struct sta_info *sta,
-@@ -377,6 +424,16 @@ static int hostapd_ctrl_iface_sta_mib(st
+@@ -386,6 +433,16 @@ static int hostapd_ctrl_iface_sta_mib(st
  		if (!os_snprintf_error(buflen - len, ret))
  			len += ret;
  	}
@@ -73,6 +71,3 @@ Index: hostapd-2020-06-08-5a8b3662/src/ap/ctrl_iface_ap.c
  
  	return len;
  }
--- 
-2.32.0.windows.1
-

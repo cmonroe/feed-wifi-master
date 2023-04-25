@@ -9,7 +9,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -153,8 +153,8 @@ static struct ieee80211_channel __wl_2gh
+@@ -156,8 +156,8 @@ static struct ieee80211_channel __wl_2gh
  };
  
  static struct ieee80211_channel __wl_5ghz_channels[] = {

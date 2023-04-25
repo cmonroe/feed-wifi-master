@@ -200,31 +200,7 @@ atenl_hqa_get_sub_chip_id(struct atenl *an, struct atenl_data *data)
 {
 	struct atenl_cmd_hdr *hdr = atenl_hdr(data);
 
-	if (is_mt7986(an)) {
-		u32 sub_id, val;
-		int ret;
-
-		ret = atenl_reg_read(an, 0x18050000, &val);
-		if (ret)
-			return ret;
-
-		switch (val & 0xf) {
-		case MT7975_ONE_ADIE_SINGLE_BAND:
-		case MT7976_ONE_ADIE_SINGLE_BAND:
-			sub_id = htonl(0xa);
-			break;
-		case MT7976_ONE_ADIE_DBDC:
-			sub_id = htonl(0x7);
-			break;
-		case MT7975_DUAL_ADIE_DBDC:
-		case MT7976_DUAL_ADIE_DBDC:
-		default:
-			sub_id = htonl(0xf);
-			break;
-		}
-
-		memcpy(hdr->data + 2, &sub_id, 4);
-	}
+	*(u32 *)(hdr->data + 2) = htonl(an->sub_chip_id);
 
 	return 0;
 }
@@ -266,13 +242,12 @@ atenl_hqa_mac_bbp_reg(struct atenl *an, struct atenl_data *data)
 	struct atenl_cmd_hdr *hdr = atenl_hdr(data);
 	enum atenl_cmd cmd = data->cmd;
 	u32 *v = (u32 *)hdr->data;
-	u32 offset = ntohl(v[0]);
+	u32 offset = ntohl(v[0]), res;
 	int ret;
 
 	if (cmd == HQA_CMD_READ_MAC_BBP_REG) {
 		u16 num = ntohs(*(u16 *)(hdr->data + 4));
 		u32 *ptr = (u32 *)(hdr->data + 2);
-		u32 res;
 		int i;
 
 		if (num > SHRT_MAX) {
@@ -289,12 +264,62 @@ atenl_hqa_mac_bbp_reg(struct atenl *an, struct atenl_data *data)
 			res = htonl(res);
 			memcpy(ptr + i, &res, 4);
 		}
+	} else if (cmd == HQA_CMD_READ_MAC_BBP_REG_QA) {
+		ret = atenl_reg_read(an, offset, &res);
+		if (ret)
+			goto out;
+
+		res = htonl(res);
+		memcpy(hdr->data + 2, &res, 4);
 	} else {
 		u32 val = ntohl(v[1]);
 
 		ret = atenl_reg_write(an, offset, val);
 		if (ret)
 			goto out;
+	}
+
+	ret = 0;
+out:
+	memset(hdr->data, 0, 2);
+
+	return ret;
+}
+
+static int
+atenl_hqa_rf_reg(struct atenl *an, struct atenl_data *data)
+{
+	struct atenl_cmd_hdr *hdr = atenl_hdr(data);
+	enum atenl_cmd cmd = data->cmd;
+	u32 *v = (u32 *)hdr->data;
+	u32 wf_sel = ntohl(v[0]);
+	u32 offset = ntohl(v[1]);
+	u32 num = ntohl(v[2]);
+	int ret, i;
+
+	if (cmd == HQA_CMD_READ_RF_REG) {
+		u32 *ptr = (u32 *)(hdr->data + 2);
+		u32 res;
+
+		hdr->len = htons(2 + num * 4);
+		for (i = 0; i < num && i < sizeof(hdr->data) / 4; i++) {
+			ret = atenl_rf_read(an, wf_sel, offset + i * 4, &res);
+			if (ret)
+				goto out;
+
+			res = htonl(res);
+			memcpy(ptr + i, &res, 4);
+		}
+	} else {
+		u32 *ptr = (u32 *)(hdr->data + 12);
+
+		for (i = 0; i < num && i < sizeof(hdr->data) / 4; i++) {
+			u32 val = ntohl(ptr[i]);
+
+			ret = atenl_rf_write(an, wf_sel, offset + i * 4, val);
+			if (ret)
+				goto out;
+		}
 	}
 
 	ret = 0;
@@ -448,12 +473,6 @@ out:
 }
 
 static int
-atenl_hqa_skip(struct atenl *an, struct atenl_data *data)
-{
-	return 0;
-}
-
-static int
 atenl_hqa_check_efuse_mode(struct atenl *an, struct atenl_data *data)
 {
 	struct atenl_cmd_hdr *hdr = atenl_hdr(data);
@@ -587,7 +606,7 @@ void atenl_set_channel(struct atenl *an, u8 bw, u8 ch_band,
 	if (snprintf_error(sizeof(cmd), ret))
 		return;
 
-	atenl_dbg("[%d]%s: cmd: %s\n", getpid(), __func__, cmd);
+	atenl_dbg("%s: cmd: %s\n", __func__, cmd);
 
 	system(cmd);
 }
@@ -692,6 +711,8 @@ atenl_hqa_set_channel(struct atenl *an, struct atenl_data *data)
 
 	*(u32 *)(hdr->data + 2) = data->ext_id;
 
+	atenl_nl_set_aid(an, band, 0);
+
 	return 0;
 }
 
@@ -712,314 +733,504 @@ atenl_hqa_tx_time_option(struct atenl *an, struct atenl_data *data)
 	return 0;
 }
 
-static inline enum atenl_cmd atenl_get_cmd_by_id(u16 cmd_idx)
+/* should be placed in order for binary search */
+static const struct atenl_ops hqa_ops[] = {
+	{
+		.cmd = HQA_CMD_OPEN_ADAPTER,
+		.cmd_id = 0x1000,
+		.resp_len = 2,
+		.ops = atenl_hqa_adapter,
+	},
+	{
+		.cmd = HQA_CMD_CLOSE_ADAPTER,
+		.cmd_id = 0x1001,
+		.resp_len = 2,
+		.ops = atenl_hqa_adapter,
+	},
+	{
+		.cmd = HQA_CMD_SET_TX_PATH,
+		.cmd_id = 0x100b,
+		.resp_len = 2,
+		.ops = atenl_nl_process,
+	},
+	{
+		.cmd = HQA_CMD_SET_RX_PATH,
+		.cmd_id = 0x100c,
+		.resp_len = 2,
+		.ops = atenl_nl_process,
+	},
+	{
+		.cmd = HQA_CMD_LEGACY,
+		.cmd_id = 0x100d,
+		.resp_len = 2,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_SET_TX_POWER,
+		.cmd_id = 0x1011,
+		.resp_len = 2,
+		.ops = atenl_nl_process,
+	},
+	{
+		.cmd = HQA_CMD_SET_TX_POWER_MANUAL,
+		.cmd_id = 0x1018,
+		.resp_len = 2,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_LEGACY,
+		.cmd_id = 0x1101,
+		.resp_len = 2,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_LEGACY,
+		.cmd_id = 0x1102,
+		.resp_len = 2,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_SET_TX_BW,
+		.cmd_id = 0x1104,
+		.resp_len = 2,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_SET_TX_PKT_BW,
+		.cmd_id = 0x1105,
+		.resp_len = 2,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_SET_TX_PRI_BW,
+		.cmd_id = 0x1106,
+		.resp_len = 2,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_SET_FREQ_OFFSET,
+		.cmd_id = 0x1107,
+		.resp_len = 2,
+		.ops = atenl_nl_process,
+	},
+	{
+		.cmd = HQA_CMD_SET_TSSI,
+		.cmd_id = 0x1109,
+		.resp_len = 2,
+		.ops = atenl_nl_process,
+	},
+	{
+		.cmd = HQA_CMD_SET_EEPROM_TO_FW,
+		.cmd_id = 0x110c,
+		.resp_len = 2,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_ANT_SWAP_CAP,
+		.cmd_id = 0x110d,
+		.resp_len = 6,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_RESET_TX_RX_COUNTER,
+		.cmd_id = 0x1200,
+		.resp_len = 2,
+		.ops = atenl_hqa_reset_counter,
+	},
+	{
+		.cmd = HQA_CMD_READ_MAC_BBP_REG_QA,
+		.cmd_id = 0x1300,
+		.resp_len = 6,
+		.ops = atenl_hqa_mac_bbp_reg,
+	},
+	{
+		.cmd = HQA_CMD_WRITE_MAC_BBP_REG,
+		.cmd_id = 0x1301,
+		.resp_len = 2,
+		.ops = atenl_hqa_mac_bbp_reg,
+	},
+	{
+		.cmd = HQA_CMD_READ_MAC_BBP_REG,
+		.cmd_id = 0x1302,
+		.ops = atenl_hqa_mac_bbp_reg,
+	},
+	{
+		.cmd = HQA_CMD_READ_RF_REG,
+		.cmd_id = 0x1303,
+		.ops = atenl_hqa_rf_reg,
+	},
+	{
+		.cmd = HQA_CMD_WRITE_RF_REG,
+		.cmd_id = 0x1304,
+		.resp_len = 2,
+		.ops = atenl_hqa_rf_reg,
+	},
+	{
+		.cmd = HQA_CMD_WRITE_EEPROM_BULK,
+		.cmd_id = 0x1306,
+		.resp_len = 2,
+		.ops = atenl_hqa_eeprom_bulk,
+	},
+	{
+		.cmd = HQA_CMD_READ_EEPROM_BULK,
+		.cmd_id = 0x1307,
+		.ops = atenl_hqa_eeprom_bulk,
+	},
+	{
+		.cmd = HQA_CMD_WRITE_EEPROM_BULK,
+		.cmd_id = 0x1308,
+		.resp_len = 2,
+		.ops = atenl_hqa_eeprom_bulk,
+	},
+	{
+		.cmd = HQA_CMD_CHECK_EFUSE_MODE,
+		.cmd_id = 0x1309,
+		.resp_len = 6,
+		.ops = atenl_hqa_check_efuse_mode,
+	},
+	{
+		.cmd = HQA_CMD_GET_EFUSE_FREE_BLOCK,
+		.cmd_id = 0x130a,
+		.resp_len = 6,
+		.ops = atenl_hqa_get_efuse_free_block,
+	},
+	{
+		.cmd = HQA_CMD_GET_TX_POWER,
+		.cmd_id = 0x130d,
+		.resp_len = 10,
+		.ops = atenl_hqa_get_tx_power,
+	},
+	{
+		.cmd = HQA_CMD_SET_CFG,
+		.cmd_id = 0x130e,
+		.resp_len = 2,
+		.ops = atenl_nl_process,
+	},
+	{
+		.cmd = HQA_CMD_GET_FREQ_OFFSET,
+		.cmd_id = 0x130f,
+		.resp_len = 6,
+		.ops = atenl_hqa_get_freq_offset,
+	},
+	{
+		.cmd = HQA_CMD_CONTINUOUS_TX,
+		.cmd_id = 0x1311,
+		.resp_len = 6,
+		.ops = atenl_nl_process,
+	},
+	{
+		.cmd = HQA_CMD_SET_RX_PKT_LEN,
+		.cmd_id = 0x1312,
+		.resp_len = 2,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_GET_TX_INFO,
+		.cmd_id = 0x1313,
+		.resp_len = 10,
+		.ops = atenl_nl_process,
+	},
+	{
+		.cmd = HQA_CMD_GET_CFG,
+		.cmd_id = 0x1314,
+		.resp_len = 6,
+		.ops = atenl_hqa_get_cfg,
+	},
+	{
+		.cmd = HQA_CMD_GET_TX_TONE_POWER,
+		.cmd_id = 0x131a,
+		.resp_len = 6,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_UNKNOWN,
+		.cmd_id = 0x131f,
+		.resp_len = 1024,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd = HQA_CMD_READ_TEMPERATURE,
+		.cmd_id = 0x1401,
+		.resp_len = 6,
+		.ops = atenl_hqa_read_temperature,
+	},
+	{
+		.cmd = HQA_CMD_GET_FW_INFO,
+		.cmd_id = 0x1500,
+		.resp_len = 32,
+		.flags = ATENL_OPS_FLAG_SKIP,
+	},
+	{
+		.cmd_id = 0x1502,
+		.flags = ATENL_OPS_FLAG_LEGACY,
+	},
+	{
+		.cmd = HQA_CMD_SET_TSSI,
+		.cmd_id = 0x1505,
+		.resp_len = 2,
+		.ops = atenl_nl_process,
+	},
+	{
+		.cmd = HQA_CMD_SET_RF_MODE,
+		.cmd_id = 0x1509,
+		.resp_len = 2,
+		.ops = atenl_hqa_set_rf_mode,
+	},
+	{
+		.cmd_id = 0x150b,
+		.flags = ATENL_OPS_FLAG_LEGACY,
+	},
+	{
+		.cmd = HQA_CMD_WRITE_BUFFER_DONE,
+		.cmd_id = 0x1511,
+		.resp_len = 2,
+		.ops = atenl_hqa_eeprom_bulk,
+	},
+	{
+		.cmd = HQA_CMD_GET_CHIP_ID,
+		.cmd_id = 0x1514,
+		.resp_len = 6,
+		.ops = atenl_hqa_get_chip_id,
+	},
+	{
+		.cmd = HQA_CMD_GET_SUB_CHIP_ID,
+		.cmd_id = 0x151b,
+		.resp_len = 6,
+		.ops = atenl_hqa_get_sub_chip_id,
+	},
+	{
+		.cmd = HQA_CMD_GET_RX_INFO,
+		.cmd_id = 0x151c,
+		.ops = atenl_nl_process,
+	},
+	{
+		.cmd = HQA_CMD_GET_RF_CAP,
+		.cmd_id = 0x151e,
+		.resp_len = 10,
+		.ops = atenl_hqa_get_rf_cap,
+	},
+	{
+		.cmd = HQA_CMD_CHECK_EFUSE_MODE_TYPE,
+		.cmd_id = 0x1522,
+		.resp_len = 6,
+		.ops = atenl_hqa_check_efuse_mode,
+	},
+	{
+		.cmd = HQA_CMD_CHECK_EFUSE_MODE_NATIVE,
+		.cmd_id = 0x1523,
+		.resp_len = 6,
+		.ops = atenl_hqa_check_efuse_mode,
+	},
+	{
+		.cmd = HQA_CMD_GET_BAND,
+		.cmd_id = 0x152d,
+		.resp_len = 6,
+		.ops = atenl_hqa_get_band,
+	},
+	{
+		.cmd = HQA_CMD_SET_RU,
+		.cmd_id = 0x1594,
+		.resp_len = 2,
+		.ops = atenl_nl_process_many,
+	},
+};
+
+static const struct atenl_ops hqa_ops_ext[] = {
+	{
+		.cmd = HQA_EXT_CMD_SET_CHANNEL,
+		.cmd_id = 0x01,
+		.resp_len = 6,
+		.ops = atenl_hqa_set_channel,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+	{
+		.cmd = HQA_EXT_CMD_SET_TX,
+		.cmd_id = 0x02,
+		.resp_len = 6,
+		.ops = atenl_nl_process,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+	{
+		.cmd = HQA_EXT_CMD_START_TX,
+		.cmd_id = 0x03,
+		.resp_len = 6,
+		.ops = atenl_nl_process,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+	{
+		.cmd = HQA_EXT_CMD_START_RX,
+		.cmd_id = 0x04,
+		.resp_len = 6,
+		.ops = atenl_nl_process,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+	{
+		.cmd = HQA_EXT_CMD_STOP_TX,
+		.cmd_id = 0x05,
+		.resp_len = 6,
+		.ops = atenl_nl_process,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+	{
+		.cmd = HQA_EXT_CMD_STOP_RX,
+		.cmd_id = 0x06,
+		.resp_len = 6,
+		.ops = atenl_nl_process,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+	{
+		.cmd = HQA_EXT_CMD_IBF_SET_VAL,
+		.cmd_id = 0x08,
+		.resp_len = 6,
+		.ops = atenl_nl_process,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+	{
+		.cmd = HQA_EXT_CMD_IBF_GET_STATUS,
+		.cmd_id = 0x09,
+		.resp_len = 10,
+		.ops = atenl_nl_process,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+	{
+		.cmd = HQA_EXT_CMD_IBF_PROF_UPDATE_ALL,
+		.cmd_id = 0x0c,
+		.resp_len = 6,
+		.ops = atenl_nl_process,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+	{
+		.cmd = HQA_EXT_CMD_SET_TX_TIME_OPT,
+		.cmd_id = 0x26,
+		.resp_len = 6,
+		.ops = atenl_hqa_tx_time_option,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+	{
+		.cmd = HQA_EXT_CMD_OFF_CH_SCAN,
+		.cmd_id = 0x27,
+		.resp_len = 6,
+		.ops = atenl_nl_process,
+		.flags = ATENL_OPS_FLAG_EXT_CMD,
+	},
+};
+
+static const struct atenl_ops *
+atenl_get_ops(struct atenl_data *data)
 {
-#define CMD_ID_GROUP	GENMASK(15, 8)
-	u8 group = FIELD_GET(CMD_ID_GROUP, cmd_idx);
+	const struct atenl_ops *group;
+	struct atenl_cmd_hdr *hdr = atenl_hdr(data);
+	u16 cmd_id = ntohs(hdr->cmd_id), id = cmd_id;
+	int size, low = 0, high;
 
-	if (cmd_idx == 0x1600)
-		return HQA_CMD_EXT;
-
-	if (group == 0x10) {
-		switch (cmd_idx) {
-		case 0x1000:
-			return HQA_CMD_OPEN_ADAPTER;
-		case 0x1001:
-			return HQA_CMD_CLOSE_ADAPTER;
-		case 0x100b:
-			return HQA_CMD_SET_TX_PATH;
-		case 0x100c:
-			return HQA_CMD_SET_RX_PATH;
-		case 0x1011:
-			return HQA_CMD_SET_TX_POWER;
-		case 0x1018:
-			return HQA_CMD_SET_TX_POWER_MANUAL;
-		case 0x100d:
-			return HQA_CMD_LEGACY;
-		default:
-			break;
-		}
-	} else if (group == 0x11) {
-		switch (cmd_idx) {
-		case 0x1104:
-			return HQA_CMD_SET_TX_BW;
-		case 0x1105:
-			return HQA_CMD_SET_TX_PKT_BW;
-		case 0x1106:
-			return HQA_CMD_SET_TX_PRI_BW;
-		case 0x1107:
-			return HQA_CMD_SET_FREQ_OFFSET;
-		case 0x1109:
-			return HQA_CMD_SET_TSSI;
-		case 0x110d:
-			return HQA_CMD_ANT_SWAP_CAP;
-		case 0x1101:
-		case 0x1102:
-			return HQA_CMD_LEGACY;
-		default:
-			break;
-		}
-	} else if (group == 0x12) {
-		switch (cmd_idx) {
-		case 0x1200:
-			return HQA_CMD_RESET_TX_RX_COUNTER;
-		default:
-			break;
-		}
-	} else if (group == 0x13) {
-		switch (cmd_idx) {
-		case 0x1301:
-			return HQA_CMD_WRITE_MAC_BBP_REG;
-		case 0x1302:
-			return HQA_CMD_READ_MAC_BBP_REG;
-		case 0x1307:
-			return HQA_CMD_READ_EEPROM_BULK;
-		case 0x1306:
-		case 0x1308:
-			return HQA_CMD_WRITE_EEPROM_BULK;
-		case 0x1309:
-			return HQA_CMD_CHECK_EFUSE_MODE;
-		case 0x130a:
-			return HQA_CMD_GET_EFUSE_FREE_BLOCK;
-		case 0x130d:
-			return HQA_CMD_GET_TX_POWER;
-		case 0x130e:
-			return HQA_CMD_SET_CFG;
-		case 0x130f:
-			return HQA_CMD_GET_FREQ_OFFSET;
-		case 0x1311:
-			return HQA_CMD_CONTINUOUS_TX;
-		case 0x1312:
-			return HQA_CMD_SET_RX_PKT_LEN;
-		case 0x1313:
-			return HQA_CMD_GET_TX_INFO;
-		case 0x1314:
-			return HQA_CMD_GET_CFG;
-		case 0x131f:
-			return HQA_CMD_UNKNOWN;
-		case 0x131a:
-			return HQA_CMD_GET_TX_TONE_POWER;
-		default:
-			break;
-		}
-	} else if (group == 0x14) {
-		switch (cmd_idx) {
-		case 0x1401:
-			return HQA_CMD_READ_TEMPERATURE;
-		default:
-			break;
-		}
-	} else if (group == 0x15) {
-		switch (cmd_idx) {
-		case 0x1500:
-			return HQA_CMD_GET_FW_INFO;
-		case 0x1505:
-			return HQA_CMD_SET_TSSI;
-		case 0x1509:
-			return HQA_CMD_SET_RF_MODE;
-		case 0x1511:
-			return HQA_CMD_WRITE_BUFFER_DONE;
-		case 0x1514:
-			return HQA_CMD_GET_CHIP_ID;
-		case 0x151b:
-			return HQA_CMD_GET_SUB_CHIP_ID;
-		case 0x151c:
-			return HQA_CMD_GET_RX_INFO;
-		case 0x151e:
-			return HQA_CMD_GET_RF_CAP;
-		case 0x1522:
-			return HQA_CMD_CHECK_EFUSE_MODE_TYPE;
-		case 0x1523:
-			return HQA_CMD_CHECK_EFUSE_MODE_NATIVE;
-		case 0x152d:
-			return HQA_CMD_GET_BAND;
-		case 0x1594:
-			return HQA_CMD_SET_RU;
-		case 0x1502:
-		case 0x150b:
-			return HQA_CMD_LEGACY;
-		default:
-			break;
-		}
+	switch (cmd_id) {
+	case 0x1600:
+		group = hqa_ops_ext;
+		size = ARRAY_SIZE(hqa_ops_ext);
+		break;
+	default:
+		group = hqa_ops;
+		size = ARRAY_SIZE(hqa_ops);
+		break;
 	}
 
-	return HQA_CMD_ERR;
-}
+	if (group[0].flags & ATENL_OPS_FLAG_EXT_CMD)
+		id = ntohl(*(u32 *)hdr->data);
 
-static inline enum atenl_ext_cmd atenl_get_ext_cmd(u16 ext_cmd_idx)
-{
-#define EXT_CMD_ID_GROUP	GENMASK(7, 4)
-	u8 ext_group = FIELD_GET(EXT_CMD_ID_GROUP, ext_cmd_idx);
+	/* binary search */
+	high = size - 1;
+	while (low <= high) {
+		int mid = low + (high - low) / 2;
 
-	if (ext_group == 0) {
-		switch (ext_cmd_idx) {
-		case 0x1:
-			return HQA_EXT_CMD_SET_CHANNEL;
-		case 0x2:
-			return HQA_EXT_CMD_SET_TX;
-		case 0x3:
-			return HQA_EXT_CMD_START_TX;
-		case 0x4:
-			return HQA_EXT_CMD_START_RX;
-		case 0x5:
-			return HQA_EXT_CMD_STOP_TX;
-		case 0x6:
-			return HQA_EXT_CMD_STOP_RX;
-		case 0x8:
-			return HQA_EXT_CMD_IBF_SET_VAL;
-		case 0x9:
-			return HQA_EXT_CMD_IBF_GET_STATUS;
-		case 0xc:
-			return HQA_EXT_CMD_IBF_PROF_UPDATE_ALL;
-		default:
-			break;
-		}
-	} else if (ext_group == 1) {
-	} else if (ext_group == 2) {
-		switch (ext_cmd_idx) {
-		case 0x26:
-			return HQA_EXT_CMD_SET_TX_TIME_OPT;
-		case 0x27:
-			return HQA_EXT_CMD_OFF_CH_SCAN;
-		default:
-			break;
-		}
+		if (group[mid].cmd_id == id)
+			return &group[mid];
+		else if (group[mid].cmd_id > id)
+			high = mid - 1;
+		else
+			low = mid + 1;
 	}
 
-	return HQA_EXT_CMD_UNSPEC;
+	return NULL;
 }
 
-#define ATENL_GROUP(_cmd, _resp_len, _ops)	\
-	[HQA_CMD_##_cmd] = { .resp_len=_resp_len, .ops=_ops }
-static const struct atenl_cmd_ops atenl_ops[] = {
-	ATENL_GROUP(OPEN_ADAPTER, 2, atenl_hqa_adapter),
-	ATENL_GROUP(CLOSE_ADAPTER, 2, atenl_hqa_adapter),
-	ATENL_GROUP(SET_TX_PATH, 2, atenl_nl_process),
-	ATENL_GROUP(SET_RX_PATH, 2, atenl_nl_process),
-	ATENL_GROUP(SET_TX_POWER, 2, atenl_nl_process),
-	ATENL_GROUP(SET_TX_POWER_MANUAL, 2, atenl_hqa_skip),
-	ATENL_GROUP(SET_TX_BW, 2, atenl_hqa_skip),
-	ATENL_GROUP(SET_TX_PKT_BW, 2, atenl_hqa_skip),
-	ATENL_GROUP(SET_TX_PRI_BW, 2, atenl_hqa_skip),
-	ATENL_GROUP(SET_FREQ_OFFSET, 2, atenl_nl_process),
-	ATENL_GROUP(ANT_SWAP_CAP, 6, atenl_hqa_skip),
-	ATENL_GROUP(RESET_TX_RX_COUNTER, 2, atenl_hqa_reset_counter),
-	ATENL_GROUP(WRITE_MAC_BBP_REG, 2, atenl_hqa_mac_bbp_reg),
-	ATENL_GROUP(READ_MAC_BBP_REG, 0, atenl_hqa_mac_bbp_reg),
-	ATENL_GROUP(READ_EEPROM_BULK, 0, atenl_hqa_eeprom_bulk),
-	ATENL_GROUP(WRITE_EEPROM_BULK, 2, atenl_hqa_eeprom_bulk),
-	ATENL_GROUP(CHECK_EFUSE_MODE, 6, atenl_hqa_check_efuse_mode),
-	ATENL_GROUP(GET_EFUSE_FREE_BLOCK, 6, atenl_hqa_get_efuse_free_block),
-	ATENL_GROUP(GET_TX_POWER, 10, atenl_hqa_get_tx_power),
-	ATENL_GROUP(GET_FREQ_OFFSET, 6, atenl_hqa_get_freq_offset), /*TODO: MCU CMD, read eeprom?*/
-	ATENL_GROUP(CONTINUOUS_TX, 6, atenl_nl_process),
-	ATENL_GROUP(SET_RX_PKT_LEN, 2, atenl_hqa_skip),
-	ATENL_GROUP(GET_TX_INFO, 10, atenl_nl_process),
-	ATENL_GROUP(GET_CFG, 6, atenl_hqa_get_cfg), /*TODO*/
-	ATENL_GROUP(GET_TX_TONE_POWER, 6, atenl_hqa_skip),
-	ATENL_GROUP(SET_CFG, 2, atenl_nl_process),
-	ATENL_GROUP(READ_TEMPERATURE, 6, atenl_hqa_read_temperature),
-	ATENL_GROUP(GET_FW_INFO, 32, atenl_hqa_skip), /* TODO: check format */
-	ATENL_GROUP(SET_TSSI, 2, atenl_nl_process),
-	ATENL_GROUP(SET_RF_MODE, 2, atenl_hqa_set_rf_mode),
-	ATENL_GROUP(WRITE_BUFFER_DONE, 2, atenl_hqa_eeprom_bulk),
-	ATENL_GROUP(GET_CHIP_ID, 6, atenl_hqa_get_chip_id),
-	ATENL_GROUP(GET_SUB_CHIP_ID, 6, atenl_hqa_get_sub_chip_id),
-	ATENL_GROUP(GET_RX_INFO, 0, atenl_nl_process),
-	ATENL_GROUP(GET_RF_CAP, 10, atenl_hqa_get_rf_cap),
-	ATENL_GROUP(CHECK_EFUSE_MODE_TYPE, 6, atenl_hqa_check_efuse_mode),
-	ATENL_GROUP(CHECK_EFUSE_MODE_NATIVE, 6, atenl_hqa_check_efuse_mode),
-	ATENL_GROUP(GET_BAND, 6, atenl_hqa_get_band),
-	ATENL_GROUP(SET_RU, 2, atenl_nl_process_many),
-
-	ATENL_GROUP(LEGACY, 2, atenl_hqa_skip),
-	ATENL_GROUP(UNKNOWN, 1024, atenl_hqa_skip),
-};
-#undef ATENL_GROUP
-
-#define ATENL_EXT(_cmd, _resp_len, _ops)	\
-	[HQA_EXT_CMD_##_cmd] = { .resp_len=_resp_len, .ops=_ops }
-static const struct atenl_cmd_ops atenl_ext_ops[] = {
-	ATENL_EXT(SET_CHANNEL, 6, atenl_hqa_set_channel),
-	ATENL_EXT(SET_TX, 6, atenl_nl_process),
-	ATENL_EXT(START_TX, 6, atenl_nl_process),
-	ATENL_EXT(STOP_TX, 6, atenl_nl_process),
-	ATENL_EXT(START_RX, 6, atenl_nl_process),
-	ATENL_EXT(STOP_RX, 6, atenl_nl_process),
-	ATENL_EXT(SET_TX_TIME_OPT, 6, atenl_hqa_tx_time_option),
-	ATENL_EXT(OFF_CH_SCAN, 6, atenl_nl_process),
-	ATENL_EXT(IBF_SET_VAL, 6, atenl_nl_process),
-	ATENL_EXT(IBF_GET_STATUS, 10, atenl_nl_process),
-	ATENL_EXT(IBF_PROF_UPDATE_ALL, 6, atenl_nl_process_many),
-};
-#undef ATENL_EXT
-
-int atenl_hqa_recv(struct atenl *an, struct atenl_data *data)
+static int
+atenl_hqa_handler(struct atenl *an, struct atenl_data *data)
 {
 	struct atenl_cmd_hdr *hdr = atenl_hdr(data);
-	u16 cmd_type = ntohs(hdr->cmd_type);
-	int fd = an->pipefd[PIPE_WRITE];
-	int ret;
-
-	if (ntohl(hdr->magic_no) != RACFG_MAGIC_NO)
-		return -EINVAL;
-
-	if (FIELD_GET(RACFG_CMD_TYPE_MASK, cmd_type) != RACFG_CMD_TYPE_ETHREQ &&
-	    FIELD_GET(RACFG_CMD_TYPE_MASK, cmd_type) != RACFG_CMD_TYPE_PLATFORM_MODULE) {
-		atenl_err("[%d]%s: cmd type error = 0x%x\n", getpid(), __func__, cmd_type);
-		return -EINVAL;
-	}
-
-	atenl_dbg("[%d]%s: recv cmd type = 0x%x, id = 0x%x\n",
-		  getpid(), __func__, cmd_type, ntohs(hdr->cmd_id));
-
-	ret = write(fd, data, data->len);
-	if (ret < 0) {
-		perror("pipe write");
-		return ret;
-	}
-
-	return 0;
-}
-
-int atenl_hqa_proc_cmd(struct atenl *an, struct atenl_data *data)
-{
-	struct atenl_cmd_hdr *hdr = atenl_hdr(data);
-	const struct atenl_cmd_ops *ops;
+	const struct atenl_ops *ops = NULL;
 	u16 cmd_id = ntohs(hdr->cmd_id);
 	u16 status = 0;
 
-	data->cmd = atenl_get_cmd_by_id(cmd_id);
-	if (data->cmd == HQA_CMD_ERR) {
-		atenl_err("Unknown command id: 0x%04x\n", cmd_id);
+	atenl_dbg("handle command: 0x%x\n", cmd_id);
+
+	ops = atenl_get_ops(data);
+	if (!ops || (!ops->ops && !ops->flags)) {
+		atenl_err("Unknown command id: 0x%x\n", cmd_id);
 		goto done;
 	}
 
-	if (data->cmd == HQA_CMD_EXT) {
-		data->ext_id = ntohl(*(u32 *)hdr->data);
-		data->ext_cmd = atenl_get_ext_cmd(data->ext_id);
-		if (data->ext_cmd == HQA_EXT_CMD_UNSPEC) {
-			atenl_err("Unknown ext command id: 0x%04x\n", data->ext_id);
-			goto done;
-		}
-
-		ops = &atenl_ext_ops[data->ext_cmd];
-	} else {
-		ops = &atenl_ops[data->cmd];
+	data->cmd = ops->cmd;
+	data->cmd_id = ops->cmd_id;
+	if (ops->flags & ATENL_OPS_FLAG_EXT_CMD) {
+		data->ext_cmd = ops->cmd;
+		data->ext_id = ops->cmd_id;
 	}
 
-	atenl_dbg_print_data(data, __func__,
+	if (ops->flags & ATENL_OPS_FLAG_SKIP)
+		goto done;
+
+	atenl_dbg_print_data(data->buf, __func__,
 			     ntohs(hdr->len) + ETH_HLEN + RACFG_HLEN);
 	if (ops->ops)
 		status = htons(ops->ops(an, data));
 	if (ops->resp_len)
 		hdr->len = htons(ops->resp_len);
 
-	*(u16 *)hdr->data = status;
-
 done:
+	*(u16 *)hdr->data = status;
 	data->len = ntohs(hdr->len) + ETH_HLEN + RACFG_HLEN;
 	hdr->cmd_type |= ~htons(RACFG_CMD_TYPE_MASK);
 
 	return 0;
+}
+
+int atenl_hqa_proc_cmd(struct atenl *an)
+{
+	struct atenl_data *data;
+	struct atenl_cmd_hdr *hdr;
+	u16 cmd_type;
+	int ret = -EINVAL;
+
+	data = calloc(1, sizeof(struct atenl_data));
+	if (!data)
+		return -ENOMEM;
+
+	ret = atenl_eth_recv(an, data);
+	if (ret)
+		goto out;
+
+	hdr = atenl_hdr(data);
+	if (ntohl(hdr->magic_no) != RACFG_MAGIC_NO)
+		goto out;
+
+	cmd_type = ntohs(hdr->cmd_type);
+	if (FIELD_GET(RACFG_CMD_TYPE_MASK, cmd_type) != RACFG_CMD_TYPE_ETHREQ &&
+	    FIELD_GET(RACFG_CMD_TYPE_MASK, cmd_type) != RACFG_CMD_TYPE_PLATFORM_MODULE) {
+		atenl_err("cmd type error = 0x%x\n", cmd_type);
+		goto out;
+	}
+
+	ret = atenl_hqa_handler(an, data);
+	if (ret)
+		goto out;
+
+	ret = atenl_eth_send(an, data);
+	if (ret)
+		goto out;
+
+	ret = 0;
+out:
+	free(data);
+
+	return ret;
 }
