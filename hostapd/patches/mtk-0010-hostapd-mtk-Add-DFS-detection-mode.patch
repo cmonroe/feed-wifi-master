@@ -70,7 +70,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		reply_len = 16;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1161,6 +1161,7 @@ struct hostapd_config {
+@@ -1162,6 +1162,7 @@ struct hostapd_config {
  	int *edcca_threshold;
  	u8 three_wire_enable;
  	u8 ibf_enable;
@@ -78,7 +78,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
  
  enum three_wire_mode {
-@@ -1175,6 +1176,18 @@ enum three_wire_mode {
+@@ -1176,6 +1177,18 @@ enum three_wire_mode {
  		NUM_THREE_WIRE_MODE - 1
  };
  
