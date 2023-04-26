@@ -31,7 +31,7 @@ Subject: [PATCH 1009/1031] wifi: mt76: testmode: rework testmode init
  			phy->test.rx_stats.fcs_error[q]++;
 --- a/mt76.h
 +++ b/mt76.h
-@@ -648,6 +648,8 @@ struct mt76_testmode_ops {
+@@ -644,6 +644,8 @@ struct mt76_testmode_ops {
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
  };
  
@@ -40,7 +40,7 @@ Subject: [PATCH 1009/1031] wifi: mt76: testmode: rework testmode init
  struct mt76_testmode_data {
  	enum mt76_testmode_state state;
  
-@@ -679,6 +681,8 @@ struct mt76_testmode_data {
+@@ -675,6 +677,8 @@ struct mt76_testmode_data {
  
  	u8 addr[3][ETH_ALEN];
  
@@ -49,7 +49,7 @@ Subject: [PATCH 1009/1031] wifi: mt76: testmode: rework testmode init
  	u32 tx_pending;
  	u32 tx_queued;
  	u16 tx_queued_limit;
-@@ -686,6 +690,7 @@ struct mt76_testmode_data {
+@@ -682,6 +686,7 @@ struct mt76_testmode_data {
  	struct {
  		u64 packets[__MT_RXQ_MAX];
  		u64 fcs_error[__MT_RXQ_MAX];
