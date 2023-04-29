@@ -11,7 +11,7 @@ Subject: [PATCH 1008/1031] wifi: mt76: mt7915: add fw_version dump
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -847,6 +847,10 @@ struct mt76_dev {
+@@ -851,6 +851,10 @@ struct mt76_dev {
  
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
