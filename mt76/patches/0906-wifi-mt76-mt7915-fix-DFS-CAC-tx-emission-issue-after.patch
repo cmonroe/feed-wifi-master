@@ -1,0 +1,40 @@
+From c32e29ad8916241b5a0bdc5f662e766687524327 Mon Sep 17 00:00:00 2001
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Wed, 17 May 2023 17:34:55 +0800
+Subject: [PATCH 6/6] wifi: mt76: mt7915: fix DFS CAC tx emission issue after
+ interface down up
+
+FW's channel state is set during the first wifi interface setup. If the switch reason for
+setting the tx/rx path during second-time wifi interface setup is CH_SWITCH_NORMAL,
+then the FW would perform runtime dpd channel calibration during DFS CAC, which leads to
+tx emission. Therefore, in order to bypass tx calibration during DFS CAC, set the switch reason
+to CH_SWITCH_DFS whenever chandef is set to DFS channel.
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+---
+ mt7915/mcu.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/mt7915/mcu.c b/mt7915/mcu.c
+index 8d8a203..9dd4e34 100644
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -2693,12 +2693,12 @@ int mt7915_mcu_set_chan_info(struct mt7915_phy *phy, int cmd)
+ 	if (mt76_connac_spe_idx(phy->mt76->antenna_mask))
+ 		req.tx_path_num = fls(phy->mt76->antenna_mask);
+ 
+-	if (cmd == MCU_EXT_CMD(SET_RX_PATH) ||
+-	    dev->mt76.hw->conf.flags & IEEE80211_CONF_MONITOR)
++	if (dev->mt76.hw->conf.flags & IEEE80211_CONF_MONITOR)
+ 		req.switch_reason = CH_SWITCH_NORMAL;
+ 	else if (phy->mt76->hw->conf.flags & IEEE80211_CONF_OFFCHANNEL)
+ 		req.switch_reason = CH_SWITCH_SCAN_BYPASS_DPD;
+-	else if (!cfg80211_reg_can_beacon(phy->mt76->hw->wiphy, chandef,
++	else if (cfg80211_chandef_valid(chandef) &&
++		 !cfg80211_reg_can_beacon(phy->mt76->hw->wiphy, chandef,
+ 					  NL80211_IFTYPE_AP))
+ 		req.switch_reason = CH_SWITCH_DFS;
+ 	else
+-- 
+2.18.0
+
