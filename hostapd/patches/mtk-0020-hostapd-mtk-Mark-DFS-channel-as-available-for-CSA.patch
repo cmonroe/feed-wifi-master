@@ -11,8 +11,8 @@ Subject: [PATCH 20/25] hostapd: mtk: Mark DFS channel as available for CSA.
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2848,6 +2848,16 @@ static int hostapd_ctrl_iface_chan_switc
- 		break;
+@@ -2854,6 +2854,16 @@ static int hostapd_ctrl_iface_chan_switc
+ 		settings.freq_params.he_enabled = iface->conf->ieee80211ax;
  	}
  
 +	if (settings.freq_params.radar_background) {

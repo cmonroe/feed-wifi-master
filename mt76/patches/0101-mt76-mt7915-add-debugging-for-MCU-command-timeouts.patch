@@ -1,6 +1,6 @@
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -158,14 +158,39 @@ mt7915_mcu_parse_response(struct mt76_de
+@@ -161,14 +161,39 @@ mt7915_mcu_parse_response(struct mt76_de
  	int ret = 0;
  
  	if (!skb) {
@@ -45,7 +45,7 @@
  		skb_pull(skb, sizeof(*rxd) - 4);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -844,6 +844,9 @@ struct mt76_dev {
+@@ -845,6 +845,9 @@ struct mt76_dev {
  		struct mt76_usb usb;
  		struct mt76_sdio sdio;
  	};

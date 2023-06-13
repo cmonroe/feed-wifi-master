@@ -11,11 +11,9 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  mt7915/mcu.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/mt7915/mcu.c b/mt7915/mcu.c
-index 8ab4239..d374465 100644
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1008,13 +1008,13 @@ static inline bool
+@@ -1039,13 +1039,13 @@ static inline bool
  mt7915_is_ebf_supported(struct mt7915_phy *phy, struct ieee80211_vif *vif,
  			struct ieee80211_sta *sta, bool bfee)
  {
@@ -31,6 +29,3 @@ index 8ab4239..d374465 100644
  		return false;
  
  	if (sta->deflink.he_cap.has_he) {
--- 
-2.18.0
-

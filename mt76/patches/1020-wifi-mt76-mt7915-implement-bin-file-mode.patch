@@ -45,7 +45,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -866,6 +866,9 @@ struct mt76_dev {
+@@ -877,6 +877,9 @@ struct mt76_dev {
  
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
@@ -55,7 +55,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  };
  
  struct mt76_power_limits {
-@@ -1002,6 +1005,7 @@ void mt76_seq_puts_array(struct seq_file
+@@ -1013,6 +1016,7 @@ void mt76_seq_puts_array(struct seq_file
  int mt76_eeprom_init(struct mt76_dev *dev, int len);
  void mt76_eeprom_override(struct mt76_phy *phy);
  int mt76_get_of_eeprom(struct mt76_dev *dev, void *data, int offset, int len);

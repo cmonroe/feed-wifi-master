@@ -1,23 +1,23 @@
-From 737f4b1dfcf9e7ae3b7fda89a24eb89aec41e2e6 Mon Sep 17 00:00:00 2001
+From dc8caecd0c7f5dfd542ba08f98605a7d6849e110 Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Thu, 22 Sep 2022 14:27:41 +0800
-Subject: [PATCH 08/15] cfg80211: mtk: implement DFS status show, cac and nop
- skip command via debugfs
+Subject: [PATCH] cfg80211: mtk: implement DFS status show, cac and nop skip
+ command via debugfs
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---
  include/net/cfg80211.h  |   1 +
  net/mac80211/cfg.c      |  20 +++
  net/wireless/core.h     |   3 +
- net/wireless/debugfs.c  | 271 ++++++++++++++++++++++++++++++++++++++--
+ net/wireless/debugfs.c  | 311 +++++++++++++++++++++++++++++++++++++++-
  net/wireless/mlme.c     |   6 +
- net/wireless/rdev-ops.h |  14 +++
+ net/wireless/rdev-ops.h |  14 ++
  net/wireless/trace.h    |  12 ++
- 7 files changed, 320 insertions(+), 7 deletions(-)
+ 7 files changed, 360 insertions(+), 7 deletions(-)
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -4640,6 +4640,7 @@ struct cfg80211_ops {
+@@ -4641,6 +4641,7 @@ struct cfg80211_ops {
  				    struct link_station_parameters *params);
  	int	(*del_link_station)(struct wiphy *wiphy, struct net_device *dev,
  				    struct link_station_del_parameters *params);
@@ -27,7 +27,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /*
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -4911,6 +4911,25 @@ ieee80211_del_link_station(struct wiphy
+@@ -4914,6 +4914,25 @@ ieee80211_del_link_station(struct wiphy
  	return ret;
  }
  
@@ -53,7 +53,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  const struct cfg80211_ops mac80211_config_ops = {
  	.add_virtual_intf = ieee80211_add_iface,
  	.del_virtual_intf = ieee80211_del_iface,
-@@ -5022,4 +5041,5 @@ const struct cfg80211_ops mac80211_confi
+@@ -5025,4 +5044,5 @@ const struct cfg80211_ops mac80211_confi
  	.add_link_station = ieee80211_add_link_station,
  	.mod_link_station = ieee80211_mod_link_station,
  	.del_link_station = ieee80211_del_link_station,
@@ -81,7 +81,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  #define DEBUGFS_READONLY_FILE(name, buflen, fmt, value...)		\
  static ssize_t name## _read(struct file *file, char __user *userbuf,	\
-@@ -96,16 +97,272 @@ static const struct file_operations ht40
+@@ -96,16 +97,312 @@ static const struct file_operations ht40
  	.llseek = default_llseek,
  };
  
@@ -340,6 +340,45 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +DEFINE_DEBUGFS_ATTRIBUTE(dfs_skip_cac_ops, NULL,
 +			 dfs_cac_skip, "0x%08llx\n");
 +
++static int
++dfs_available_reset(void *data, u64 val)
++{
++	struct wiphy *wiphy = data;
++	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
++	bool en = !!val;
++	enum nl80211_band band;
++	struct ieee80211_supported_band *sband;
++	struct ieee80211_channel *chan;
++	int i;
++
++	if (!en)
++		return 0;
++
++	for (band = 0; band < NUM_NL80211_BANDS; band++) {
++		sband = wiphy->bands[band];
++		if (!sband)
++			continue;
++		for (i = 0; i < sband->n_channels; i++) {
++			chan = &sband->channels[i];
++
++			if (!(chan->flags & IEEE80211_CHAN_RADAR))
++				continue;
++
++			if (chan->dfs_state == NL80211_DFS_AVAILABLE) {
++				chan->dfs_state = NL80211_DFS_USABLE;
++				chan->dfs_state_entered = jiffies;
++			}
++		}
++	}
++
++	cfg80211_sched_dfs_chan_update(rdev);
++
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(dfs_available_reset_ops, NULL,
++			 dfs_available_reset, "0x%08llx\n");
++
 +#define DEBUGFS_ADD(name, chmod)						\
 +	debugfs_create_file(#name, chmod, phyd, &rdev->wiphy, &name## _ops)
  
@@ -360,6 +399,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	DEBUGFS_ADD(dfs_status, 0444);
 +	DEBUGFS_ADD(dfs_skip_nop, 0600);
 +	DEBUGFS_ADD(dfs_skip_cac, 0600);
++	DEBUGFS_ADD(dfs_available_reset, 0600);
  }
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c

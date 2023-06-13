@@ -14,8 +14,6 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  mt7915/regs.h     |  20 ++++++
  7 files changed, 207 insertions(+), 71 deletions(-)
 
-diff --git a/mt76.h b/mt76.h
-index 3f13cec6..354acc09 100644
 --- a/mt76.h
 +++ b/mt76.h
 @@ -27,6 +27,8 @@
@@ -50,11 +48,9 @@ index 3f13cec6..354acc09 100644
  
  	struct net_device napi_dev;
  	struct net_device tx_napi_dev;
-diff --git a/mt76_connac_mcu.c b/mt76_connac_mcu.c
-index 46f69aa8..913bad95 100644
 --- a/mt76_connac_mcu.c
 +++ b/mt76_connac_mcu.c
-@@ -3017,6 +3017,9 @@ int mt76_connac2_load_ram(struct mt76_dev *dev, const char *fw_wm,
+@@ -3017,6 +3017,9 @@ int mt76_connac2_load_ram(struct mt76_de
  		goto out;
  	}
  
@@ -64,7 +60,7 @@ index 46f69aa8..913bad95 100644
  	snprintf(dev->hw->wiphy->fw_version,
  		 sizeof(dev->hw->wiphy->fw_version),
  		 "%.10s-%.15s", hdr->fw_ver, hdr->build_date);
-@@ -3046,6 +3049,9 @@ int mt76_connac2_load_ram(struct mt76_dev *dev, const char *fw_wm,
+@@ -3046,6 +3049,9 @@ int mt76_connac2_load_ram(struct mt76_de
  		goto out;
  	}
  
@@ -74,7 +70,7 @@ index 46f69aa8..913bad95 100644
  	snprintf(dev->hw->wiphy->fw_version,
  		 sizeof(dev->hw->wiphy->fw_version),
  		 "%.10s-%.15s", hdr->fw_ver, hdr->build_date);
-@@ -3116,6 +3122,9 @@ int mt76_connac2_load_patch(struct mt76_dev *dev, const char *fw_name)
+@@ -3116,6 +3122,9 @@ int mt76_connac2_load_patch(struct mt76_
  	dev_info(dev->dev, "HW/SW Version: 0x%x, Build Time: %.16s\n",
  		 be32_to_cpu(hdr->hw_sw_ver), hdr->build_date);
  
@@ -84,8 +80,6 @@ index 46f69aa8..913bad95 100644
  	for (i = 0; i < be32_to_cpu(hdr->desc.n_region); i++) {
  		struct mt76_connac2_patch_sec *sec;
  		u32 len, addr, mode;
-diff --git a/mt7915/coredump.c b/mt7915/coredump.c
-index 5daf2258..298c1cad 100644
 --- a/mt7915/coredump.c
 +++ b/mt7915/coredump.c
 @@ -7,7 +7,7 @@
@@ -97,7 +91,7 @@ index 5daf2258..298c1cad 100644
  module_param(coredump_memdump, bool, 0644);
  MODULE_PARM_DESC(coredump_memdump, "Optional ability to dump firmware memory");
  
-@@ -86,8 +86,11 @@ static const struct mt7915_mem_region mt798x_mem_regions[] = {
+@@ -86,8 +86,11 @@ static const struct mt7915_mem_region mt
  };
  
  const struct mt7915_mem_region*
@@ -110,7 +104,7 @@ index 5daf2258..298c1cad 100644
  	switch (mt76_chip(&dev->mt76)) {
  	case 0x7915:
  		*num = ARRAY_SIZE(mt7915_mem_regions);
-@@ -104,14 +107,14 @@ mt7915_coredump_get_mem_layout(struct mt7915_dev *dev, u32 *num)
+@@ -104,14 +107,14 @@ mt7915_coredump_get_mem_layout(struct mt
  	}
  }
  
@@ -127,7 +121,7 @@ index 5daf2258..298c1cad 100644
  	if (!mem_region)
  		return 0;
  
-@@ -128,9 +131,9 @@ static int mt7915_coredump_get_mem_size(struct mt7915_dev *dev)
+@@ -128,9 +131,9 @@ static int mt7915_coredump_get_mem_size(
  	return size;
  }
  
@@ -139,7 +133,7 @@ index 5daf2258..298c1cad 100644
  
  	lockdep_assert_held(&dev->dump_mutex);
  
-@@ -141,12 +144,15 @@ struct mt7915_crash_data *mt7915_coredump_new(struct mt7915_dev *dev)
+@@ -141,12 +144,15 @@ struct mt7915_crash_data *mt7915_coredum
  }
  
  static void
@@ -158,7 +152,7 @@ index 5daf2258..298c1cad 100644
  	state = (u32)mt76_get_field(dev, MT_FW_ASSERT_STAT, GENMASK(7, 0));
  	count = is_mt7915(&dev->mt76) ?
  		(u32)mt76_get_field(dev, MT_FW_EXCEPT_COUNT, GENMASK(15, 8)) :
-@@ -155,7 +161,7 @@ mt7915_coredump_fw_state(struct mt7915_dev *dev, struct mt7915_coredump *dump,
+@@ -155,7 +161,7 @@ mt7915_coredump_fw_state(struct mt7915_d
  	/* normal mode: driver can manually trigger assert for detail info */
  	if (!count)
  		strscpy(dump->fw_state, "normal", sizeof(dump->fw_state));
@@ -167,7 +161,7 @@ index 5daf2258..298c1cad 100644
  		strscpy(dump->fw_state, "assert", sizeof(dump->fw_state));
  	else if ((state > 1 && count == 1) || count > 1)
  		strscpy(dump->fw_state, "exception", sizeof(dump->fw_state));
-@@ -164,11 +170,14 @@ mt7915_coredump_fw_state(struct mt7915_dev *dev, struct mt7915_coredump *dump,
+@@ -164,11 +170,14 @@ mt7915_coredump_fw_state(struct mt7915_d
  }
  
  static void
@@ -183,7 +177,7 @@ index 5daf2258..298c1cad 100644
  	/* trap or run? */
  	dump->last_msg_id = mt76_rr(dev, MT_FW_LAST_MSG_ID);
  
-@@ -221,31 +230,61 @@ mt7915_coredump_fw_trace(struct mt7915_dev *dev, struct mt7915_coredump *dump,
+@@ -221,31 +230,61 @@ mt7915_coredump_fw_trace(struct mt7915_d
  }
  
  static void
@@ -256,7 +250,7 @@ index 5daf2258..298c1cad 100644
  	strscpy(dump->task_qid, "(task queue id) read, write",
  		sizeof(dump->task_qid));
  
-@@ -266,10 +305,13 @@ mt7915_coredump_fw_task(struct mt7915_dev *dev, struct mt7915_coredump *dump)
+@@ -266,10 +305,13 @@ mt7915_coredump_fw_task(struct mt7915_de
  }
  
  static void
@@ -271,7 +265,7 @@ index 5daf2258..298c1cad 100644
  	count = mt76_rr(dev, MT_FW_CIRQ_COUNT);
  
  	/* current context */
-@@ -299,9 +341,10 @@ mt7915_coredump_fw_context(struct mt7915_dev *dev, struct mt7915_coredump *dump)
+@@ -299,9 +341,10 @@ mt7915_coredump_fw_context(struct mt7915
  	}
  }
  
@@ -284,7 +278,7 @@ index 5daf2258..298c1cad 100644
  	struct mt7915_coredump *dump;
  	struct mt7915_coredump_mem *dump_mem;
  	size_t len, sofar = 0, hdr_len = sizeof(*dump);
-@@ -326,23 +369,34 @@ static struct mt7915_coredump *mt7915_coredump_build(struct mt7915_dev *dev)
+@@ -326,23 +369,34 @@ static struct mt7915_coredump *mt7915_co
  
  	dump = (struct mt7915_coredump *)(buf);
  	dump->len = len;
@@ -325,7 +319,7 @@ index 5daf2258..298c1cad 100644
  
  	/* gather memory content */
  	dump_mem = (struct mt7915_coredump_mem *)(buf + sofar);
-@@ -356,17 +410,19 @@ static struct mt7915_coredump *mt7915_coredump_build(struct mt7915_dev *dev)
+@@ -356,17 +410,19 @@ static struct mt7915_coredump *mt7915_co
  	return dump;
  }
  
@@ -347,7 +341,7 @@ index 5daf2258..298c1cad 100644
  
  	return 0;
  }
-@@ -374,23 +430,26 @@ int mt7915_coredump_submit(struct mt7915_dev *dev)
+@@ -374,23 +430,26 @@ int mt7915_coredump_submit(struct mt7915
  int mt7915_coredump_register(struct mt7915_dev *dev)
  {
  	struct mt7915_crash_data *crash_data;
@@ -356,29 +350,31 @@ index 5daf2258..298c1cad 100644
 -	crash_data = vzalloc(sizeof(*dev->coredump.crash_data));
 -	if (!crash_data)
 -		return -ENOMEM;
-+	for (i = 0; i < __MT76_RAM_TYPE_MAX; i++) {
-+		crash_data = vzalloc(sizeof(*dev->coredump.crash_data[i]));
-+		if (!crash_data)
-+			return -ENOMEM;
- 
+-
 -	dev->coredump.crash_data = crash_data;
-+		dev->coredump.crash_data[i] = crash_data;
- 
+-
 -	if (coredump_memdump) {
 -		crash_data->memdump_buf_len = mt7915_coredump_get_mem_size(dev);
 -		if (!crash_data->memdump_buf_len)
 -			/* no memory content */
 -			return 0;
+-
+-		crash_data->memdump_buf = vzalloc(crash_data->memdump_buf_len);
+-		if (!crash_data->memdump_buf) {
+-			vfree(crash_data);
++	for (i = 0; i < __MT76_RAM_TYPE_MAX; i++) {
++		crash_data = vzalloc(sizeof(*dev->coredump.crash_data[i]));
++		if (!crash_data)
+ 			return -ENOMEM;
++
++		dev->coredump.crash_data[i] = crash_data;
++
 +		if (coredump_memdump) {
 +			crash_data->memdump_buf_len = mt7915_coredump_get_mem_size(dev, i);
 +			if (!crash_data->memdump_buf_len)
 +				/* no memory content */
 +				return 0;
- 
--		crash_data->memdump_buf = vzalloc(crash_data->memdump_buf_len);
--		if (!crash_data->memdump_buf) {
--			vfree(crash_data);
--			return -ENOMEM;
++
 +			crash_data->memdump_buf = vzalloc(crash_data->memdump_buf_len);
 +			if (!crash_data->memdump_buf) {
 +				vfree(crash_data);
@@ -387,7 +383,7 @@ index 5daf2258..298c1cad 100644
  		}
  	}
  
-@@ -399,13 +458,17 @@ int mt7915_coredump_register(struct mt7915_dev *dev)
+@@ -399,13 +458,17 @@ int mt7915_coredump_register(struct mt79
  
  void mt7915_coredump_unregister(struct mt7915_dev *dev)
  {
@@ -412,8 +408,6 @@ index 5daf2258..298c1cad 100644
 +	}
  }
  
-diff --git a/mt7915/coredump.h b/mt7915/coredump.h
-index 709f8e9c..809ccbdf 100644
 --- a/mt7915/coredump.h
 +++ b/mt7915/coredump.h
 @@ -4,6 +4,7 @@
@@ -512,11 +506,9 @@ index 709f8e9c..809ccbdf 100644
  {
  	return NULL;
  }
-diff --git a/mt7915/mac.c b/mt7915/mac.c
-index a3ed4ddf..2a87b506 100644
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1653,28 +1653,31 @@ void mt7915_mac_reset_work(struct work_struct *work)
+@@ -1653,28 +1653,31 @@ void mt7915_mac_reset_work(struct work_s
  }
  
  /* firmware coredump */
@@ -554,7 +546,7 @@ index a3ed4ddf..2a87b506 100644
  	if (!mem_region || !crash_data->memdump_buf_len) {
  		mutex_unlock(&dev->dump_mutex);
  		goto skip_memdump;
-@@ -1684,6 +1687,9 @@ void mt7915_mac_dump_work(struct work_struct *work)
+@@ -1684,6 +1687,9 @@ void mt7915_mac_dump_work(struct work_st
  	buf_len = crash_data->memdump_buf_len;
  
  	/* dumping memory content... */
@@ -564,7 +556,7 @@ index a3ed4ddf..2a87b506 100644
  	memset(buf, 0, buf_len);
  	for (i = 0; i < num; i++) {
  		if (mem_region->len > buf_len) {
-@@ -1701,6 +1707,7 @@ void mt7915_mac_dump_work(struct work_struct *work)
+@@ -1701,6 +1707,7 @@ void mt7915_mac_dump_work(struct work_st
  		mt7915_memcpy_fromio(dev, buf, mem_region->start,
  				     mem_region->len);
  
@@ -572,7 +564,7 @@ index a3ed4ddf..2a87b506 100644
  		hdr->start = mem_region->start;
  		hdr->len = mem_region->len;
  
-@@ -1717,8 +1724,18 @@ void mt7915_mac_dump_work(struct work_struct *work)
+@@ -1717,8 +1724,18 @@ void mt7915_mac_dump_work(struct work_st
  	mutex_unlock(&dev->dump_mutex);
  
  skip_memdump:
@@ -593,11 +585,9 @@ index a3ed4ddf..2a87b506 100644
  	queue_work(dev->mt76.wq, &dev->reset_work);
  }
  
-diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
-index 54510245..4fb0a375 100644
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -335,7 +335,7 @@ struct mt7915_dev {
+@@ -336,7 +336,7 @@ struct mt7915_dev {
  	struct mutex dump_mutex;
  #ifdef CONFIG_DEV_COREDUMP
  	struct {
@@ -606,8 +596,6 @@ index 54510245..4fb0a375 100644
  	} coredump;
  #endif
  
-diff --git a/mt7915/regs.h b/mt7915/regs.h
-index 374677f7..636b12da 100644
 --- a/mt7915/regs.h
 +++ b/mt7915/regs.h
 @@ -1215,4 +1215,24 @@ enum offs_rev {
@@ -635,6 +623,3 @@ index 374677f7..636b12da 100644
 +#define MT_MCU_WM_EXCP_LR_LOG			MT_MCU_WM_EXCP(0x204)
 +
  #endif
--- 
-2.18.0
-

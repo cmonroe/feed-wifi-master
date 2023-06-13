@@ -15,11 +15,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7915/mcu.c | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/mt7915/mcu.c b/mt7915/mcu.c
-index 8d8a203..9dd4e34 100644
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2693,12 +2693,12 @@ int mt7915_mcu_set_chan_info(struct mt7915_phy *phy, int cmd)
+@@ -2724,12 +2724,12 @@ int mt7915_mcu_set_chan_info(struct mt79
  	if (mt76_connac_spe_idx(phy->mt76->antenna_mask))
  		req.tx_path_num = fls(phy->mt76->antenna_mask);
  
@@ -35,6 +33,3 @@ index 8d8a203..9dd4e34 100644
  					  NL80211_IFTYPE_AP))
  		req.switch_reason = CH_SWITCH_DFS;
  	else
--- 
-2.18.0
-

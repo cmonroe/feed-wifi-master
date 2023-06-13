@@ -12,11 +12,9 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  mt7915/mt7915.h |   1 +
  4 files changed, 103 insertions(+), 69 deletions(-)
 
-diff --git a/dma.c b/dma.c
-index 465190e..05d9ab3 100644
 --- a/dma.c
 +++ b/dma.c
-@@ -466,6 +466,9 @@ mt76_dma_tx_queue_skb_raw(struct mt76_dev *dev, struct mt76_queue *q,
+@@ -466,6 +466,9 @@ mt76_dma_tx_queue_skb_raw(struct mt76_de
  	struct mt76_queue_buf buf = {};
  	dma_addr_t addr;
  
@@ -26,7 +24,7 @@ index 465190e..05d9ab3 100644
  	if (q->queued + 1 >= q->ndesc - 1)
  		goto error;
  
-@@ -507,6 +510,9 @@ mt76_dma_tx_queue_skb(struct mt76_dev *dev, struct mt76_queue *q,
+@@ -507,6 +510,9 @@ mt76_dma_tx_queue_skb(struct mt76_dev *d
  	dma_addr_t addr;
  	u8 *txwi;
  
@@ -36,11 +34,9 @@ index 465190e..05d9ab3 100644
  	t = mt76_get_txwi(dev);
  	if (!t)
  		goto free_skb;
-diff --git a/mt7915/dma.c b/mt7915/dma.c
-index 86a93de..4c8cf0c 100644
 --- a/mt7915/dma.c
 +++ b/mt7915/dma.c
-@@ -250,12 +250,90 @@ static void mt7915_dma_disable(struct mt7915_dev *dev, bool rst)
+@@ -250,7 +250,7 @@ static void mt7915_dma_disable(struct mt
  	}
  }
  
@@ -49,11 +45,10 @@ index 86a93de..4c8cf0c 100644
  {
  	struct mt76_dev *mdev = &dev->mt76;
  	u32 hif1_ofs = 0;
- 	u32 irq_mask;
+@@ -259,6 +259,84 @@ static int mt7915_dma_enable(struct mt79
+ 	if (dev->hif2)
+ 		hif1_ofs = MT_WFDMA0_PCIE1(0) - MT_WFDMA0(0);
  
-+	if (dev->hif2)
-+		hif1_ofs = MT_WFDMA0_PCIE1(0) - MT_WFDMA0(0);
-+
 +	/* enable wpdma tx/rx */
 +	if (!reset) {
 +		mt76_set(dev, MT_WFDMA0_GLO_CFG,
@@ -129,10 +124,13 @@ index 86a93de..4c8cf0c 100644
 +	struct mt76_dev *mdev = &dev->mt76;
 +	u32 hif1_ofs = 0;
 +
- 	if (dev->hif2)
- 		hif1_ofs = MT_WFDMA0_PCIE1(0) - MT_WFDMA0(0);
- 
-@@ -322,69 +400,7 @@ static int mt7915_dma_enable(struct mt7915_dev *dev)
++	if (dev->hif2)
++		hif1_ofs = MT_WFDMA0_PCIE1(0) - MT_WFDMA0(0);
++
+ 	/* reset dma idx */
+ 	mt76_wr(dev, MT_WFDMA0_RST_DTX_PTR, ~0);
+ 	if (is_mt7915(mdev))
+@@ -322,69 +400,7 @@ static int mt7915_dma_enable(struct mt79
  	mt76_poll(dev, MT_WFDMA_EXT_CSR_HIF_MISC,
  		  MT_WFDMA_EXT_CSR_HIF_MISC_BUSY, 0, 1000);
  
@@ -203,7 +201,7 @@ index 86a93de..4c8cf0c 100644
  }
  
  int mt7915_dma_init(struct mt7915_dev *dev, struct mt7915_phy *phy2)
-@@ -560,7 +576,7 @@ int mt7915_dma_init(struct mt7915_dev *dev, struct mt7915_phy *phy2)
+@@ -560,7 +576,7 @@ int mt7915_dma_init(struct mt7915_dev *d
  			  mt7915_poll_tx);
  	napi_enable(&dev->mt76.tx_napi);
  
@@ -212,7 +210,7 @@ index 86a93de..4c8cf0c 100644
  
  	return 0;
  }
-@@ -642,7 +658,7 @@ int mt7915_dma_reset(struct mt7915_dev *dev, bool force)
+@@ -642,7 +658,7 @@ int mt7915_dma_reset(struct mt7915_dev *
  		mt76_rmw(dev, MT_WFDMA0_EXT0_CFG, MT_WFDMA0_EXT0_RXWB_KEEP,
  			 MT_WFDMA0_EXT0_RXWB_KEEP);
  
@@ -221,11 +219,9 @@ index 86a93de..4c8cf0c 100644
  
  	return 0;
  }
-diff --git a/mt7915/mac.c b/mt7915/mac.c
-index fb6bab8..7be1e17 100644
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1574,6 +1574,8 @@ void mt7915_mac_reset_work(struct work_struct *work)
+@@ -1574,6 +1574,8 @@ void mt7915_mac_reset_work(struct work_s
  	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
  		return;
  
@@ -234,7 +230,7 @@ index fb6bab8..7be1e17 100644
  	if (mtk_wed_device_active(&dev->mt76.mmio.wed)) {
  		mtk_wed_device_stop(&dev->mt76.mmio.wed);
  		if (!is_mt798x(&dev->mt76))
-@@ -1611,6 +1613,12 @@ void mt7915_mac_reset_work(struct work_struct *work)
+@@ -1611,6 +1613,12 @@ void mt7915_mac_reset_work(struct work_s
  		mt7915_wait_reset_state(dev, MT_MCU_CMD_RECOVERY_DONE);
  	}
  
@@ -247,7 +243,7 @@ index fb6bab8..7be1e17 100644
  	clear_bit(MT76_MCU_RESET, &dev->mphy.state);
  	clear_bit(MT76_RESET, &dev->mphy.state);
  	if (phy2)
-@@ -1625,9 +1633,6 @@ void mt7915_mac_reset_work(struct work_struct *work)
+@@ -1625,9 +1633,6 @@ void mt7915_mac_reset_work(struct work_s
  
  	tasklet_schedule(&dev->mt76.irq_tasklet);
  
@@ -257,7 +253,7 @@ index fb6bab8..7be1e17 100644
  	mt76_worker_enable(&dev->mt76.tx_worker);
  
  	local_bh_disable();
-@@ -1649,6 +1654,8 @@ void mt7915_mac_reset_work(struct work_struct *work)
+@@ -1649,6 +1654,8 @@ void mt7915_mac_reset_work(struct work_s
  		ieee80211_queue_delayed_work(ext_phy->hw,
  					     &phy2->mt76->mac_work,
  					     MT7915_WATCHDOG_TIME);
@@ -277,11 +273,9 @@ index fb6bab8..7be1e17 100644
  	if (!dev->recovery.hw_init_done)
  		return;
  
-diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
-index 9c79eff..d1715ff 100644
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -472,6 +472,7 @@ int mt7915_dma_init(struct mt7915_dev *dev, struct mt7915_phy *phy2);
+@@ -473,6 +473,7 @@ int mt7915_dma_init(struct mt7915_dev *d
  void mt7915_dma_prefetch(struct mt7915_dev *dev);
  void mt7915_dma_cleanup(struct mt7915_dev *dev);
  int mt7915_dma_reset(struct mt7915_dev *dev, bool force);
@@ -289,6 +283,3 @@ index 9c79eff..d1715ff 100644
  int mt7915_txbf_init(struct mt7915_dev *dev);
  void mt7915_init_txpower(struct mt7915_dev *dev,
  			 struct ieee80211_supported_band *sband);
--- 
-2.18.0
-
