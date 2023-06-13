@@ -1,0 +1,36 @@
+From dc866136370fb7ce58bbc27ba7e5fdf40b6138d9 Mon Sep 17 00:00:00 2001
+From: MeiChia Chiu <meichia.chiu@mediatek.com>
+Date: Wed, 12 Apr 2023 15:53:42 +0800
+Subject: [PATCH 4/6] wifi: mt76: mt7915: fix the beamformer issue
+
+without this patch, when ap sets the tx stream number to 2,
+ap doesn't send any beamform packets.
+
+Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
+---
+ mt7915/mcu.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/mt7915/mcu.c b/mt7915/mcu.c
+index 8ab4239..d374465 100644
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -1008,13 +1008,13 @@ static inline bool
+ mt7915_is_ebf_supported(struct mt7915_phy *phy, struct ieee80211_vif *vif,
+ 			struct ieee80211_sta *sta, bool bfee)
+ {
+-	int tx_ant = hweight8(phy->mt76->chainmask) - 1;
++	int sts = hweight16(phy->mt76->chainmask);
+ 
+ 	if (vif->type != NL80211_IFTYPE_STATION &&
+ 	    vif->type != NL80211_IFTYPE_AP)
+ 		return false;
+ 
+-	if (!bfee && tx_ant < 2)
++	if (!bfee && sts < 2)
+ 		return false;
+ 
+ 	if (sta->deflink.he_cap.has_he) {
+-- 
+2.18.0
+

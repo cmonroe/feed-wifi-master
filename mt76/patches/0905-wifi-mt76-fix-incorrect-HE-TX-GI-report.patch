@@ -1,7 +1,7 @@
-From 80765449e32eba36051daeb29824cc011aecd85d Mon Sep 17 00:00:00 2001
-From: Benjamin Lin <benjamin-jw.lin@mediatek.com>
-Date: Fri, 24 Mar 2023 18:01:27 +0800
-Subject: [PATCH] wifi: mt76: fix incorrect HE TX GI report
+From 2692ebd0cb63c666eb7e8db099e71f5b67fcd323 Mon Sep 17 00:00:00 2001
+From: Evelyn Tsai <evelyn.tsai@mediatek.com>
+Date: Thu, 18 May 2023 18:11:37 +0800
+Subject: [PATCH 5/6] wifi: mt76: fix incorrect HE TX GI report
 
 Change GI reporting source from static capability to rate-tuning module.
 
@@ -9,12 +9,12 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 ---
  mt76.h          |   4 ++
  mt7915/init.c   |   4 ++
- mt7915/mac.c    |  60 ++++++++++------
- mt7915/main.c   |   7 ++
- mt7915/mcu.c    | 183 ++++++++++++++++++++++++++++++++++++++++++++++++
- mt7915/mcu.h    |  58 +++++++++++++++
+ mt7915/mac.c    |  60 ++++++++++++------
+ mt7915/main.c   |   7 +++
+ mt7915/mcu.c    | 161 ++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7915/mcu.h    |  58 +++++++++++++++++
  mt7915/mt7915.h |   6 ++
- 7 files changed, 302 insertions(+), 20 deletions(-)
+ 7 files changed, 280 insertions(+), 20 deletions(-)
 
 --- a/mt76.h
 +++ b/mt76.h
@@ -37,7 +37,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	MT_PHY_TYPE_HE_TB,
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -634,6 +634,8 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -638,6 +638,8 @@ mt7915_register_ext_phy(struct mt7915_de
  	struct mt76_phy *mphy = phy->mt76;
  	int ret;
  
@@ -46,7 +46,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	INIT_DELAYED_WORK(&mphy->mac_work, mt7915_mac_work);
  
  	mt7915_eeprom_parse_hw_cap(dev, phy);
-@@ -1183,6 +1185,8 @@ int mt7915_register_device(struct mt7915
+@@ -1166,6 +1168,8 @@ int mt7915_register_device(struct mt7915
  	dev->phy.dev = dev;
  	dev->phy.mt76 = &dev->mt76.phy;
  	dev->mt76.phy.priv = &dev->phy;
@@ -57,7 +57,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	INIT_LIST_HEAD(&dev->sta_rc_list);
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -177,15 +177,7 @@ static void mt7915_mac_sta_poll(struct m
+@@ -173,15 +173,7 @@ static void mt7915_mac_sta_poll(struct m
  						       rx_cur);
  		}
  
@@ -73,7 +73,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  		switch (rate->bw) {
  		case RATE_INFO_BW_160:
-@@ -202,18 +194,6 @@ static void mt7915_mac_sta_poll(struct m
+@@ -198,18 +190,6 @@ static void mt7915_mac_sta_poll(struct m
  			break;
  		}
  
@@ -92,7 +92,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		/* get signal strength of resp frames (CTS/BA/ACK) */
  		addr = mt7915_mac_wtbl_lmac_addr(dev, idx, 30);
  		val = mt76_rr(dev, addr);
-@@ -982,6 +962,7 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -978,6 +958,7 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  		if (info & MT_TX_FREE_PAIR) {
  			struct mt7915_sta *msta;
  			struct mt76_wcid *wcid;
@@ -100,7 +100,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  			u16 idx;
  
  			idx = FIELD_GET(MT_TX_FREE_WLAN_ID, info);
-@@ -991,10 +972,17 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -987,10 +968,17 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  				continue;
  
  			msta = container_of(wcid, struct mt7915_sta, wcid);
@@ -118,7 +118,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  			continue;
  		}
  
-@@ -1055,6 +1043,7 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
+@@ -1051,6 +1039,7 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
  static void mt7915_mac_add_txs(struct mt7915_dev *dev, void *data)
  {
  	struct mt7915_sta *msta = NULL;
@@ -126,7 +126,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct mt76_wcid *wcid;
  	__le32 *txs_data = data;
  	u16 wcidx;
-@@ -1090,6 +1079,11 @@ static void mt7915_mac_add_txs(struct mt
+@@ -1086,6 +1075,11 @@ static void mt7915_mac_add_txs(struct mt
  		list_add_tail(&msta->poll_list, &dev->sta_poll_list);
  	spin_unlock_bh(&dev->sta_poll_lock);
  
@@ -138,7 +138,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -2005,6 +1999,27 @@ static void mt7915_mac_severe_check(stru
+@@ -2012,6 +2006,27 @@ static void mt7915_mac_severe_check(stru
  	phy->trb_ts = trb;
  }
  
@@ -166,7 +166,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7915_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev, rc_work);
-@@ -2060,6 +2075,11 @@ void mt7915_mac_work(struct work_struct
+@@ -2067,6 +2082,11 @@ void mt7915_mac_work(struct work_struct
  		mt7915_mac_severe_check(phy);
  	}
  
@@ -210,7 +210,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void mt7915_tx(struct ieee80211_hw *hw,
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3773,6 +3773,195 @@ out:
+@@ -3703,6 +3703,167 @@ out:
  	return ret;
  }
  
@@ -272,8 +272,6 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +
 +int mt7915_mcu_get_tx_rate_v1(struct mt7915_phy *phy, u16 wcidx)
 +{
-+	struct ieee80211_tx_status status = {};
-+	struct ieee80211_rate_status rs = {};
 +	struct mt7915_mcu_ra_info_v1 *rate;
 +	struct mt7915_dev *dev = phy->dev;
 +	struct mt76_phy *mphy = phy->mt76;
@@ -314,18 +312,6 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +
 +	ret = mt7915_mcu_parse_tx_gi(mphy->dev, rate->mode, rate->gi,
 +                                     rate->bw, &wcid->rate);
-+	if (ret)
-+		goto unlock;
-+
-+	status.sta = wcid_to_sta(wcid);
-+	if (!status.sta) {
-+		ret = -EINVAL;
-+		goto unlock;
-+	}
-+	rs.rate_idx = wcid->rate;
-+	status.rates = &rs;
-+	status.n_rates = 1;
-+	ieee80211_tx_status_ext(mphy->hw, &status);
 +unlock:
 +	rcu_read_unlock();
 +out:
@@ -336,8 +322,6 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +
 +int mt7915_mcu_get_tx_rate_v2(struct mt7915_phy *phy, u16 wcidx)
 +{
-+	struct ieee80211_tx_status status = {};
-+	struct ieee80211_rate_status rs = {};
 +	struct mt7915_mcu_ra_info_v2 *rate;
 +	struct mt7915_dev *dev = phy->dev;
 +	struct mt76_phy *mphy = phy->mt76;
@@ -375,18 +359,6 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +
 +	ret = mt7915_mcu_parse_tx_gi(mphy->dev, rate->mode, rate->gi,
 +                                     rate->bw, &wcid->rate);
-+	if (ret)
-+		goto unlock;
-+
-+	status.sta = wcid_to_sta(wcid);
-+	if (!status.sta) {
-+		ret = -EINVAL;
-+		goto unlock;
-+	}
-+	rs.rate_idx = wcid->rate;
-+	status.rates = &rs;
-+	status.n_rates = 1;
-+	ieee80211_tx_status_ext(mphy->hw, &status);
 +unlock:
 +	rcu_read_unlock();
 +out:
@@ -408,14 +380,10 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  {
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -152,6 +152,65 @@ struct mt7915_mcu_eeprom_info {
+@@ -152,6 +152,61 @@ struct mt7915_mcu_eeprom_info {
  	u8 data[16];
  } __packed;
  
-+enum {
-+	MCU_GET_TX_RATE = 4
-+};
-+
 +enum {
 +	MCU_PHY_BW_20 = 0,
 +	MCU_PHY_BW_40,
@@ -474,9 +442,17 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct mt7915_mcu_phy_rx_info {
  	u8 category;
  	u8 rate;
+@@ -527,4 +582,7 @@ mt7915_get_power_bound(struct mt7915_phy
+ 	return txpower;
+ }
+ 
++enum {
++	MCU_GET_TX_RATE = 4
++};
+ #endif
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -131,6 +131,7 @@ struct mt7915_sta {
+@@ -138,6 +138,7 @@ struct mt7915_sta {
  
  	struct list_head poll_list;
  	struct list_head rc_list;
@@ -484,7 +460,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	u32 airtime_ac[8];
  
  	int ack_signal;
-@@ -281,6 +282,10 @@ struct mt7915_phy {
+@@ -274,6 +275,10 @@ struct mt7915_phy {
  	struct mib_stats mib;
  	struct mt76_channel_state state_ts;
  
@@ -495,7 +471,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  #ifdef CONFIG_NL80211_TESTMODE
  	struct {
  		u32 *reg_backup;
-@@ -551,6 +556,7 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -545,6 +550,7 @@ int mt7915_mcu_get_chan_mib_info(struct
  int mt7915_mcu_get_temperature(struct mt7915_phy *phy);
  int mt7915_mcu_set_thermal_throttling(struct mt7915_phy *phy, u8 state);
  int mt7915_mcu_set_thermal_protect(struct mt7915_phy *phy);
@@ -503,3 +479,13 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  int mt7915_mcu_get_rx_rate(struct mt7915_phy *phy, struct ieee80211_vif *vif,
  			   struct ieee80211_sta *sta, struct rate_info *rate);
  int mt7915_mcu_rdd_background_enable(struct mt7915_phy *phy,
+--- a/mt76_connac_mcu.h
++++ b/mt76_connac_mcu.h
+@@ -1155,6 +1155,7 @@ enum {
+ 	MCU_EXT_CMD_EDCA_UPDATE = 0x27,
+ 	MCU_EXT_CMD_DEV_INFO_UPDATE = 0x2A,
+ 	MCU_EXT_CMD_THERMAL_CTRL = 0x2c,
++	MCU_EXT_CMD_GET_TX_STAT = 0x30,
+ 	MCU_EXT_CMD_WTBL_UPDATE = 0x32,
+ 	MCU_EXT_CMD_SET_DRR_CTRL = 0x36,
+ 	MCU_EXT_CMD_SET_RDD_CTRL = 0x3a,

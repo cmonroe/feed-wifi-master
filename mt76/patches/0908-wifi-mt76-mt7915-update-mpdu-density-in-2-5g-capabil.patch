@@ -1,0 +1,50 @@
+From 4fe047234a68854764a3dbf4cfb18ffee441961f Mon Sep 17 00:00:00 2001
+From: Peter Chiu <chui-hao.chiu@mediatek.com>
+Date: Wed, 24 May 2023 10:17:38 +0800
+Subject: [PATCH] wifi: mt76: mt7915: update mpdu density in 2/5g capability
+
+Set mpdu density to 2 usec to meet hardware capability
+and also update enhance throughput.
+
+Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
+---
+ mt7915/init.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -400,22 +400,30 @@ mt7915_init_wiphy(struct mt7915_phy *phy
+ 		phy->mt76->sband_2g.sband.ht_cap.cap |=
+ 			IEEE80211_HT_CAP_LDPC_CODING |
+ 			IEEE80211_HT_CAP_MAX_AMSDU;
+-		phy->mt76->sband_2g.sband.ht_cap.ampdu_density =
+-			IEEE80211_HT_MPDU_DENSITY_4;
++		if (is_mt7915(&dev->mt76))
++			phy->mt76->sband_2g.sband.ht_cap.ampdu_density =
++				IEEE80211_HT_MPDU_DENSITY_4;
++		else
++			phy->mt76->sband_2g.sband.ht_cap.ampdu_density =
++				IEEE80211_HT_MPDU_DENSITY_2;
+ 	}
+ 
+ 	if (phy->mt76->cap.has_5ghz) {
+ 		phy->mt76->sband_5g.sband.ht_cap.cap |=
+ 			IEEE80211_HT_CAP_LDPC_CODING |
+ 			IEEE80211_HT_CAP_MAX_AMSDU;
+-		phy->mt76->sband_5g.sband.ht_cap.ampdu_density =
+-			IEEE80211_HT_MPDU_DENSITY_4;
+ 
+ 		if (is_mt7915(&dev->mt76)) {
++			phy->mt76->sband_5g.sband.ht_cap.ampdu_density =
++				IEEE80211_HT_MPDU_DENSITY_4;
++
+ 			phy->mt76->sband_5g.sband.vht_cap.cap |=
+ 				IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_7991 |
+ 				IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK;
+ 		} else {
++			phy->mt76->sband_5g.sband.ht_cap.ampdu_density =
++				IEEE80211_HT_MPDU_DENSITY_2;
++
+ 			phy->mt76->sband_5g.sband.vht_cap.cap |=
+ 				IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_11454 |
+ 				IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK;

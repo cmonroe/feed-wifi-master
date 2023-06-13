@@ -1,0 +1,158 @@
+From c70bcc28bfd56d630c4d422d3649bc680220fae0 Mon Sep 17 00:00:00 2001
+Message-Id: <c70bcc28bfd56d630c4d422d3649bc680220fae0.1686632071.git.ryder.lee@mediatek.com>
+From: Ryder Lee <ryder.lee@mediatek.com>
+Date: Tue, 13 Jun 2023 12:52:53 +0800
+Subject: [PATCH] wifi: mt76: mt7915: fix LDPC and txbf checks
+
+Change-Id: Ie580d5a5dfcb29b1418fb6edbc837736e575e827
+---
+ .../net/wireless/mediatek/mt76/mt7915/mcu.c   | 56 ++++++++++++++-----
+ 1 file changed, 41 insertions(+), 15 deletions(-)
+
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -762,6 +762,8 @@ mt7915_mcu_sta_he_tlv(struct sk_buff *sk
+ 	struct ieee80211_he_mcs_nss_supp mcs_map;
+ 	struct sta_rec_he *he;
+ 	struct tlv *tlv;
++	bool he_ldpc = (vif->type == NL80211_IFTYPE_AP) ?
++		       vif->bss_conf.he_ldpc : true;
+ 	u32 cap = 0;
+ 
+ 	if (!sta->deflink.he_cap.has_he)
+@@ -791,7 +793,7 @@ mt7915_mcu_sta_he_tlv(struct sk_buff *sk
+ 	     IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_RU_MAPPING_IN_5G))
+ 		cap |= STA_REC_HE_CAP_BW20_RU242_SUPPORT;
+ 
+-	if (vif->bss_conf.he_ldpc &&
++	if (he_ldpc &&
+ 	    (elem->phy_cap_info[1] &
+ 	     IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD))
+ 		cap |= STA_REC_HE_CAP_LDPC;
+@@ -912,16 +914,22 @@ mt7915_mcu_sta_muru_tlv(struct mt7915_de
+ 
+ 	muru = (struct sta_rec_muru *)tlv;
+ 
+-	muru->cfg.mimo_dl_en = vif->bss_conf.he_mu_beamformer ||
+-			       vif->bss_conf.vht_mu_beamformer ||
+-			       vif->bss_conf.vht_mu_beamformee;
++	if (vif->type == NL80211_IFTYPE_AP)
++		muru->cfg.mimo_dl_en = vif->bss_conf.he_mu_beamformer ||
++				       vif->bss_conf.vht_mu_beamformer ||
++				       vif->bss_conf.vht_mu_beamformee;
++	else
++		muru->cfg.mimo_dl_en = true;
++
+ 	if (!is_mt7915(&dev->mt76))
+ 		muru->cfg.mimo_ul_en = true;
++
+ 	muru->cfg.ofdma_dl_en = true;
+ 
+ 	if (sta->deflink.vht_cap.vht_supported)
+ 		muru->mimo_dl.vht_mu_bfee =
+-			!!(sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE);
++			!!(sta->deflink.vht_cap.cap &
++			   IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE);
+ 
+ 	if (!sta->deflink.he_cap.has_he)
+ 		return;
+@@ -1045,11 +1053,15 @@ mt7915_mcu_sta_wtbl_tlv(struct mt7915_de
+ 	mt76_connac_mcu_wtbl_generic_tlv(&dev->mt76, skb, vif, sta, tlv,
+ 					 wtbl_hdr);
+ 	mt76_connac_mcu_wtbl_hdr_trans_tlv(skb, vif, wcid, tlv, wtbl_hdr);
+-	if (sta)
+-		mt76_connac_mcu_wtbl_ht_tlv(&dev->mt76, skb, sta, tlv,
+-					    wtbl_hdr, vif->bss_conf.ht_ldpc,
+-					    vif->bss_conf.vht_ldpc);
++	if (sta) {
++		bool ht_ldpc = (vif->type == NL80211_IFTYPE_AP) ?
++			       vif->bss_conf.ht_ldpc : true;
++		bool vht_ldpc = (vif->type == NL80211_IFTYPE_AP) ?
++				vif->bss_conf.ht_ldpc : true;
+ 
++		mt76_connac_mcu_wtbl_ht_tlv(&dev->mt76, skb, sta, tlv,
++					    wtbl_hdr, ht_ldpc, vht_ldpc);
++	}
+ 	return 0;
+ }
+ 
+@@ -1058,6 +1070,7 @@ mt7915_is_ebf_supported(struct mt7915_ph
+ 			struct ieee80211_sta *sta, bool bfee)
+ {
+ 	int sts = hweight16(phy->mt76->chainmask);
++	bool beamformee, beamformer;
+ 
+ 	if (vif->type != NL80211_IFTYPE_STATION &&
+ 	    vif->type != NL80211_IFTYPE_AP)
+@@ -1069,22 +1082,30 @@ mt7915_is_ebf_supported(struct mt7915_ph
+ 	if (sta->deflink.he_cap.has_he) {
+ 		struct ieee80211_he_cap_elem *pe = &sta->deflink.he_cap.he_cap_elem;
+ 
++		beamformee = (vif->type == NL80211_IFTYPE_AP) ?
++			     vif->bss_conf.he_su_beamformee : true;
++		beamformer = (vif->type == NL80211_IFTYPE_AP) ?
++			     vif->bss_conf.he_su_beamformer : true;
+ 		if (bfee)
+-			return vif->bss_conf.he_su_beamformee &&
++			return beamformee &&
+ 			       HE_PHY(CAP3_SU_BEAMFORMER, pe->phy_cap_info[3]);
+ 		else
+-			return vif->bss_conf.he_su_beamformer &&
++			return beamformer &&
+ 			       HE_PHY(CAP4_SU_BEAMFORMEE, pe->phy_cap_info[4]);
+ 	}
+ 
+ 	if (sta->deflink.vht_cap.vht_supported) {
+ 		u32 cap = sta->deflink.vht_cap.cap;
+ 
++		beamformee = (vif->type == NL80211_IFTYPE_AP) ?
++			     vif->bss_conf.vht_su_beamformee : true;
++		beamformer = (vif->type == NL80211_IFTYPE_AP) ?
++			     vif->bss_conf.vht_su_beamformer : true;
+ 		if (bfee)
+-			return vif->bss_conf.vht_su_beamformee &&
++			return beamformee &&
+ 			       (cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE);
+ 		else
+-			return vif->bss_conf.vht_su_beamformer &&
++			return beamformer &&
+ 			       (cap & IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE);
+ 	}
+ 
+@@ -1566,6 +1587,9 @@ mt7915_mcu_sta_rate_ctrl_tlv(struct sk_b
+ 	}
+ 
+ 	if (sta->deflink.ht_cap.ht_supported) {
++		bool ht_ldpc = (vif->type == NL80211_IFTYPE_AP) ?
++			       vif->bss_conf.ht_ldpc : true;
++
+ 		ra->supp_mode |= MODE_HT;
+ 		ra->af = sta->deflink.ht_cap.ampdu_factor;
+ 		ra->ht_gf = !!(sta->deflink.ht_cap.cap & IEEE80211_HT_CAP_GRN_FLD);
+@@ -1579,7 +1603,7 @@ mt7915_mcu_sta_rate_ctrl_tlv(struct sk_b
+ 			cap |= STA_CAP_TX_STBC;
+ 		if (sta->deflink.ht_cap.cap & IEEE80211_HT_CAP_RX_STBC)
+ 			cap |= STA_CAP_RX_STBC;
+-		if (vif->bss_conf.ht_ldpc &&
++		if (ht_ldpc &&
+ 		    (sta->deflink.ht_cap.cap & IEEE80211_HT_CAP_LDPC_CODING))
+ 			cap |= STA_CAP_LDPC;
+ 
+@@ -1589,6 +1613,8 @@ mt7915_mcu_sta_rate_ctrl_tlv(struct sk_b
+ 	}
+ 
+ 	if (sta->deflink.vht_cap.vht_supported) {
++		bool vht_ldpc = (vif->type == NL80211_IFTYPE_AP) ?
++				vif->bss_conf.ht_ldpc : true;
+ 		u8 af;
+ 
+ 		ra->supp_mode |= MODE_VHT;
+@@ -1605,7 +1631,7 @@ mt7915_mcu_sta_rate_ctrl_tlv(struct sk_b
+ 			cap |= STA_CAP_VHT_TX_STBC;
+ 		if (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_RXSTBC_1)
+ 			cap |= STA_CAP_VHT_RX_STBC;
+-		if (vif->bss_conf.vht_ldpc &&
++		if (vht_ldpc &&
+ 		    (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_RXLDPC))
+ 			cap |= STA_CAP_VHT_LDPC;
+ 

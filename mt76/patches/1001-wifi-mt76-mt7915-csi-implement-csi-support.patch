@@ -1,7 +1,7 @@
-From 3dbd27d810bca208af96102d52ac71d5ce8a44bb Mon Sep 17 00:00:00 2001
+From 97b4997c04cfdae312ae7a67249422f88be91c40 Mon Sep 17 00:00:00 2001
 From: Bo Jiao <Bo.Jiao@mediatek.com>
 Date: Mon, 6 Jun 2022 20:13:02 +0800
-Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
+Subject: [PATCH 1001/1033] wifi: mt76: mt7915: csi: implement csi support
 
 ---
  mt76_connac_mcu.h |   2 +
@@ -16,6 +16,8 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  create mode 100644 mt7915/vendor.c
  create mode 100644 mt7915/vendor.h
 
+diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
+index 8d6c422..4f7db5c 100644
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
 @@ -1000,6 +1000,7 @@ enum {
@@ -34,6 +36,8 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  };
  
  enum {
+diff --git a/mt7915/Makefile b/mt7915/Makefile
+index fd71141..65129b4 100644
 --- a/mt7915/Makefile
 +++ b/mt7915/Makefile
 @@ -1,10 +1,10 @@
@@ -48,10 +52,12 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
 +	     debugfs.o mmio.o mtk_debugfs.o mtk_mcu.o vendor.o
  
  mt7915e-$(CONFIG_NL80211_TESTMODE) += testmode.o
- mt7915e-$(CONFIG_MT7986_WMAC) += soc.o
+ mt7915e-$(CONFIG_MT798X_WMAC) += soc.o
+diff --git a/mt7915/init.c b/mt7915/init.c
+index abca909..1fe123d 100644
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -656,6 +656,12 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -670,6 +670,12 @@ mt7915_register_ext_phy(struct mt7915_dev *dev, struct mt7915_phy *phy)
  	/* init wiphy according to mphy and phy */
  	mt7915_init_wiphy(phy);
  
@@ -64,7 +70,7 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1153,6 +1159,25 @@ void mt7915_set_stream_he_caps(struct mt
+@@ -1150,6 +1156,25 @@ void mt7915_set_stream_he_caps(struct mt7915_phy *phy)
  	}
  }
  
@@ -90,7 +96,7 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  static void mt7915_unregister_ext_phy(struct mt7915_dev *dev)
  {
  	struct mt7915_phy *phy = mt7915_ext_phy(dev);
-@@ -1161,6 +1186,10 @@ static void mt7915_unregister_ext_phy(st
+@@ -1158,6 +1183,10 @@ static void mt7915_unregister_ext_phy(struct mt7915_dev *dev)
  	if (!phy)
  		return;
  
@@ -101,18 +107,18 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  	mt7915_unregister_thermal(phy);
  	mt76_unregister_phy(mphy);
  	ieee80211_free_hw(mphy->hw);
-@@ -1173,6 +1202,10 @@ static void mt7915_stop_hardware(struct
+@@ -1170,6 +1199,10 @@ static void mt7915_stop_hardware(struct mt7915_dev *dev)
  	mt7915_dma_cleanup(dev);
- 	tasklet_disable(&dev->irq_tasklet);
+ 	tasklet_disable(&dev->mt76.irq_tasklet);
  
 +#ifdef CONFIG_MTK_VENDOR
 +	mt7915_unregister_features(&dev->phy);
 +#endif
 +
- 	if (is_mt7986(&dev->mt76))
+ 	if (is_mt798x(&dev->mt76))
  		mt7986_wmac_disable(dev);
  }
-@@ -1215,6 +1248,12 @@ int mt7915_register_device(struct mt7915
+@@ -1212,6 +1245,12 @@ int mt7915_register_device(struct mt7915_dev *dev)
  	dev->mt76.test_ops = &mt7915_testmode_ops;
  #endif
  
@@ -125,9 +131,11 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  	ret = mt76_register_device(&dev->mt76, true, mt76_rates,
  				   ARRAY_SIZE(mt76_rates));
  	if (ret)
+diff --git a/mt7915/mcu.c b/mt7915/mcu.c
+index 5acba67..b3fdcdf 100644
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -36,6 +36,10 @@ static bool sr_scene_detect = true;
+@@ -40,6 +40,10 @@ static bool sr_scene_detect = true;
  module_param(sr_scene_detect, bool, 0644);
  MODULE_PARM_DESC(sr_scene_detect, "Enable firmware scene detection algorithm");
  
@@ -138,7 +146,7 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  static u8
  mt7915_mcu_get_sta_nss(u16 mcs_map)
  {
-@@ -402,6 +406,11 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
+@@ -375,6 +379,11 @@ mt7915_mcu_rx_ext_event(struct mt7915_dev *dev, struct sk_buff *skb)
  	case MCU_EXT_EVENT_FW_LOG_2_HOST:
  		mt7915_mcu_rx_log_message(dev, skb);
  		break;
@@ -150,7 +158,7 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
-@@ -4040,6 +4049,108 @@ int mt7915_mcu_twt_agrt_update(struct mt
+@@ -3918,6 +3927,108 @@ int mt7915_mcu_twt_agrt_update(struct mt7915_dev *dev,
  				 &req, sizeof(req), true);
  }
  
@@ -259,12 +267,15 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  #ifdef MTK_DEBUG
  int mt7915_dbg_mcu_wa_cmd(struct mt7915_dev *dev, int cmd, u32 a1, u32 a2, u32 a3, bool wait_resp)
  {
+diff --git a/mt7915/mcu.h b/mt7915/mcu.h
+index daea67f..e082511 100644
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -592,4 +592,80 @@ mt7915_get_power_bound(struct mt7915_phy
- 	return txpower;
- }
- 
+@@ -589,4 +589,81 @@ mt7915_get_power_bound(struct mt7915_phy *phy, s8 txpower)
+ enum {
+ 	MCU_GET_TX_RATE = 4
+ };
++
 +#ifdef CONFIG_MTK_VENDOR
 +struct mt7915_mcu_csi {
 +	u8 band;
@@ -342,9 +353,11 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
 +#endif
 +
  #endif
+diff --git a/mt7915/mt7915.h b/mt7915/mt7915.h
+index 29394b6..43705fb 100644
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -300,6 +300,20 @@ struct mt7915_phy {
+@@ -292,6 +292,20 @@ struct mt7915_phy {
  		u8 spe_idx;
  	} test;
  #endif
@@ -365,7 +378,7 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  };
  
  struct mt7915_dev {
-@@ -681,6 +695,12 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -673,6 +687,12 @@ void mt7915_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  
@@ -378,6 +391,9 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
  #ifdef MTK_DEBUG
  int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir);
  int mt7915_dbg_mcu_wa_cmd(struct mt7915_dev *dev, int cmd, u32 a1, u32 a2, u32 a3, bool wait_resp);
+diff --git a/mt7915/vendor.c b/mt7915/vendor.c
+new file mode 100644
+index 0000000..98fd9c2
 --- /dev/null
 +++ b/mt7915/vendor.c
 @@ -0,0 +1,452 @@
@@ -833,6 +849,9 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
 +	phy->mt76->hw->wiphy->vendor_commands = mt7915_vendor_commands;
 +	phy->mt76->hw->wiphy->n_vendor_commands = ARRAY_SIZE(mt7915_vendor_commands);
 +}
+diff --git a/mt7915/vendor.h b/mt7915/vendor.h
+new file mode 100644
+index 0000000..9d3db2a
 --- /dev/null
 +++ b/mt7915/vendor.h
 @@ -0,0 +1,60 @@
@@ -896,3 +915,6 @@ Subject: [PATCH 1001/1009] wifi: mt76: mt7915: csi: implement csi support
 +};
 +
 +#endif
+-- 
+2.18.0
+
