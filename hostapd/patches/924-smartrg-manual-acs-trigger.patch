@@ -1,6 +1,6 @@
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -79,6 +79,8 @@
+@@ -80,6 +80,8 @@
  #define HOSTAPD_GLOBAL_CTRL_IFACE_PORT_LIMIT	50
  #endif /* CONFIG_CTRL_IFACE_UDP */
  
@@ -9,7 +9,7 @@
  static void hostapd_ctrl_iface_send(struct hostapd_data *hapd, int level,
  				    enum wpa_msg_type type,
  				    const char *buf, size_t len);
-@@ -163,11 +165,20 @@ static char *get_option(char *opt, char
+@@ -164,11 +166,20 @@ static char *get_option(char *opt, char
    
  static void hostapd_ctrl_compute_secondary( struct hostapd_config *conf )
  {
@@ -31,7 +31,7 @@
  	s40 = ch + (ch & 0x4) - 2;
  #ifdef CONFIG_IEEE80211AX
  	if( is_6ghz_op_class(conf->op_class) )
-@@ -176,10 +187,16 @@ static void hostapd_ctrl_compute_seconda
+@@ -177,10 +188,16 @@ static void hostapd_ctrl_compute_seconda
  	s80 = s40 + 4 - (s40 & 0x8);
  	s160 = s80 + 8 - (s80 & 0x10);
  
@@ -49,7 +49,7 @@
  		break;
  	case CHANWIDTH_80MHZ:
  		conf->vht_oper_centr_freq_seg0_idx = s80;
-@@ -190,28 +207,90 @@ static void hostapd_ctrl_compute_seconda
+@@ -191,28 +208,90 @@ static void hostapd_ctrl_compute_seconda
  	default:
  		break;
  	}
@@ -147,7 +147,7 @@
  }
  
  static struct hostapd_config *hostapd_ctrl_iface_config_read(const char *fname)
-@@ -1504,6 +1583,23 @@ static int hostapd_ctrl_iface_reload(str
+@@ -1523,6 +1602,23 @@ static int hostapd_ctrl_iface_reload_bss
  }
  
  
@@ -171,7 +171,7 @@
  static int hostapd_ctrl_iface_disable(struct hostapd_iface *iface)
  {
  	if (hostapd_disable_iface(iface) < 0) {
-@@ -3505,6 +3601,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -3585,6 +3681,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "RELOAD", 6) == 0) {
  		if (hostapd_ctrl_iface_reload(hapd->iface))
  			reply_len = -1;
@@ -183,8 +183,8 @@
  			reply_len = -1;
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1203,6 +1203,12 @@ static int hostapd_cli_cmd_reload(struct
- 	return wpa_ctrl_command(ctrl, "RELOAD");
+@@ -1223,6 +1223,12 @@ static int hostapd_cli_cmd_reload_bss(st
+ 	return wpa_ctrl_command(ctrl, "RELOAD_BSS");
  }
  
 +static int hostapd_cli_cmd_trigger_acs(struct wpa_ctrl *ctrl, int argc,
@@ -196,7 +196,7 @@
  
  static int hostapd_cli_cmd_disable(struct wpa_ctrl *ctrl, int argc,
  				      char *argv[])
-@@ -1745,6 +1751,8 @@ static const struct hostapd_cli_cmd host
+@@ -1769,6 +1775,8 @@ static const struct hostapd_cli_cmd host
  	  "<addr> [req_mode=] <measurement request hexdump>  = send a Beacon report request to a station" },
  	{ "reload_wpa_psk", hostapd_cli_cmd_reload_wpa_psk, NULL,
  	  "= reload wpa_psk_file only" },
@@ -207,7 +207,7 @@
  	  "<driver sub command> [<hex formatted data>] = send driver command data" },
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -284,6 +284,7 @@ hostapd_interface_init(struct hapd_inter
+@@ -287,6 +287,7 @@ hostapd_interface_init(struct hapd_inter
  	}
  
  	iface->interfaces = interfaces;
@@ -217,7 +217,7 @@
  		if (iface->bss[0]->conf->logger_stdout_level > 0)
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -662,6 +662,13 @@ struct hostapd_iface {
+@@ -671,6 +671,13 @@ struct hostapd_iface {
  
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
@@ -233,7 +233,7 @@
  /* hostapd.c */
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1045,6 +1045,33 @@ int hostapd_acs_completed(struct hostapd
+@@ -1097,6 +1097,33 @@ int hostapd_acs_completed(struct hostapd
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
  			ACS_EVENT_COMPLETED "freq=%d channel=%d",
  			iface->freq, iface->conf->channel);
@@ -269,7 +269,7 @@
  		wpa_printf(MSG_ERROR, "ACS error - reported complete, but no result available");
 --- a/src/ap/acs.c
 +++ b/src/ap/acs.c
-@@ -245,7 +245,7 @@
+@@ -296,7 +296,7 @@ static const struct bw_item *bw_desc[] =
  
  static int acs_request_scan(struct hostapd_iface *iface);
  static int acs_survey_is_sufficient(struct freq_survey *survey);
@@ -278,7 +278,7 @@
  
  static void acs_clean_chan_surveys(struct hostapd_channel_data *chan)
  {
-@@ -702,7 +702,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -827,7 +827,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  			continue;
  
  		if (!chan_bw_allowed(chan, bw, 1, 1)) {
@@ -287,34 +287,34 @@
  				   "ACS: Channel %d: BW %u is not supported",
  				   chan->chan, bw);
  			continue;
-@@ -715,7 +715,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -840,7 +840,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  		      iface->conf->secondary_channel) ||
  		     is_6ghz_freq(chan->freq)) &&
- 		    !acs_usable_bw40_chan(chan)) {
+ 		    !acs_usable_bw_chan(chan, ACS_BW40)) {
 -			wpa_printf(MSG_DEBUG,
 +			wpa_printf(MSG_WARNING,
  				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
  				   chan->chan);
  			continue;
-@@ -726,7 +726,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -851,7 +851,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  			if (hostapd_get_oper_chwidth(iface->conf) ==
  			    CONF_OPER_CHWIDTH_80MHZ &&
- 			    !acs_usable_bw80_chan(chan)) {
+ 			    !acs_usable_bw_chan(chan, ACS_BW80)) {
 -				wpa_printf(MSG_DEBUG,
 +				wpa_printf(MSG_WARNING,
  					   "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
  					   chan->chan);
  				continue;
-@@ -735,7 +735,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -860,7 +860,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  			if (hostapd_get_oper_chwidth(iface->conf) ==
  			    CONF_OPER_CHWIDTH_160MHZ &&
- 			    !acs_usable_bw160_chan(chan)) {
+ 			    !acs_usable_bw_chan(chan, ACS_BW160)) {
 -				wpa_printf(MSG_DEBUG,
 +				wpa_printf(MSG_WARNING,
  					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
  					   chan->chan);
  				continue;
-@@ -753,7 +753,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -878,7 +878,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  				break;
  
  			if (!chan_bw_allowed(adj_chan, bw, 1, 0)) {
@@ -323,7 +323,7 @@
  					   "ACS: PRI Channel %d: secondary channel %d BW %u is not supported",
  					   chan->chan, adj_chan->chan, bw);
  				break;
-@@ -766,7 +766,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -899,7 +899,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  		}
  
  		if (j != n_chans) {
@@ -332,7 +332,7 @@
  				   chan->chan);
  			continue;
  		}
-@@ -828,11 +828,11 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -973,11 +973,11 @@ acs_find_ideal_chan_mode(struct hostapd_
  
  		if (bias) {
  			factor *= bias->bias;
@@ -346,7 +346,7 @@
  				   "ACS:  * channel %d: total interference = %Lg",
  				   chan->chan, factor);
  		}
-@@ -875,10 +875,13 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1032,10 +1032,13 @@ acs_find_ideal_chan(struct hostapd_iface
  
  	/* TODO: HT40- support */
  
@@ -364,7 +364,7 @@
  	}
  
  	if (iface->conf->ieee80211n &&
-@@ -898,13 +901,16 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1055,13 +1058,16 @@ acs_find_ideal_chan(struct hostapd_iface
  		}
  	}
  
@@ -383,7 +383,7 @@
  
  	for (i = 0; i < iface->num_hw_features; i++) {
  		mode = &iface->hw_features[i];
-@@ -915,8 +921,8 @@ bw_selected:
+@@ -1072,8 +1078,8 @@ bw_selected:
  	}
  
  	if (ideal_chan) {
@@ -391,14 +391,15 @@
 -			   ideal_chan->chan, ideal_chan->freq, ideal_factor);
 +		wpa_printf(MSG_WARNING, "ACS(%s): Ideal channel is %d (%d MHz) with total interference factor of %Lg",
 +			   iface->phy, ideal_chan->chan, ideal_chan->freq, ideal_factor);
- 		return ideal_chan;
- 	}
  
-@@ -926,6 +932,18 @@ bw_selected:
+ #ifdef CONFIG_IEEE80211BE
+ 		if (iface->conf->punct_acs_threshold)
+@@ -1118,6 +1124,19 @@ static void acs_adjust_secondary(struct
  
  static void acs_adjust_center_freq(struct hostapd_iface *iface)
  {
 +	hostapd_ctrl_update_fixup( iface->conf );
++
 +#ifdef CONFIG_IEEE80211AX
 +	wpa_printf(MSG_WARNING, "ACS(%s): channel %u, secondary_channel %d, vht_center %u, he_center %u",
 +		iface->phy, iface->conf->channel, iface->conf->secondary_channel,
@@ -410,27 +411,18 @@
 +#endif
 +
 +#if 0
- 	int offset;
+ 	int center;
  
  	wpa_printf(MSG_DEBUG, "ACS: Adjusting VHT center frequency");
-@@ -943,13 +961,12 @@ static void acs_adjust_center_freq(struc
- 	default:
- 		/* TODO: How can this be calculated? Adjust
- 		 * acs_find_ideal_chan() */
--		wpa_printf(MSG_INFO,
-+		wpa_printf(MSG_ERROR,
- 			   "ACS: Only VHT20/40/80/160 is supported now");
- 		return;
+@@ -1148,6 +1167,7 @@ static void acs_adjust_center_freq(struc
  	}
--
--	hostapd_set_oper_centr_freq_seg0_idx(iface->conf,
--					     iface->conf->channel + offset);
-+	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, iface->conf->channel + offset);
+ 
+ 	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, center);
 +#endif
  }
  
  
-@@ -1032,7 +1049,7 @@ static void acs_scan_complete(struct hos
+@@ -1244,7 +1264,7 @@ static void acs_scan_complete(struct hos
  
  	iface->scan_cb = NULL;
  
@@ -439,7 +431,7 @@
  		   iface->conf->acs_num_scans);
  
  	err = hostapd_drv_get_survey(iface->bss[0], 0);
-@@ -1130,7 +1147,7 @@ static int acs_request_scan(struct hosta
+@@ -1343,7 +1363,7 @@ static int acs_request_scan(struct hosta
  
  	iface->scan_cb = acs_scan_complete;
  
@@ -450,7 +442,7 @@
  
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1142,6 +1142,8 @@ struct hostapd_config {
+@@ -1160,6 +1160,8 @@ struct hostapd_config {
  #define AIRTIME_MODE_MAX (__AIRTIME_MODE_MAX - 1)
  #endif /* CONFIG_AIRTIME_POLICY */
  

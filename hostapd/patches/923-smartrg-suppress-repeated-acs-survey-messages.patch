@@ -8,7 +8,7 @@
  
  /*
   * Automatic Channel Selection
-@@ -419,9 +420,17 @@ static int acs_usable_bw160_chan(const s
+@@ -454,11 +455,19 @@ static int acs_get_bw_center_chan(int fr
  
  static int acs_survey_is_sufficient(struct freq_survey *survey)
  {
@@ -17,11 +17,15 @@
 +
  	if (!(survey->filled & SURVEY_HAS_NF)) {
  		survey->nf = -95;
--		wpa_printf(MSG_INFO, "ACS: Survey is missing noise floor");
+-		wpa_printf(MSG_INFO,
+-			   "ACS: Survey for freq %d is missing noise floor",
+-			   survey->freq);
 +
 +		current_seconds=time(NULL);
 +		if (last_seconds != current_seconds) {
-+			wpa_printf(MSG_INFO, "ACS: Survey is missing noise floor");
++			wpa_printf(MSG_INFO,
++				   "ACS: Survey for freq %d is missing noise floor",
++				   survey->freq);
 +			last_seconds = current_seconds;
 +		}
  	}

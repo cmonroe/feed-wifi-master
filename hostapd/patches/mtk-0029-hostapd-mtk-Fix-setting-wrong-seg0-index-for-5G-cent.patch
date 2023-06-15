@@ -1,7 +1,7 @@
-From 1814fca214ecf2a876734af789906e2316172ba8 Mon Sep 17 00:00:00 2001
-From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
-Date: Thu, 30 Mar 2023 17:03:03 +0800
-Subject: [PATCH 29/29] hostapd: mtk: Fix setting wrong seg0 index for 5G
+From f229416c4283da4a2f3b264285a5d97fdc8dcc96 Mon Sep 17 00:00:00 2001
+From: Evelyn Tsai <evelyn.tsai@mediatek.com>
+Date: Fri, 12 May 2023 05:23:00 +0800
+Subject: [PATCH 27/28] hostapd: mtk: Fix setting wrong seg0 index for 5G
  center chan 159 BW40
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
@@ -11,7 +11,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1269,7 +1269,8 @@ hostapd_set_oper_centr_freq_seg0_idx(str
+@@ -1293,7 +1293,8 @@ hostapd_set_oper_centr_freq_seg0_idx(str
  #ifdef CONFIG_IEEE80211BE
  	if (conf->ieee80211be)
  		conf->eht_oper_centr_freq_seg0_idx = oper_centr_freq_seg0_idx;

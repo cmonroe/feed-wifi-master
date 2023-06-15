@@ -1,7 +1,7 @@
-From ddd08f7066b80646d6ed5cfe1e80364ca3d4dfb4 Mon Sep 17 00:00:00 2001
+From 8374019111ad6232db54e19e36f0fc1357612712 Mon Sep 17 00:00:00 2001
 From: Michael Lee <michael-cy.lee@mediatek.com>
 Date: Wed, 22 Mar 2023 13:59:29 +0800
-Subject: [PATCH 23/25] hostapd: mtk: Add channel information for hostapd
+Subject: [PATCH 21/28] hostapd: mtk: Add channel information for hostapd
  reload
 
 Add center channel, operating class, and bandwidth into the UPDATE
@@ -16,7 +16,7 @@ Signed-off-by: Michael Lee <michael-cy.lee@mediatek.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -319,6 +319,17 @@ static struct hostapd_config *hostapd_ct
+@@ -320,6 +320,17 @@ static struct hostapd_config *hostapd_ct
  			conf->hw_mode = atoi(val);
  		else if ((val = get_option(opt, "ieee80211n=")))
  			conf->ieee80211n = atoi(val);

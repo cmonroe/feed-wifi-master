@@ -1,7 +1,7 @@
-From 4af041067217532a51ba7e1061b9fa7a61d60eb2 Mon Sep 17 00:00:00 2001
+From 5832d4ddc23f535932b590f5e8d16c349b4c4a51 Mon Sep 17 00:00:00 2001
 From: "himanshu.goyal" <himanshu.goyal@mediatek.com>
 Date: Fri, 3 Mar 2023 12:45:42 +0800
-Subject: [PATCH 20/25] hostapd: mtk: Mark DFS channel as available for CSA.
+Subject: [PATCH 19/28] hostapd: mtk: Mark DFS channel as available for CSA.
 
 ---
  hostapd/ctrl_iface.c   | 10 ++++++++++
@@ -11,7 +11,7 @@ Subject: [PATCH 20/25] hostapd: mtk: Mark DFS channel as available for CSA.
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2854,6 +2854,16 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2929,6 +2929,16 @@ static int hostapd_ctrl_iface_chan_switc
  		settings.freq_params.he_enabled = iface->conf->ieee80211ax;
  	}
  
@@ -30,7 +30,7 @@ Subject: [PATCH 20/25] hostapd: mtk: Mark DFS channel as available for CSA.
  			iface, bandwidth, settings.freq_params.center_freq1);
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1692,7 +1692,7 @@ static const struct hostapd_cli_cmd host
+@@ -1714,7 +1714,7 @@ static const struct hostapd_cli_cmd host
  	  "<addr> = send QoS Map Configure frame" },
  	{ "chan_switch", hostapd_cli_cmd_chan_switch, NULL,
  	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]\n"
@@ -41,11 +41,11 @@ Subject: [PATCH 20/25] hostapd: mtk: Mark DFS channel as available for CSA.
  	  "<addr> <url>\n"
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -995,6 +995,7 @@ int hostapd_parse_csa_settings(const cha
+@@ -1056,6 +1056,7 @@ int hostapd_parse_csa_settings(const cha
  	settings->freq_params.vht_enabled = !!os_strstr(pos, " vht");
  	settings->freq_params.he_enabled = !!os_strstr(pos, " he");
  	settings->freq_params.eht_enabled = !!os_strstr(pos, " eht");
 +	settings->freq_params.radar_background = !!os_strstr(pos, " skip_cac");
  	settings->block_tx = !!os_strstr(pos, " blocktx");
  #undef SET_CSA_SETTING
- 
+ #undef SET_CSA_SETTING_EXT

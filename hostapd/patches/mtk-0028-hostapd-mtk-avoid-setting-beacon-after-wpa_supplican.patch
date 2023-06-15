@@ -1,0 +1,120 @@
+From 1d5dfbffb750a0de15622265dc709524a330f059 Mon Sep 17 00:00:00 2001
+From: Evelyn Tsai <evelyn.tsai@mediatek.com>
+Date: Fri, 12 May 2023 05:21:28 +0800
+Subject: [PATCH 26/28] hostapd: mtk: avoid setting beacon after wpa_supplicant
+ stop the AP
+
+Add a new variable 'stopped_by_supplicant' to indicate the AP
+interface is currently stopped by co-locating STA interface.
+After the STA interface finishes association with some other APs, it
+will reload the co-locating AP interfaces and marks the
+'stopped_by_supplicant' as 0.
+---
+ hostapd/ctrl_iface.c   | 4 ++++
+ src/ap/beacon.c        | 5 ++++-
+ src/ap/bss_load.c      | 3 ++-
+ src/ap/ctrl_iface_ap.c | 4 +++-
+ src/ap/hostapd.c       | 2 ++
+ src/ap/hostapd.h       | 1 +
+ 6 files changed, 16 insertions(+), 3 deletions(-)
+
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -344,11 +344,15 @@ static int hostapd_ctrl_iface_update(str
+ {
+ 	struct hostapd_config * (*config_read_cb)(const char *config_fname);
+ 	struct hostapd_iface *iface = hapd->iface;
++	size_t j;
+ 
+ 	config_read_cb = iface->interfaces->config_read_cb;
+ 	iface->interfaces->config_read_cb = hostapd_ctrl_iface_config_read;
+ 	reload_opts = txt;
+ 
++	for (j = 0; j < iface->num_bss; j++)
++		iface->bss[j]->stopped_by_supplicant = 0;
++
+ 	hostapd_reload_config(iface, 0);
+ 
+ 	iface->interfaces->config_read_cb = config_read_cb;
+--- a/src/ap/beacon.c
++++ b/src/ap/beacon.c
+@@ -2169,7 +2169,8 @@ int ieee802_11_set_beacon(struct hostapd
+ 			continue;
+ 
+ 		for (i = 0; i < colocated->num_bss; i++) {
+-			if (colocated->bss[i] && colocated->bss[i]->started)
++			if (colocated->bss[i] && colocated->bss[i]->started &&
++			    !colocated->bss[i]->stopped_by_supplicant)
+ 				__ieee802_11_set_beacon(colocated->bss[i]);
+ 		}
+ 	}
+@@ -2185,6 +2186,7 @@ int ieee802_11_set_beacons(struct hostap
+ 
+ 	for (i = 0; i < iface->num_bss; i++) {
+ 		if (iface->bss[i]->started &&
++		    !iface->bss[i]->stopped_by_supplicant &&
+ 		    ieee802_11_set_beacon(iface->bss[i]) < 0)
+ 			ret = -1;
+ 	}
+@@ -2201,6 +2203,7 @@ int ieee802_11_update_beacons(struct hos
+ 
+ 	for (i = 0; i < iface->num_bss; i++) {
+ 		if (iface->bss[i]->beacon_set_done && iface->bss[i]->started &&
++		    !iface->bss[i]->stopped_by_supplicant &&
+ 		    ieee802_11_set_beacon(iface->bss[i]) < 0)
+ 			ret = -1;
+ 	}
+--- a/src/ap/bss_load.c
++++ b/src/ap/bss_load.c
+@@ -46,7 +46,8 @@ static void update_channel_utilization(v
+ 	int err;
+ 	struct hostapd_iface *iface = hapd->iface;
+ 
+-	if (!(hapd->beacon_set_done && hapd->started))
++	if (!(hapd->beacon_set_done && hapd->started &&
++	      !hapd->stopped_by_supplicant))
+ 		return;
+ 
+ 	err = hostapd_drv_get_survey(hapd, hapd->iface->freq);
+--- a/src/ap/ctrl_iface_ap.c
++++ b/src/ap/ctrl_iface_ap.c
+@@ -1070,8 +1070,10 @@ int hostapd_ctrl_iface_stop_ap(struct ho
+ 	struct hostapd_iface *iface = hapd->iface;
+ 	int i;
+ 
+-	for (i = 0; i < iface->num_bss; i++)
++	for (i = 0; i < iface->num_bss; i++){
++		iface->bss[i]->stopped_by_supplicant = 1;
+ 		hostapd_drv_stop_ap(iface->bss[i]);
++	}
+ 
+ 	return 0;
+ }
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -488,6 +488,7 @@ void hostapd_free_hapd_data(struct hosta
+ 	}
+ 	hapd->started = 0;
+ 	hapd->beacon_set_done = 0;
++	hapd->stopped_by_supplicant = 0;
+ 
+ 	wpa_printf(MSG_DEBUG, "%s(%s)", __func__, hapd->conf->iface);
+ 	hostapd_ubus_free_bss(hapd);
+@@ -1290,6 +1291,7 @@ static int hostapd_setup_bss(struct host
+ 		return -1;
+ 	}
+ 	hapd->started = 1;
++	hapd->stopped_by_supplicant = 0;
+ 
+ 	if (!first || first == -1) {
+ 		u8 *addr = hapd->own_addr;
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -190,6 +190,7 @@ struct hostapd_data {
+ 	unsigned int started:1;
+ 	unsigned int disabled:1;
+ 	unsigned int reenable_beacon:1;
++	unsigned int stopped_by_supplicant:1;
+ 
+ 	u8 own_addr[ETH_ALEN];
+ 

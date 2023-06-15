@@ -1,7 +1,7 @@
-From 72d7619aa4f38dbbbf03b9056a96f4ffdb1bd352 Mon Sep 17 00:00:00 2001
+From b0a253a420b901e3f5b7b069a85a135835a702ff Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Mon, 20 Feb 2023 14:56:55 +0800
-Subject: [PATCH 11/25] hostapd: mtk: Add DFS offchan channel switch
+Subject: [PATCH 11/28] hostapd: mtk: Add DFS offchan channel switch
 
 Add DFS background chain channel switch command for testing purpose.
 This feature is implemented via hostapd_cli command.
@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -3692,6 +3692,76 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
+@@ -3767,6 +3767,76 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
  }
  
  
@@ -94,7 +94,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4257,6 +4327,8 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4341,6 +4411,8 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "DFS_DETECT_MODE ", 16) == 0) {
  		reply_len = hostapd_ctrl_iface_set_dfs_detect_mode(hapd, buf + 16,
  								   reply, reply_size);
@@ -132,7 +132,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  {
  	struct hostapd_hw_modes *mode;
  	struct hostapd_channel_data *chan;
-@@ -299,12 +292,12 @@ static int dfs_find_channel(struct hosta
+@@ -300,12 +293,12 @@ static int dfs_find_channel(struct hosta
  }
  
  

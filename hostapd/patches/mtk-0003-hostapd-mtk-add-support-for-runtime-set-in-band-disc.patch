@@ -1,7 +1,7 @@
-From 66531c560a9d292b18cc2d3574427fbb0a32f8f4 Mon Sep 17 00:00:00 2001
+From c7e5ad8609443c3e484ea06df88755de55f5bda0 Mon Sep 17 00:00:00 2001
 From: MeiChia Chiu <meichia.chiu@mediatek.com>
 Date: Tue, 31 May 2022 21:15:54 +0800
-Subject: [PATCH 03/25] hostapd: mtk: add support for runtime set in-band
+Subject: [PATCH 03/28] hostapd: mtk: add support for runtime set in-band
  discovery
 
 Usage:
@@ -22,7 +22,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -977,6 +977,69 @@ static int hostapd_ctrl_iface_send_qos_m
+@@ -978,6 +978,69 @@ static int hostapd_ctrl_iface_send_qos_m
  
  #endif /* CONFIG_INTERWORKING */
  
@@ -92,7 +92,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  
  #ifdef CONFIG_WNM_AP
  
-@@ -3584,6 +3647,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -3661,6 +3724,9 @@ static int hostapd_ctrl_iface_receive_pr
  		if (hostapd_ctrl_iface_coloc_intf_req(hapd, buf + 15))
  			reply_len = -1;
  #endif /* CONFIG_WNM_AP */
@@ -104,7 +104,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  							  reply_size);
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -642,6 +642,24 @@ static int hostapd_cli_cmd_wps_config(st
+@@ -655,6 +655,24 @@ static int hostapd_cli_cmd_wps_config(st
  	return wpa_ctrl_command(ctrl, buf);
  }
  
@@ -129,7 +129,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  
  static int hostapd_cli_cmd_disassoc_imminent(struct wpa_ctrl *ctrl, int argc,
  					     char *argv[])
-@@ -1757,6 +1775,8 @@ static const struct hostapd_cli_cmd host
+@@ -1781,6 +1799,8 @@ static const struct hostapd_cli_cmd host
  	{ "driver", hostapd_cli_cmd_driver, NULL,
  	  "<driver sub command> [<hex formatted data>] = send driver command data" },
  #endif /* ANDROID */
@@ -140,7 +140,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1497,6 +1497,8 @@ static u8 * hostapd_fils_discovery(struc
+@@ -1618,6 +1618,8 @@ static u8 * hostapd_fils_discovery(struc
  				   struct wpa_driver_ap_params *params)
  {
  	params->fd_max_int = hapd->conf->fils_discovery_max_int;
@@ -149,7 +149,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  	if (is_6ghz_op_class(hapd->iconf->op_class) &&
  	    params->fd_max_int > FD_MAX_INTERVAL_6GHZ)
  		params->fd_max_int = FD_MAX_INTERVAL_6GHZ;
-@@ -1505,7 +1507,8 @@ static u8 * hostapd_fils_discovery(struc
+@@ -1626,7 +1628,8 @@ static u8 * hostapd_fils_discovery(struc
  	if (params->fd_min_int > params->fd_max_int)
  		params->fd_min_int = params->fd_max_int;
  
@@ -161,7 +161,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4505,9 +4505,10 @@ static int nl80211_fils_discovery(struct
+@@ -4638,9 +4638,10 @@ static int nl80211_fils_discovery(struct
  			params->fd_max_int) ||
  	    (params->fd_frame_tmpl &&
  	     nla_put(msg, NL80211_FILS_DISCOVERY_ATTR_TMPL,
@@ -174,7 +174,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  	nla_nest_end(msg, attr);
  	return 0;
  }
-@@ -4851,7 +4852,10 @@ static int wpa_driver_nl80211_set_ap(voi
+@@ -5045,7 +5046,10 @@ static int wpa_driver_nl80211_set_ap(voi
  #endif /* CONFIG_SAE */
  
  #ifdef CONFIG_FILS
@@ -188,7 +188,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -7379,6 +7379,7 @@ enum nl80211_fils_discovery_attributes {
+@@ -7569,6 +7569,7 @@ enum nl80211_fils_discovery_attributes {
  	NL80211_FILS_DISCOVERY_ATTR_INT_MIN,
  	NL80211_FILS_DISCOVERY_ATTR_INT_MAX,
  	NL80211_FILS_DISCOVERY_ATTR_TMPL,

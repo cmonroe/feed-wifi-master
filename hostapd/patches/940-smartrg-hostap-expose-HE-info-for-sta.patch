@@ -1,7 +1,7 @@
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -212,6 +212,53 @@ static const char * timeout_next_str(int
- 	return "?";
+@@ -231,6 +231,53 @@ static const char * timeout_next_str(int
+ 	}
  }
  
 +#ifdef CONFIG_IEEE80211AX
@@ -54,7 +54,7 @@
  
  static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
  				      struct sta_info *sta,
-@@ -386,6 +433,16 @@ static int hostapd_ctrl_iface_sta_mib(st
+@@ -418,6 +465,16 @@ static int hostapd_ctrl_iface_sta_mib(st
  		if (!os_snprintf_error(buflen - len, ret))
  			len += ret;
  	}
