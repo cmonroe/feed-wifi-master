@@ -161,14 +161,14 @@ Subject: [PATCH 06/32] hostapd: mtk: Add hostapd MU SET/GET control
  	/* The third octet of the country string uses an ASCII space character
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1132,6 +1132,7 @@ struct hostapd_config {
- 	u8 he_6ghz_tx_ant_pat;
+@@ -1133,6 +1133,7 @@ struct hostapd_config {
  	u8 he_6ghz_reg_pwr_type;
  	bool require_he;
-+	u8 mu_onoff;
  #endif /* CONFIG_IEEE80211AX */
++	u8 mu_onoff;
  
  	/* VHT enable/disable config from CHAN_SWITCH */
+ #define CH_SWITCH_VHT_ENABLED BIT(0)
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
 @@ -1078,3 +1078,17 @@ int hostapd_drv_get_edcca(struct hostapd
@@ -388,12 +388,14 @@ Subject: [PATCH 06/32] hostapd: mtk: Add hostapd MU SET/GET control
  #ifdef CONFIG_DPP
  static int nl80211_dpp_listen(void *priv, bool enable)
  {
-@@ -13678,6 +13786,8 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -13678,6 +13786,10 @@ const struct wpa_driver_ops wpa_driver_n
  	.update_connect_params = nl80211_update_connection_params,
  	.send_external_auth_status = nl80211_send_external_auth_status,
  	.set_4addr_mode = nl80211_set_4addr_mode,
++#ifdef CONFIG_IEEE80211AX
 +	.mu_ctrl = nl80211_mu_onoff,
 +	.mu_dump = nl80211_mu_dump,
++#endif
  #ifdef CONFIG_DPP
  	.dpp_listen = nl80211_dpp_listen,
  #endif /* CONFIG_DPP */
