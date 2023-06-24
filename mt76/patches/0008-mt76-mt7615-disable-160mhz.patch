@@ -1,6 +1,6 @@
 --- a/mt7615/init.c
 +++ b/mt7615/init.c
-@@ -434,9 +434,15 @@ mt7615_cap_dbdc_enable(struct mt7615_dev
+@@ -436,9 +436,15 @@ mt7615_cap_dbdc_enable(struct mt7615_dev
  static void
  mt7615_cap_dbdc_disable(struct mt7615_dev *dev)
  {

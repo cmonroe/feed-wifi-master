@@ -15,7 +15,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -1694,9 +1694,18 @@ u16 mt76_calculate_default_rate(struct m
+@@ -1697,9 +1697,18 @@ u16 mt76_calculate_default_rate(struct m
  {
  	int offset = 0;
  

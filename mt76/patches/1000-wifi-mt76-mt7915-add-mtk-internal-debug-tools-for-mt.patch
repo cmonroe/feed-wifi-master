@@ -23,7 +23,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1148,6 +1148,7 @@ enum {
+@@ -1151,6 +1151,7 @@ enum {
  	MCU_EXT_CMD_SET_TX_POWER_CTRL = 0x11,
  	MCU_EXT_CMD_FW_LOG_2_HOST = 0x13,
  	MCU_EXT_CMD_TXBF_ACTION = 0x1e,
@@ -31,7 +31,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	MCU_EXT_CMD_EFUSE_BUFFER_MODE = 0x21,
  	MCU_EXT_CMD_THERMAL_PROT = 0x23,
  	MCU_EXT_CMD_STA_REC_UPDATE = 0x25,
-@@ -1172,6 +1173,11 @@ enum {
+@@ -1175,6 +1176,11 @@ enum {
  	MCU_EXT_CMD_TX_POWER_FEATURE_CTRL = 0x58,
  	MCU_EXT_CMD_RXDCOC_CAL = 0x59,
  	MCU_EXT_CMD_GET_MIB_INFO = 0x5a,
@@ -66,7 +66,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  
  /** global debugfs **/
  
-@@ -504,6 +507,9 @@ mt7915_fw_debug_wm_set(void *data, u64 v
+@@ -496,6 +499,9 @@ mt7915_fw_debug_wm_set(void *data, u64 v
  	int ret;
  
  	dev->fw.debug_wm = val ? MCU_FW_LOG_TO_HOST : 0;
@@ -76,7 +76,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  
  	if (dev->fw.debug_bin)
  		val = 16;
-@@ -528,6 +534,9 @@ mt7915_fw_debug_wm_set(void *data, u64 v
+@@ -520,6 +526,9 @@ mt7915_fw_debug_wm_set(void *data, u64 v
  		if (ret)
  			goto out;
  	}
@@ -86,7 +86,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  
  	/* WM CPU info record control */
  	mt76_clear(dev, MT_CPU_UTIL_CTRL, BIT(0));
-@@ -535,6 +544,12 @@ mt7915_fw_debug_wm_set(void *data, u64 v
+@@ -527,6 +536,12 @@ mt7915_fw_debug_wm_set(void *data, u64 v
  	mt76_wr(dev, MT_MCU_WM_CIRQ_IRQ_MASK_CLR_ADDR, BIT(5));
  	mt76_wr(dev, MT_MCU_WM_CIRQ_IRQ_SOFT_ADDR, BIT(5));
  
@@ -99,7 +99,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  out:
  	if (ret)
  		dev->fw.debug_wm = 0;
-@@ -547,7 +562,11 @@ mt7915_fw_debug_wm_get(void *data, u64 *
+@@ -539,7 +554,11 @@ mt7915_fw_debug_wm_get(void *data, u64 *
  {
  	struct mt7915_dev *dev = data;
  
@@ -112,7 +112,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  
  	return 0;
  }
-@@ -622,16 +641,30 @@ mt7915_fw_debug_bin_set(void *data, u64
+@@ -614,16 +633,30 @@ mt7915_fw_debug_bin_set(void *data, u64
  	};
  	struct mt7915_dev *dev = data;
  
@@ -146,7 +146,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	return mt7915_fw_debug_wm_set(dev, dev->fw.debug_wm);
  }
  
-@@ -1257,6 +1290,11 @@ int mt7915_init_debugfs(struct mt7915_ph
+@@ -1249,6 +1282,11 @@ int mt7915_init_debugfs(struct mt7915_ph
  	if (!ext_phy)
  		dev->debugfs_dir = dir;
  
@@ -158,7 +158,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	return 0;
  }
  
-@@ -1269,6 +1307,12 @@ mt7915_debugfs_write_fwlog(struct mt7915
+@@ -1261,6 +1299,12 @@ mt7915_debugfs_write_fwlog(struct mt7915
  	void *dest;
  
  	spin_lock_irqsave(&lock, flags);
@@ -171,7 +171,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	dest = relay_reserve(dev->relay_fwlog, hdrlen + len + 4);
  	if (dest) {
  		*(u32 *)dest = hdrlen + len;
-@@ -1297,17 +1341,50 @@ void mt7915_debugfs_rx_fw_monitor(struct
+@@ -1289,17 +1333,50 @@ void mt7915_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -237,7 +237,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	memset(status, 0, sizeof(*status));
  
  	if ((rxd1 & MT_RXD1_NORMAL_BAND_IDX) && !phy->mt76->band_idx) {
-@@ -458,6 +462,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+@@ -459,6 +463,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  	}
  
  	hdr_gap = (u8 *)rxd - skb->data + 2 * remove_pad;
@@ -248,7 +248,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	if (hdr_trans && ieee80211_has_morefrags(fc)) {
  		struct ieee80211_vif *vif;
  		int err;
-@@ -795,6 +803,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -796,6 +804,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	tx_info->buf[1].skip_unmap = true;
  	tx_info->nbuf = MT_CT_DMA_BUF_NUM;
  
@@ -277,7 +277,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -227,6 +227,11 @@ mt7915_mcu_send_message(struct mt76_dev
+@@ -230,6 +230,11 @@ mt7915_mcu_send_message(struct mt76_dev
  	else
  		qid = MT_MCUQ_WM;
  
@@ -289,7 +289,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -2276,7 +2281,10 @@ static int mt7915_red_set_watermark(stru
+@@ -2316,7 +2321,10 @@ static int mt7915_red_set_watermark(stru
  				 sizeof(req), false);
  }
  
@@ -301,7 +301,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  {
  #define RED_DISABLE		0
  #define RED_BY_WA_ENABLE	2
-@@ -3340,6 +3348,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3380,6 +3388,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -310,8 +310,8 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -3938,6 +3948,23 @@ int mt7915_mcu_twt_agrt_update(struct mt
- 				 &req, sizeof(req), true);
+@@ -4034,6 +4044,23 @@ out:
+ 	return ret;
  }
  
 +#ifdef MTK_DEBUG
@@ -334,7 +334,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-@@ -3966,3 +3993,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+@@ -4062,3 +4089,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
  
  	return 0;
  }
@@ -380,7 +380,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_WTBL_SIZE		288
  #define MT7916_WTBL_SIZE		544
-@@ -371,6 +372,28 @@ struct mt7915_dev {
+@@ -306,6 +307,28 @@ struct mt7915_dev {
  	struct reset_control *rstc;
  	void __iomem *dcm;
  	void __iomem *sku;
@@ -409,7 +409,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  };
  
  enum {
-@@ -651,4 +674,24 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -586,4 +609,24 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  

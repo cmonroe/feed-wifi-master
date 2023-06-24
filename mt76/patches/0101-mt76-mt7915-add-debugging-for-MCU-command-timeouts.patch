@@ -1,6 +1,6 @@
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -161,14 +161,39 @@ mt7915_mcu_parse_response(struct mt76_de
+@@ -161,16 +161,42 @@ mt7915_mcu_parse_response(struct mt76_de
  	int ret = 0;
  
  	if (!skb) {
@@ -33,8 +33,10 @@
 +	}
 +
  	rxd = (struct mt76_connac2_mcu_rxd *)skb->data;
--	if (seq != rxd->seq)
-+	if (seq != rxd->seq) {
+ 	if (seq != rxd->seq &&
+ 	    !(rxd->eid == MCU_CMD_EXT_CID &&
+ 	      rxd->ext_eid == MCU_EXT_EVENT_WA_TX_STAT))
++	{
 +		dev_dbg(mdev->dev, "ERROR: MCU: Sequence mismatch in response, seq: %d rxd->seq: %d cmd: %0x\n",
 +			seq, rxd->seq, cmd);
 +
@@ -45,7 +47,7 @@
  		skb_pull(skb, sizeof(*rxd) - 4);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -845,6 +845,9 @@ struct mt76_dev {
+@@ -854,6 +854,9 @@ struct mt76_dev {
  		struct mt76_usb usb;
  		struct mt76_sdio sdio;
  	};
@@ -54,4 +56,4 @@
 +	int last_successful_mcu_cmd;
  };
  
- struct mt76_power_limits {
+ /* per-phy stats.  */
