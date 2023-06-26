@@ -4911,7 +4911,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +	struct cos_msg_trace_t *msg_trace = NULL;
 +	u32 ptr_addr = 0;
 +	u32 length = 0;
-+	u32 idx = 0, i = 0;
++	u32 idx = 0;
 +	u32 cnt = 0;
 +	u32 msg_history_num = 0;
 +
@@ -5052,14 +5052,13 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
 +	struct cos_program_trace_t *cos_program_trace_ptr = NULL;
 +	u32 trace_ptr = 0;
-+	u32 idx = 0, i = 0;
++	u32 idx = 0;
 +	u32 old_idx = 0;
 +	u32 old_idx_addr = 0;
 +	u32 prev_idx = 0;
 +	u32 prev_time = 0;
 +	u32 curr_time = 0;
 +	u32 diff = 0;
-+	u32 length = 0;
 +
 +	cos_program_trace_ptr = kmalloc(PROGRAM_TRACE_HISTORY_NUM * sizeof(struct cos_program_trace_t), GFP_KERNEL);
 +	if (!cos_program_trace_ptr) {
@@ -5125,9 +5124,11 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +
 +static int mt7915_fw_wm_info_read(struct seq_file *s, void *data)
 +{
++	int ret;
++	u8 str[32], exp_type[64];
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
 +	u32 macVal = 0, g_exp_type = 0, COS_Interrupt_Count = 0;
-+	u8 exp_assert_proc_entry_cnt = 0, exp_assert_state = 0, g_irq_history_num = 0;;
++	u8 exp_assert_proc_entry_cnt = 0, exp_assert_state = 0, g_irq_history_num = 0;
 +	u16 processing_irqx = 0;
 +	u32 processing_lisr = 0, Current_Task_Id = 0, Current_Task_Indx = 0;
 +	u8 km_irq_info_idx = 0, km_eint_info_idx = 0, km_sched_info_idx = 0, g_sched_history_num = 0;
@@ -5141,8 +5142,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +	u32 g_sched_history_num_addr = 0, km_sched_trace_ptr_addr = 0;
 +	u32 km_irq_trace_ptr_addr = 0, km_total_time_addr  = 0, last_dequeued_msg_id = 0;
 +	u32 i = 0 ,t1 = 0, t2 = 0, t3 = 0;
-+	u8 idx = 0, str[32], exp_type[64];;
-+	int ret;
++	u8 idx = 0;
 +
 +	g_exp_type_addr = 0x022050DC;
 +	exp_assert_state_addr = 0x02204B54;
