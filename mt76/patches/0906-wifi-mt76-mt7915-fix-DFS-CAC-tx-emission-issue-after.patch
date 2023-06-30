@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2764,12 +2764,12 @@ int mt7915_mcu_set_chan_info(struct mt79
+@@ -2767,12 +2767,12 @@ int mt7915_mcu_set_chan_info(struct mt79
  	if (mt76_connac_spe_idx(phy->mt76->antenna_mask))
  		req.tx_path_num = fls(phy->mt76->antenna_mask);
  

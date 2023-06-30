@@ -89,7 +89,7 @@
  
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -193,6 +193,7 @@ struct mt7915_phy {
+@@ -207,6 +207,7 @@ struct mt7915_phy {
  	u32 throttle_temp[2]; /* 0: critical high, 1: maximum */
  
  	u32 rxfilter;

@@ -289,7 +289,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -2316,7 +2321,10 @@ static int mt7915_red_set_watermark(stru
+@@ -2319,7 +2324,10 @@ static int mt7915_red_set_watermark(stru
  				 sizeof(req), false);
  }
  
@@ -301,7 +301,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  {
  #define RED_DISABLE		0
  #define RED_BY_WA_ENABLE	2
-@@ -3380,6 +3388,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3383,6 +3391,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -310,7 +310,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -4034,6 +4044,23 @@ out:
+@@ -4037,6 +4047,23 @@ out:
  	return ret;
  }
  
@@ -334,7 +334,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-@@ -4062,3 +4089,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+@@ -4065,3 +4092,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
  
  	return 0;
  }
@@ -380,7 +380,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_WTBL_SIZE		288
  #define MT7916_WTBL_SIZE		544
-@@ -306,6 +307,28 @@ struct mt7915_dev {
+@@ -320,6 +321,28 @@ struct mt7915_dev {
  	struct reset_control *rstc;
  	void __iomem *dcm;
  	void __iomem *sku;
@@ -409,7 +409,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  };
  
  enum {
-@@ -586,4 +609,24 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -600,4 +623,24 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  

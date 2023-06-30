@@ -587,7 +587,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -273,7 +273,7 @@ struct mt7915_dev {
+@@ -287,7 +287,7 @@ struct mt7915_dev {
  	struct mutex dump_mutex;
  #ifdef CONFIG_DEV_COREDUMP
  	struct {
