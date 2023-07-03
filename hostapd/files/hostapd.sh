@@ -681,7 +681,8 @@ hostapd_set_bss_options() {
 				wireless_setup_vif_failed INVALID_WPA_PSK
 				return 1
 			fi
-			[ -z "$wpa_psk_file" ] && set_default wpa_psk_file /var/run/hostapd-$ifname.psk
+#           Don't set the psk file in order to force use of single default key.			
+#			[ -z "$wpa_psk_file" ] && set_default wpa_psk_file /var/run/hostapd-$ifname.psk
 			[ -n "$wpa_psk_file" ] && {
 				[ -e "$wpa_psk_file" ] || touch "$wpa_psk_file"
 				append bss_conf "wpa_psk_file=$wpa_psk_file" "$N"
