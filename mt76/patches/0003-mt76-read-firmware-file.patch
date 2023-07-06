@@ -10,13 +10,13 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ===================================================================
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -9,6 +9,70 @@
+@@ -9,6 +9,73 @@
  #include <linux/etherdevice.h>
  #include "mt76.h"
  
-+#if defined(CONFIG_OF)
 +int mt76_get_of_eeprom_file(struct mt76_dev *dev, void *eep, u32 offset, int len)
 +{
++#if defined(CONFIG_OF)
 +	int ret = 0;
 +	int retlen;
 +
@@ -53,7 +53,7 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +	pos = offset;
 +
 +	dev_dbg(dev->dev, "reading file: len %d, pos %lld \n", len, pos);
-+	retlen = kernel_read(fp, dev->eeprom.data, len, &pos);
++	retlen = kernel_read(fp, eep, len, &pos);
 +	if (retlen != len) {
 +		ret = -EINVAL;
 +		dev_warn(dev->dev,"load eeprom ERROR, count %d byte (len:%d)\n", ret, len);
@@ -75,13 +75,16 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +out_put_node:
 +	filp_close(fp, 0);
 +	return ret;
-+}
++#else
++	return -ENOENT;
 +#endif
++}
++EXPORT_SYMBOL_GPL(mt76_get_of_eeprom_file);
 +
  int mt76_get_of_eeprom(struct mt76_dev *dev, void *eep, int offset, int len)
  {
  #if defined(CONFIG_OF) && defined(CONFIG_MTD)
-@@ -349,11 +413,21 @@ EXPORT_SYMBOL_GPL(mt76_get_rate_power_li
+@@ -349,11 +416,21 @@ EXPORT_SYMBOL_GPL(mt76_get_rate_power_li
  int
  mt76_eeprom_init(struct mt76_dev *dev, int len)
  {
@@ -103,3 +106,44 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  	return !mt76_get_of_eeprom(dev, dev->eeprom.data, 0, len);
  }
  EXPORT_SYMBOL_GPL(mt76_eeprom_init);
+--- a/mt76.h
++++ b/mt76.h
+@@ -1085,6 +1085,7 @@ void mt76_seq_puts_array(struct seq_file
+ int mt76_eeprom_init(struct mt76_dev *dev, int len);
+ void mt76_eeprom_override(struct mt76_phy *phy);
+ int mt76_get_of_eeprom(struct mt76_dev *dev, void *data, int offset, int len);
++int mt76_get_of_eeprom_file(struct mt76_dev *dev, void *eep, u32 offset, int len);
+ 
+ struct mt76_queue *
+ mt76_init_queue(struct mt76_dev *dev, int qid, int idx, int n_desc,
+--- a/mt7915/eeprom.c
++++ b/mt7915/eeprom.c
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: ISC
+ /* Copyright (C) 2020 MediaTek Inc. */
+ 
++#include <linux/of.h>
+ #include <linux/firmware.h>
+ #include "mt7915.h"
+ #include "eeprom.h"
+@@ -25,6 +26,20 @@ static int mt7915_eeprom_load_precal(str
+ 
+ 	offs = is_mt7915(&dev->mt76) ? MT_EE_PRECAL : MT_EE_PRECAL_V2;
+ 
++#if defined(CONFIG_OF)
++	{
++		u32 dts_offset;
++		struct device_node *np = mdev->dev->of_node;
++
++		if (np && of_property_read_u32(np, "mediatek,eeprom-file-offset", &dts_offset) == 0) {
++			dev_info(dev->mt76.dev, "pre-cal offset=0x%x dts offset=0x%x size=0x%x\n",
++					offs, dts_offset, val);
++
++			return mt76_get_of_eeprom_file(mdev, dev->cal, (offs + dts_offset), val);
++		}
++	}
++#endif
++
+ 	return mt76_get_of_eeprom(mdev, dev->cal, offs, val);
+ }
+ 
