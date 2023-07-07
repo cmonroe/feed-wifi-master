@@ -18,7 +18,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4847,6 +4847,10 @@ static int hostapd_config_fill(struct ho
+@@ -4853,6 +4853,10 @@ static int hostapd_config_fill(struct ho
  	} else if (os_strcmp(buf, "ibf_enable") == 0) { /*ibf setting is per device*/
  		int val = atoi(pos);
  		conf->ibf_enable = !!val;
@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -3747,6 +3747,26 @@ hostapd_ctrl_iface_get_ibf(struct hostap
+@@ -3782,6 +3782,26 @@ hostapd_ctrl_iface_get_ibf(struct hostap
  }
  
  
@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4318,6 +4338,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4353,6 +4373,9 @@ static int hostapd_ctrl_iface_receive_pr
  		reply_len = hostapd_ctrl_iface_get_mu(hapd, reply, reply_size);
  	} else if (os_strncmp(buf, "GET_IBF", 7) == 0) {
  		reply_len = hostapd_ctrl_iface_get_ibf(hapd, reply, reply_size);
@@ -70,7 +70,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		reply_len = 16;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1188,6 +1188,7 @@ struct hostapd_config {
+@@ -1199,6 +1199,7 @@ struct hostapd_config {
  	int *edcca_threshold;
  	u8 three_wire_enable;
  	u8 ibf_enable;
@@ -78,7 +78,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
  
  enum three_wire_mode {
-@@ -1202,6 +1203,18 @@ enum three_wire_mode {
+@@ -1213,6 +1214,18 @@ enum three_wire_mode {
  		NUM_THREE_WIRE_MODE - 1
  };
  

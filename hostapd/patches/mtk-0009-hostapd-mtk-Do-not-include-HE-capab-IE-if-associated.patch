@@ -10,7 +10,7 @@ Subject: [PATCH 09/28] hostapd: mtk: Do not include HE capab IE if associated
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4399,7 +4399,8 @@ static u16 send_assoc_resp(struct hostap
+@@ -4843,7 +4843,8 @@ static u16 send_assoc_resp(struct hostap
  #endif /* CONFIG_IEEE80211AC */
  
  #ifdef CONFIG_IEEE80211AX
