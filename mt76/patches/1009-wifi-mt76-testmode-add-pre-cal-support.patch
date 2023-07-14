@@ -803,10 +803,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	/* keep last */
 --- a/tools/fields.c
 +++ b/tools/fields.c
-@@ -10,6 +10,14 @@ static const char * const testmode_state
+@@ -10,6 +10,16 @@ static const char * const testmode_state
  	[MT76_TM_STATE_IDLE] = "idle",
  	[MT76_TM_STATE_TX_FRAMES] = "tx_frames",
  	[MT76_TM_STATE_RX_FRAMES] = "rx_frames",
++	[MT76_TM_STATE_TX_CONT] = "tx_cont",
 +	[MT76_TM_STATE_GROUP_PREK] = "group_prek",
 +	[MT76_TM_STATE_GROUP_PREK_DUMP] = "group_prek_dump",
 +	[MT76_TM_STATE_GROUP_PREK_CLEAN] = "group_prek_clean",
@@ -815,6 +816,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	[MT76_TM_STATE_DPD_6G] = "dpd_6g",
 +	[MT76_TM_STATE_DPD_DUMP] = "dpd_dump",
 +	[MT76_TM_STATE_DPD_CLEAN] = "dpd_clean",
++	[MT76_TM_STATE_ON] = "on",
  };
  
  static const char * const testmode_tx_mode[] = {
