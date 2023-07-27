@@ -671,7 +671,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif
 --- a/tools/fields.c
 +++ b/tools/fields.c
-@@ -31,6 +31,14 @@ static const char * const testmode_tx_mo
+@@ -33,6 +33,14 @@ static const char * const testmode_tx_mo
  	[MT76_TM_TX_MODE_HE_MU] = "he_mu",
  };
  
@@ -686,7 +686,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static void print_enum(const struct tm_field *field, struct nlattr *attr)
  {
  	unsigned int i = nla_get_u8(attr);
-@@ -312,6 +320,13 @@ static const struct tm_field testdata_fi
+@@ -314,6 +322,13 @@ static const struct tm_field testdata_fi
  	FIELD_ARRAY(u8, TX_POWER, "tx_power"),
  	FIELD(u8, TX_ANTENNA, "tx_antenna"),
  	FIELD(u32, FREQ_OFFSET, "freq_offset"),
@@ -700,7 +700,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	FIELD_NESTED_RO(STATS, stats, "",
  			.print_extra = print_extra_stats),
  };
-@@ -334,6 +349,13 @@ static struct nla_policy testdata_policy
+@@ -336,6 +351,13 @@ static struct nla_policy testdata_policy
  	[MT76_TM_ATTR_TX_ANTENNA] = { .type = NLA_U8 },
  	[MT76_TM_ATTR_FREQ_OFFSET] = { .type = NLA_U32 },
  	[MT76_TM_ATTR_STATS] = { .type = NLA_NESTED },
