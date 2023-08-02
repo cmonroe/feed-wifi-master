@@ -1,4 +1,4 @@
-From 7097dfcbf442fde86cfb34f8e91fb5c0e6546630 Mon Sep 17 00:00:00 2001
+From a1d6921a833c7d85170cb54145bfcf98d7f11283 Mon Sep 17 00:00:00 2001
 From: Shayne Chen <shayne.chen@mediatek.com>
 Date: Tue, 29 Mar 2022 16:06:30 +0800
 Subject: [PATCH] cfg80211: mtk: extend CAC time for weather radar channels
@@ -7,9 +7,9 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---
  include/net/cfg80211.h | 1 +
- net/wireless/chan.c    | 6 ++++++
+ net/wireless/chan.c    | 7 +++++++
  net/wireless/nl80211.c | 3 +++
- 3 files changed, 10 insertions(+)
+ 3 files changed, 11 insertions(+)
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
@@ -23,14 +23,15 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /**
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -931,6 +931,12 @@ static unsigned int cfg80211_get_chans_d
+@@ -931,6 +931,13 @@ static unsigned int cfg80211_get_chans_d
  		if (!(c->flags & IEEE80211_CHAN_RADAR))
  			continue;
  
 +		/* weather radar in ETSI */
 +		if (reg_get_dfs_region(wiphy) == NL80211_DFS_ETSI &&
-+		    freq >= MHZ_TO_KHZ(5590) && freq <= MHZ_TO_KHZ(5650) &&
-+		    dfs_cac_ms < IEEE80211_DFS_WEATHER_MIN_CAC_TIME_MS)
++		    freq >= MHZ_TO_KHZ(5600) && freq <= MHZ_TO_KHZ(5640) &&
++		    dfs_cac_ms < IEEE80211_DFS_WEATHER_MIN_CAC_TIME_MS &&
++		    c->dfs_state == NL80211_DFS_USABLE)
 +			dfs_cac_ms = IEEE80211_DFS_WEATHER_MIN_CAC_TIME_MS;
 +
  		if (c->dfs_cac_ms > dfs_cac_ms)

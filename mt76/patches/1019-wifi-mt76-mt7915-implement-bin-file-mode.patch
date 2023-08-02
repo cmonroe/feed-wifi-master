@@ -16,7 +16,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -171,6 +171,26 @@ out_put_node:
+@@ -226,6 +226,26 @@ int mt76_get_of_eeprom(struct mt76_dev *
  }
  EXPORT_SYMBOL_GPL(mt76_get_of_eeprom);
  

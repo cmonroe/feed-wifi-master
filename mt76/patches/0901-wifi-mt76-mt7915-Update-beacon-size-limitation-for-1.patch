@@ -22,7 +22,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
 
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -645,11 +645,13 @@ static void mt7915_bss_info_changed(stru
+@@ -646,11 +646,13 @@ static void mt7915_bss_info_changed(stru
  		mt7915_update_bss_color(hw, vif, &info->he_bss_color);
  
  	if (changed & (BSS_CHANGED_BEACON |

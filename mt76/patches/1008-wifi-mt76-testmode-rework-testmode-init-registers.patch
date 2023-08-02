@@ -415,7 +415,7 @@ Subject: [PATCH 1009/1033] wifi: mt76: testmode: rework testmode init
  #endif
 --- a/testmode.c
 +++ b/testmode.c
-@@ -447,8 +447,7 @@ int mt76_testmode_cmd(struct ieee80211_h
+@@ -448,8 +448,7 @@ int mt76_testmode_cmd(struct ieee80211_h
  	    mt76_tm_get_u8(tb[MT76_TM_ATTR_TX_RATE_LDPC], &td->tx_rate_ldpc, 0, 1) ||
  	    mt76_tm_get_u8(tb[MT76_TM_ATTR_TX_RATE_STBC], &td->tx_rate_stbc, 0, 1) ||
  	    mt76_tm_get_u8(tb[MT76_TM_ATTR_TX_LTF], &td->tx_ltf, 0, 2) ||
@@ -425,7 +425,7 @@ Subject: [PATCH 1009/1033] wifi: mt76: testmode: rework testmode init
  	    mt76_tm_get_u8(tb[MT76_TM_ATTR_TX_SPE_IDX], &td->tx_spe_idx, 0, 27) ||
  	    mt76_tm_get_u8(tb[MT76_TM_ATTR_TX_DUTY_CYCLE],
  			   &td->tx_duty_cycle, 0, 99) ||
-@@ -560,6 +559,9 @@ mt76_testmode_dump_stats(struct mt76_phy
+@@ -561,6 +560,9 @@ mt76_testmode_dump_stats(struct mt76_phy
  	    nla_put_u64_64bit(msg, MT76_TM_STATS_ATTR_RX_PACKETS, rx_packets,
  			      MT76_TM_STATS_ATTR_PAD) ||
  	    nla_put_u64_64bit(msg, MT76_TM_STATS_ATTR_RX_FCS_ERROR, rx_fcs_error,

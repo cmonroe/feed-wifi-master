@@ -1,8 +1,8 @@
-From 1d5dfbffb750a0de15622265dc709524a330f059 Mon Sep 17 00:00:00 2001
+From ff273381d463d82898df70cb7b43341405e3d943 Mon Sep 17 00:00:00 2001
 From: Evelyn Tsai <evelyn.tsai@mediatek.com>
 Date: Fri, 12 May 2023 05:21:28 +0800
-Subject: [PATCH 26/28] hostapd: mtk: avoid setting beacon after wpa_supplicant
- stop the AP
+Subject: [PATCH] hostapd: mtk: Avoid setting beacon after wpa_supplicant stop
+ the AP
 
 Add a new variable 'stopped_by_supplicant' to indicate the AP
 interface is currently stopped by co-locating STA interface.
@@ -10,13 +10,13 @@ After the STA interface finishes association with some other APs, it
 will reload the co-locating AP interfaces and marks the
 'stopped_by_supplicant' as 0.
 ---
- hostapd/ctrl_iface.c   | 4 ++++
- src/ap/beacon.c        | 5 ++++-
- src/ap/bss_load.c      | 3 ++-
- src/ap/ctrl_iface_ap.c | 4 +++-
- src/ap/hostapd.c       | 2 ++
- src/ap/hostapd.h       | 1 +
- 6 files changed, 16 insertions(+), 3 deletions(-)
+ hostapd/ctrl_iface.c   |  4 ++++
+ src/ap/beacon.c        |  5 ++++-
+ src/ap/bss_load.c      | 10 +++++++---
+ src/ap/ctrl_iface_ap.c |  4 +++-
+ src/ap/hostapd.c       |  4 +++-
+ src/ap/hostapd.h       |  1 +
+ 6 files changed, 22 insertions(+), 6 deletions(-)
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
@@ -66,16 +66,37 @@ will reload the co-locating AP interfaces and marks the
  	}
 --- a/src/ap/bss_load.c
 +++ b/src/ap/bss_load.c
-@@ -46,7 +46,8 @@ static void update_channel_utilization(v
- 	int err;
- 	struct hostapd_iface *iface = hapd->iface;
- 
--	if (!(hapd->beacon_set_done && hapd->started))
-+	if (!(hapd->beacon_set_done && hapd->started &&
-+	      !hapd->stopped_by_supplicant))
+@@ -49,6 +49,9 @@ static void update_channel_utilization(v
+ 	if (!(hapd->beacon_set_done && hapd->started))
  		return;
  
++	if(hapd->stopped_by_supplicant)
++		goto skip_update;
++
  	err = hostapd_drv_get_survey(hapd, hapd->iface->freq);
+ 	if (err) {
+ 		wpa_printf(MSG_ERROR, "BSS Load: Failed to get survey data");
+@@ -57,9 +60,6 @@ static void update_channel_utilization(v
+ 
+ 	ieee802_11_set_beacon(hapd);
+ 
+-	if (get_bss_load_update_timeout(hapd, &sec, &usec) < 0)
+-		return;
+-
+ 	if (hapd->conf->chan_util_avg_period) {
+ 		iface->chan_util_samples_sum += iface->channel_utilization;
+ 		iface->chan_util_num_sample_periods +=
+@@ -75,6 +75,10 @@ static void update_channel_utilization(v
+ 		}
+ 	}
+ 
++skip_update:
++	if (get_bss_load_update_timeout(hapd, &sec, &usec) < 0)
++		return;
++
+ 	eloop_register_timeout(sec, usec, update_channel_utilization, hapd,
+ 			       NULL);
+ }
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
 @@ -1085,8 +1085,10 @@ int hostapd_ctrl_iface_stop_ap(struct ho
@@ -108,6 +129,15 @@ will reload the co-locating AP interfaces and marks the
  
  	if (!first || first == -1) {
  		u8 *addr = hapd->own_addr;
+@@ -4283,7 +4285,7 @@ void hostapd_switch_color(struct hostapd
+ {
+ 	struct os_reltime now;
+ 
+-	if (hapd->cca_in_progress)
++	if (hapd->cca_in_progress || hapd->stopped_by_supplicant)
+ 		return;
+ 
+ 	if (os_get_reltime(&now))
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -191,6 +191,7 @@ struct hostapd_data {

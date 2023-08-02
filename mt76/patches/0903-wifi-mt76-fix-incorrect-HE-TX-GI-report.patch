@@ -37,7 +37,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	MT_PHY_TYPE_HE_TB,
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -646,6 +646,8 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -656,6 +656,8 @@ mt7915_register_ext_phy(struct mt7915_de
  	struct mt76_phy *mphy = phy->mt76;
  	int ret;
  
@@ -46,7 +46,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	INIT_DELAYED_WORK(&mphy->mac_work, mt7915_mac_work);
  
  	mt7915_eeprom_parse_hw_cap(dev, phy);
-@@ -1174,6 +1176,8 @@ int mt7915_register_device(struct mt7915
+@@ -1193,6 +1195,8 @@ int mt7915_register_device(struct mt7915
  	dev->phy.dev = dev;
  	dev->phy.mt76 = &dev->mt76.phy;
  	dev->mt76.phy.priv = &dev->phy;
@@ -181,7 +181,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	mt76_tx_status_check(mphy->dev, false);
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -737,6 +737,7 @@ int mt7915_mac_sta_add(struct mt76_dev *
+@@ -739,6 +739,7 @@ int mt7915_mac_sta_add(struct mt76_dev *
  
  	INIT_LIST_HEAD(&msta->rc_list);
  	INIT_LIST_HEAD(&msta->wcid.poll_list);
@@ -189,7 +189,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	msta->vif = mvif;
  	msta->wcid.sta = 1;
  	msta->wcid.idx = idx;
-@@ -761,6 +762,7 @@ void mt7915_mac_sta_remove(struct mt76_d
+@@ -763,6 +764,7 @@ void mt7915_mac_sta_remove(struct mt76_d
  {
  	struct mt7915_dev *dev = container_of(mdev, struct mt7915_dev, mt76);
  	struct mt7915_sta *msta = (struct mt7915_sta *)sta->drv_priv;
@@ -197,7 +197,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	int i;
  
  	mt7915_mcu_add_sta(dev, vif, sta, false);
-@@ -777,6 +779,11 @@ void mt7915_mac_sta_remove(struct mt76_d
+@@ -779,6 +781,11 @@ void mt7915_mac_sta_remove(struct mt76_d
  	if (!list_empty(&msta->rc_list))
  		list_del_init(&msta->rc_list);
  	spin_unlock_bh(&mdev->sta_poll_lock);

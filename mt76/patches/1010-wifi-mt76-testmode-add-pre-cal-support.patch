@@ -20,7 +20,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -156,8 +156,10 @@ int mt76_get_of_eeprom(struct mt76_dev *
+@@ -94,8 +94,10 @@ static int mt76_get_of_epprom_from_mtd(s
  	}
  
  #ifdef CONFIG_NL80211_TESTMODE
@@ -718,7 +718,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	TAM_ARB_OP_MODE_FORCE_SU = 5,
 --- a/testmode.c
 +++ b/testmode.c
-@@ -594,6 +594,18 @@ int mt76_testmode_dump(struct ieee80211_
+@@ -595,6 +595,18 @@ int mt76_testmode_dump(struct ieee80211_
  
  	mutex_lock(&dev->mutex);
  
@@ -737,7 +737,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (tb[MT76_TM_ATTR_STATS]) {
  		err = -EINVAL;
  
-@@ -614,7 +626,8 @@ int mt76_testmode_dump(struct ieee80211_
+@@ -615,7 +627,8 @@ int mt76_testmode_dump(struct ieee80211_
  
  	if (dev->test_mtd.name &&
  	    (nla_put_string(msg, MT76_TM_ATTR_MTD_PART, dev->test_mtd.name) ||

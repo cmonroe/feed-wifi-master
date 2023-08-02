@@ -63,7 +63,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		req.band_idx = phy->mt76->band_idx;
  		req.scan_mode = 2;
  		break;
-@@ -4243,3 +4244,68 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4242,3 +4243,68 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(MEC_CTRL), &req, sizeof(req), true);
  }
  #endif
@@ -543,7 +543,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int
 --- a/testmode.c
 +++ b/testmode.c
-@@ -24,6 +24,13 @@ const struct nla_policy mt76_tm_policy[N
+@@ -25,6 +25,13 @@ const struct nla_policy mt76_tm_policy[N
  	[MT76_TM_ATTR_TX_TIME] = { .type = NLA_U32 },
  	[MT76_TM_ATTR_FREQ_OFFSET] = { .type = NLA_U32 },
  	[MT76_TM_ATTR_DRV_DATA] = { .type = NLA_NESTED },
@@ -557,7 +557,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
  EXPORT_SYMBOL_GPL(mt76_tm_policy);
  
-@@ -319,6 +326,7 @@ mt76_testmode_init_defaults(struct mt76_
+@@ -320,6 +327,7 @@ mt76_testmode_init_defaults(struct mt76_
  	td->tx_count = 1;
  	td->tx_rate_mode = MT76_TM_TX_MODE_OFDM;
  	td->tx_rate_nss = 1;
@@ -565,7 +565,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	memcpy(td->addr[0], phy->macaddr, ETH_ALEN);
  	memcpy(td->addr[1], phy->macaddr, ETH_ALEN);
-@@ -439,6 +447,9 @@ int mt76_testmode_cmd(struct ieee80211_h
+@@ -440,6 +448,9 @@ int mt76_testmode_cmd(struct ieee80211_h
  	if (tb[MT76_TM_ATTR_TX_RATE_IDX])
  		td->tx_rate_idx = nla_get_u8(tb[MT76_TM_ATTR_TX_RATE_IDX]);
  
@@ -575,7 +575,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (mt76_tm_get_u8(tb[MT76_TM_ATTR_TX_RATE_MODE], &td->tx_rate_mode,
  			   0, MT76_TM_TX_MODE_MAX) ||
  	    mt76_tm_get_u8(tb[MT76_TM_ATTR_TX_RATE_NSS], &td->tx_rate_nss,
-@@ -452,7 +463,16 @@ int mt76_testmode_cmd(struct ieee80211_h
+@@ -453,7 +464,16 @@ int mt76_testmode_cmd(struct ieee80211_h
  	    mt76_tm_get_u8(tb[MT76_TM_ATTR_TX_DUTY_CYCLE],
  			   &td->tx_duty_cycle, 0, 99) ||
  	    mt76_tm_get_u8(tb[MT76_TM_ATTR_TX_POWER_CONTROL],
@@ -593,7 +593,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		goto out;
  
  	if (tb[MT76_TM_ATTR_TX_LENGTH]) {
-@@ -638,6 +658,9 @@ int mt76_testmode_dump(struct ieee80211_
+@@ -639,6 +659,9 @@ int mt76_testmode_dump(struct ieee80211_
  	    nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_SGI, td->tx_rate_sgi) ||
  	    nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_LDPC, td->tx_rate_ldpc) ||
  	    nla_put_u8(msg, MT76_TM_ATTR_TX_RATE_STBC, td->tx_rate_stbc) ||

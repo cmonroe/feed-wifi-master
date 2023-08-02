@@ -8,7 +8,7 @@
  #include "mt7915.h"
  #include "mac.h"
  #include "mcu.h"
-@@ -786,6 +787,11 @@ mt7915_init_hardware(struct mt7915_dev *
+@@ -796,6 +797,11 @@ mt7915_init_hardware(struct mt7915_dev *
  
  	INIT_WORK(&dev->init_work, mt7915_init_work);
  

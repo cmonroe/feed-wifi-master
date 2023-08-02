@@ -11,7 +11,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1304,7 +1304,8 @@ hostapd_set_oper_centr_freq_seg0_idx(str
+@@ -1305,7 +1305,8 @@ hostapd_set_oper_centr_freq_seg0_idx(str
  #ifdef CONFIG_IEEE80211BE
  	if (conf->ieee80211be)
  		conf->eht_oper_centr_freq_seg0_idx = oper_centr_freq_seg0_idx;

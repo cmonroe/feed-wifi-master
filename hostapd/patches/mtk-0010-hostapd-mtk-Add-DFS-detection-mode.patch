@@ -18,7 +18,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4853,6 +4853,10 @@ static int hostapd_config_fill(struct ho
+@@ -4855,6 +4855,10 @@ static int hostapd_config_fill(struct ho
  	} else if (os_strcmp(buf, "ibf_enable") == 0) { /*ibf setting is per device*/
  		int val = atoi(pos);
  		conf->ibf_enable = !!val;

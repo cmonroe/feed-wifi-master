@@ -10,9 +10,9 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ===================================================================
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -9,6 +9,73 @@
- #include <linux/etherdevice.h>
- #include "mt76.h"
+@@ -137,6 +137,73 @@ exit:
+ 	return ret;
+ }
  
 +int mt76_get_of_eeprom_file(struct mt76_dev *dev, void *eep, u32 offset, int len)
 +{
@@ -83,8 +83,8 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +
  int mt76_get_of_eeprom(struct mt76_dev *dev, void *eep, int offset, int len)
  {
- #if defined(CONFIG_OF) && defined(CONFIG_MTD)
-@@ -349,11 +416,21 @@ EXPORT_SYMBOL_GPL(mt76_get_rate_power_li
+ 	struct device_node *np = dev->dev->of_node;
+@@ -404,11 +471,21 @@ EXPORT_SYMBOL_GPL(mt76_get_rate_power_li
  int
  mt76_eeprom_init(struct mt76_dev *dev, int len)
  {
