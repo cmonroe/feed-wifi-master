@@ -195,7 +195,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	u8 stats_work_count;
  	struct list_head stats_list;
-@@ -682,6 +683,9 @@ int mt7915_vendor_amnt_sta_remove(struct
+@@ -681,6 +682,9 @@ int mt7915_vendor_amnt_sta_remove(struct
  				  struct ieee80211_sta *sta);
  #endif
  

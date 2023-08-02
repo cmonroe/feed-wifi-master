@@ -1,0 +1,35 @@
+From 280046f548160b8cfe4e4b8ce3aebcebabfe67cf Mon Sep 17 00:00:00 2001
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Wed, 2 Aug 2023 11:26:14 +0800
+Subject: [PATCH] wifi: mt76: mt7915: fix tx emission issue during bootup after
+ applying pre-cal
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+---
+ mt7915/main.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+--- a/mt7915/main.c
++++ b/mt7915/main.c
+@@ -77,10 +77,6 @@ int mt7915_run(struct ieee80211_hw *hw)
+ 	if (ret)
+ 		goto out;
+ 
+-	ret = mt7915_mcu_set_chan_info(phy, MCU_EXT_CMD(SET_RX_PATH));
+-	if (ret)
+-		goto out;
+-
+ 	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
+ 
+ 	if (!mt76_testmode_enabled(phy->mt76))
+@@ -339,6 +335,10 @@ int mt7915_set_channel(struct mt7915_phy
+ 	if (ret)
+ 		goto out;
+ 
++	ret = mt7915_mcu_set_chan_info(phy, MCU_EXT_CMD(SET_RX_PATH));
++	if (ret)
++		goto out;
++
+ 	mt7915_mac_set_timing(phy);
+ 	ret = mt7915_dfs_init_radar_detector(phy);
+ 	mt7915_mac_cca_stats_reset(phy);
