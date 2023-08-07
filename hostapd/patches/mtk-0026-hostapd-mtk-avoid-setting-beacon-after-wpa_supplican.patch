@@ -129,7 +129,7 @@ will reload the co-locating AP interfaces and marks the
  
  	if (!first || first == -1) {
  		u8 *addr = hapd->own_addr;
-@@ -4283,7 +4285,7 @@ void hostapd_switch_color(struct hostapd
+@@ -4291,7 +4293,7 @@ void hostapd_switch_color(struct hostapd
  {
  	struct os_reltime now;
  
