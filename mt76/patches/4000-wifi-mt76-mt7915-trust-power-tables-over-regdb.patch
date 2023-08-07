@@ -1,0 +1,124 @@
+--- a/eeprom.c
++++ b/eeprom.c
+@@ -417,7 +417,7 @@ mt76_apply_multi_array_limit(s8 *pwr, si
+ s8 mt76_get_rate_power_limits(struct mt76_phy *phy,
+ 			      struct ieee80211_channel *chan,
+ 			      struct mt76_power_limits *dest,
+-			      s8 target_power)
++			      s8 target_power, int *power_limits)
+ {
+ 	struct mt76_dev *dev = phy->dev;
+ 	struct device_node *np;
+@@ -434,6 +434,8 @@ s8 mt76_get_rate_power_limits(struct mt7
+ 		mcs_rates = 10;
+ 
+ 	memset(dest, target_power, sizeof(*dest));
++	if (power_limits)
++		*power_limits = 0;
+ 
+ 	if (!IS_ENABLED(CONFIG_OF))
+ 		return target_power;
+@@ -465,6 +467,9 @@ s8 mt76_get_rate_power_limits(struct mt7
+ 	if (!np)
+ 		return target_power;
+ 
++	if (power_limits)
++		*power_limits = 1;
++
+ 	txs_delta = mt76_get_txs_delta(np, hweight16(phy->chainmask));
+ 
+ 	val = mt76_get_of_array(np, "rates-cck", &len, ARRAY_SIZE(dest->cck));
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -287,6 +287,7 @@ void __mt7915_init_txpower(struct mt7915
+ 	int nss_delta = mt76_tx_power_nss_delta(n_chains);
+ 	int pwr_delta = mt7915_eeprom_get_power_delta(dev, sband->band);
+ 	struct mt76_power_limits limits;
++	int power_limits;
+ 
+ 	for (i = 0; i < sband->n_channels; i++) {
+ 		struct ieee80211_channel *chan = &sband->channels[i];
+@@ -303,11 +304,14 @@ void __mt7915_init_txpower(struct mt7915
+ 		target_power += pwr_delta;
+ 		target_power = mt76_get_rate_power_limits(phy->mt76, chan,
+ 							  &limits,
+-							  target_power);
++							  target_power, &power_limits);
+ 		target_power += nss_delta;
+ 		target_power = DIV_ROUND_UP(target_power, 2);
+-		chan->max_power = min_t(int, chan->max_reg_power,
+-					target_power);
++		if (power_limits)
++			chan->max_power = target_power;
++		else
++			chan->max_power = min_t(int, chan->max_reg_power,
++						target_power);
+ 		chan->orig_mpwr = target_power;
+ 	}
+ }
+--- a/mt7615/init.c
++++ b/mt7615/init.c
+@@ -307,7 +307,7 @@ void mt7615_init_txpower(struct mt7615_d
+ 
+ 		target_power = mt76_get_rate_power_limits(&dev->mphy, chan,
+ 							  &limits,
+-							  target_power);
++							  target_power, NULL);
+ 		target_power += delta;
+ 		target_power = DIV_ROUND_UP(target_power, 2);
+ 		chan->max_power = min_t(int, chan->max_reg_power,
+--- a/mt7615/mcu.c
++++ b/mt7615/mcu.c
+@@ -2084,7 +2084,7 @@ static void mt7615_mcu_set_txpower_sku(s
+ 	tx_power = mt76_get_sar_power(mphy, mphy->chandef.chan, tx_power);
+ 	tx_power -= mt76_tx_power_nss_delta(n_chains);
+ 	tx_power = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,
+-					      &limits, tx_power);
++					      &limits, tx_power, NULL);
+ 	mphy->txpower_cur = tx_power;
+ 
+ 	if (is_mt7663(mphy->dev)) {
+--- a/mt76_connac_mcu.c
++++ b/mt76_connac_mcu.c
+@@ -2234,7 +2234,7 @@ mt76_connac_mcu_rate_txpower_band(struct
+ 			sar_power = mt76_get_sar_power(phy, &chan, reg_power);
+ 
+ 			mt76_get_rate_power_limits(phy, &chan, &limits,
+-						   sar_power);
++						   sar_power, NULL);
+ 
+ 			tx_power_tlv.last_msg = ch_list[idx] == last_ch;
+ 			sku_tlbv.channel = ch_list[idx];
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -3360,7 +3360,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 
+ 	tx_power = mt7915_get_power_bound(phy, hw->conf.power_level);
+ 	tx_power = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,
+-					      &limits_array, tx_power);
++					      &limits_array, tx_power, NULL);
+ 	mphy->txpower_cur = tx_power;
+ 
+ 	for (i = 0, idx = 0; i < ARRAY_SIZE(mt7915_sku_group_len); i++) {
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -115,7 +115,7 @@ void mt7996_init_txpower(struct mt7996_d
+ 		target_power += pwr_delta;
+ 		target_power = mt76_get_rate_power_limits(&dev->mphy, chan,
+ 							  &limits,
+-							  target_power);
++							  target_power, NULL);
+ 		target_power += nss_delta;
+ 		target_power = DIV_ROUND_UP(target_power, 2);
+ 		chan->max_power = min_t(int, chan->max_reg_power,
+--- a/mt76.h
++++ b/mt76.h
+@@ -1559,7 +1559,7 @@ void mt76_set_irq_mask(struct mt76_dev *
+ s8 mt76_get_rate_power_limits(struct mt76_phy *phy,
+ 			      struct ieee80211_channel *chan,
+ 			      struct mt76_power_limits *dest,
+-			      s8 target_power);
++			      s8 target_power, int *power_limits);
+ 
+ static inline bool mt76_queue_is_wed_rx(struct mt76_queue *q)
+ {
