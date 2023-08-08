@@ -223,18 +223,18 @@ Signed-off-by: mtk27835 <shurong.wen@mediatek.com>
  #define ETH_ALEN 6
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -181,6 +181,11 @@ struct hostapd_channel_data {
- 	 * mu onoff=<val> (bitmap- UL MU-MIMO(bit3), DL MU-MIMO(bit2), UL OFDMA(bit1), DL OFDMA(bit0))
- 	 */
+@@ -1710,6 +1710,11 @@ struct wpa_driver_ap_params {
  	u8 mu_onoff;
-+
-+	/**
+ 
+ 	/**
 +	 * ibf_enable=<val>
 +	 */
 +	u8 ibf_enable;
- };
- 
- #define HE_MAC_CAPAB_0		0
++
++	/**
+ 	 * mbssid_tx_iface - Transmitting interface of the MBSSID set
+ 	 */
+ 	const char *mbssid_tx_iface;
 @@ -5105,6 +5110,20 @@ struct wpa_driver_ops {
  	 *
  	 */

@@ -1,7 +1,7 @@
-From ee34d2ccb27863f0eaa7abb0f65477ab9a0dd92f Mon Sep 17 00:00:00 2001
+From 53a7b7af61b75ea0e3f9d12d3d6302cf40941a8a Mon Sep 17 00:00:00 2001
 From: TomLiu <tomml.liu@mediatek.com>
 Date: Tue, 9 Aug 2022 10:23:44 -0700
-Subject: [PATCH 06/32] hostapd: mtk: Add hostapd MU SET/GET control
+Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
 
 ---
  hostapd/config_file.c             |   9 +++
@@ -21,10 +21,10 @@ Subject: [PATCH 06/32] hostapd: mtk: Add hostapd MU SET/GET control
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3679,6 +3679,15 @@ static int hostapd_config_fill(struct ho
+@@ -3670,6 +3670,15 @@ static int hostapd_config_fill(struct ho
  			return 1;
  		}
- 		conf->mbssid = mbssid;
+ 		bss->unsol_bcast_probe_resp_interval = val;
 +	} else if (os_strcmp(buf, "mu_onoff") == 0) {
 +		int val = atoi(pos);
 +		if (val < 0 || val > 15) {
@@ -34,9 +34,9 @@ Subject: [PATCH 06/32] hostapd: mtk: Add hostapd MU SET/GET control
 +			return 1;
 +		}
 +		conf->mu_onoff = val;
- #endif /* CONFIG_IEEE80211AX */
- 	} else if (os_strcmp(buf, "max_listen_interval") == 0) {
- 		bss->max_listen_interval = atoi(pos);
+ 	} else if (os_strcmp(buf, "mbssid") == 0) {
+ 		int mbssid = atoi(pos);
+ 		if (mbssid < 0 || mbssid > ENHANCED_MBSSID_ENABLED) {
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
 @@ -3701,6 +3701,63 @@ hostapd_ctrl_iface_get_edcca(struct host
@@ -155,7 +155,7 @@ Subject: [PATCH 06/32] hostapd: mtk: Add hostapd MU SET/GET control
  	conf->he_6ghz_max_ampdu_len_exp = 7;
  	conf->he_6ghz_rx_ant_pat = 1;
  	conf->he_6ghz_tx_ant_pat = 1;
-+	conf->mu_onoff = 15;
++	conf->mu_onoff = 0xf;
  #endif /* CONFIG_IEEE80211AX */
  
  	/* The third octet of the country string uses an ASCII space character
@@ -244,18 +244,18 @@ Subject: [PATCH 06/32] hostapd: mtk: Add hostapd MU SET/GET control
  
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -176,6 +176,11 @@ struct hostapd_channel_data {
- 	 * punct_bitmap - RU puncturing bitmap
- 	 */
- 	u16 punct_bitmap;
-+
-+	/**
+@@ -1705,6 +1705,11 @@ struct wpa_driver_ap_params {
+ 	size_t unsol_bcast_probe_resp_tmpl_len;
+ 
+ 	/**
 +	 * mu onoff=<val> (bitmap- UL MU-MIMO(bit3), DL MU-MIMO(bit2), UL OFDMA(bit1), DL OFDMA(bit0))
 +	 */
 +	u8 mu_onoff;
- };
- 
- #define HE_MAC_CAPAB_0		0
++
++	/**
+ 	 * mbssid_tx_iface - Transmitting interface of the MBSSID set
+ 	 */
+ 	const char *mbssid_tx_iface;
 @@ -5084,6 +5089,14 @@ struct wpa_driver_ops {
  				  const s8 edcca_compensation);
  	int (*configure_edcca_threshold)(void *priv, const int *threshold);
