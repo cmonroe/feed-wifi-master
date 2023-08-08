@@ -41,7 +41,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  	if (set_sta == 0)
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1914,10 +1914,9 @@ mt7915_mcu_beacon_cont(struct mt7915_dev
+@@ -1916,10 +1916,9 @@ mt7915_mcu_beacon_cont(struct mt7915_dev
  	memcpy(buf + MT_TXD_SIZE, skb->data, skb->len);
  }
  
@@ -55,7 +55,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  {
  #define OFFLOAD_TX_MODE_SU	BIT(0)
  #define OFFLOAD_TX_MODE_MU	BIT(1)
-@@ -1927,14 +1926,28 @@ mt7915_mcu_beacon_inband_discov(struct m
+@@ -1929,14 +1928,28 @@ mt7915_mcu_beacon_inband_discov(struct m
  	struct cfg80211_chan_def *chandef = &mvif->phy->mt76->chandef;
  	enum nl80211_band band = chandef->chan->band;
  	struct mt76_wcid *wcid = &dev->mt76.global_wcid;
@@ -86,7 +86,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  	if (changed & BSS_CHANGED_FILS_DISCOVERY &&
  	    vif->bss_conf.fils_discovery.max_interval) {
  		interval = vif->bss_conf.fils_discovery.max_interval;
-@@ -1946,26 +1959,25 @@ mt7915_mcu_beacon_inband_discov(struct m
+@@ -1948,26 +1961,25 @@ mt7915_mcu_beacon_inband_discov(struct m
  	}
  
  	if (!skb)
@@ -119,7 +119,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  	discov->tx_mode = OFFLOAD_TX_MODE_SU;
  	/* 0: UNSOL PROBE RESP, 1: FILS DISCOV */
  	discov->tx_type = !!(changed & BSS_CHANGED_FILS_DISCOVERY);
-@@ -1973,13 +1985,16 @@ mt7915_mcu_beacon_inband_discov(struct m
+@@ -1975,13 +1987,16 @@ mt7915_mcu_beacon_inband_discov(struct m
  	discov->prob_rsp_len = cpu_to_le16(MT_TXD_SIZE + skb->len);
  	discov->enable = true;
  
@@ -137,7 +137,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  }
  
  int mt7915_mcu_add_beacon(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
-@@ -2015,7 +2030,7 @@ int mt7915_mcu_add_beacon(struct ieee802
+@@ -2017,7 +2032,7 @@ int mt7915_mcu_add_beacon(struct ieee802
  	if (!skb)
  		return -EINVAL;
  
@@ -146,7 +146,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  		dev_err(dev->mt76.dev, "Bcn size limit exceed\n");
  		dev_kfree_skb(skb);
  		return -EINVAL;
-@@ -2029,11 +2044,6 @@ int mt7915_mcu_add_beacon(struct ieee802
+@@ -2031,11 +2046,6 @@ int mt7915_mcu_add_beacon(struct ieee802
  	mt7915_mcu_beacon_cont(dev, vif, rskb, skb, bcn, &offs);
  	dev_kfree_skb(skb);
  

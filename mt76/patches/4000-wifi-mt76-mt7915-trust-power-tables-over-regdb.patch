@@ -91,7 +91,7 @@
  			sku_tlbv.channel = ch_list[idx];
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3360,7 +3360,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3362,7 +3362,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  
  	tx_power = mt7915_get_power_bound(phy, hw->conf.power_level);
  	tx_power = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,

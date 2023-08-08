@@ -211,7 +211,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void mt7915_tx(struct ieee80211_hw *hw,
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3746,6 +3746,167 @@ out:
+@@ -3748,6 +3748,167 @@ out:
  	return ret;
  }
  
