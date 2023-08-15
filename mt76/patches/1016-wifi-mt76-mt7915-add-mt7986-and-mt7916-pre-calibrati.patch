@@ -71,7 +71,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	MT_EE_TX0_POWER_2G =	0x2fc,
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2950,7 +2950,8 @@ static int mt7915_mcu_set_pre_cal(struct
+@@ -2951,7 +2951,8 @@ static int mt7915_mcu_set_pre_cal(struct
  int mt7915_mcu_apply_group_cal(struct mt7915_dev *dev)
  {
  	u8 idx = 0, *cal = dev->cal, *eep = dev->mt76.eeprom.data;
@@ -81,7 +81,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	if (!(eep[offs] & MT_EE_WIFI_CAL_GROUP))
  		return 0;
-@@ -2988,9 +2989,9 @@ static int mt7915_find_freq_idx(const u1
+@@ -2989,9 +2990,9 @@ static int mt7915_find_freq_idx(const u1
  	return -1;
  }
  
@@ -93,7 +93,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		5180, 5200, 5220, 5240,
  		5260, 5280, 5300, 5320,
  		5500, 5520, 5540, 5560,
-@@ -2998,34 +2999,69 @@ static int mt7915_dpd_freq_idx(u16 freq,
+@@ -2999,34 +3000,69 @@ static int mt7915_dpd_freq_idx(u16 freq,
  		5660, 5680, 5700, 5745,
  		5765, 5785, 5805, 5825
  	};
@@ -173,7 +173,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  }
  
  int mt7915_mcu_apply_tx_dpd(struct mt7915_phy *phy)
-@@ -3057,24 +3093,24 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
+@@ -3058,24 +3094,24 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
  	if (!(eep[offs] & dpd_mask))
  		return 0;
  
