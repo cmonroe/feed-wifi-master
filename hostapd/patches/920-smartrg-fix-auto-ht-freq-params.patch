@@ -1,6 +1,6 @@
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2785,6 +2785,12 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2750,6 +2750,12 @@ static int hostapd_ctrl_iface_chan_switc
  		break;
  	}
  
@@ -13,7 +13,7 @@
  	if (settings.freq_params.center_freq1)
  		dfs_range += hostapd_is_dfs_overlap(
  			iface, bandwidth, settings.freq_params.center_freq1);
-@@ -2822,12 +2828,6 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2787,12 +2793,6 @@ static int hostapd_ctrl_iface_chan_switc
  		return 0;
  	}
  
