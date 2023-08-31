@@ -171,7 +171,7 @@
  static int hostapd_ctrl_iface_disable(struct hostapd_iface *iface)
  {
  	if (hostapd_disable_iface(iface) < 0) {
-@@ -3585,6 +3681,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -3620,6 +3716,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "RELOAD", 6) == 0) {
  		if (hostapd_ctrl_iface_reload(hapd->iface))
  			reply_len = -1;
@@ -207,7 +207,7 @@
  	  "<driver sub command> [<hex formatted data>] = send driver command data" },
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -287,6 +287,7 @@ hostapd_interface_init(struct hapd_inter
+@@ -377,6 +377,7 @@ hostapd_interface_init(struct hapd_inter
  	}
  
  	iface->interfaces = interfaces;
@@ -217,23 +217,23 @@
  		if (iface->bss[0]->conf->logger_stdout_level > 0)
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -671,6 +671,13 @@ struct hostapd_iface {
- 
+@@ -682,6 +682,13 @@ struct hostapd_iface {
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
-+
+ 
 +	/*
 +	 * If ACS is triggered manually via hostapd_cli, then
 +	 * we won't be doing channel change at the end of ACS.
 +	 * It will be done via chan_switch later on, if needed.
 +	 */
-+	bool manual_acs_triggered;
++	bool manual_acs_triggered;	
++
+ 	/* Configured freq of interface is NO_IR */
+ 	bool is_no_ir;
  };
- 
- /* hostapd.c */
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1097,6 +1097,33 @@ int hostapd_acs_completed(struct hostapd
+@@ -1148,6 +1148,33 @@ int hostapd_acs_completed(struct hostapd
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
  			ACS_EVENT_COMPLETED "freq=%d channel=%d",
  			iface->freq, iface->conf->channel);
@@ -442,7 +442,7 @@
  
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1160,6 +1160,8 @@ struct hostapd_config {
+@@ -1171,6 +1171,8 @@ struct hostapd_config {
  #define AIRTIME_MODE_MAX (__AIRTIME_MODE_MAX - 1)
  #endif /* CONFIG_AIRTIME_POLICY */
  
