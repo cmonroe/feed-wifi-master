@@ -71,7 +71,7 @@
  			   " since no room for additional STA",
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1037,6 +1037,8 @@ struct hostapd_config {
+@@ -1040,6 +1040,8 @@ struct hostapd_config {
  	unsigned int track_sta_max_num;
  	unsigned int track_sta_max_age;
  

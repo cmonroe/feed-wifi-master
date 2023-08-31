@@ -181,7 +181,7 @@
  #else /* CONFIG_MESH */
  		wpa_msg(wpa_s, MSG_ERROR,
  			"mesh mode support not included in the build");
-@@ -7037,6 +7091,16 @@ static int wpa_supplicant_init_iface(str
+@@ -7064,6 +7118,16 @@ static int wpa_supplicant_init_iface(str
  			   sizeof(wpa_s->bridge_ifname));
  	}
  
@@ -198,7 +198,7 @@
  	/* RSNA Supplicant Key Management - INITIALIZE */
  	eapol_sm_notify_portEnabled(wpa_s->eapol, false);
  	eapol_sm_notify_portValid(wpa_s->eapol, false);
-@@ -7379,6 +7443,11 @@ static void wpa_supplicant_deinit_iface(
+@@ -7406,6 +7470,11 @@ static void wpa_supplicant_deinit_iface(
  	if (terminate)
  		wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_TERMINATING);
  
@@ -224,7 +224,7 @@
  	 * bridge_ifname - Optional bridge interface name
  	 *
  	 * If the driver interface (ifname) is included in a Linux bridge
-@@ -665,6 +670,8 @@ struct wpa_supplicant {
+@@ -700,6 +705,8 @@ struct wpa_supplicant {
  #endif /* CONFIG_CTRL_IFACE_BINDER */
  	char bridge_ifname[16];
  
@@ -264,7 +264,7 @@
  	if (ieee802_11_build_ap_params(hapd, &params) < 0)
 --- a/wpa_supplicant/events.c
 +++ b/wpa_supplicant/events.c
-@@ -5345,6 +5345,60 @@ static void wpas_link_reconfig(struct wp
+@@ -5347,6 +5347,60 @@ static void wpas_link_reconfig(struct wp
  }
  
  
@@ -325,7 +325,7 @@
  void supplicant_event(void *ctx, enum wpa_event_type event,
  		      union wpa_event_data *data)
  {
-@@ -5697,8 +5751,10 @@ void supplicant_event(void *ctx, enum wp
+@@ -5699,8 +5753,10 @@ void supplicant_event(void *ctx, enum wp
  			channel_width_to_string(data->ch_switch.ch_width),
  			data->ch_switch.cf1,
  			data->ch_switch.cf2);
@@ -339,7 +339,7 @@
  		wpa_s->current_ssid->frequency = data->ch_switch.freq;
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -6421,6 +6421,7 @@ union wpa_event_data {
+@@ -6432,6 +6432,7 @@ union wpa_event_data {
  
  	/**
  	 * struct ch_switch
@@ -347,7 +347,7 @@
  	 * @freq: Frequency of new channel in MHz
  	 * @ht_enabled: Whether this is an HT channel
  	 * @ch_offset: Secondary channel offset
-@@ -6431,6 +6432,7 @@ union wpa_event_data {
+@@ -6442,6 +6443,7 @@ union wpa_event_data {
  	 * @punct_bitmap: Puncturing bitmap
  	 */
  	struct ch_switch {
@@ -374,7 +374,7 @@
  
  	if (finished)
  		bss->flink->freq = data.ch_switch.freq;
-@@ -3848,6 +3851,7 @@ static void do_process_drv_event(struct
+@@ -3912,6 +3915,7 @@ static void do_process_drv_event(struct
  				     tb[NL80211_ATTR_CENTER_FREQ1],
  				     tb[NL80211_ATTR_CENTER_FREQ2],
  				     tb[NL80211_ATTR_PUNCT_BITMAP],
@@ -382,7 +382,7 @@
  				     0);
  		break;
  	case NL80211_CMD_CH_SWITCH_NOTIFY:
-@@ -3860,6 +3864,7 @@ static void do_process_drv_event(struct
+@@ -3924,6 +3928,7 @@ static void do_process_drv_event(struct
  				     tb[NL80211_ATTR_CENTER_FREQ1],
  				     tb[NL80211_ATTR_CENTER_FREQ2],
  				     tb[NL80211_ATTR_PUNCT_BITMAP],

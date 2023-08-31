@@ -207,7 +207,7 @@
  	  "<driver sub command> [<hex formatted data>] = send driver command data" },
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -377,6 +377,7 @@ hostapd_interface_init(struct hapd_inter
+@@ -390,6 +390,7 @@ hostapd_interface_init(struct hapd_inter
  	}
  
  	iface->interfaces = interfaces;
@@ -233,7 +233,7 @@
  };
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1148,6 +1148,33 @@ int hostapd_acs_completed(struct hostapd
+@@ -1190,6 +1190,33 @@ int hostapd_acs_completed(struct hostapd
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
  			ACS_EVENT_COMPLETED "freq=%d channel=%d",
  			iface->freq, iface->conf->channel);
@@ -394,7 +394,7 @@
  
  #ifdef CONFIG_IEEE80211BE
  		if (iface->conf->punct_acs_threshold)
-@@ -1118,6 +1124,19 @@ static void acs_adjust_secondary(struct
+@@ -1112,6 +1118,19 @@ static void acs_adjust_secondary(struct
  
  static void acs_adjust_center_freq(struct hostapd_iface *iface)
  {
@@ -414,7 +414,7 @@
  	int center;
  
  	wpa_printf(MSG_DEBUG, "ACS: Adjusting VHT center frequency");
-@@ -1148,6 +1167,7 @@ static void acs_adjust_center_freq(struc
+@@ -1142,6 +1161,7 @@ static void acs_adjust_center_freq(struc
  	}
  
  	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, center);
@@ -422,7 +422,7 @@
  }
  
  
-@@ -1244,7 +1264,7 @@ static void acs_scan_complete(struct hos
+@@ -1238,7 +1258,7 @@ static void acs_scan_complete(struct hos
  
  	iface->scan_cb = NULL;
  
@@ -431,7 +431,7 @@
  		   iface->conf->acs_num_scans);
  
  	err = hostapd_drv_get_survey(iface->bss[0], 0);
-@@ -1343,7 +1363,7 @@ static int acs_request_scan(struct hosta
+@@ -1337,7 +1357,7 @@ static int acs_request_scan(struct hosta
  
  	iface->scan_cb = acs_scan_complete;
  
@@ -442,7 +442,7 @@
  
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1171,6 +1171,8 @@ struct hostapd_config {
+@@ -1174,6 +1174,8 @@ struct hostapd_config {
  #define AIRTIME_MODE_MAX (__AIRTIME_MODE_MAX - 1)
  #endif /* CONFIG_AIRTIME_POLICY */
  

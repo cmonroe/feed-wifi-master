@@ -22,7 +22,7 @@ Signed-off-by: mtk27835 <shurong.wen@mediatek.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4852,6 +4852,9 @@ static int hostapd_config_fill(struct ho
+@@ -4858,6 +4858,9 @@ static int hostapd_config_fill(struct ho
  		u8 en = atoi(pos);
  
  		conf->three_wire_enable = en;
@@ -111,7 +111,7 @@ Signed-off-by: mtk27835 <shurong.wen@mediatek.com>
  }
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1198,6 +1198,7 @@ struct hostapd_config {
+@@ -1201,6 +1201,7 @@ struct hostapd_config {
  	s8 edcca_compensation;
  	int *edcca_threshold;
  	u8 three_wire_enable;
@@ -119,7 +119,7 @@ Signed-off-by: mtk27835 <shurong.wen@mediatek.com>
  };
  
  enum three_wire_mode {
-@@ -1323,6 +1324,7 @@ hostapd_set_oper_centr_freq_seg1_idx(str
+@@ -1326,6 +1327,7 @@ hostapd_set_oper_centr_freq_seg1_idx(str
  	conf->vht_oper_centr_freq_seg1_idx = oper_centr_freq_seg1_idx;
  }
  

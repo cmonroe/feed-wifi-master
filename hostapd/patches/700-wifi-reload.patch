@@ -30,7 +30,7 @@
  	os_free(conf->basic_rates);
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -998,6 +998,7 @@ struct eht_phy_capabilities_info {
+@@ -1001,6 +1001,7 @@ struct eht_phy_capabilities_info {
  struct hostapd_config {
  	struct hostapd_bss_config **bss, *last_bss;
  	size_t num_bss;
@@ -172,7 +172,7 @@
  }
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -410,7 +410,7 @@ static void handle_term(int sig, void *s
+@@ -423,7 +423,7 @@ static void handle_term(int sig, void *s
  
  static int handle_reload_iface(struct hostapd_iface *iface, void *ctx)
  {

@@ -31,9 +31,9 @@
 +	hapd->setup_complete_cb = hostapd_setup_complete_cb;
 +
  	/* Initialize the driver interface */
- 	if (!(b[0] | b[1] | b[2] | b[3] | b[4] | b[5]))
+ 	if (is_zero_ether_addr(b))
  		b = NULL;
-@@ -497,8 +509,6 @@ static void hostapd_global_deinit(const
+@@ -510,8 +522,6 @@ static void hostapd_global_deinit(const
  #endif /* CONFIG_NATIVE_WINDOWS */
  
  	eap_server_unregister_methods();
@@ -42,7 +42,7 @@
  }
  
  
-@@ -524,18 +534,6 @@ static int hostapd_global_run(struct hap
+@@ -537,18 +547,6 @@ static int hostapd_global_run(struct hap
  	}
  #endif /* EAP_SERVER_TNC */
  
@@ -61,7 +61,7 @@
  	eloop_run();
  
  	return 0;
-@@ -739,8 +737,7 @@ int main(int argc, char *argv[])
+@@ -752,8 +750,7 @@ int main(int argc, char *argv[])
  	struct hapd_interfaces interfaces;
  	int ret = 1;
  	size_t i, j;

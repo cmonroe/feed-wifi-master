@@ -5,13 +5,13 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=hostapd
-PKG_RELEASE:=1.2
+PKG_RELEASE:=1
 
 PKG_SOURCE_URL:=http://w1.fi/hostap.git
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_DATE:=2023-06-22
-PKG_SOURCE_VERSION:=599d00be9de2846c6ea18c1487d8329522ade22b
-PKG_MIRROR_HASH:=828810c558ea181e45ed0c8b940f5c41e55775e2979a15aed8cf0ab17dd7723c
+PKG_SOURCE_DATE:=2023-08-31
+PKG_SOURCE_VERSION:=377d617b574a41b5885d16cc56574940718ba0db
+PKG_MIRROR_HASH:=21eb33236c9a55508a220a7cc5b79e4bfa7aeb6323d4aa771817fa59354a86dc
 
 PKG_MAINTAINER:=Felix Fietkau <nbd@nbd.name>
 PKG_LICENSE:=BSD-3-Clause
@@ -80,6 +80,8 @@ endif
 ifneq ($(CONFIG_DRIVER_11AX_SUPPORT),)
   HOSTAPD_IEEE80211AX:=y
 endif
+
+OPENSSL_DEPENDS = +PACKAGE_$(1):libopenssl +PACKAGE_$(1):libopenssl-legacy
 
 DRIVER_MAKEOPTS= \
 	CONFIG_DRIVER_NL80211=$(CONFIG_PACKAGE_kmod-cfg80211) \
@@ -174,7 +176,7 @@ define Package/hostapd-openssl
 $(call Package/hostapd/Default,$(1))
   TITLE+= (OpenSSL full)
   VARIANT:=full-openssl
-  DEPENDS+=+PACKAGE_hostapd-openssl:libopenssl
+  DEPENDS+=$(OPENSSL_DEPENDS)
 endef
 
 Package/hostapd-openssl/description = $(Package/hostapd/description)
@@ -281,7 +283,7 @@ define Package/wpad-openssl
 $(call Package/wpad/Default,$(1))
   TITLE+= (OpenSSL full)
   VARIANT:=wpad-full-openssl
-  DEPENDS+=+PACKAGE_wpad-openssl:libopenssl
+  DEPENDS+=$(OPENSSL_DEPENDS)
 endef
 
 Package/wpad-openssl/description = $(Package/wpad/description)
@@ -318,7 +320,7 @@ define Package/wpad-basic-openssl
 $(call Package/wpad/Default,$(1))
   TITLE+= (OpenSSL, 11r, 11w)
   VARIANT:=wpad-basic-openssl
-  DEPENDS+=+PACKAGE_wpad-basic-openssl:libopenssl
+  DEPENDS+=$(OPENSSL_DEPENDS)
 endef
 
 define Package/wpad-basic-openssl/description
@@ -371,7 +373,7 @@ define Package/wpad-mesh-openssl
 $(call Package/wpad-mesh,$(1))
   TITLE+= (OpenSSL, 11s, SAE)
   DEPENDS+=+PACKAGE_wpad-mesh-openssl:libopenssl
-  VARIANT:=wpad-mesh-openssl
+  DEPENDS+=$(OPENSSL_DEPENDS)
 endef
 
 Package/wpad-mesh-openssl/description = $(Package/wpad-mesh/description)
@@ -419,7 +421,7 @@ define Package/wpa-supplicant-openssl
 $(call Package/wpa-supplicant/Default,$(1))
   TITLE+= (OpenSSL full)
   VARIANT:=supplicant-full-openssl
-  DEPENDS+=+PACKAGE_wpa-supplicant-openssl:libopenssl
+  DEPENDS+=$(OPENSSL_DEPENDS)
 endef
 
 define Package/wpa-supplicant-wolfssl
@@ -457,7 +459,7 @@ define Package/wpa-supplicant-mesh-openssl
 $(call Package/wpa-supplicant-mesh/Default,$(1))
   TITLE+= (OpenSSL, 11s, SAE)
   VARIANT:=supplicant-mesh-openssl
-  DEPENDS+=+PACKAGE_wpa-supplicant-mesh-openssl:libopenssl
+  DEPENDS+=$(OPENSSL_DEPENDS)
 endef
 
 define Package/wpa-supplicant-mesh-wolfssl
@@ -537,7 +539,7 @@ define Package/eapol-test-openssl
   TITLE+= (OpenSSL full)
   VARIANT:=supplicant-full-openssl
   CONFLICTS:=$(filter-out eapol-test-openssl ,$(EAPOL_TEST_PROVIDERS))
-  DEPENDS+=+PACKAGE_eapol-test-openssl:libopenssl
+  DEPENDS+=$(OPENSSL_DEPENDS)
   PROVIDES:=eapol-test
 endef
 
