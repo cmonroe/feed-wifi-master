@@ -9,7 +9,7 @@ Subject: [PATCH 15/32] hostapd: mtk: 6G band does not require DFS
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1516,6 +1516,7 @@ int hostapd_is_dfs_required(struct hosta
+@@ -1511,6 +1511,7 @@ int hostapd_is_dfs_required(struct hosta
  	if ((!(iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD) &&
  	     !iface->conf->ieee80211h) ||
  	    !iface->current_mode ||

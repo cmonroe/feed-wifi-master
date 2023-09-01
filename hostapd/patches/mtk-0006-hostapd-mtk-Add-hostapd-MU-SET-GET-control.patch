@@ -161,7 +161,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  	/* The third octet of the country string uses an ASCII space character
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1147,6 +1147,7 @@ struct hostapd_config {
+@@ -1144,6 +1144,7 @@ struct hostapd_config {
  	u8 he_6ghz_reg_pwr_type;
  	bool require_he;
  #endif /* CONFIG_IEEE80211AX */

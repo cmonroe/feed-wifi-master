@@ -18,7 +18,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4861,6 +4861,10 @@ static int hostapd_config_fill(struct ho
+@@ -4855,6 +4855,10 @@ static int hostapd_config_fill(struct ho
  	} else if (os_strcmp(buf, "ibf_enable") == 0) { /*ibf setting is per device*/
  		int val = atoi(pos);
  		conf->ibf_enable = !!val;
@@ -70,7 +70,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		reply_len = 16;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1202,6 +1202,7 @@ struct hostapd_config {
+@@ -1199,6 +1199,7 @@ struct hostapd_config {
  	int *edcca_threshold;
  	u8 three_wire_enable;
  	u8 ibf_enable;
@@ -78,7 +78,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
  
  enum three_wire_mode {
-@@ -1216,6 +1217,18 @@ enum three_wire_mode {
+@@ -1213,6 +1214,18 @@ enum three_wire_mode {
  		NUM_THREE_WIRE_MODE - 1
  };
  
@@ -99,7 +99,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	EDCCA_MODE_AUTO = 1,
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1327,6 +1327,11 @@ hostapd_dfs_background_start_channel_swi
+@@ -1322,6 +1322,11 @@ hostapd_dfs_background_start_channel_swi
  		   __func__, iface->radar_background.cac_started ? "yes" : "no",
  		   hostapd_csa_in_progress(iface) ? "yes" : "no");
  
@@ -111,7 +111,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	/* Check if CSA in progress */
  	if (hostapd_csa_in_progress(iface))
  		return 0;
-@@ -1375,6 +1380,11 @@ static int hostapd_dfs_start_channel_swi
+@@ -1370,6 +1375,11 @@ static int hostapd_dfs_start_channel_swi
  		   __func__, iface->cac_started ? "yes" : "no",
  		   hostapd_csa_in_progress(iface) ? "yes" : "no");
  

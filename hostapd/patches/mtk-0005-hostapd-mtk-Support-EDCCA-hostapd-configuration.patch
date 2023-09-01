@@ -21,9 +21,9 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4811,6 +4811,40 @@ static int hostapd_config_fill(struct ho
- 			return 1;
- 		}
+@@ -4805,6 +4805,40 @@ static int hostapd_config_fill(struct ho
+ 	} else if (os_strcmp(buf, "mld_id") == 0) {
+ 		bss->mld_id = atoi(pos);
  #endif /* CONFIG_IEEE80211BE */
 +	} else if (os_strcmp(buf, "edcca_threshold") == 0) {
 +		if (hostapd_parse_intlist(&conf->edcca_threshold, pos) ||
@@ -232,7 +232,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1195,8 +1195,38 @@ struct hostapd_config {
+@@ -1192,8 +1192,38 @@ struct hostapd_config {
  		MBSSID_ENABLED = 1,
  		ENHANCED_MBSSID_ENABLED = 2,
  	} mbssid;
