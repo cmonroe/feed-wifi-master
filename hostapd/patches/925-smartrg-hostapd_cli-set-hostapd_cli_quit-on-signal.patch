@@ -1,0 +1,22 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 11 Sep 2023 14:49:48 -0700
+Subject: [PATCH] hostapd: hostapd_cli: set hostapd_cli_quit on signal 
+
+set hostapd_cli_quit=1 on signal so we can exit when both reconnect
+mode and an action file are used together.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ hostapd/hostapd_cli.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/hostapd/hostapd_cli.c
++++ b/hostapd/hostapd_cli.c
+@@ -1935,6 +1935,7 @@ static void hostapd_cli_ping(void *eloop
+ 
+ static void hostapd_cli_eloop_terminate(int sig, void *signal_ctx)
+ {
++	hostapd_cli_quit = 1;
+ 	eloop_terminate();
+ }
+ 
