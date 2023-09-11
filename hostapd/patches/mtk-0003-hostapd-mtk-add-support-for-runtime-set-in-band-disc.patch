@@ -22,7 +22,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -978,6 +978,69 @@ static int hostapd_ctrl_iface_send_qos_m
+@@ -772,6 +772,69 @@ static int hostapd_ctrl_iface_send_qos_m
  
  #endif /* CONFIG_INTERWORKING */
  
@@ -92,7 +92,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  
  #ifdef CONFIG_WNM_AP
  
-@@ -3696,6 +3759,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -3484,6 +3547,9 @@ static int hostapd_ctrl_iface_receive_pr
  		if (hostapd_ctrl_iface_coloc_intf_req(hapd, buf + 15))
  			reply_len = -1;
  #endif /* CONFIG_WNM_AP */

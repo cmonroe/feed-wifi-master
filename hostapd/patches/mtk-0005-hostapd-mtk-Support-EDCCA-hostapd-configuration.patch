@@ -21,9 +21,9 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4805,6 +4805,40 @@ static int hostapd_config_fill(struct ho
- 	} else if (os_strcmp(buf, "mld_id") == 0) {
- 		bss->mld_id = atoi(pos);
+@@ -4809,6 +4809,40 @@ static int hostapd_config_fill(struct ho
+ 			return 1;
+ 		}
  #endif /* CONFIG_IEEE80211BE */
 +	} else if (os_strcmp(buf, "edcca_threshold") == 0) {
 +		if (hostapd_parse_intlist(&conf->edcca_threshold, pos) ||
@@ -64,7 +64,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -750,6 +750,19 @@ static const char * pbc_status_str(enum
+@@ -544,6 +544,19 @@ static const char * pbc_status_str(enum
  }
  
  
@@ -84,7 +84,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  static int hostapd_ctrl_iface_wps_get_status(struct hostapd_data *hapd,
  					     char *buf, size_t buflen)
  {
-@@ -3582,6 +3595,112 @@ static int hostapd_ctrl_iface_driver_cmd
+@@ -3370,6 +3383,112 @@ static int hostapd_ctrl_iface_driver_cmd
  #endif /* ANDROID */
  
  
@@ -197,7 +197,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4140,6 +4259,12 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -3926,6 +4045,12 @@ static int hostapd_ctrl_iface_receive_pr
  		reply_len = hostapd_ctrl_iface_driver_cmd(hapd, buf + 7, reply,
  							  reply_size);
  #endif /* ANDROID */
@@ -222,7 +222,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  	return conf;
  }
  
-@@ -1008,6 +1011,7 @@ void hostapd_config_free(struct hostapd_
+@@ -1007,6 +1010,7 @@ void hostapd_config_free(struct hostapd_
  #ifdef CONFIG_ACS
  	os_free(conf->acs_chan_bias);
  #endif /* CONFIG_ACS */
@@ -232,7 +232,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1192,8 +1192,38 @@ struct hostapd_config {
+@@ -1194,8 +1194,38 @@ struct hostapd_config {
  		MBSSID_ENABLED = 1,
  		ENHANCED_MBSSID_ENABLED = 2,
  	} mbssid;
@@ -316,7 +316,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2559,6 +2559,13 @@ dfs_offload:
+@@ -2511,6 +2511,13 @@ dfs_offload:
  	}
  #endif /* CONFIG_MESH */
  
@@ -385,7 +385,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
  
  #ifndef NETLINK_CAP_ACK
-@@ -13642,6 +13644,174 @@ static int testing_nl80211_radio_disable
+@@ -13639,6 +13641,174 @@ static int testing_nl80211_radio_disable
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -560,7 +560,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
-@@ -13796,4 +13966,8 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -13793,4 +13963,8 @@ const struct wpa_driver_ops wpa_driver_n
  	.register_frame = testing_nl80211_register_frame,
  	.radio_disable = testing_nl80211_radio_disable,
  #endif /* CONFIG_TESTING_OPTIONS */

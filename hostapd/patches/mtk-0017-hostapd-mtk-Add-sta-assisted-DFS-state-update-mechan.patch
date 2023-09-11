@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1508,6 +1508,26 @@ int hostapd_dfs_nop_finished(struct host
+@@ -1513,6 +1513,26 @@ int hostapd_dfs_nop_finished(struct host
  }
  
  
@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int hostapd_dfs_start_cac(struct hostapd_iface *iface, int freq,
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1915,6 +1915,24 @@ static void hostapd_event_dfs_cac_starte
+@@ -2086,6 +2086,24 @@ static void hostapd_event_dfs_cac_starte
  			      radar->cf1, radar->cf2);
  }
  
@@ -83,7 +83,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif /* NEED_AP_MLME */
  
  
-@@ -2193,6 +2211,16 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -2407,6 +2425,16 @@ void hostapd_wpa_event(void *ctx, enum w
  			break;
  		hostapd_event_dfs_nop_finished(hapd, &data->dfs_event);
  		break;
@@ -135,7 +135,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2447,6 +2447,12 @@ static void nl80211_radar_event(struct w
+@@ -2514,6 +2514,12 @@ static void nl80211_radar_event(struct w
  	case NL80211_RADAR_CAC_STARTED:
  		wpa_supplicant_event(drv->ctx, EVENT_DFS_CAC_STARTED, &data);
  		break;

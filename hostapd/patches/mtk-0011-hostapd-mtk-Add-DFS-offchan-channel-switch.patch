@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -3802,6 +3802,76 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
+@@ -3590,6 +3590,76 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
  }
  
  
@@ -94,7 +94,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4376,6 +4446,8 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4162,6 +4232,8 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "DFS_DETECT_MODE ", 16) == 0) {
  		reply_len = hostapd_ctrl_iface_set_dfs_detect_mode(hapd, buf + 16,
  								   reply, reply_size);
