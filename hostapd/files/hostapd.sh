@@ -1211,7 +1211,7 @@ _wpa_supplicant_common() {
 
 wpa_supplicant_teardown_interface() {
 	_wpa_supplicant_common "$1"
-	rm -rf "$_rpath/$1" "$_config"
+	rm -rf "$_config"
 }
 
 wpa_supplicant_prepare_interface() {
