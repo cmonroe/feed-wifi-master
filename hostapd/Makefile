@@ -81,8 +81,6 @@ ifneq ($(CONFIG_DRIVER_11AX_SUPPORT),)
   HOSTAPD_IEEE80211AX:=y
 endif
 
-OPENSSL_DEPENDS = +PACKAGE_$(1):libopenssl +PACKAGE_$(1):libopenssl-legacy
-
 DRIVER_MAKEOPTS= \
 	CONFIG_DRIVER_NL80211=$(CONFIG_PACKAGE_kmod-cfg80211) \
 	CONFIG_IEEE80211AC=$(HOSTAPD_IEEE80211AC) \
@@ -176,7 +174,7 @@ define Package/hostapd-openssl
 $(call Package/hostapd/Default,$(1))
   TITLE+= (OpenSSL full)
   VARIANT:=full-openssl
-  DEPENDS+=$(OPENSSL_DEPENDS)
+  DEPENDS+=+PACKAGE_hostapd-openssl:libopenssl
 endef
 
 Package/hostapd-openssl/description = $(Package/hostapd/description)
@@ -283,7 +281,7 @@ define Package/wpad-openssl
 $(call Package/wpad/Default,$(1))
   TITLE+= (OpenSSL full)
   VARIANT:=wpad-full-openssl
-  DEPENDS+=$(OPENSSL_DEPENDS)
+  DEPENDS+=+PACKAGE_wpad-openssl:libopenssl
 endef
 
 Package/wpad-openssl/description = $(Package/wpad/description)
@@ -320,7 +318,7 @@ define Package/wpad-basic-openssl
 $(call Package/wpad/Default,$(1))
   TITLE+= (OpenSSL, 11r, 11w)
   VARIANT:=wpad-basic-openssl
-  DEPENDS+=$(OPENSSL_DEPENDS)
+  DEPENDS+=+PACKAGE_wpad-basic-openssl:libopenssl
 endef
 
 define Package/wpad-basic-openssl/description
@@ -373,7 +371,7 @@ define Package/wpad-mesh-openssl
 $(call Package/wpad-mesh,$(1))
   TITLE+= (OpenSSL, 11s, SAE)
   DEPENDS+=+PACKAGE_wpad-mesh-openssl:libopenssl
-  DEPENDS+=$(OPENSSL_DEPENDS)
+  VARIANT:=wpad-mesh-openssl
 endef
 
 Package/wpad-mesh-openssl/description = $(Package/wpad-mesh/description)
@@ -421,7 +419,7 @@ define Package/wpa-supplicant-openssl
 $(call Package/wpa-supplicant/Default,$(1))
   TITLE+= (OpenSSL full)
   VARIANT:=supplicant-full-openssl
-  DEPENDS+=$(OPENSSL_DEPENDS)
+  DEPENDS+=+PACKAGE_wpa-supplicant-openssl:libopenssl
 endef
 
 define Package/wpa-supplicant-wolfssl
@@ -459,7 +457,7 @@ define Package/wpa-supplicant-mesh-openssl
 $(call Package/wpa-supplicant-mesh/Default,$(1))
   TITLE+= (OpenSSL, 11s, SAE)
   VARIANT:=supplicant-mesh-openssl
-  DEPENDS+=$(OPENSSL_DEPENDS)
+  DEPENDS+=+PACKAGE_wpa-supplicant-mesh-openssl:libopenssl
 endef
 
 define Package/wpa-supplicant-mesh-wolfssl
@@ -539,7 +537,7 @@ define Package/eapol-test-openssl
   TITLE+= (OpenSSL full)
   VARIANT:=supplicant-full-openssl
   CONFLICTS:=$(filter-out eapol-test-openssl ,$(EAPOL_TEST_PROVIDERS))
-  DEPENDS+=$(OPENSSL_DEPENDS)
+  DEPENDS+=+PACKAGE_eapol-test-openssl:libopenssl
   PROVIDES:=eapol-test
 endef
 
