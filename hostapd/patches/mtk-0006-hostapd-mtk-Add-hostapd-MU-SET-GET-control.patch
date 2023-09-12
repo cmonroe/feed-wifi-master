@@ -191,15 +191,15 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
 +}
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -148,6 +148,8 @@ int hostapd_drv_configure_edcca_enable(s
+@@ -147,6 +147,8 @@ int hostapd_drv_configure_edcca_enable(s
  int hostapd_drv_configure_edcca_threshold(struct hostapd_data *hapd,
  					  const int *threshold);
  int hostapd_drv_get_edcca(struct hostapd_data *hapd, const u8 mode, u8 *value);
 +int hostapd_drv_mu_ctrl(struct hostapd_data *hapd);
 +int hostapd_drv_mu_dump(struct hostapd_data *hapd, u8 *mu_onoff);
  
- #include "drivers/driver.h"
  
+ #include "drivers/driver.h"
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
 @@ -2517,6 +2517,8 @@ dfs_offload:
@@ -222,7 +222,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  	MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL = 0xc7,
  };
  
-@@ -177,6 +179,19 @@ enum mtk_vendor_attr_rfeature_ctrl {
+@@ -176,6 +178,19 @@ enum mtk_vendor_attr_rfeature_ctrl {
  		NUM_MTK_VENDOR_ATTRS_RFEATURE_CTRL - 1
  };
  
@@ -388,7 +388,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  #ifdef CONFIG_DPP
  static int nl80211_dpp_listen(void *priv, bool enable)
  {
-@@ -13954,6 +14062,10 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -13945,6 +14053,10 @@ const struct wpa_driver_ops wpa_driver_n
  	.update_connect_params = nl80211_update_connection_params,
  	.send_external_auth_status = nl80211_send_external_auth_status,
  	.set_4addr_mode = nl80211_set_4addr_mode,
@@ -412,7 +412,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
 @@ -1113,6 +1113,9 @@ static int wiphy_info_handler(struct nl_
- 				case MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL:
+ 				case MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL :
  					drv->mtk_edcca_vendor_cmd_avail = 1;
  					break;
 +				case MTK_NL80211_VENDOR_SUBCMD_MU_CTRL :
