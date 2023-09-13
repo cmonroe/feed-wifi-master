@@ -19,7 +19,7 @@ Subject: [PATCH 1009/1033] wifi: mt76: testmode: rework testmode init
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -829,7 +829,8 @@ void mt76_rx(struct mt76_dev *dev, enum
+@@ -835,7 +835,8 @@ void mt76_rx(struct mt76_dev *dev, enum
  	}
  
  #ifdef CONFIG_NL80211_TESTMODE
@@ -31,7 +31,7 @@ Subject: [PATCH 1009/1033] wifi: mt76: testmode: rework testmode init
  			phy->test.rx_stats.fcs_error[q]++;
 --- a/mt76.h
 +++ b/mt76.h
-@@ -659,6 +659,8 @@ struct mt76_testmode_ops {
+@@ -672,6 +672,8 @@ struct mt76_testmode_ops {
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
  };
  
@@ -40,7 +40,7 @@ Subject: [PATCH 1009/1033] wifi: mt76: testmode: rework testmode init
  struct mt76_testmode_data {
  	enum mt76_testmode_state state;
  
-@@ -690,6 +692,8 @@ struct mt76_testmode_data {
+@@ -703,6 +705,8 @@ struct mt76_testmode_data {
  
  	u8 addr[3][ETH_ALEN];
  
@@ -49,7 +49,7 @@ Subject: [PATCH 1009/1033] wifi: mt76: testmode: rework testmode init
  	u32 tx_pending;
  	u32 tx_queued;
  	u16 tx_queued_limit;
-@@ -697,6 +701,7 @@ struct mt76_testmode_data {
+@@ -710,6 +714,7 @@ struct mt76_testmode_data {
  	struct {
  		u64 packets[__MT_RXQ_MAX];
  		u64 fcs_error[__MT_RXQ_MAX];
@@ -105,7 +105,7 @@ Subject: [PATCH 1009/1033] wifi: mt76: testmode: rework testmode init
  	TMAC_CDTR,
  	TMAC_ODTR,
  	TMAC_ATCR,
-@@ -201,6 +202,12 @@ enum offs_rev {
+@@ -202,6 +203,12 @@ enum offs_rev {
  #define MT_TRB_RXPSR0_RX_WTBL_PTR	GENMASK(25, 16)
  #define MT_TRB_RXPSR0_RX_RMAC_PTR	GENMASK(9, 0)
  
@@ -118,7 +118,7 @@ Subject: [PATCH 1009/1033] wifi: mt76: testmode: rework testmode init
  /* TMAC: band 0(0x820e4000), band 1(0x820f4000) */
  #define MT_WF_TMAC_BASE(_band)		((_band) ? 0x820f4000 : 0x820e4000)
  #define MT_WF_TMAC(_band, ofs)		(MT_WF_TMAC_BASE(_band) + (ofs))
-@@ -209,6 +216,9 @@ enum offs_rev {
+@@ -210,6 +217,9 @@ enum offs_rev {
  #define MT_TMAC_TCR0_TX_BLINK		GENMASK(7, 6)
  #define MT_TMAC_TCR0_TBTT_STOP_CTRL	BIT(25)
  
@@ -128,7 +128,7 @@ Subject: [PATCH 1009/1033] wifi: mt76: testmode: rework testmode init
  #define MT_TMAC_CDTR(_band)		MT_WF_TMAC(_band, __OFFS(TMAC_CDTR))
   #define MT_TMAC_ODTR(_band)		MT_WF_TMAC(_band, __OFFS(TMAC_ODTR))
  #define MT_TIMEOUT_VAL_PLCP		GENMASK(15, 0)
-@@ -488,8 +498,10 @@ enum offs_rev {
+@@ -489,8 +499,10 @@ enum offs_rev {
  #define MT_AGG_PCR0_VHT_PROT		BIT(13)
  #define MT_AGG_PCR0_PTA_WIN_DIS		BIT(15)
  

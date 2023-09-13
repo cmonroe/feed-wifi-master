@@ -22,7 +22,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
 
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -646,11 +646,13 @@ static void mt7915_bss_info_changed(stru
+@@ -658,11 +658,13 @@ static void mt7915_bss_info_changed(stru
  		mt7915_update_bss_color(hw, vif, &info->he_bss_color);
  
  	if (changed & (BSS_CHANGED_BEACON |
@@ -194,7 +194,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -448,6 +448,8 @@ int mt7915_mcu_add_rx_ba(struct mt7915_d
+@@ -450,6 +450,8 @@ int mt7915_mcu_add_rx_ba(struct mt7915_d
  			 bool add);
  int mt7915_mcu_update_bss_color(struct mt7915_dev *dev, struct ieee80211_vif *vif,
  				struct cfg80211_he_bss_color *he_bss_color);

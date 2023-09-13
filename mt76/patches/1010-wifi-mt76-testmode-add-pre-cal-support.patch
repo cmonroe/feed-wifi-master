@@ -35,7 +35,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  out_put_node:
 --- a/mt76.h
 +++ b/mt76.h
-@@ -657,6 +657,7 @@ struct mt76_testmode_ops {
+@@ -670,6 +670,7 @@ struct mt76_testmode_ops {
  	int (*set_params)(struct mt76_phy *phy, struct nlattr **tb,
  			  enum mt76_testmode_state new_state);
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
@@ -159,7 +159,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	idx = mt7915_dpd_freq_idx(center_freq, chandef->width);
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -351,6 +351,10 @@ struct mt7915_dev {
+@@ -353,6 +353,10 @@ struct mt7915_dev {
  	struct rchan *relay_fwlog;
  
  	void *cal;
@@ -170,7 +170,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	struct {
  		u8 debug_wm;
-@@ -578,6 +582,7 @@ int mt7915_mcu_fw_log_2_host(struct mt79
+@@ -580,6 +584,7 @@ int mt7915_mcu_fw_log_2_host(struct mt79
  int mt7915_mcu_fw_dbg_ctrl(struct mt7915_dev *dev, u32 module, u8 level);
  void mt7915_mcu_rx_event(struct mt7915_dev *dev, struct sk_buff *skb);
  void mt7915_mcu_exit(struct mt7915_dev *dev);

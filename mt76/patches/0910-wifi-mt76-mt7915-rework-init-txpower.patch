@@ -100,7 +100,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	if (test_bit(MT76_STATE_RUNNING, &dev->mphy.state)) {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -429,8 +429,7 @@ void mt7915_dma_cleanup(struct mt7915_de
+@@ -431,8 +431,7 @@ void mt7915_dma_cleanup(struct mt7915_de
  int mt7915_dma_reset(struct mt7915_dev *dev, bool force);
  int mt7915_dma_start(struct mt7915_dev *dev, bool reset, bool wed_reset);
  int mt7915_txbf_init(struct mt7915_dev *dev);
