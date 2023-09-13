@@ -11,7 +11,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -272,7 +272,7 @@ static int brcmf_netdev_ioctl(struct net
+@@ -273,7 +273,7 @@ static int brcmf_netdev_ioctl(struct net
  	struct brcmf_if *ifp = netdev_priv(ndev);
  	struct brcmf_pub *drvr = ifp->drvr;
  	brcmf_ioctl_t ioc;
@@ -20,7 +20,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  	int ret = 0, len = 0;
  	char *request="";
  
-@@ -322,7 +322,7 @@ static int brcmf_netdev_ioctl(struct net
+@@ -323,7 +323,7 @@ static int brcmf_netdev_ioctl(struct net
  		ret = -ENOMEM;
  		goto done;
  	}
@@ -29,7 +29,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  	if (copy_from_user(local_buf, ioc.buf, ioc.len)) {
  		bphy_err(drvr, "Failed to copy ioc buffer from user space\n");
-@@ -334,19 +334,19 @@ static int brcmf_netdev_ioctl(struct net
+@@ -335,19 +335,19 @@ static int brcmf_netdev_ioctl(struct net
  	if (strncmp (local_buf, "bs_data", strlen("bs_data")) == 0) {
  		/* retrieve the table from firmware */
  		request="bs_data";
@@ -52,7 +52,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
          }
  	else if (strncmp (local_buf, "csa", strlen("csa")) == 0) {
  		u32 target_channel;
-@@ -1341,6 +1341,78 @@ static const struct file_operations bus_
+@@ -1343,6 +1343,78 @@ static const struct file_operations bus_
  	.write	= bus_reset_write,
  };
  
@@ -131,7 +131,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  static int brcmf_bus_started(struct brcmf_pub *drvr, struct cfg80211_ops *ops)
  {
  	int ret = -1;
-@@ -1419,6 +1491,8 @@ static int brcmf_bus_started(struct brcm
+@@ -1421,6 +1493,8 @@ static int brcmf_bus_started(struct brcm
  	brcmf_debugfs_add_entry(drvr, "revinfo", brcmf_revinfo_read);
  	debugfs_create_file("reset", 0600, brcmf_debugfs_get_devdir(drvr), drvr,
  			    &bus_reset_fops);
@@ -142,7 +142,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  	brcmf_bus_debugfs_create(bus_if);
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-@@ -231,9 +231,13 @@ static const struct brcmf_firmware_mappi
+@@ -247,9 +247,13 @@ static const struct brcmf_firmware_mappi
  
  #define BRCMF_DEF_MAX_RXBUFPOST			255
  
@@ -156,7 +156,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  #define BRCMF_DMA_D2H_SCRATCH_BUF_LEN		8
  #define BRCMF_DMA_D2H_RINGUPD_BUF_LEN		1024
-@@ -247,6 +251,8 @@ static const struct brcmf_firmware_mappi
+@@ -263,6 +267,8 @@ static const struct brcmf_firmware_mappi
  #define BRCMF_H2D_HOST_DS_ACK			0x00000002
  #define BRCMF_H2D_HOST_D0_INFORM_IN_USE		0x00000008
  #define BRCMF_H2D_HOST_D0_INFORM		0x00000010
@@ -165,7 +165,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  #define BRCMF_PCIE_MBDATA_TIMEOUT		msecs_to_jiffies(2000)
  
-@@ -478,6 +484,14 @@ brcmf_pcie_read_tcm8(struct brcmf_pciede
+@@ -504,6 +510,14 @@ brcmf_pcie_read_tcm8(struct brcmf_pciede
  	return (ioread8(address));
  }
  
@@ -180,7 +180,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  static u16
  brcmf_pcie_read_tcm16(struct brcmf_pciedev_info *devinfo, u32 mem_offset)
-@@ -878,6 +892,29 @@ static void brcmf_pcie_bus_console_read(
+@@ -904,6 +918,29 @@ static void brcmf_pcie_bus_console_read(
  	}
  }
  

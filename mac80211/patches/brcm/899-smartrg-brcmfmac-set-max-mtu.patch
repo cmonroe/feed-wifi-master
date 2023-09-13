@@ -9,7 +9,7 @@ Signed-off-by: Colin Whittaker <colin.whittaker@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -879,6 +879,7 @@ struct brcmf_if *brcmf_add_if(struct brc
+@@ -880,6 +880,7 @@ struct brcmf_if *brcmf_add_if(struct brc
  		if (!ndev)
  			return ERR_PTR(-ENOMEM);
  

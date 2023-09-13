@@ -10,7 +10,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
-@@ -26,10 +26,10 @@
+@@ -32,10 +32,10 @@
  /* Needs to be slightly bigger than the ioc buf from user space for ioctl's */
  #define BRCMF_DCMD_MAXLEN	(8192+16)
  

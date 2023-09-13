@@ -10,7 +10,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -4860,6 +4860,19 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
+@@ -5257,6 +5257,19 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
  				 err);
  			goto exit;
  		}
@@ -30,7 +30,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  		if (!mbss) {
  			/* Firmware 10.x requires setting channel after enabling
  			 * AP and before bringing interface up.
-@@ -7648,6 +7661,22 @@ static void brcmf_cfg80211_reg_notifier(
+@@ -8284,6 +8297,22 @@ static void brcmf_cfg80211_reg_notifier(
  			return;
  		}
  

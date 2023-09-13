@@ -1,8 +1,8 @@
-From dc8caecd0c7f5dfd542ba08f98605a7d6849e110 Mon Sep 17 00:00:00 2001
+From cbb9327b27651e375f72783e9c2453a2474f3ad3 Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Thu, 22 Sep 2022 14:27:41 +0800
-Subject: [PATCH] cfg80211: mtk: implement DFS status show, cac and nop skip
- command via debugfs
+Subject: [PATCH 06/21] cfg80211: mtk: implement DFS status show, cac and nop
+ skip command via debugfs
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---
@@ -17,18 +17,18 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -4644,6 +4644,7 @@ struct cfg80211_ops {
- 				    struct link_station_parameters *params);
- 	int	(*del_link_station)(struct wiphy *wiphy, struct net_device *dev,
+@@ -4767,6 +4767,7 @@ struct cfg80211_ops {
  				    struct link_station_del_parameters *params);
+ 	int	(*set_hw_timestamp)(struct wiphy *wiphy, struct net_device *dev,
+ 				    struct cfg80211_set_hw_timestamp *hwts);
 +	void	(*skip_cac)(struct wireless_dev *wdev);
  };
  
  /*
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -4914,6 +4914,25 @@ ieee80211_del_link_station(struct wiphy
- 	return ret;
+@@ -5020,6 +5020,25 @@ static int ieee80211_set_hw_timestamp(st
+ 	return local->ops->set_hw_timestamp(&local->hw, &sdata->vif, hwts);
  }
  
 +static void
@@ -53,10 +53,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  const struct cfg80211_ops mac80211_config_ops = {
  	.add_virtual_intf = ieee80211_add_iface,
  	.del_virtual_intf = ieee80211_del_iface,
-@@ -5025,4 +5044,5 @@ const struct cfg80211_ops mac80211_confi
- 	.add_link_station = ieee80211_add_link_station,
+@@ -5132,4 +5151,5 @@ const struct cfg80211_ops mac80211_confi
  	.mod_link_station = ieee80211_mod_link_station,
  	.del_link_station = ieee80211_del_link_station,
+ 	.set_hw_timestamp = ieee80211_set_hw_timestamp,
 +	.skip_cac = ieee80211_skip_cac,
  };
 --- a/net/wireless/core.h
@@ -403,7 +403,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  }
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1030,13 +1030,16 @@ __cfg80211_background_cac_event(struct c
+@@ -1054,13 +1054,16 @@ __cfg80211_background_cac_event(struct c
  		queue_work(cfg80211_wq, &rdev->propagate_cac_done_wk);
  		cfg80211_sched_dfs_chan_update(rdev);
  		wdev = rdev->background_radar_wdev;
@@ -420,7 +420,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		break;
  	default:
  		return;
-@@ -1046,7 +1049,7 @@ __cfg80211_background_cac_event(struct c
+@@ -1070,7 +1073,7 @@ __cfg80211_background_cac_event(struct c
  	nl80211_radar_notify(rdev, chandef, event, netdev, GFP_KERNEL);
  }
  
@@ -429,7 +429,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  cfg80211_background_cac_event(struct cfg80211_registered_device *rdev,
  			      const struct cfg80211_chan_def *chandef,
  			      enum nl80211_radar_event event)
-@@ -1056,6 +1059,7 @@ cfg80211_background_cac_event(struct cfg
+@@ -1080,6 +1083,7 @@ cfg80211_background_cac_event(struct cfg
  					chandef, event);
  	wiphy_unlock(&rdev->wiphy);
  }
@@ -437,7 +437,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  void cfg80211_background_cac_done_wk(struct work_struct *work)
  {
-@@ -1117,8 +1121,10 @@ cfg80211_start_background_radar_detectio
+@@ -1141,8 +1145,10 @@ cfg80211_start_background_radar_detectio
  	if (!cac_time_ms)
  		cac_time_ms = IEEE80211_DFS_MIN_CAC_TIME_MS;
  
@@ -450,10 +450,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  					NL80211_RADAR_CAC_STARTED);
 --- a/net/wireless/rdev-ops.h
 +++ b/net/wireless/rdev-ops.h
-@@ -1494,4 +1494,18 @@ rdev_del_link_station(struct cfg80211_re
+@@ -1524,4 +1524,18 @@ rdev_set_hw_timestamp(struct cfg80211_re
+ 
  	return ret;
  }
- 
++
 +static inline int
 +rdev_skip_cac(struct cfg80211_registered_device *rdev,
 +	      struct wireless_dev *wdev)
@@ -467,12 +468,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
 +	return 0;
 +}
-+
  #endif /* __CFG80211_RDEV_OPS */
 --- a/net/wireless/trace.h
 +++ b/net/wireless/trace.h
-@@ -3901,6 +3901,18 @@ TRACE_EVENT(rdev_del_link_station,
- 		  __entry->link_id)
+@@ -3981,6 +3981,18 @@ TRACE_EVENT(cfg80211_links_removed,
+ 		  __entry->link_mask)
  );
  
 +TRACE_EVENT(rdev_skip_cac,

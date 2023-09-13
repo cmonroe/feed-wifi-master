@@ -10,8 +10,8 @@ Subject: [PATCH 08/14] mac80211: mtk: check the control channel before
 
 --- a/net/mac80211/mlme.c
 +++ b/net/mac80211/mlme.c
-@@ -4582,6 +4582,26 @@ ieee80211_verify_sta_he_mcs_support(stru
- 	return false;
+@@ -4791,6 +4791,26 @@ ieee80211_verify_sta_eht_mcs_support(str
+ 	return true;
  }
  
 +static bool ieee80211_check_same_ctrl_channel(struct ieee80211_sub_if_data *sdata,
@@ -37,7 +37,7 @@ Subject: [PATCH 08/14] mac80211: mtk: check the control channel before
  static int ieee80211_prep_channel(struct ieee80211_sub_if_data *sdata,
  				  struct ieee80211_link_data *link,
  				  struct cfg80211_bss *cbss,
-@@ -4808,6 +4828,9 @@ static int ieee80211_prep_channel(struct
+@@ -5033,6 +5053,9 @@ static int ieee80211_prep_channel(struct
  	    chandef.width == NL80211_CHAN_WIDTH_10)
  		goto out;
  
