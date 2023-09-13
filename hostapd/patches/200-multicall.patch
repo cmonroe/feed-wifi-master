@@ -156,7 +156,7 @@
  wpa_cli.exe: wpa_cli
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -6664,8 +6664,8 @@ union wpa_event_data {
+@@ -6667,8 +6667,8 @@ union wpa_event_data {
   * Driver wrapper code should call this function whenever an event is received
   * from the driver.
   */
@@ -167,7 +167,7 @@
  
  /**
   * wpa_supplicant_event_global - Report a driver event for wpa_supplicant
-@@ -6677,7 +6677,7 @@ void wpa_supplicant_event(void *ctx, enu
+@@ -6680,7 +6680,7 @@ void wpa_supplicant_event(void *ctx, enu
   * Same as wpa_supplicant_event(), but we search for the interface in
   * wpa_global.
   */
@@ -231,7 +231,7 @@
  	os_memset(&global, 0, sizeof(global));
 --- a/wpa_supplicant/events.c
 +++ b/wpa_supplicant/events.c
-@@ -5347,8 +5347,8 @@ static void wpas_link_reconfig(struct wp
+@@ -5353,8 +5353,8 @@ static void wpas_link_reconfig(struct wp
  }
  
  
@@ -242,7 +242,7 @@
  {
  	struct wpa_supplicant *wpa_s = ctx;
  	int resched;
-@@ -6266,7 +6266,7 @@ void wpa_supplicant_event(void *ctx, enu
+@@ -6272,7 +6272,7 @@ void wpa_supplicant_event(void *ctx, enu
  }
  
  
