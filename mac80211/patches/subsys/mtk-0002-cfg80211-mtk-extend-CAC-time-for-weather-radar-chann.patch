@@ -23,7 +23,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /**
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -931,6 +931,13 @@ static unsigned int cfg80211_get_chans_d
+@@ -976,6 +976,13 @@ static unsigned int cfg80211_get_chans_d
  		if (!(c->flags & IEEE80211_CHAN_RADAR))
  			continue;
  
