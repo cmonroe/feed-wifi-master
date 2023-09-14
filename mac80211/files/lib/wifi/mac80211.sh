@@ -59,7 +59,6 @@ BEGIN {
 		if (ht) mode="HT20"
 		if (vht && band != "1:") mode="VHT80"
 		if (he) mode="HE80"
-		if (he && band == "4:") mode="HE160"
 		if (he && band == "1:") mode="HE20"
                 sub("\\[", "", channel)
                 sub("\\]", "", channel)
