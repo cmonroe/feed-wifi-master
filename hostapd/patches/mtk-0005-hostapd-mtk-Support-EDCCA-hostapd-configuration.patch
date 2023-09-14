@@ -381,7 +381,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
  
  #ifndef NETLINK_CAP_ACK
-@@ -13754,6 +13756,165 @@ static int testing_nl80211_radio_disable
+@@ -13755,6 +13757,165 @@ static int testing_nl80211_radio_disable
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -547,7 +547,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
-@@ -13910,4 +14071,8 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -13911,4 +14072,8 @@ const struct wpa_driver_ops wpa_driver_n
  	.register_frame = testing_nl80211_register_frame,
  	.radio_disable = testing_nl80211_radio_disable,
  #endif /* CONFIG_TESTING_OPTIONS */
