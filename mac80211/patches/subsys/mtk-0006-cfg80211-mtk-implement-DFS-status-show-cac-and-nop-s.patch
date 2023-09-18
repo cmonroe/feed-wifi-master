@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -4770,6 +4770,7 @@ struct cfg80211_ops {
+@@ -4819,6 +4819,7 @@ struct cfg80211_ops {
  				    struct link_station_del_parameters *params);
  	int	(*set_hw_timestamp)(struct wiphy *wiphy, struct net_device *dev,
  				    struct cfg80211_set_hw_timestamp *hwts);
