@@ -45,7 +45,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_TM_FW_RX_COUNT	BIT(0)
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -994,6 +994,7 @@ enum {
+@@ -998,6 +998,7 @@ enum {
  
  /* ext event table */
  enum {
@@ -106,7 +106,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -416,6 +416,9 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
+@@ -418,6 +418,9 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
  	case MCU_EXT_EVENT_CSI_REPORT:
  		mt7915_mcu_report_csi(dev, skb);
  		break;
@@ -116,7 +116,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
-@@ -2949,7 +2952,7 @@ int mt7915_mcu_apply_group_cal(struct mt
+@@ -2958,7 +2961,7 @@ int mt7915_mcu_apply_group_cal(struct mt
  	u8 idx = 0, *cal = dev->cal, *eep = dev->mt76.eeprom.data;
  	u32 total = MT_EE_CAL_GROUP_SIZE;
  
@@ -125,7 +125,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		return 0;
  
  	/*
-@@ -3029,11 +3032,29 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
+@@ -3038,11 +3041,29 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
  {
  	struct mt7915_dev *dev = phy->dev;
  	struct cfg80211_chan_def *chandef = &phy->mt76->chandef;

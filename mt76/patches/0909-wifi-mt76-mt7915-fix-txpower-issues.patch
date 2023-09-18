@@ -127,7 +127,7 @@ Subject: [PATCH] wifi: mt76: mt7915: fix txpower issues
  	      MT_WF_PHY_TPC_CTRL_STAT_MT7916(band);
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -282,7 +282,7 @@ static void mt7915_led_set_brightness(st
+@@ -279,7 +279,7 @@ static void mt7915_led_set_brightness(st
  void mt7915_init_txpower(struct mt7915_dev *dev,
  			 struct ieee80211_supported_band *sband)
  {

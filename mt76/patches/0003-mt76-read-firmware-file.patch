@@ -108,7 +108,7 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  EXPORT_SYMBOL_GPL(mt76_eeprom_init);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1100,6 +1100,7 @@ void mt76_seq_puts_array(struct seq_file
+@@ -1102,6 +1102,7 @@ void mt76_seq_puts_array(struct seq_file
  int mt76_eeprom_init(struct mt76_dev *dev, int len);
  void mt76_eeprom_override(struct mt76_phy *phy);
  int mt76_get_of_eeprom(struct mt76_dev *dev, void *data, int offset, int len);

@@ -15,18 +15,18 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -1749,9 +1749,18 @@ u16 mt76_calculate_default_rate(struct m
- {
+@@ -1754,9 +1754,18 @@ u16 mt76_calculate_default_rate(struct m
+ 					    &phy->chandef;
  	int offset = 0;
  
--	if (phy->chandef.chan->band != NL80211_BAND_2GHZ)
-+	if (phy->chandef.chan->band == NL80211_BAND_2GHZ) {
+-	if (chandef->chan->band != NL80211_BAND_2GHZ)
++	if (chandef->chan->band == NL80211_BAND_2GHZ) {
 +		if (rateidx < 0)
 +			rateidx = 3; /* 11Mbps */
 +	} else {
  		offset = 4;
  
-+		if (phy->chandef.chan->band == NL80211_BAND_5GHZ) {
++		if (chandef->chan->band == NL80211_BAND_5GHZ) {
 +			if (rateidx < 0)
 +				rateidx = 4; /* 24Mbps */
 +		}

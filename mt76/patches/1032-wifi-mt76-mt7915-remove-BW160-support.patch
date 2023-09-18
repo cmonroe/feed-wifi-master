@@ -10,7 +10,7 @@ Remove BW160 capability in mt7915.
 
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -435,11 +435,6 @@ mt7915_init_wiphy(struct mt7915_phy *phy
+@@ -432,11 +432,6 @@ mt7915_init_wiphy(struct mt7915_phy *phy
  			vht_cap->cap |=
  				IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_7991 |
  				IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK;
@@ -22,7 +22,7 @@ Remove BW160 capability in mt7915.
  		} else {
  			phy->mt76->sband_5g.sband.ht_cap.ampdu_density =
  				IEEE80211_HT_MPDU_DENSITY_2;
-@@ -900,13 +895,9 @@ mt7915_set_stream_he_txbf_caps(struct mt
+@@ -897,13 +892,9 @@ mt7915_set_stream_he_txbf_caps(struct mt
  	int sts = hweight8(phy->mt76->chainmask);
  	u8 c, sts_160 = sts;
  
@@ -39,7 +39,7 @@ Remove BW160 capability in mt7915.
  
  #ifdef CONFIG_MAC80211_MESH
  	if (vif == NL80211_IFTYPE_MESH_POINT)
-@@ -986,15 +977,10 @@ mt7915_init_he_caps(struct mt7915_phy *p
+@@ -983,15 +974,10 @@ mt7915_init_he_caps(struct mt7915_phy *p
  	int i, idx = 0, nss = hweight8(phy->mt76->antenna_mask);
  	u16 mcs_map = 0;
  	u16 mcs_map_160 = 0;
