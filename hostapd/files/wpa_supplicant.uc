@@ -311,7 +311,9 @@ return {
 	state: function(ifname, iface, state) {
 		let phy = wpas.data.iface_phy[ifname];
 		if (!phy) {
-			wpas.printf(`no PHY for ifname ${ifname}`);
+			// SMARTG: quickstart STA interfaces still get
+			//         added outside of config.
+			//wpas.printf(`no PHY for ifname ${ifname}`);
 			return;
 		}
 
