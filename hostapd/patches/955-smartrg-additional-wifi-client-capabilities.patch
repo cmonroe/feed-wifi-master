@@ -401,12 +401,12 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +
 +		for_each_element(elem, iebuf, sta->vendors_ie->used) {
 +			const struct vendor_specific_info *info = (struct vendor_specific_info *)elem->data;
-+			char oui[9];
++			char oui[25];
 +			char *data;
 +			char *idata=(char *)&info->data;
 +
 +			sprintf(oui, "%02x:%02x:%02x", info->oui[0], info->oui[1], info->oui[2]);
-+			data = blobmsg_alloc_string_buffer(&b, oui, elem->datalen * 2 + 1);
++			data = blobmsg_alloc_string_buffer(&b, oui, elem->datalen * 2 + 25);
 +			for(int i=0; i < elem->datalen - 3; ++i) {
 +				sprintf(data, "%02x", idata[i]);
 +				data += 2;
