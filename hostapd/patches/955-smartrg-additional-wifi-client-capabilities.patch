@@ -49,7 +49,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/common/ieee802_11_common.c
  
 +struct wpabuf * ieee802_11_all_vendor_ie_concat(const u8 *ies, size_t ies_len)
 +{
-+	struct wpabuf *buf;
++	struct wpabuf *buf = 0;
 +	const struct element *elem;
 +	size_t e_len = 0;
 +
