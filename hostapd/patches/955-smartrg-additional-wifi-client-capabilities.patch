@@ -125,7 +125,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
  static void
  hostapd_parse_vht_capab_blobmsg(struct ieee80211_vht_capabilities *vhtc)
  {
-@@ -194,24 +203,239 @@ hostapd_parse_vht_capab_blobmsg(struct i
+@@ -194,24 +203,233 @@ hostapd_parse_vht_capab_blobmsg(struct i
  		const char *name;
  		uint32_t flag;
  	} vht_capas[] = {
@@ -166,9 +166,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +	for (i = 0; i < ARRAY_SIZE(vht_capas_value); i++)
 +	{
 +		uint16_t value = (vhtc->vht_capabilities_info & vht_capas_value[i].mask) >> vht_capas_value[i].shift;
-+		char buf[25];
-+		snprintf(buf, 24, "%#04x", value);
-+		blobmsg_add_string(&b, vht_capas_value[i].name, buf);
++		blobmsg_add_u32(&b, vht_capas_value[i].name, value);
 +	}
 +
  	supported_mcs = blobmsg_open_table(&b, "mcs_map");
@@ -323,9 +321,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +		if (mac_capas[i].bitcount > 1)
 +		{
 +			uint16_t value = calculate_bitmapped_value(&hec->he_mac_capab_info[0], mac_capas[i].byte, mac_capas[i].bitstart, mac_capas[i].bitcount);
-+			char buf[25];
-+			snprintf(buf, 24, "%#04x", value);
-+			blobmsg_add_string(&b, mac_capas[i].name, buf);
++			blobmsg_add_u32(&b, mac_capas[i].name, value);
 +		}
 +		else
 +		{
@@ -342,9 +338,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +		if (phy_capas[i].bitcount > 1)
 +		{
 +			uint16_t value = calculate_bitmapped_value(&hec->he_phy_capab_info[0], phy_capas[i].byte, phy_capas[i].bitstart, phy_capas[i].bitcount);
-+			char buf[25];
-+			snprintf(buf, 24, "%#04x", value);
-+			blobmsg_add_string(&b, phy_capas[i].name, buf);
++			blobmsg_add_u32(&b, phy_capas[i].name, value);
 +		}
 +		else
 +		{
@@ -367,7 +361,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
  	blobmsg_close_table(&b, map);
  
  	blobmsg_close_table(&b, supported_mcs);
-@@ -230,11 +454,56 @@ hostapd_parse_capab_blobmsg(struct sta_i
+@@ -230,11 +448,56 @@ hostapd_parse_capab_blobmsg(struct sta_i
  		blobmsg_close_table(&b, r);
  	}
  
@@ -425,7 +419,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
  static int
  hostapd_bss_get_clients(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
-@@ -279,16 +548,35 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -279,9 +542,24 @@ hostapd_bss_get_clients(struct ubus_cont
  		blobmsg_add_u8(&b, "mbo", !!(sta->cell_capa));
  #endif
  
@@ -445,32 +439,35 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +
  		r = blobmsg_open_array(&b, "rrm");
 -		for (i = 0; i < ARRAY_SIZE(sta->rrm_enabled_capa); i++)
--			blobmsg_add_u32(&b, "", sta->rrm_enabled_capa[i]);
 +		for (i = 0; i < ARRAY_SIZE(sta->rrm_enabled_capa); i++) {
-+			char buf[25];
-+			snprintf(buf, 24, "%#04x", sta->rrm_enabled_capa[i]);
-+			blobmsg_add_string(&b, "", buf);
+ 			blobmsg_add_u32(&b, "", sta->rrm_enabled_capa[i]);
 +		}
  		blobmsg_close_array(&b, r);
  
  		r = blobmsg_open_array(&b, "extended_capabilities");
- 		/* Check if client advertises extended capabilities */
- 		if (sta->ext_capability && sta->ext_capability[0] > 0) {
- 			for (i = 0; i < sta->ext_capability[0]; i++) {
--				blobmsg_add_u32(&b, "", sta->ext_capability[1 + i]);
-+				char buf[25];
-+				snprintf(buf, 24, "%#04x", sta->ext_capability[1 + i]);
-+				blobmsg_add_string(&b, "", buf);
- 			}
- 		}
- 		blobmsg_close_array(&b, r);
-@@ -323,7 +611,8 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -323,6 +601,7 @@ hostapd_bss_get_clients(struct ubus_cont
  		}
  
  		hostapd_parse_capab_blobmsg(sta);
--
 +		hostapd_parse_vendors(sta);
-+		
+ 
  		blobmsg_close_table(&b, c);
  	}
- 	blobmsg_close_array(&b, list);
+@@ -362,7 +641,7 @@ hostapd_bss_get_status(struct ubus_conte
+ 
+ 	if (hapd->conf->ssid.ssid_len < SSID_MAX_LEN)
+ 		ssid_len = hapd->conf->ssid.ssid_len;
+-	
++
+ 	ieee80211_freq_to_channel_ext(hapd->iface->freq,
+ 				      hapd->iconf->secondary_channel,
+ 				      hostapd_get_oper_chwidth(hapd->iconf),
+@@ -1958,7 +2237,7 @@ void hostapd_ubus_notify_bss_transition_
+ 	blobmsg_add_u8(&b, "bss-termination-delay", bss_termination_delay);
+ 	if (target_bssid)
+ 		blobmsg_add_macaddr(&b, "target-bssid", target_bssid);
+-	
++
+ 	hostapd_ubus_notify_bss_transition_add_candidate_list(candidate_list, candidate_list_len);
+ 
+ 	ubus_notify(ctx, &hapd->ubus.obj, "bss-transition-response", b.head, -1);
