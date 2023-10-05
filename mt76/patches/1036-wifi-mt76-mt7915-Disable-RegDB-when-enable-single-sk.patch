@@ -33,7 +33,7 @@ Subject: [PATCH 1036/1040] wifi: mt76: mt7915: Disable RegDB when enable
  mt76_get_of_array(struct device_node *np, char *name, size_t *len, int min)
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1574,6 +1574,9 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
+@@ -1582,6 +1582,9 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
  
  void mt76_set_irq_mask(struct mt76_dev *dev, u32 addr, u32 clear, u32 set);
  
@@ -106,7 +106,7 @@ Subject: [PATCH 1036/1040] wifi: mt76: mt7915: Disable RegDB when enable
  
  	ret = simple_read_from_buffer(user_buf, count, ppos, buf, len);
  
-@@ -1442,6 +1475,9 @@ static ssize_t mt7915_sta_fixed_rate_set
+@@ -1507,6 +1540,9 @@ static ssize_t mt7915_sta_fixed_rate_set
  	}
  	field = RATE_PARAM_FIXED;
  
