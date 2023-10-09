@@ -1,0 +1,23 @@
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -140,10 +140,17 @@
+ 
+ 			msta->airtime_ac[i] = mt76_rr(dev, addr);
+ 			msta->airtime_ac[i + 4] = mt76_rr(dev, addr + 4);
++			
++			if ((tx_last == 0) || (msta->airtime_ac[i] <= tx_last))
++				tx_time[i] = 0;
++			else
++				tx_time[i] = msta->airtime_ac[i] - tx_last;
+ 
+-			tx_time[i] = msta->airtime_ac[i] - tx_last;
+-			rx_time[i] = msta->airtime_ac[i + 4] - rx_last;
+-
++			if ((rx_last == 0) || (msta->airtime_ac[i + 4] <= rx_last))
++				rx_time[i] = 0;
++			else
++				rx_time[i] = msta->airtime_ac[i + 4] - rx_last;
++		
+ 			if ((tx_last | rx_last) & BIT(30))
+ 				clear = true;
+ 
