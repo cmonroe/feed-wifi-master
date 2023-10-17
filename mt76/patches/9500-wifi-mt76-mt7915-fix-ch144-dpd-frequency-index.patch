@@ -1,0 +1,12 @@
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -3071,6 +3071,9 @@ static int mt7915_dpd_freq_idx(struct mt
+ 			return idx;
+ 	}
+ 
++	if (is_mt7915(&dev->mt76))
++		freq = (freq == 5720) ? 5700: freq;
++
+ 	return mt7915_find_freq_idx(freq_list, n_freqs, freq);
+ }
+ 
