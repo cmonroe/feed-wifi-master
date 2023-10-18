@@ -1,0 +1,64 @@
+Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
+===================================================================
+--- hostapd-2023-09-08-e5ccbfc6.orig/src/ap/acs.c
++++ hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
+@@ -429,7 +429,8 @@ static bool acs_usable_bw_chan(const str
+ 	unsigned int i = 0;
+ 
+ 	while (bw_desc[bw][i].first != -1) {
+-		if (chan->freq == bw_desc[bw][i].first)
++		if (chan->freq >= bw_desc[bw][i].first &&
++		    chan->freq <= bw_desc[bw][i].last)
+ 			return true;
+ 		i++;
+ 	}
+@@ -841,8 +842,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		     is_6ghz_freq(chan->freq)) &&
+ 		    !acs_usable_bw_chan(chan, ACS_BW40)) {
+ 			wpa_printf(MSG_WARNING,
+-				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
+-				   chan->chan);
++				   "ACS: Channel %d (freq %d): not allowed as primary channel for 40 MHz bandwidth",
++				   chan->chan, chan->freq);
+ 			continue;
+ 		}
+ 
+@@ -852,8 +853,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 			    CONF_OPER_CHWIDTH_80MHZ &&
+ 			    !acs_usable_bw_chan(chan, ACS_BW80)) {
+ 				wpa_printf(MSG_WARNING,
+-					   "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
+-					   chan->chan);
++					   "ACS: Channel %d (freq %d): not allowed as primary channel for 80 MHz bandwidth",
++					   chan->chan, chan->freq);
+ 				continue;
+ 			}
+ 
+@@ -861,8 +862,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 			    CONF_OPER_CHWIDTH_160MHZ &&
+ 			    !acs_usable_bw_chan(chan, ACS_BW160)) {
+ 				wpa_printf(MSG_WARNING,
+-					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
+-					   chan->chan);
++					   "ACS: Channel %d (freq %d): not allowed as primary channel for 160 MHz bandwidth",
++					   chan->chan, chan->freq);
+ 				continue;
+ 			}
+ 		}
+@@ -974,12 +975,12 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		if (bias) {
+ 			factor *= bias->bias;
+ 			wpa_printf(MSG_WARNING,
+-				   "ACS:  * channel %d: total interference = %Lg (%f bias)",
+-				   chan->chan, factor, bias->bias);
++				   "ACS:  * channel %d (%d): total interference = %Lg (%f bias)",
++				   chan->chan, chan->freq, factor, bias->bias);
+ 		} else {
+ 			wpa_printf(MSG_WARNING,
+-				   "ACS:  * channel %d: total interference = %Lg",
+-				   chan->chan, factor);
++				   "ACS:  * channel %d (%d): total interference = %Lg",
++				   chan->chan, chan->freq, factor);
+ 		}
+ 
+ 		if (acs_usable_chan(chan) &&
