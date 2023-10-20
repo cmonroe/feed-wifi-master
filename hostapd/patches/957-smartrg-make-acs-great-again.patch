@@ -1,0 +1,179 @@
+Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
+===================================================================
+--- hostapd-2023-09-08-e5ccbfc6.orig/src/ap/acs.c
++++ hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
+@@ -296,6 +296,7 @@ static const struct bw_item *bw_desc[] =
+ 
+ static int acs_request_scan(struct hostapd_iface *iface);
+ static int acs_survey_is_sufficient(struct freq_survey *survey);
++
+ extern void hostapd_ctrl_update_fixup( struct hostapd_config *conf);
+ 
+ static void acs_clean_chan_surveys(struct hostapd_channel_data *chan)
+@@ -428,9 +429,19 @@ static bool acs_usable_bw_chan(const str
+ {
+ 	unsigned int i = 0;
+ 
++	bool is_6ghz = is_6ghz_freq(chan->freq);
++
+ 	while (bw_desc[bw][i].first != -1) {
+-		if (chan->freq == bw_desc[bw][i].first)
+-			return true;
++		// Need to take all 6ghz channels into account to support PSC
++		if (is_6ghz) {
++			if (chan->freq >= bw_desc[bw][i].first &&
++			    chan->freq <= bw_desc[bw][i].last)
++				return true;
++		}
++		else {
++			if (chan->freq == bw_desc[bw][i].first)
++				return true;
++		}
+ 		i++;
+ 	}
+ 
+@@ -775,6 +786,25 @@ static void acs_update_puncturing_bitmap
+ }
+ #endif /* CONFIG_IEEE80211BE */
+ 
++// To support all channels in 6g, we needed to make some adjustments in
++// acs_find_ideal_chan_mode to take adjacent channels interference into account
++short find_first_chan_in_bw(short chan, u32 bw)
++{
++	switch (bw) {
++		case 20:
++			return chan;
++		case 40:
++			return 1+((chan/8)*8);
++		case 80:
++			return 1+((chan/16)*16);
++		case 160:
++			return 1+((chan/32)*32);
++		case 320:
++			return 1+((chan/64)*64);
++		default:
++			return chan;
++	}
++}
+ 
+ static void
+ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
+@@ -813,6 +843,12 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		    iface->conf->acs_exclude_dfs)
+ 			continue;
+ 
++		if (is_6ghz_freq(chan->freq)) {
++			if (iface->conf->acs_exclude_6ghz_non_psc &&
++				!is_6ghz_psc_frequency(chan->freq))
++			continue;
++		}
++
+ 		if (!is_in_chanlist(iface, chan))
+ 			continue;
+ 
+@@ -841,8 +877,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		     is_6ghz_freq(chan->freq)) &&
+ 		    !acs_usable_bw_chan(chan, ACS_BW40)) {
+ 			wpa_printf(MSG_WARNING,
+-				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
+-				   chan->chan);
++				   "ACS: Channel %d (freq %d): not allowed as primary channel for 40 MHz bandwidth",
++				   chan->chan, chan->freq);
+ 			continue;
+ 		}
+ 
+@@ -852,8 +888,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 			    CONF_OPER_CHWIDTH_80MHZ &&
+ 			    !acs_usable_bw_chan(chan, ACS_BW80)) {
+ 				wpa_printf(MSG_WARNING,
+-					   "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
+-					   chan->chan);
++					   "ACS: Channel %d (freq %d): not allowed as primary channel for 80 MHz bandwidth",
++					   chan->chan, chan->freq);
+ 				continue;
+ 			}
+ 
+@@ -861,8 +897,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 			    CONF_OPER_CHWIDTH_160MHZ &&
+ 			    !acs_usable_bw_chan(chan, ACS_BW160)) {
+ 				wpa_printf(MSG_WARNING,
+-					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
+-					   chan->chan);
++					   "ACS: Channel %d (freq %d): not allowed as primary channel for 160 MHz bandwidth",
++					   chan->chan, chan->freq);
+ 				continue;
+ 			}
+ 		}
+@@ -872,8 +908,28 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 			factor = chan->interference_factor;
+ 		total_weight = 1;
+ 
+-		for (j = 1; j < n_chans; j++) {
+-			adj_chan = acs_find_chan(iface, chan->freq + (j * 20));
++		// Find first channel in given bandwidth
++		short fchan = find_first_chan_in_bw(chan->chan, bw);
++		// Find its corresponding frequency
++		int fcfreq;
++		if (is_6ghz_freq(chan->freq))
++			fcfreq =  ieee80211_chan_to_freq(iface->conf->country, iface->conf->op_class, fchan);
++		else
++			fcfreq = chan->freq;
++
++		//wpa_printf(MSG_ERROR, "ACS find_ideal %s channel %d country %s op_class %d fchan %d fcfreq %d",
++		//iface->phy, chan->chan, iface->conf->country, iface->conf->op_class, fchan, fcfreq);
++
++		// We don't enter this loop if bw=20 ==> n_chans=1
++		// Well, we do, but we get out with the first continue.
++		for (j = 0; j < n_chans; j++) {
++			int adjfreq = fcfreq + (j * 20);
++			if (adjfreq == chan->freq) {
++				// Skipping my own channel
++				continue;
++			}
++
++			adj_chan = acs_find_chan(iface, adjfreq);
+ 			if (!adj_chan)
+ 				break;
+ 
+@@ -891,6 +947,13 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 				update_best = false;
+ 			}
+ 
++			if (is_6ghz_freq(adjfreq) &&
++			    iface->conf->acs_exclude_6ghz_non_psc &&
++			    !is_6ghz_psc_frequency(adjfreq)) {
++
++				update_best = false;
++			}
++
+ 			/* find the best channel in this segment */
+ 			if (update_best &&
+ 			    adj_chan->interference_factor <
+@@ -974,12 +1037,12 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		if (bias) {
+ 			factor *= bias->bias;
+ 			wpa_printf(MSG_WARNING,
+-				   "ACS:  * channel %d: total interference = %Lg (%f bias)",
+-				   chan->chan, factor, bias->bias);
++				   "ACS:  * channel %d (%d): total interference = %Lg (%f bias)",
++				   chan->chan, chan->freq, factor, bias->bias);
+ 		} else {
+ 			wpa_printf(MSG_WARNING,
+-				   "ACS:  * channel %d: total interference = %Lg",
+-				   chan->chan, factor);
++				   "ACS:  * channel %d (%d): total interference = %Lg",
++				   chan->chan, chan->freq, factor);
+ 		}
+ 
+ 		if (acs_usable_chan(chan) &&
+@@ -1058,7 +1121,9 @@ acs_find_ideal_chan(struct hostapd_iface
+ 		}
+ 	}
+ 
+-	wpa_printf(MSG_WARNING, "ACS(%s) n_chans=%d 80211n=%d 80211ac=%d 80211xx=%d secondary_channel=%d", iface->phy, n_chans, iface->conf->ieee80211n, iface->conf->ieee80211ac, iface->conf->ieee80211ax, iface->conf->secondary_channel);
++	wpa_printf(MSG_WARNING, "ACS(%s) n_chans=%d 80211n=%d 80211ac=%d 80211ax=%d secondary_channel=%d",
++		iface->phy, n_chans, iface->conf->ieee80211n, iface->conf->ieee80211ac,
++		iface->conf->ieee80211ax, iface->conf->secondary_channel);
+ 	bw = num_chan_to_bw(n_chans);
+ 
+ bw_selected:
