@@ -120,6 +120,7 @@ hostapd_common_add_device_config() {
 	config_add_int rssi_reject_assoc_rssi
 	config_add_int rssi_ignore_probe_request
 	config_add_int maxassoc
+	config_add_int acs_num_scans
 	config_add_boolean acs_exclude_6ghz_non_psc
 
 	config_add_string acs_chan_bias
@@ -140,7 +141,7 @@ hostapd_prepare_device_config() {
 	json_get_vars country country3 country_ie beacon_int:100 doth require_mode legacy_rates \
 		acs_chan_bias local_pwr_constraint spectrum_mgmt_required airtime_mode cell_density \
 		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_ignore_probe_request maxassoc \
-		acs_exclude_6ghz_non_psc mbssid:0
+		acs_num_scans acs_exclude_6ghz_non_psc mbssid:0
 
 	hostapd_set_log_options base_cfg
 
@@ -164,6 +165,7 @@ hostapd_prepare_device_config() {
 	}
 
 	[ -n "$acs_chan_bias" ] && append base_cfg "acs_chan_bias=$acs_chan_bias" "$N"
+	[ -n "$acs_num_scans" ] && append base_cfg "acs_num_scans=$acs_num_scans" "$N"
 	[ "$acs_exclude_6ghz_non_psc" -eq "1" ] && append base_cfg "acs_exclude_6ghz_non_psc=1" "$N"
 
 	local brlist= br
