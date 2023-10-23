@@ -1,7 +1,5 @@
-Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
-===================================================================
---- hostapd-2023-09-08-e5ccbfc6.orig/src/ap/acs.c
-+++ hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
+--- a/src/ap/acs.c
++++ b/src/ap/acs.c
 @@ -296,6 +296,7 @@ static const struct bw_item *bw_desc[] =
  
  static int acs_request_scan(struct hostapd_iface *iface);
@@ -10,7 +8,17 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
  extern void hostapd_ctrl_update_fixup( struct hostapd_config *conf);
  
  static void acs_clean_chan_surveys(struct hostapd_channel_data *chan)
-@@ -428,9 +429,19 @@ static bool acs_usable_bw_chan(const str
+@@ -373,6 +374,9 @@ acs_survey_interference_factor(struct fr
+ 		total -= survey->channel_time_tx;
+ 	}
+ 
++	if (!busy)
++		busy = 1;
++
+ 	/* TODO: figure out the best multiplier for noise floor base */
+ 	factor = pow(10, survey->nf / 5.0L) +
+ 		(total ? (busy / total) : 0) *
+@@ -428,9 +432,19 @@ static bool acs_usable_bw_chan(const str
  {
  	unsigned int i = 0;
  
@@ -32,7 +40,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
  		i++;
  	}
  
-@@ -775,6 +786,25 @@ static void acs_update_puncturing_bitmap
+@@ -775,6 +789,25 @@ static void acs_update_puncturing_bitmap
  }
  #endif /* CONFIG_IEEE80211BE */
  
@@ -58,7 +66,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
  
  static void
  acs_find_ideal_chan_mode(struct hostapd_iface *iface,
-@@ -813,6 +843,12 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -813,6 +846,12 @@ acs_find_ideal_chan_mode(struct hostapd_
  		    iface->conf->acs_exclude_dfs)
  			continue;
  
@@ -71,7 +79,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
  		if (!is_in_chanlist(iface, chan))
  			continue;
  
-@@ -841,8 +877,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -841,8 +880,8 @@ acs_find_ideal_chan_mode(struct hostapd_
  		     is_6ghz_freq(chan->freq)) &&
  		    !acs_usable_bw_chan(chan, ACS_BW40)) {
  			wpa_printf(MSG_WARNING,
@@ -82,7 +90,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
  			continue;
  		}
  
-@@ -852,8 +888,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -852,8 +891,8 @@ acs_find_ideal_chan_mode(struct hostapd_
  			    CONF_OPER_CHWIDTH_80MHZ &&
  			    !acs_usable_bw_chan(chan, ACS_BW80)) {
  				wpa_printf(MSG_WARNING,
@@ -93,7 +101,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
  				continue;
  			}
  
-@@ -861,8 +897,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -861,8 +900,8 @@ acs_find_ideal_chan_mode(struct hostapd_
  			    CONF_OPER_CHWIDTH_160MHZ &&
  			    !acs_usable_bw_chan(chan, ACS_BW160)) {
  				wpa_printf(MSG_WARNING,
@@ -104,7 +112,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
  				continue;
  			}
  		}
-@@ -872,8 +908,28 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -872,8 +911,28 @@ acs_find_ideal_chan_mode(struct hostapd_
  			factor = chan->interference_factor;
  		total_weight = 1;
  
@@ -135,7 +143,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
  			if (!adj_chan)
  				break;
  
-@@ -891,6 +947,13 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -891,6 +950,13 @@ acs_find_ideal_chan_mode(struct hostapd_
  				update_best = false;
  			}
  
@@ -149,7 +157,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
  			/* find the best channel in this segment */
  			if (update_best &&
  			    adj_chan->interference_factor <
-@@ -974,12 +1037,12 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -974,12 +1040,12 @@ acs_find_ideal_chan_mode(struct hostapd_
  		if (bias) {
  			factor *= bias->bias;
  			wpa_printf(MSG_WARNING,
@@ -166,7 +174,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/acs.c
  		}
  
  		if (acs_usable_chan(chan) &&
-@@ -1058,7 +1121,9 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1058,7 +1124,9 @@ acs_find_ideal_chan(struct hostapd_iface
  		}
  	}
  
