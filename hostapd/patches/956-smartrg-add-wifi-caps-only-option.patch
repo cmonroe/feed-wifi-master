@@ -2,7 +2,90 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 ===================================================================
 --- hostapd-2023-09-08-e5ccbfc6.orig/src/ap/ubus.c
 +++ hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
-@@ -499,9 +499,9 @@ int compare_char(const void * a, const v
+@@ -193,7 +193,7 @@ struct wifi_capas {
+ 
+ 
+ static void
+-hostapd_parse_vht_capab_blobmsg(struct ieee80211_vht_capabilities *vhtc)
++hostapd_parse_vht_capab_blobmsg(struct ieee80211_vht_capabilities *vhtc, bool filter_false)
+ {
+ 	void *supported_mcs;
+ 	void *map;
+@@ -234,8 +234,13 @@ hostapd_parse_vht_capab_blobmsg(struct i
+ 	};
+ 
+ 	for (i = 0; i < ARRAY_SIZE(vht_capas); i++)
+-		blobmsg_add_u8(&b, vht_capas[i].name,
+-				!!(vhtc->vht_capabilities_info & vht_capas[i].flag));
++	{
++		uint8_t flag_val = !!(vhtc->vht_capabilities_info & vht_capas[i].flag);
++		if (!filter_false || flag_val)
++		{
++			blobmsg_add_u8(&b, vht_capas[i].name, flag_val);
++		}
++	}
+ 
+ 	for (i = 0; i < ARRAY_SIZE(vht_capas_value); i++)
+ 	{
+@@ -279,7 +284,7 @@ static uint16_t calculate_bitmapped_valu
+ }
+ 
+ static void
+-hostapd_parse_he_capab_blobmsg(struct ieee80211_he_capabilities *hec)
++hostapd_parse_he_capab_blobmsg(struct ieee80211_he_capabilities *hec, bool filter_false)
+ {
+ 	void *supported_mcs;
+ 	void *map;
+@@ -398,7 +403,10 @@ hostapd_parse_he_capab_blobmsg(struct ie
+ 		else
+ 		{
+ 			uint8_t bitval = !!(hec->he_mac_capab_info[mac_capas[i].byte] & mac_capas[i].bitstart);
+-			blobmsg_add_u8(&b, mac_capas[i].name, bitval);
++			if (!filter_false || bitval)
++			{
++				blobmsg_add_u8(&b, mac_capas[i].name, bitval);
++			}
+ 		}
+ 	}
+ 	blobmsg_close_table(&b, mac_caps);
+@@ -415,7 +423,10 @@ hostapd_parse_he_capab_blobmsg(struct ie
+ 		else
+ 		{
+ 			uint8_t bitval = !!(hec->he_phy_capab_info[phy_capas[i].byte] & phy_capas[i].bitstart);
+-			blobmsg_add_u8(&b, phy_capas[i].name, bitval);
++			if (!filter_false || bitval)
++			{
++				blobmsg_add_u8(&b, phy_capas[i].name, bitval);
++			}
+ 		}
+ 	}
+ 	blobmsg_close_table(&b, phy_caps);
+@@ -436,7 +447,7 @@ hostapd_parse_he_capab_blobmsg(struct ie
+ }
+ 
+ static void
+-hostapd_parse_capab_blobmsg(struct sta_info *sta)
++hostapd_parse_capab_blobmsg(struct sta_info *sta, bool filter_false)
+ {
+ 	void *r, *v;
+ 
+@@ -444,13 +455,13 @@ hostapd_parse_capab_blobmsg(struct sta_i
+ 
+ 	if (sta->vht_capabilities) {
+ 		r = blobmsg_open_table(&b, "vht");
+-		hostapd_parse_vht_capab_blobmsg(sta->vht_capabilities);
++		hostapd_parse_vht_capab_blobmsg(sta->vht_capabilities, filter_false);
+ 		blobmsg_close_table(&b, r);
+ 	}
+ 
+ 	if (sta->he_capab) {
+ 		r = blobmsg_open_table(&b, "he");
+-		hostapd_parse_he_capab_blobmsg(sta->he_capab);
++		hostapd_parse_he_capab_blobmsg(sta->he_capab, filter_false);
+ 		blobmsg_close_table(&b, r);
+ 	}
+ 
+@@ -499,9 +510,9 @@ int compare_char(const void * a, const v
  }
  
  static int
@@ -10,11 +93,47 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +hostapd_bss_get_client_info(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
 -			struct blob_attr *msg)
-+			struct blob_attr *msg, bool caps_only)
++			struct blob_attr *msg, bool caps_only, bool filter_false)
  {
  	struct hostapd_data *hapd = container_of(obj, struct hostapd_data, ubus.obj);
  	struct hostap_sta_driver_data sta_driver_data;
-@@ -578,26 +578,29 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -526,7 +537,10 @@ hostapd_bss_get_clients(struct ubus_cont
+ 	};
+ 
+ 	blob_buf_init(&b, 0);
+-	blobmsg_add_u32(&b, "freq", hapd->iface->freq);
++	if (!caps_only)
++	{
++		blobmsg_add_u32(&b, "freq", hapd->iface->freq);
++	}
+ 	list = blobmsg_open_table(&b, "clients");
+ 	for (sta = hapd->sta_list; sta; sta = sta->next) {
+ 		void *r;
+@@ -538,6 +552,23 @@ hostapd_bss_get_clients(struct ubus_cont
+ 			blobmsg_add_u8(&b, sta_flags[i].name,
+ 				       !!(sta->flags & sta_flags[i].flag));
+ 
++		if (sta->flags & WLAN_STA_HE)
++		{
++			blobmsg_add_string(&b, "highest_standard", "802.11ax");
++		}
++		else if (sta->flags & WLAN_STA_VHT)
++		{
++			blobmsg_add_string(&b, "highest_standard", "802.11ac");
++		}
++		else if (sta->flags & WLAN_STA_HT)
++		{
++			blobmsg_add_string(&b, "highest_standard", "802.11n");
++		}
++		else
++		{
++			blobmsg_add_string(&b, "highest_standard", "802.11b/g");
++		}
++
+ #ifdef CONFIG_MBO
+ 		blobmsg_add_u8(&b, "mbo", !!(sta->cell_capa));
+ #endif
+@@ -578,29 +609,32 @@ hostapd_bss_get_clients(struct ubus_cont
  			blobmsg_add_string_buffer(&b);
  #endif
  
@@ -63,8 +182,12 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +			}
  		}
  
- 		hostapd_parse_capab_blobmsg(sta);
-@@ -612,6 +615,22 @@ hostapd_bss_get_clients(struct ubus_cont
+-		hostapd_parse_capab_blobmsg(sta);
++		hostapd_parse_capab_blobmsg(sta, filter_false);
+ 		hostapd_parse_vendors(sta);
+ 
+ 		blobmsg_close_table(&b, c);
+@@ -612,6 +646,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -72,7 +195,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +			struct ubus_request_data *req, const char *method,
 +			struct blob_attr *msg)
 +{
-+	return hostapd_bss_get_client_info(ctx, obj, req, method, msg, false);
++	return hostapd_bss_get_client_info(ctx, obj, req, method, msg, false, false);
 +}
 +
 +static int
@@ -80,14 +203,14 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +			struct ubus_request_data *req, const char *method,
 +			struct blob_attr *msg)
 +{
-+	return hostapd_bss_get_client_info(ctx, obj, req, method, msg, true);
++	return hostapd_bss_get_client_info(ctx, obj, req, method, msg, true, true);
 +}
 +
 +static int
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -1895,6 +1914,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1895,6 +1945,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),
@@ -95,3 +218,8 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
  #ifdef CONFIG_TAXONOMY
  	UBUS_METHOD("get_sta_ies", hostapd_bss_get_sta_ies, addr_policy),
  #endif
+@@ -2279,3 +2330,4 @@ int hostapd_ubus_notify_bss_transition_q
+ 	return ureq.resp;
+ #endif
+ }
++
