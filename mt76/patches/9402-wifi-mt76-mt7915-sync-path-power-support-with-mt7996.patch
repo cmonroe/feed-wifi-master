@@ -1,0 +1,109 @@
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -3400,11 +3400,12 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 	int i, ret, tx_power;
+ 	const u8 *len = mt7915_sku_group_len;
+ 	struct mt76_power_limits la = {};
++	struct mt76_power_path_limits la_path = {};
+ 	struct sk_buff *skb;
+ 
+ 	tx_power = mt7915_get_power_bound(phy, hw->conf.power_level);
+ 	tx_power = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,
+-					      &la, tx_power);
++					      &la, &la_path, tx_power);
+ 	mphy->txpower_cur = tx_power;
+ 
+ 	mt7915_mcu_set_sku_path_en(phy, false);
+@@ -3434,7 +3435,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 		return ret;
+ 
+ 	/* only set per-path power table when it's configured */
+-	if (!la.path.ofdm[0])
++	if (!la_path.ofdm[0])
+ 		return 0;
+ 
+ 	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
+@@ -3444,15 +3445,15 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 
+ 	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
+ 	skb_put_data(skb, &hdr, sizeof(hdr));
+-	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
+-	skb_put_data(skb, &la.path.ofdm, sizeof(la.path.ofdm));
+-	skb_put_data(skb, &la.path.ofdm_bf[1], sizeof(la.path.ofdm_bf) - 1);
++	skb_put_data(skb, &la_path.cck, sizeof(la_path.cck));
++	skb_put_data(skb, &la_path.ofdm, sizeof(la_path.ofdm));
++	skb_put_data(skb, &la_path.ofdm_bf[1], sizeof(la_path.ofdm_bf) - 1);
+ 
+ 	/* HT20 and HT40 */
+-	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
+-	skb_put_data(skb, &la.path.ru_bf[3][1], sizeof(la.path.ru_bf[3]) - 1);
+-	skb_put_data(skb, &la.path.ru[4], sizeof(la.path.ru[4]));
+-	skb_put_data(skb, &la.path.ru_bf[4][1], sizeof(la.path.ru_bf[4]) - 1);
++	skb_put_data(skb, &la_path.ru[3], sizeof(la_path.ru[3]));
++	skb_put_data(skb, &la_path.ru_bf[3][1], sizeof(la_path.ru_bf[3]) - 1);
++	skb_put_data(skb, &la_path.ru[4], sizeof(la_path.ru[4]));
++	skb_put_data(skb, &la_path.ru_bf[4][1], sizeof(la_path.ru_bf[4]) - 1);
+ 
+ 	/* start from non-bf and bf fields of
+ 	 * BW20/RU242, BW40/RU484, BW80/RU996, BW160/RU2x996,
+@@ -3462,7 +3463,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 	for (i = 0; i < 8; i++) {
+ 		bool bf = i % 2;
+ 		u8 idx = (i + 6) / 2;
+-		s8 *buf = bf ? la.path.ru_bf[idx] : la.path.ru[idx];
++		s8 *buf = bf ? la_path.ru_bf[idx] : la_path.ru[idx];
+ 		/* The non-bf fields of RU26 to RU106 are special cases */
+ 		if (bf)
+ 			skb_put_data(skb, buf + 1, 9);
+@@ -3473,7 +3474,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 	for (i = 0; i < 6; i++) {
+ 		bool bf = i % 2;
+ 		u8 idx = i / 2;
+-		s8 *buf = bf ? la.path.ru_bf[idx] : la.path.ru[idx];
++		s8 *buf = bf ? la_path.ru_bf[idx] : la_path.ru[idx];
+ 
+ 		skb_put_data(skb, buf, 10);
+ 	}
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -284,6 +284,7 @@ void __mt7915_init_txpower(struct mt7915
+ 	int nss_delta = mt76_tx_power_nss_delta(n_chains);
+ 	int pwr_delta = mt7915_eeprom_get_power_delta(dev, sband->band);
+ 	struct mt76_power_limits limits;
++	struct mt76_power_path_limits limits_path;
+ 	struct device_node *np;
+ 
+ 	np = mt76_find_power_limits_node(&dev->mt76);
+@@ -302,6 +303,7 @@ void __mt7915_init_txpower(struct mt7915
+ 		target_power += pwr_delta;
+ 		target_power = mt76_get_rate_power_limits(phy->mt76, chan,
+ 							  &limits,
++							  &limits_path,
+ 							  target_power);
+ 		target_power += nss_delta;
+ 		target_power = DIV_ROUND_UP(target_power, 2);
+--- a/mt76.h
++++ b/mt76.h
+@@ -1048,12 +1048,22 @@ struct mt76_power_limits {
+ };
+ 
+ struct mt76_power_path_limits {
++	s8 cck[4];
++	s8 ofdm[4];
++	s8 ofdm_bf[4];
++	s8 ru[7][10];
++	s8 ru_bf[7][10];
++};
++
++#if 0
++struct mt76_mt7996_power_path_limits {
+ 	s8 cck[5];
+ 	s8 ofdm[5];
+ 	s8 ofdm_bf[4];
+ 	s8 ru[16][15];
+ 	s8 ru_bf[16][15];
+ };
++#endif
+ 
+ struct mt76_ethtool_worker_info {
+ 	u64 *data;

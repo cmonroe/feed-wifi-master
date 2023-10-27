@@ -44,7 +44,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 @@ -33,14 +32,14 @@ static int mt7915_eeprom_load_precal(str
  
  		if (np && of_property_read_u32(np, "mediatek,eeprom-file-offset", &dts_offset) == 0) {
- 			dev_info(dev->mt76.dev, "pre-cal offset=0x%x dts offset=0x%x size=0x%x\n",
+ 			dev_warn(dev->mt76.dev, "pre-cal offset=0x%x dts offset=0x%x size=0x%x\n",
 -					offs, dts_offset, val);
 +					offs, dts_offset, size);
  
