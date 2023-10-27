@@ -79,7 +79,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	u8 offchan_ch;
  	u8 offchan_center_ch;
  	u8 offchan_bw;
-@@ -1416,6 +1431,22 @@ int mt76_testmode_dump(struct ieee80211_
+@@ -1416,6 +1431,24 @@ int mt76_testmode_dump(struct ieee80211_
  int mt76_testmode_set_state(struct mt76_phy *phy, enum mt76_testmode_state state);
  int mt76_testmode_alloc_skb(struct mt76_phy *phy, u32 len);
  
@@ -96,6 +96,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +{
 +#ifdef CONFIG_NL80211_TESTMODE
 +	return td->param_set[idx / 32] & BIT(idx % 32);
++#else
++	return false;
 +#endif
 +}
 +
