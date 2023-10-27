@@ -580,9 +580,12 @@ endef
 define KernelPackage/mt7981-firmware/install
 	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
 	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7981_wa.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7981_wm.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7981_rom_patch.bin \
+		./files/firmware/mt7981_wa.bin \
+		./files/firmware/mt7981_wm.bin \
+		./files/firmware/mt7981_rom_patch.bin \
+		./files/firmware/mt7981_eeprom_mt7976_dbdc.bin \
+		./files/firmware/mt7981_wo.bin \
+		./files/firmware/mt7981_wo_0.bin \
 		$(1)/lib/firmware/mediatek
 endef
 
@@ -599,6 +602,8 @@ define KernelPackage/mt7986-firmware/install
 		./files/firmware/mt7986_eeprom_mt7975.bin \
 		./files/firmware/mt7986_eeprom_mt7976.bin \
 		./files/firmware/mt7986_eeprom_mt7976_dbdc.bin \
+		./files/firmware/mt7986_wo_0.bin \
+		./files/firmware/mt7986_wo_1.bin \
 		$(1)/lib/firmware/mediatek
 endef
 
