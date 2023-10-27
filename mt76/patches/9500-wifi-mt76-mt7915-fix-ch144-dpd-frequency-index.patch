@@ -1,32 +1,12 @@
-From 811a1f253c93055ba18bcb0d1f65c91fb9e7464e Mon Sep 17 00:00:00 2001
-Message-Id: <811a1f253c93055ba18bcb0d1f65c91fb9e7464e.1697737309.git.ryder.lee@mediatek.com>
-In-Reply-To: <96372a8ebc4ec04983bc65ab8bcc803147acbea3.1697737309.git.ryder.lee@mediatek.com>
-References: <96372a8ebc4ec04983bc65ab8bcc803147acbea3.1697737309.git.ryder.lee@mediatek.com>
-From: Ryder Lee <ryder.lee@mediatek.com>
-Date: Thu, 19 Oct 2023 12:06:48 +0800
-Subject: [PATCH 2/2] wifi: mt76: mt7915: fix missing CH144 support for mt7915
- pre-calibration
-
-Sync from MTK SDK. The current mt7915 pre-calibration data lacks CH144@BW20
-so we fallback to apply adjacent channel's data as an alternative.
-
-Fixes: 495184ac91bb ("mt76: mt7915: add support for applying pre-calibration data")
----
- mt7915/mcu.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/mt7915/mcu.c b/mt7915/mcu.c
-index baed4a97dfc1..5f5c626679c9 100644
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2990,6 +2990,8 @@ static int mt7915_dpd_freq_idx(struct mt7915_dev *dev, u16 freq, u8 bw)
- 	if (is_mt7915(&dev->mt76)) {
- 		freq_list = freq_list_v1;
- 		n_freqs = ARRAY_SIZE(freq_list_v1);
-+		/* NOTE: apply adjacent channel data for the missing ch144 */
+@@ -3071,6 +3071,9 @@ static int mt7915_dpd_freq_idx(struct mt
+ 			return idx;
+ 	}
+ 
++	if (is_mt7915(&dev->mt76))
 +		freq = (freq == 5720) ? 5700: freq;
- 	} else {
- 		freq_list = freq_list_v2;
- 		n_freqs = ARRAY_SIZE(freq_list_v2);
--- 
-2.39.0
++
+ 	return mt7915_find_freq_idx(freq_list, n_freqs, freq);
+ }
+ 
