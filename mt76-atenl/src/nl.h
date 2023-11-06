@@ -16,6 +16,7 @@
  * @MT76_TM_ATTR_MTD_OFFSET: offset of eeprom data within the partition (u32)
  * @MT76_TM_ATTR_BAND_IDX: band idx of the chip (u8)
  *
+ * @MT76_TM_ATTR_SKU_EN: config txpower sku is enabled or disabled in testmode (u8)
  * @MT76_TM_ATTR_TX_COUNT: configured number of frames to send when setting
  *	state to MT76_TM_STATE_TX_FRAMES (u32)
  * @MT76_TM_ATTR_TX_PENDING: pending frames during MT76_TM_STATE_TX_FRAMES (u32)
@@ -88,6 +89,7 @@ enum mt76_testmode_attr {
 	MT76_TM_ATTR_MTD_OFFSET,
 	MT76_TM_ATTR_BAND_IDX,
 
+	MT76_TM_ATTR_SKU_EN,
 	MT76_TM_ATTR_TX_COUNT,
 	MT76_TM_ATTR_TX_LENGTH,
 	MT76_TM_ATTR_TX_RATE_MODE,
@@ -179,6 +181,7 @@ enum mt76_testmode_stats_attr {
  *
  * @MT76_TM_RX_ATTR_FREQ_OFFSET: frequency offset (s32)
  * @MT76_TM_RX_ATTR_RCPI: received channel power indicator (array, u8)
+ * @MT76_TM_RX_ATTR_RSSI: received signal strength indicator (array, s8)
  * @MT76_TM_RX_ATTR_IB_RSSI: internal inband RSSI (array, s8)
  * @MT76_TM_RX_ATTR_WB_RSSI: internal wideband RSSI (array, s8)
  * @MT76_TM_RX_ATTR_SNR: signal-to-noise ratio (u8)
@@ -188,6 +191,7 @@ enum mt76_testmode_rx_attr {
 
 	MT76_TM_RX_ATTR_FREQ_OFFSET,
 	MT76_TM_RX_ATTR_RCPI,
+	MT76_TM_RX_ATTR_RSSI,
 	MT76_TM_RX_ATTR_IB_RSSI,
 	MT76_TM_RX_ATTR_WB_RSSI,
 	MT76_TM_RX_ATTR_SNR,
@@ -241,6 +245,9 @@ enum mt76_testmode_tx_mode {
 	MT76_TM_TX_MODE_HE_EXT_SU,
 	MT76_TM_TX_MODE_HE_TB,
 	MT76_TM_TX_MODE_HE_MU,
+	MT76_TM_TX_MODE_EHT_SU,
+	MT76_TM_TX_MODE_EHT_TRIG,
+	MT76_TM_TX_MODE_EHT_MU,
 
 	/* keep last */
 	NUM_MT76_TM_TX_MODES,

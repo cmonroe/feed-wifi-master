@@ -15,8 +15,6 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  mt7996/mac.c       | 3 ++-
  2 files changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/mt76_connac3_mac.h b/mt76_connac3_mac.h
-index 87bfa44..df6b02a 100644
 --- a/mt76_connac3_mac.h
 +++ b/mt76_connac3_mac.h
 @@ -239,6 +239,7 @@ enum tx_mgnt_type {
@@ -27,11 +25,9 @@ index 87bfa44..df6b02a 100644
  #define MT_TXD6_BW			GENMASK(25, 22)
  #define MT_TXD6_TX_RATE			GENMASK(21, 16)
  #define MT_TXD6_TIMESTAMP_OFS_EN	BIT(15)
-diff --git a/mt7996/mac.c b/mt7996/mac.c
-index 6688186..2c6bee4 100644
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -943,7 +943,8 @@ void mt7996_mac_write_txwi(struct mt7996_dev *dev, __le32 *txwi,
+@@ -912,7 +912,8 @@ void mt7996_mac_write_txwi(struct mt7996
  				idx = mvif->basic_rates_idx;
  		}
  
@@ -41,6 +37,3 @@ index 6688186..2c6bee4 100644
  		txwi[3] |= cpu_to_le32(MT_TXD3_BA_DISABLE);
  	}
  }
--- 
-2.18.0
-

@@ -10,15 +10,12 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7915/mcu.h     |  3 +-
  3 files changed, 91 insertions(+), 1 deletion(-)
 
-diff --git a/mt7915/debugfs.c b/mt7915/debugfs.c
-index ae291a3..2bf907c 100644
 --- a/mt7915/debugfs.c
 +++ b/mt7915/debugfs.c
-@@ -1258,6 +1258,91 @@ mt7915_txpower_path_show(struct seq_file *file, void *data)
- 
+@@ -1247,6 +1247,91 @@ mt7915_txpower_path_show(struct seq_file
  DEFINE_SHOW_ATTRIBUTE(mt7915_txpower_path);
  
-+static int
+ static int
 +mt7915_txpower_info_show(struct seq_file *file, void *data)
 +{
 +	struct mt7915_phy *phy = file->private;
@@ -103,10 +100,11 @@ index ae291a3..2bf907c 100644
 +
 +DEFINE_SHOW_ATTRIBUTE(mt7915_txpower_info);
 +
- static int
++static int
  mt7915_twt_stats(struct seq_file *s, void *data)
  {
-@@ -1347,6 +1432,8 @@ int mt7915_init_debugfs(struct mt7915_phy *phy)
+ 	struct mt7915_dev *dev = dev_get_drvdata(s->private);
+@@ -1335,6 +1420,8 @@ int mt7915_init_debugfs(struct mt7915_ph
  			    &mt7915_txpower_fops);
  	debugfs_create_file("txpower_path", 0400, dir, phy,
  			    &mt7915_txpower_path_fops);
@@ -115,11 +113,9 @@ index ae291a3..2bf907c 100644
  	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
  				    mt7915_twt_stats);
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
-diff --git a/mt7915/mcu.c b/mt7915/mcu.c
-index fe00519..344ba85 100644
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3482,6 +3482,8 @@ int mt7915_mcu_get_txpower_sku(struct mt7915_phy *phy, s8 *txpower, int len,
+@@ -3486,6 +3486,8 @@ int mt7915_mcu_get_txpower_sku(struct mt
  			txpower[i] = res[i][req.band_idx];
  	} else if (category == TX_POWER_INFO_PATH) {
  		memcpy(txpower, skb->data + 4, len);
@@ -128,11 +124,9 @@ index fe00519..344ba85 100644
  	}
  
  	dev_kfree_skb(skb);
-diff --git a/mt7915/mcu.h b/mt7915/mcu.h
-index 583caca..6e6f320 100644
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -510,7 +510,8 @@ enum {
+@@ -497,7 +497,8 @@ enum {
  };
  
  enum {
@@ -142,6 +136,3 @@ index 583caca..6e6f320 100644
  	TX_POWER_INFO_RATE,
  };
  
--- 
-2.18.0
-

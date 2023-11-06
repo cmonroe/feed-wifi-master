@@ -10,11 +10,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7996/pci.c  | 8 ++++++--
  3 files changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/mt76_connac.h b/mt76_connac.h
-index c6726ab..b1ec8d4 100644
 --- a/mt76_connac.h
 +++ b/mt76_connac.h
-@@ -222,6 +222,11 @@ static inline bool is_mt7996(struct mt76_dev *dev)
+@@ -222,6 +222,11 @@ static inline bool is_mt7996(struct mt76
  	return mt76_chip(dev) == 0x7990;
  }
  
@@ -26,11 +24,9 @@ index c6726ab..b1ec8d4 100644
  static inline bool is_mt7622(struct mt76_dev *dev)
  {
  	if (!IS_ENABLED(CONFIG_MT7622_WMAC))
-diff --git a/mt7996/mmio.c b/mt7996/mmio.c
-index ab088a2..567f930 100644
 --- a/mt7996/mmio.c
 +++ b/mt7996/mmio.c
-@@ -369,6 +369,7 @@ static int mt7996_mmio_init(struct mt76_dev *mdev,
+@@ -228,6 +228,7 @@ static int mt7996_mmio_init(struct mt76_
  
  	switch (device_id) {
  	case 0x7990:
@@ -38,8 +34,6 @@ index ab088a2..567f930 100644
  		dev->reg.base = mt7996_reg_base;
  		dev->reg.map = mt7996_reg_map;
  		dev->reg.map_size = ARRAY_SIZE(mt7996_reg_map);
-diff --git a/mt7996/pci.c b/mt7996/pci.c
-index 92869ca..e8edf77 100644
 --- a/mt7996/pci.c
 +++ b/mt7996/pci.c
 @@ -17,11 +17,13 @@ static u32 hif_idx;
@@ -56,7 +50,7 @@ index 92869ca..e8edf77 100644
  	{ },
  };
  
-@@ -60,7 +62,9 @@ static void mt7996_put_hif2(struct mt7996_hif *hif)
+@@ -60,7 +62,9 @@ static void mt7996_put_hif2(struct mt799
  static struct mt7996_hif *mt7996_pci_init_hif2(struct pci_dev *pdev)
  {
  	hif_idx++;
@@ -67,7 +61,7 @@ index 92869ca..e8edf77 100644
  		return NULL;
  
  	writel(hif_idx | MT_PCIE_RECOG_ID_SEM,
-@@ -113,7 +117,7 @@ static int mt7996_pci_probe(struct pci_dev *pdev,
+@@ -113,7 +117,7 @@ static int mt7996_pci_probe(struct pci_d
  
  	mt76_pci_disable_aspm(pdev);
  
@@ -76,6 +70,3 @@ index 92869ca..e8edf77 100644
  		return mt7996_pci_hif2_probe(pdev);
  
  	dev = mt7996_mmio_probe(&pdev->dev, pcim_iomap_table(pdev)[0],
--- 
-2.18.0
-

@@ -106,7 +106,7 @@ Subject: [PATCH 1036/1040] wifi: mt76: mt7915: Disable RegDB when enable
  
  	ret = simple_read_from_buffer(user_buf, count, ppos, buf, len);
  
-@@ -1507,6 +1540,9 @@ static ssize_t mt7915_sta_fixed_rate_set
+@@ -1594,6 +1627,9 @@ static ssize_t mt7915_sta_fixed_rate_set
  	}
  	field = RATE_PARAM_FIXED;
  

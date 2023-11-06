@@ -8,8 +8,6 @@ Subject: [PATCH 06/98] wifi: mt76: mt7996: add thermal sensor device support
  mt7996/mcu.c  | 41 ++++++++++++++++++++++++
  2 files changed, 129 insertions(+)
 
-diff --git a/mt7996/init.c b/mt7996/init.c
-index 610d80e..de4a5f7 100644
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
 @@ -4,6 +4,8 @@
@@ -21,7 +19,7 @@ index 610d80e..de4a5f7 100644
  #include <linux/thermal.h>
  #include "mt7996.h"
  #include "mac.h"
-@@ -42,6 +44,82 @@ static const struct ieee80211_iface_combination if_comb[] = {
+@@ -42,6 +44,82 @@ static const struct ieee80211_iface_comb
  	}
  };
  
@@ -104,7 +102,7 @@ index 610d80e..de4a5f7 100644
  static int
  mt7996_thermal_get_max_throttle_state(struct thermal_cooling_device *cdev,
  				      unsigned long *state)
-@@ -113,6 +191,7 @@ static int mt7996_thermal_init(struct mt7996_phy *phy)
+@@ -113,6 +191,7 @@ static int mt7996_thermal_init(struct mt
  {
  	struct wiphy *wiphy = phy->mt76->hw->wiphy;
  	struct thermal_cooling_device *cdev;
@@ -112,7 +110,7 @@ index 610d80e..de4a5f7 100644
  	const char *name;
  
  	name = devm_kasprintf(&wiphy->dev, GFP_KERNEL, "mt7996_%s",
-@@ -131,6 +210,15 @@ static int mt7996_thermal_init(struct mt7996_phy *phy)
+@@ -131,6 +210,15 @@ static int mt7996_thermal_init(struct mt
  	phy->throttle_temp[MT7996_CRIT_TEMP_IDX] = MT7996_CRIT_TEMP;
  	phy->throttle_temp[MT7996_MAX_TEMP_IDX] = MT7996_MAX_TEMP;
  
@@ -128,11 +126,9 @@ index 610d80e..de4a5f7 100644
  	return 0;
  }
  
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index 5310f9b..8320c8c 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3481,6 +3481,47 @@ out:
+@@ -3482,6 +3482,47 @@ out:
  	return 0;
  }
  
@@ -180,6 +176,3 @@ index 5310f9b..8320c8c 100644
  
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state)
  {
--- 
-2.18.0
-

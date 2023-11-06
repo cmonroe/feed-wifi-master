@@ -15,11 +15,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7996/mt7996.h   |   2 +
  7 files changed, 206 insertions(+)
 
-diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
-index d65ecf0..762ac29 100644
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1251,6 +1251,7 @@ enum {
+@@ -1267,6 +1267,7 @@ enum {
  	MCU_UNI_CMD_PP = 0x38,
  	MCU_UNI_CMD_FIXED_RATE_TABLE = 0x40,
  	MCU_UNI_CMD_TESTMODE_CTRL = 0x46,
@@ -27,11 +25,9 @@ index d65ecf0..762ac29 100644
  	MCU_UNI_CMD_RRO = 0x57,
  	MCU_UNI_CMD_OFFCH_SCAN_CTRL = 0x58,
  	MCU_UNI_CMD_PER_STA_INFO = 0x6d,
-diff --git a/mt7996/eeprom.c b/mt7996/eeprom.c
-index ca91c69..56605de 100644
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -333,6 +333,25 @@ int mt7996_eeprom_parse_hw_cap(struct mt7996_dev *dev, struct mt7996_phy *phy)
+@@ -332,6 +332,25 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  	return mt7996_eeprom_parse_band_config(phy);
  }
  
@@ -57,7 +53,7 @@ index ca91c69..56605de 100644
  int mt7996_eeprom_init(struct mt7996_dev *dev)
  {
  	int ret;
-@@ -350,6 +369,10 @@ int mt7996_eeprom_init(struct mt7996_dev *dev)
+@@ -349,6 +368,10 @@ int mt7996_eeprom_init(struct mt7996_dev
  			return ret;
  	}
  
@@ -68,8 +64,6 @@ index ca91c69..56605de 100644
  	ret = mt7996_eeprom_parse_hw_cap(dev, &dev->phy);
  	if (ret < 0)
  		return ret;
-diff --git a/mt7996/eeprom.h b/mt7996/eeprom.h
-index 20dd877..0f3f31d 100644
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
 @@ -25,6 +25,8 @@ enum mt7996_eeprom_field {
@@ -81,11 +75,9 @@ index 20dd877..0f3f31d 100644
  };
  
  #define MT_EE_WIFI_CONF0_TX_PATH		GENMASK(2, 0)
-diff --git a/mt7996/init.c b/mt7996/init.c
-index 5940e41..bf3479e 100644
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -826,6 +826,12 @@ static int mt7996_init_hardware(struct mt7996_dev *dev)
+@@ -688,6 +688,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -98,11 +90,9 @@ index 5940e41..bf3479e 100644
  	/* Beacon and mgmt frames should occupy wcid 0 */
  	idx = mt76_wcid_alloc(dev->mt76.wcid_mask, MT7996_WTBL_STA);
  	if (idx)
-diff --git a/mt7996/main.c b/mt7996/main.c
-index 804c0c1..7d1bd42 100644
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -312,6 +312,12 @@ int mt7996_set_channel(struct mt7996_phy *phy)
+@@ -312,6 +312,12 @@ int mt7996_set_channel(struct mt7996_phy
  
  	mt76_set_channel(phy->mt76);
  
@@ -115,11 +105,9 @@ index 804c0c1..7d1bd42 100644
  	ret = mt7996_mcu_set_chan_info(phy, UNI_CHANNEL_SWITCH);
  	if (ret)
  		goto out;
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index d6f4e22..695d5f0 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3456,6 +3456,172 @@ int mt7996_mcu_get_eeprom_free_block(struct mt7996_dev *dev, u8 *block_num)
+@@ -3456,6 +3456,172 @@ int mt7996_mcu_get_eeprom_free_block(str
  	return 0;
  }
  
@@ -292,11 +280,9 @@ index d6f4e22..695d5f0 100644
  int mt7996_mcu_get_chip_config(struct mt7996_dev *dev, u32 *cap)
  {
  #define NIC_CAP	3
-diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
-index cda557e..80a10bf 100644
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -611,6 +611,8 @@ void mt7996_mcu_exit(struct mt7996_dev *dev);
+@@ -525,6 +525,8 @@ void mt7996_mcu_exit(struct mt7996_dev *
  int mt7996_mcu_get_all_sta_info(struct mt7996_phy *phy, u16 tag);
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
@@ -305,6 +291,3 @@ index cda557e..80a10bf 100644
  int mt7996_mcu_set_scs(struct mt7996_phy *phy, u8 enable);
  void mt7996_mcu_scs_sta_poll(struct work_struct *work);
  #ifdef CONFIG_NL80211_TESTMODE
--- 
-2.18.0
-

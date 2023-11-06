@@ -10,11 +10,9 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  mt7996/debugfs.c | 5 +++--
  1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/mt7996/debugfs.c b/mt7996/debugfs.c
-index 4d40ec7..9bd9535 100644
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -476,7 +476,7 @@ mt7996_txbf_stat_read_phy(struct mt7996_phy *phy, struct seq_file *s)
+@@ -476,7 +476,7 @@ mt7996_txbf_stat_read_phy(struct mt7996_
  {
  	struct mt76_mib_stats *mib = &phy->mib;
  	static const char * const bw[] = {
@@ -23,7 +21,7 @@ index 4d40ec7..9bd9535 100644
  	};
  
  	/* Tx Beamformer monitor */
-@@ -489,8 +489,9 @@ mt7996_txbf_stat_read_phy(struct mt7996_phy *phy, struct seq_file *s)
+@@ -489,8 +489,9 @@ mt7996_txbf_stat_read_phy(struct mt7996_
  	/* Tx Beamformer Rx feedback monitor */
  	seq_puts(s, "Tx Beamformer Rx feedback statistics: ");
  
@@ -34,6 +32,3 @@ index 4d40ec7..9bd9535 100644
  		   mib->tx_bf_rx_fb_he_cnt,
  		   mib->tx_bf_rx_fb_vht_cnt,
  		   mib->tx_bf_rx_fb_ht_cnt);
--- 
-2.18.0
-

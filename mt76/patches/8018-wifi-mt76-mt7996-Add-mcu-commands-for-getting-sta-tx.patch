@@ -16,11 +16,9 @@ being enabled.
  mt7996/mt7996.h   |  1 +
  6 files changed, 130 insertions(+)
 
-diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
-index 90c08d2..e9dd9aa 100644
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1023,6 +1023,8 @@ enum {
+@@ -1025,6 +1025,8 @@ enum {
  	MCU_UNI_EVENT_TX_DONE = 0x2d,
  	MCU_UNI_EVENT_THERMAL = 0x35,
  	MCU_UNI_EVENT_NIC_CAPAB = 0x43,
@@ -29,7 +27,7 @@ index 90c08d2..e9dd9aa 100644
  };
  
  #define MCU_UNI_CMD_EVENT			BIT(1)
-@@ -1242,6 +1244,8 @@ enum {
+@@ -1259,6 +1261,8 @@ enum {
  	MCU_UNI_CMD_FIXED_RATE_TABLE = 0x40,
  	MCU_UNI_CMD_RRO = 0x57,
  	MCU_UNI_CMD_OFFCH_SCAN_CTRL = 0x58,
@@ -38,7 +36,7 @@ index 90c08d2..e9dd9aa 100644
  	MCU_UNI_CMD_ASSERT_DUMP = 0x6f,
  };
  
-@@ -1322,6 +1326,17 @@ enum {
+@@ -1339,6 +1343,17 @@ enum {
  	UNI_OFFLOAD_OFFLOAD_BMC_RPY_DETECT,
  };
  
@@ -56,11 +54,9 @@ index 90c08d2..e9dd9aa 100644
  enum {
  	MT_NIC_CAP_TX_RESOURCE,
  	MT_NIC_CAP_TX_EFUSE_ADDR,
-diff --git a/mt7996/mac.c b/mt7996/mac.c
-index bdc90a0..4828f10 100644
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2272,6 +2272,11 @@ void mt7996_mac_work(struct work_struct *work)
+@@ -2212,6 +2212,11 @@ void mt7996_mac_work(struct work_struct
  		mphy->mac_work_count = 0;
  
  		mt7996_mac_update_stats(phy);
@@ -72,11 +68,9 @@ index bdc90a0..4828f10 100644
  	}
  
  	mutex_unlock(&mphy->dev->mutex);
-diff --git a/mt7996/main.c b/mt7996/main.c
-index f152e76..e9e1fd9 100644
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -977,6 +977,7 @@ static void mt7996_sta_statistics(struct ieee80211_hw *hw,
+@@ -977,6 +977,7 @@ static void mt7996_sta_statistics(struct
  				  struct ieee80211_sta *sta,
  				  struct station_info *sinfo)
  {
@@ -84,7 +78,7 @@ index f152e76..e9e1fd9 100644
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
  	struct rate_info *txrate = &msta->wcid.rate;
  
-@@ -1008,6 +1009,20 @@ static void mt7996_sta_statistics(struct ieee80211_hw *hw,
+@@ -1008,6 +1009,20 @@ static void mt7996_sta_statistics(struct
  
  	sinfo->avg_ack_signal = -(s8)ewma_avg_signal_read(&msta->avg_ack_signal);
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL_AVG);
@@ -105,15 +99,12 @@ index f152e76..e9e1fd9 100644
  }
  
  static void mt7996_sta_rc_work(void *data, struct ieee80211_sta *sta)
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index 2c611e7..652a600 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -477,6 +477,54 @@ mt7996_mcu_rx_thermal_notify(struct mt7996_dev *dev, struct sk_buff *skb)
- 	phy->throttle_state = n->duty_percent;
+@@ -478,6 +478,54 @@ mt7996_mcu_rx_thermal_notify(struct mt79
  }
  
-+static void
+ static void
 +mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
 +{
 +	struct mt7996_mcu_all_sta_info_event *res;
@@ -161,10 +152,11 @@ index 2c611e7..652a600 100644
 +	}
 +}
 +
- static void
++static void
  mt7996_mcu_rx_ext_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
-@@ -524,6 +572,9 @@ mt7996_mcu_uni_rx_unsolicited_event(struct mt7996_dev *dev, struct sk_buff *skb)
+ 	struct mt7996_mcu_rxd *rxd = (struct mt7996_mcu_rxd *)skb->data;
+@@ -524,6 +572,9 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_THERMAL:
  		mt7996_mcu_rx_thermal_notify(dev, skb);
  		break;
@@ -174,7 +166,7 @@ index 2c611e7..652a600 100644
  	default:
  		break;
  	}
-@@ -4192,3 +4243,20 @@ int mt7996_mcu_set_rro(struct mt7996_dev *dev, u16 tag, u8 val)
+@@ -4193,3 +4244,20 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(RRO), &req,
  				 sizeof(req), true);
  }
@@ -195,8 +187,6 @@ index 2c611e7..652a600 100644
 +	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(ALL_STA_INFO),
 +				 &req, sizeof(req), false);
 +}
-diff --git a/mt7996/mcu.h b/mt7996/mcu.h
-index 05785cb..97151d1 100644
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
 @@ -191,6 +191,32 @@ struct mt7996_mcu_thermal_notify {
@@ -232,11 +222,9 @@ index 05785cb..97151d1 100644
  enum mt7996_chan_mib_offs {
  	UNI_MIB_OBSS_AIRTIME = 26,
  	UNI_MIB_NON_WIFI_TIME = 27,
-diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
-index 0bb20a9..420d113 100644
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -494,6 +494,7 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996_dev *dev, u32 module, u8 level);
+@@ -440,6 +440,7 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);
@@ -244,6 +232,3 @@ index 0bb20a9..420d113 100644
  
  static inline u8 mt7996_max_interface_num(struct mt7996_dev *dev)
  {
--- 
-2.18.0
-

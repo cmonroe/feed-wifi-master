@@ -27,7 +27,7 @@ Change-Id: I06a3f94d5e444be894200e2b6588d76ed38d09d0
  };
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -468,6 +468,9 @@ static int mt7915_config(struct ieee8021
+@@ -469,6 +469,9 @@ static int mt7915_config(struct ieee8021
  			mutex_unlock(&dev->mt76.mutex);
  		}
  #endif
@@ -39,7 +39,7 @@ Change-Id: I06a3f94d5e444be894200e2b6588d76ed38d09d0
  		if (ret)
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4356,3 +4356,76 @@ int mt7915_mcu_ipi_hist_scan(struct mt79
+@@ -4355,3 +4355,76 @@ int mt7915_mcu_ipi_hist_scan(struct mt79
  
  	return 0;
  }
@@ -148,7 +148,7 @@ Change-Id: I06a3f94d5e444be894200e2b6588d76ed38d09d0
  enum {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -683,7 +683,8 @@ void mt7915_vendor_amnt_fill_rx(struct m
+@@ -684,7 +684,8 @@ void mt7915_vendor_amnt_fill_rx(struct m
  int mt7915_vendor_amnt_sta_remove(struct mt7915_phy *phy,
  				  struct ieee80211_sta *sta);
  #endif

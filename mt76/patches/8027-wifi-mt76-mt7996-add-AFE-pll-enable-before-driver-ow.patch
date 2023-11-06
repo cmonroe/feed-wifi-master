@@ -11,11 +11,9 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  mt7996/regs.h | 7 +++++++
  2 files changed, 11 insertions(+)
 
-diff --git a/mt7996/init.c b/mt7996/init.c
-index 3656b89..273d1e7 100644
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -782,6 +782,10 @@ static int mt7996_init_hardware(struct mt7996_dev *dev)
+@@ -650,6 +650,10 @@ static int mt7996_init_hardware(struct m
  	int ret, idx;
  
  	mt76_wr(dev, MT_INT_SOURCE_CSR, ~0);
@@ -26,11 +24,9 @@ index 3656b89..273d1e7 100644
  
  	INIT_WORK(&dev->init_work, mt7996_init_work);
  
-diff --git a/mt7996/regs.h b/mt7996/regs.h
-index 865e005..e76dae6 100644
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
-@@ -675,4 +675,11 @@ enum base_rev {
+@@ -618,4 +618,11 @@ enum base_rev {
  #define MT_MCU_WM_EXCP_LR_CTRL_IDX_STATUS	GENMASK(20, 16)
  #define MT_MCU_WM_EXCP_LR_LOG			MT_MCU_WM_EXCP(0x204)
  
@@ -42,6 +38,3 @@ index 865e005..e76dae6 100644
 +#define MT_AFE_CTL_BAND_PLL_03_MSB_EN		BIT(1)
 +
  #endif
--- 
-2.18.0
-

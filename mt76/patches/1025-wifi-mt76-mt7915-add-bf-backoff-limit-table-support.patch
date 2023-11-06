@@ -210,7 +210,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3316,7 +3316,8 @@ int mt7915_mcu_set_txpower_frame(struct
+@@ -3315,7 +3315,8 @@ int mt7915_mcu_set_txpower_frame(struct
  	int ret;
  	s8 txpower_sku[MT7915_SKU_RATE_NUM];
  
@@ -220,7 +220,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	if (ret)
  		return ret;
  
-@@ -3358,51 +3359,106 @@ int mt7915_mcu_set_txpower_frame(struct
+@@ -3357,51 +3358,106 @@ int mt7915_mcu_set_txpower_frame(struct
  
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
@@ -352,7 +352,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	struct mt7915_dev *dev = phy->dev;
  	struct {
  		u8 format_id;
-@@ -3411,10 +3467,9 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3410,10 +3466,9 @@ int mt7915_mcu_get_txpower_sku(struct mt
  		u8 _rsv;
  	} __packed req = {
  		.format_id = TX_POWER_LIMIT_INFO,
@@ -364,7 +364,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	struct sk_buff *skb;
  	int ret, i;
  
-@@ -3424,9 +3479,15 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3423,9 +3478,15 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	if (ret)
  		return ret;
  
@@ -383,7 +383,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	dev_kfree_skb(skb);
  
-@@ -3468,9 +3529,18 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3467,9 +3528,18 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.band_idx = phy->mt76->band_idx,
  		.sku_enable = enable,
  	};
@@ -434,7 +434,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  #define MT7915_MAX_TWT_AGRT		16
  #define MT7915_MAX_STA_TWT_AGRT		8
-@@ -557,7 +558,8 @@ int mt7915_mcu_set_test_param(struct mt7
+@@ -558,7 +559,8 @@ int mt7915_mcu_set_test_param(struct mt7
  int mt7915_mcu_set_ser(struct mt7915_dev *dev, u8 action, u8 set, u8 band);
  int mt7915_mcu_set_sku_en(struct mt7915_phy *phy, bool enable);
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy);

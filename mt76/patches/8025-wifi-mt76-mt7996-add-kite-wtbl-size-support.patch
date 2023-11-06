@@ -9,11 +9,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7996/mt7996.h | 6 ++++--
  2 files changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/mt7996/eeprom.c b/mt7996/eeprom.c
-index 9db7e53..ca0e9d0 100644
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -103,7 +103,8 @@ static int mt7996_eeprom_parse_efuse_hw_cap(struct mt7996_dev *dev)
+@@ -103,7 +103,8 @@ static int mt7996_eeprom_parse_efuse_hw_
  		dev->wtbl_size_group = u32_get_bits(cap, WTBL_SIZE_GROUP);
  	}
  
@@ -23,8 +21,6 @@ index 9db7e53..ca0e9d0 100644
  		dev->wtbl_size_group = 2; /* set default */
  
  	return 0;
-diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
-index f268773..6a31819 100644
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
 @@ -13,6 +13,7 @@
@@ -35,7 +31,7 @@ index f268773..6a31819 100644
  #define MT7996_WTBL_RESERVED		(mt7996_wtbl_size(dev) - 1)
  #define MT7996_WTBL_STA			(MT7996_WTBL_RESERVED - \
  					 mt7996_max_interface_num(dev))
-@@ -497,12 +498,13 @@ int mt7996_mcu_get_all_sta_info(struct mt7996_phy *phy, u16 tag);
+@@ -443,12 +444,13 @@ int mt7996_mcu_get_all_sta_info(struct m
  
  static inline u8 mt7996_max_interface_num(struct mt7996_dev *dev)
  {
@@ -51,6 +47,3 @@ index f268773..6a31819 100644
  }
  
  void mt7996_dual_hif_set_irq_mask(struct mt7996_dev *dev, bool write_reg,
--- 
-2.18.0
-

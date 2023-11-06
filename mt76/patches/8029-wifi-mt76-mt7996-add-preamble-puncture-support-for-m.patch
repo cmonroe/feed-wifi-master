@@ -14,11 +14,9 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  mt7996/mt7996.h   |  2 ++
  4 files changed, 37 insertions(+)
 
-diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
-index 8562ca4..6fac67b 100644
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1241,6 +1241,7 @@ enum {
+@@ -1258,6 +1258,7 @@ enum {
  	MCU_UNI_CMD_CHANNEL_SWITCH = 0x34,
  	MCU_UNI_CMD_THERMAL = 0x35,
  	MCU_UNI_CMD_VOW = 0x37,
@@ -26,11 +24,9 @@ index 8562ca4..6fac67b 100644
  	MCU_UNI_CMD_FIXED_RATE_TABLE = 0x40,
  	MCU_UNI_CMD_RRO = 0x57,
  	MCU_UNI_CMD_OFFCH_SCAN_CTRL = 0x58,
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index 39f76a0..60af1d4 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4308,3 +4308,33 @@ int mt7996_mcu_get_all_sta_info(struct mt7996_phy *phy, u16 tag)
+@@ -4309,3 +4309,33 @@ int mt7996_mcu_get_all_sta_info(struct m
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(ALL_STA_INFO),
  				 &req, sizeof(req), false);
  }
@@ -64,8 +60,6 @@ index 39f76a0..60af1d4 100644
 +	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
 +				 &req, sizeof(req), false);
 +}
-diff --git a/mt7996/mcu.h b/mt7996/mcu.h
-index 376931e..296acbd 100644
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
 @@ -845,6 +845,10 @@ enum {
@@ -79,11 +73,9 @@ index 376931e..296acbd 100644
  #define MT7996_PATCH_SEC		GENMASK(31, 24)
  #define MT7996_PATCH_SCRAMBLE_KEY	GENMASK(15, 8)
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
-diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
-index 31fa2b5..c4d74a0 100644
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -598,6 +598,8 @@ int mt7996_mcu_add_key(struct mt76_dev *dev, struct ieee80211_vif *vif,
+@@ -544,6 +544,8 @@ int mt7996_mcu_add_key(struct mt76_dev *
  int mt7996_mcu_wtbl_update_hdr_trans(struct mt7996_dev *dev,
  				     struct ieee80211_vif *vif,
  				     struct ieee80211_sta *sta);
@@ -92,6 +84,3 @@ index 31fa2b5..c4d74a0 100644
  #ifdef CONFIG_MAC80211_DEBUGFS
  void mt7996_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  			    struct ieee80211_sta *sta, struct dentry *dir);
--- 
-2.18.0
-

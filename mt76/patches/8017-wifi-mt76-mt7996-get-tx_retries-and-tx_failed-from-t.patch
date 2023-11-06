@@ -10,8 +10,6 @@ Subject: [PATCH 17/98] wifi: mt76: mt7996: get tx_retries and tx_failed from
  mt7996/main.c      |  6 ++++++
  3 files changed, 24 insertions(+), 7 deletions(-)
 
-diff --git a/mt76_connac3_mac.h b/mt76_connac3_mac.h
-index df6b02a..20a2fe9 100644
 --- a/mt76_connac3_mac.h
 +++ b/mt76_connac3_mac.h
 @@ -272,11 +272,11 @@ enum tx_mgnt_type {
@@ -28,11 +26,9 @@ index df6b02a..20a2fe9 100644
  #define MT_TXFREE_INFO_MSDU_ID		GENMASK(14, 0)
  #define MT_TXFREE_INFO_COUNT		GENMASK(27, 24)
  #define MT_TXFREE_INFO_STAT		GENMASK(29, 28)
-diff --git a/mt7996/mac.c b/mt7996/mac.c
-index 066955e..bdc90a0 100644
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1119,6 +1119,7 @@ mt7996_mac_tx_free(struct mt7996_dev *dev, void *data, int len)
+@@ -1065,6 +1065,7 @@ mt7996_mac_tx_free(struct mt7996_dev *de
  	struct mt76_phy *phy3 = mdev->phys[MT_BAND2];
  	struct mt76_txwi_cache *txwi;
  	struct ieee80211_sta *sta = NULL;
@@ -40,7 +36,7 @@ index 066955e..bdc90a0 100644
  	LIST_HEAD(free_list);
  	struct sk_buff *skb, *tmp;
  	void *end = data + len;
-@@ -1137,7 +1138,7 @@ mt7996_mac_tx_free(struct mt7996_dev *dev, void *data, int len)
+@@ -1083,7 +1084,7 @@ mt7996_mac_tx_free(struct mt7996_dev *de
  		mt76_queue_tx_cleanup(dev, phy3->q_tx[MT_TXQ_BE], false);
  	}
  
@@ -49,7 +45,7 @@ index 066955e..bdc90a0 100644
  		return;
  
  	total = le32_get_bits(tx_free[0], MT_TXFREE0_MSDU_CNT);
-@@ -1153,10 +1154,9 @@ mt7996_mac_tx_free(struct mt7996_dev *dev, void *data, int len)
+@@ -1099,10 +1100,9 @@ mt7996_mac_tx_free(struct mt7996_dev *de
  		info = le32_to_cpu(*cur_info);
  		if (info & MT_TXFREE_INFO_PAIR) {
  			struct mt7996_sta *msta;
@@ -61,7 +57,7 @@ index 066955e..bdc90a0 100644
  			wcid = rcu_dereference(dev->mt76.wcid[idx]);
  			sta = wcid_to_sta(wcid);
  			if (!sta)
-@@ -1169,10 +1169,21 @@ mt7996_mac_tx_free(struct mt7996_dev *dev, void *data, int len)
+@@ -1115,10 +1115,21 @@ mt7996_mac_tx_free(struct mt7996_dev *de
  					      &mdev->sta_poll_list);
  			spin_unlock_bh(&mdev->sta_poll_lock);
  			continue;
@@ -71,13 +67,13 @@ index 066955e..bdc90a0 100644
 +
 +			if (!wcid)
 +				continue;
-+
+ 
+-		if (info & MT_TXFREE_INFO_HEADER)
 +			tx_retries =
 +				FIELD_GET(MT_TXFREE_INFO_COUNT, info) - 1;
 +			tx_failed = tx_retries +
 +				!!FIELD_GET(MT_TXFREE_INFO_STAT, info);
- 
--		if (info & MT_TXFREE_INFO_HEADER)
++
 +			wcid->stats.tx_retries += tx_retries;
 +			wcid->stats.tx_failed += tx_failed;
  			continue;
@@ -85,11 +81,9 @@ index 066955e..bdc90a0 100644
  
  		for (i = 0; i < 2; i++) {
  			msdu = (info >> (15 * i)) & MT_TXFREE_INFO_MSDU_ID;
-diff --git a/mt7996/main.c b/mt7996/main.c
-index 41f0fa1..f152e76 100644
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -997,6 +997,12 @@ static void mt7996_sta_statistics(struct ieee80211_hw *hw,
+@@ -997,6 +997,12 @@ static void mt7996_sta_statistics(struct
  	sinfo->txrate.flags = txrate->flags;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BITRATE);
  
@@ -102,6 +96,3 @@ index 41f0fa1..f152e76 100644
  	sinfo->ack_signal = (s8)msta->ack_signal;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL);
  
--- 
-2.18.0
-

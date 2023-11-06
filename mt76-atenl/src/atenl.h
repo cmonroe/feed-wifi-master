@@ -233,6 +233,9 @@ enum atenl_phy_type {
 	ATENL_PHY_TYPE_HE_EXT_SU,
 	ATENL_PHY_TYPE_HE_TB,
 	ATENL_PHY_TYPE_HE_MU,
+	ATENL_PHY_TYPE_EHT_SU = 13,
+	ATENL_PHY_TYPE_EHT_TRIG,
+	ATENL_PHY_TYPE_EHT_MU,
 };
 
 enum atenl_e2p_mode {
@@ -267,7 +270,7 @@ enum {
 	MT_EE_BAND_SEL_DUAL,
 };
 
-/* for mt7916/mt7986 */
+/* for mt7916/mt7981/mt7986 */
 enum {
 	MT_EE_BAND_SEL_2G,
 	MT_EE_BAND_SEL_5G,
@@ -306,8 +309,9 @@ enum {
 	TEST_CBW_5MHZ,
 	TEST_CBW_160MHZ,
 	TEST_CBW_8080MHZ,
+	TEST_CBW_320MHZ = 12,
 
-	TEST_CBW_MAX = TEST_CBW_8080MHZ - 1,
+	TEST_CBW_MAX = TEST_CBW_320MHZ,
 };
 
 struct atenl_rx_info_hdr {
@@ -396,6 +400,11 @@ static inline bool is_mt7916(struct atenl *an)
 	return (an->chip_id == 0x7916) || (an->chip_id == 0x7906);
 }
 
+static inline bool is_mt7981(struct atenl *an)
+{
+	return an->chip_id == 0x7981;
+}
+
 static inline bool is_mt7986(struct atenl *an)
 {
 	return an->chip_id == 0x7986;
@@ -404,6 +413,16 @@ static inline bool is_mt7986(struct atenl *an)
 static inline bool is_mt7996(struct atenl *an)
 {
 	return an->chip_id == 0x7990;
+}
+
+static inline bool is_mt7992(struct atenl *an)
+{
+	return an->chip_id == 0x7992;
+}
+
+static inline bool is_connac3(struct atenl *an)
+{
+	return is_mt7996(an) || is_mt7992(an);
 }
 
 int atenl_eth_init(struct atenl *an);
@@ -420,6 +439,7 @@ int atenl_nl_set_state(struct atenl *an, u8 band,
 		       enum mt76_testmode_state state);
 int atenl_nl_set_aid(struct atenl *an, u8 band, u8 aid);
 int atenl_nl_precal_sync_from_driver(struct atenl *an, enum prek_ops ops);
+void atenl_get_ibf_cal_result(struct atenl *an);
 int atenl_eeprom_init(struct atenl *an, u8 phy_idx);
 void atenl_eeprom_close(struct atenl *an);
 int atenl_eeprom_write_mtd(struct atenl *an);

@@ -160,7 +160,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -345,6 +345,8 @@ struct mt7915_dev {
+@@ -346,6 +346,8 @@ struct mt7915_dev {
  
  	bool dbdc_support;
  	bool flash_mode;
@@ -169,7 +169,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	bool muru_debug;
  	bool ibf;
  
-@@ -696,6 +698,7 @@ void mt7915_dump_tmac_info(u8 *tmac_info
+@@ -697,6 +699,7 @@ void mt7915_dump_tmac_info(u8 *tmac_info
  int mt7915_mcu_set_txpower_level(struct mt7915_phy *phy, u8 drop_level);
  void mt7915_packet_log_to_host(struct mt7915_dev *dev, const void *data, int len, int type, int des_len);
  int mt7915_mcu_set_amsdu_algo(struct mt7915_dev *dev, u16 wcid, u8 enable);
@@ -187,7 +187,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  #ifdef MTK_DEBUG
  #define LWTBL_IDX2BASE_ID		GENMASK(14, 8)
-@@ -3539,6 +3540,47 @@ static int mt7915_fw_wm_info_read(struct
+@@ -3537,6 +3538,47 @@ static int mt7915_fw_wm_info_read(struct
  	return 0;
  }
  
@@ -235,7 +235,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -3619,6 +3661,8 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3617,6 +3659,8 @@ int mt7915_mtk_init_debugfs(struct mt791
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  

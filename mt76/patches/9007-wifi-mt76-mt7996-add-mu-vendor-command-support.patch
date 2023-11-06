@@ -146,7 +146,7 @@ Change-Id: I4599bd97917651aaea51d7ff186ffff73a07e4ce
  #ifdef CONFIG_NL80211_TESTMODE
  	struct {
  		u32 *reg_backup;
-@@ -626,4 +627,9 @@ void mt7996_sta_add_debugfs(struct ieee8
+@@ -627,4 +628,9 @@ void mt7996_sta_add_debugfs(struct ieee8
  			    struct ieee80211_sta *sta, struct dentry *dir);
  #endif
  

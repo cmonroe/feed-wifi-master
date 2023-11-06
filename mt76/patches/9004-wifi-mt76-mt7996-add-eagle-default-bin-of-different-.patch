@@ -11,11 +11,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7996/mt7996.h | 28 ++++++++++++++++++++++++++--
  3 files changed, 32 insertions(+), 2 deletions(-)
 
-diff --git a/mt7996/eeprom.c b/mt7996/eeprom.c
-index 7fd318c..3276740 100644
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -30,6 +30,8 @@ static char *mt7996_eeprom_name(struct mt7996_dev *dev)
+@@ -30,6 +30,8 @@ static char *mt7996_eeprom_name(struct m
  	/* reserve for future variants */
  	if (dev->testmode_enable)
  		return MT7996_EEPROM_DEFAULT_TM;
@@ -24,11 +22,9 @@ index 7fd318c..3276740 100644
  	else
  		return MT7996_EEPROM_DEFAULT;
  }
-diff --git a/mt7996/init.c b/mt7996/init.c
-index 6d39c3c..fed74d0 100644
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -789,6 +789,10 @@ static int mt7996_init_hardware(struct mt7996_dev *dev)
+@@ -657,6 +657,10 @@ static int mt7996_init_hardware(struct m
  
  	INIT_WORK(&dev->init_work, mt7996_init_work);
  
@@ -39,8 +35,6 @@ index 6d39c3c..fed74d0 100644
  	dev->dbdc_support = mt7996_band_valid(dev, MT_BAND1) ||
  			    mt7996_band_valid(dev, MT_BAND2);
  	dev->tbtc_support = mt7996_band_valid(dev, MT_BAND1) &&
-diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
-index 3964035..efdcff7 100644
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
 @@ -36,6 +36,7 @@
@@ -51,7 +45,7 @@ index 3964035..efdcff7 100644
  #define MT7996_EEPROM_DEFAULT_TM	"mediatek/mt7996/mt7996_eeprom_tm.bin"
  #define MT7996_EEPROM_SIZE		7680
  #define MT7996_EEPROM_BLOCK_SIZE	16
-@@ -83,6 +84,11 @@ struct mt7996_sta;
+@@ -66,6 +67,11 @@ struct mt7996_sta;
  struct mt7996_dfs_pulse;
  struct mt7996_dfs_pattern;
  
@@ -63,7 +57,7 @@ index 3964035..efdcff7 100644
  enum mt7996_ram_type {
  	MT7996_RAM_TYPE_WM,
  	MT7996_RAM_TYPE_WM_TM = MT7996_RAM_TYPE_WM,
-@@ -264,6 +270,8 @@ struct mt7996_dev {
+@@ -228,6 +234,8 @@ struct mt7996_dev {
  	struct cfg80211_chan_def rdd2_chandef;
  	struct mt7996_phy *rdd2_phy;
  
@@ -72,7 +66,7 @@ index 3964035..efdcff7 100644
  	u16 chainmask;
  	u8 chainshift[__MT_MAX_BAND];
  	u32 hif_idx;
-@@ -417,6 +425,23 @@ mt7996_phy3(struct mt7996_dev *dev)
+@@ -365,6 +373,23 @@ mt7996_phy3(struct mt7996_dev *dev)
  	return __mt7996_phy(dev, MT_BAND2);
  }
  
@@ -96,7 +90,7 @@ index 3964035..efdcff7 100644
  static inline bool
  mt7996_band_valid(struct mt7996_dev *dev, u8 band)
  {
-@@ -424,8 +449,7 @@ mt7996_band_valid(struct mt7996_dev *dev, u8 band)
+@@ -372,8 +397,7 @@ mt7996_band_valid(struct mt7996_dev *dev
  		return band <= MT_BAND1;
  
  	/* tri-band support */
@@ -106,6 +100,3 @@ index 3964035..efdcff7 100644
  		return true;
  
  	return band == MT_BAND0 || band == MT_BAND2;
--- 
-2.18.0
-

@@ -13,11 +13,9 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  mt7996/mt7996.h | 2 ++
  3 files changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/mt7996/mac.c b/mt7996/mac.c
-index 2c6bee4..ccb7b22 100644
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2222,7 +2222,9 @@ void mt7996_mac_sta_rc_work(struct work_struct *work)
+@@ -2162,7 +2162,9 @@ void mt7996_mac_sta_rc_work(struct work_
  			       IEEE80211_RC_BW_CHANGED))
  			mt7996_mcu_add_rate_ctrl(dev, vif, sta, true);
  
@@ -28,11 +26,9 @@ index 2c6bee4..ccb7b22 100644
  
  		spin_lock_bh(&dev->mt76.sta_poll_lock);
  	}
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index dbb3ceb..18c3f34 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1679,9 +1679,8 @@ int mt7996_mcu_set_fixed_rate_ctrl(struct mt7996_dev *dev,
+@@ -1680,9 +1680,8 @@ int mt7996_mcu_set_fixed_rate_ctrl(struc
  				     MCU_WM_UNI_CMD(RA), true);
  }
  
@@ -44,7 +40,7 @@ index dbb3ceb..18c3f34 100644
  {
  	struct mt7996_vif *mvif = (struct mt7996_vif *)vif->drv_priv;
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
-@@ -1709,6 +1708,9 @@ mt7996_mcu_set_fixed_field(struct mt7996_dev *dev, struct ieee80211_vif *vif,
+@@ -1710,6 +1709,9 @@ mt7996_mcu_set_fixed_field(struct mt7996
  		if (phy)
  			ra->phy = *phy;
  		break;
@@ -54,11 +50,9 @@ index dbb3ceb..18c3f34 100644
  	default:
  		break;
  	}
-diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
-index 21ad51d..c8e7a33 100644
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -451,6 +451,8 @@ int mt7996_mcu_add_obss_spr(struct mt7996_phy *phy, struct ieee80211_vif *vif,
+@@ -397,6 +397,8 @@ int mt7996_mcu_add_obss_spr(struct mt799
  int mt7996_mcu_add_rate_ctrl(struct mt7996_dev *dev, struct ieee80211_vif *vif,
  			     struct ieee80211_sta *sta, bool changed);
  int mt7996_set_channel(struct mt7996_phy *phy);
@@ -67,6 +61,3 @@ index 21ad51d..c8e7a33 100644
  int mt7996_mcu_set_chan_info(struct mt7996_phy *phy, u16 tag);
  int mt7996_mcu_set_tx(struct mt7996_dev *dev, struct ieee80211_vif *vif);
  int mt7996_mcu_set_fixed_rate_ctrl(struct mt7996_dev *dev,
--- 
-2.18.0
-

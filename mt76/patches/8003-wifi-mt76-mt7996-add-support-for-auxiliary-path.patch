@@ -16,11 +16,9 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  mt7996/mt7996.h | 14 ++++++++++++++
  4 files changed, 35 insertions(+), 5 deletions(-)
 
-diff --git a/mt7996/eeprom.c b/mt7996/eeprom.c
-index 544b6c6..9db7e53 100644
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -148,36 +148,49 @@ static int mt7996_eeprom_parse_band_config(struct mt7996_phy *phy)
+@@ -148,36 +148,49 @@ static int mt7996_eeprom_parse_band_conf
  
  int mt7996_eeprom_parse_hw_cap(struct mt7996_dev *dev, struct mt7996_phy *phy)
  {
@@ -74,8 +72,6 @@ index 544b6c6..9db7e53 100644
  
  	mphy->antenna_mask = BIT(nss) - 1;
  	mphy->chainmask = (BIT(path) - 1) << dev->chainshift[band_idx];
-diff --git a/mt7996/eeprom.h b/mt7996/eeprom.h
-index 0c74977..412d6e2 100644
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
 @@ -33,6 +33,9 @@ enum mt7996_eeprom_field {
@@ -88,11 +84,9 @@ index 0c74977..412d6e2 100644
  #define MT_EE_WIFI_CONF4_STREAM_NUM_BAND0	GENMASK(5, 3)
  #define MT_EE_WIFI_CONF5_STREAM_NUM_BAND1	GENMASK(2, 0)
  #define MT_EE_WIFI_CONF5_STREAM_NUM_BAND2	GENMASK(5, 3)
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index 3ff70c6..328bea9 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3178,7 +3178,7 @@ int mt7996_mcu_set_chan_info(struct mt7996_phy *phy, u16 tag)
+@@ -3179,7 +3179,7 @@ int mt7996_mcu_set_chan_info(struct mt79
  		.center_ch = ieee80211_frequency_to_channel(freq1),
  		.bw = mt76_connac_chan_bw(chandef),
  		.tx_path_num = hweight16(phy->mt76->chainmask),
@@ -101,11 +95,9 @@ index 3ff70c6..328bea9 100644
  		.band_idx = band_idx,
  		.channel_band = ch_band[chandef->chan->band],
  	};
-diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
-index c541eaa..ef84173 100644
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -206,6 +206,8 @@ struct mt7996_phy {
+@@ -170,6 +170,8 @@ struct mt7996_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -114,7 +106,7 @@ index c541eaa..ef84173 100644
  };
  
  struct mt7996_dev {
-@@ -491,6 +493,18 @@ static inline void mt7996_irq_disable(struct mt7996_dev *dev, u32 mask)
+@@ -437,6 +439,18 @@ static inline void mt7996_irq_disable(st
  void mt7996_memcpy_fromio(struct mt7996_dev *dev, void *buf, u32 offset,
  			  size_t len);
  
@@ -133,6 +125,3 @@ index c541eaa..ef84173 100644
  void mt7996_mac_init(struct mt7996_dev *dev);
  u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
  bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
--- 
-2.18.0
-

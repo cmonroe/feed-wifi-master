@@ -10,11 +10,9 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  mt7996/mcu.h | 71 ++++++++++++++++++++++++++++++++++++++++++++++++++--
  2 files changed, 75 insertions(+), 8 deletions(-)
 
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index 18c3f34..ee1915c 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1684,8 +1684,8 @@ int mt7996_mcu_set_fixed_field(struct mt7996_dev *dev, struct ieee80211_vif *vif
+@@ -1685,8 +1685,8 @@ int mt7996_mcu_set_fixed_field(struct mt
  {
  	struct mt7996_vif *mvif = (struct mt7996_vif *)vif->drv_priv;
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
@@ -25,7 +23,7 @@ index 18c3f34..ee1915c 100644
  	struct sk_buff *skb;
  	struct tlv *tlv;
  
-@@ -1696,7 +1696,7 @@ int mt7996_mcu_set_fixed_field(struct mt7996_dev *dev, struct ieee80211_vif *vif
+@@ -1697,7 +1697,7 @@ int mt7996_mcu_set_fixed_field(struct mt
  		return PTR_ERR(skb);
  
  	tlv = mt76_connac_mcu_add_tlv(skb, STA_REC_RA_UPDATE, sizeof(*ra));
@@ -34,7 +32,7 @@ index 18c3f34..ee1915c 100644
  
  	switch (field) {
  	case RATE_PARAM_AUTO:
-@@ -1728,7 +1728,7 @@ mt7996_mcu_add_rate_ctrl_fixed(struct mt7996_dev *dev, struct ieee80211_vif *vif
+@@ -1729,7 +1729,7 @@ mt7996_mcu_add_rate_ctrl_fixed(struct mt
  	struct cfg80211_chan_def *chandef = &mvif->phy->mt76->chandef;
  	struct cfg80211_bitrate_mask *mask = &mvif->bitrate_mask;
  	enum nl80211_band band = chandef->chan->band;
@@ -43,7 +41,7 @@ index 18c3f34..ee1915c 100644
  	int ret, nrates = 0;
  
  #define __sta_phy_bitrate_mask_check(_mcs, _gi, _ht, _he)			\
-@@ -1816,13 +1816,13 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_buff *skb, struct mt7996_dev *dev,
+@@ -1817,13 +1817,13 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
  	struct cfg80211_chan_def *chandef = &mphy->chandef;
  	struct cfg80211_bitrate_mask *mask = &mvif->bitrate_mask;
  	enum nl80211_band band = chandef->chan->band;
@@ -59,8 +57,6 @@ index 18c3f34..ee1915c 100644
  
  	ra->valid = true;
  	ra->auto_rate = true;
-diff --git a/mt7996/mcu.h b/mt7996/mcu.h
-index 78ecd75..05785cb 100644
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
 @@ -433,6 +433,73 @@ struct sta_rec_sec_uni {
@@ -149,6 +145,3 @@ index 78ecd75..05785cb 100644
  					 sizeof(struct sta_rec_he_6g_capa) +	\
  					 sizeof(struct sta_rec_eht) +		\
  					 sizeof(struct sta_rec_hdrt) +		\
--- 
-2.18.0
-

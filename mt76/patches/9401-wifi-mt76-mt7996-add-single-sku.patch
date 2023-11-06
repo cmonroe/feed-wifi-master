@@ -141,7 +141,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  };
  
  struct mt76_ethtool_worker_info {
-@@ -1640,6 +1640,7 @@ mt76_find_power_limits_node(struct mt76_
+@@ -1642,6 +1642,7 @@ mt76_find_power_limits_node(struct mt76_
  s8 mt76_get_rate_power_limits(struct mt76_phy *phy,
  			      struct ieee80211_channel *chan,
  			      struct mt76_power_limits *dest,

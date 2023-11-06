@@ -11,11 +11,9 @@ Subject: [PATCH 20/98] wifi: mt76: mt7996: fix incorrect report of TX GI
  mt7996/mcu.h      | 22 ++++++++++++++++++++++
  5 files changed, 74 insertions(+), 46 deletions(-)
 
-diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
-index e9dd9aa..8562ca4 100644
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1327,7 +1327,7 @@ enum {
+@@ -1344,7 +1344,7 @@ enum {
  };
  
  enum UNI_ALL_STA_INFO_TAG {
@@ -24,11 +22,9 @@ index e9dd9aa..8562ca4 100644
  	UNI_ALL_STA_TX_STAT,
  	UNI_ALL_STA_TXRX_ADM_STAT,
  	UNI_ALL_STA_TXRX_AIR_TIME,
-diff --git a/mt7996/mac.c b/mt7996/mac.c
-index 7512147..06c9a14 100644
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -102,7 +102,6 @@ static void mt7996_mac_sta_poll(struct mt7996_dev *dev)
+@@ -102,7 +102,6 @@ static void mt7996_mac_sta_poll(struct m
  	};
  	struct ieee80211_sta *sta;
  	struct mt7996_sta *msta;
@@ -36,7 +32,7 @@ index 7512147..06c9a14 100644
  	u32 tx_time[IEEE80211_NUM_ACS], rx_time[IEEE80211_NUM_ACS];
  	LIST_HEAD(sta_poll_list);
  	int i;
-@@ -118,7 +117,6 @@ static void mt7996_mac_sta_poll(struct mt7996_dev *dev)
+@@ -118,7 +117,6 @@ static void mt7996_mac_sta_poll(struct m
  		u32 addr, val;
  		u16 idx;
  		s8 rssi[4];
@@ -44,7 +40,7 @@ index 7512147..06c9a14 100644
  
  		spin_lock_bh(&dev->mt76.sta_poll_lock);
  		if (list_empty(&sta_poll_list)) {
-@@ -174,49 +172,6 @@ static void mt7996_mac_sta_poll(struct mt7996_dev *dev)
+@@ -174,49 +172,6 @@ static void mt7996_mac_sta_poll(struct m
  			ieee80211_sta_register_airtime(sta, tid, tx_cur, rx_cur);
  		}
  
@@ -94,7 +90,7 @@ index 7512147..06c9a14 100644
  		/* get signal strength of resp frames (CTS/BA/ACK) */
  		addr = mt7996_mac_wtbl_lmac_addr(dev, idx, 34);
  		val = mt76_rr(dev, addr);
-@@ -1303,6 +1258,8 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
+@@ -1249,6 +1204,8 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  			goto out;
  
  		rate.flags = RATE_INFO_FLAGS_VHT_MCS;
@@ -103,7 +99,7 @@ index 7512147..06c9a14 100644
  		break;
  	case MT_PHY_TYPE_HE_SU:
  	case MT_PHY_TYPE_HE_EXT_SU:
-@@ -2282,6 +2239,7 @@ void mt7996_mac_work(struct work_struct *work)
+@@ -2222,6 +2179,7 @@ void mt7996_mac_work(struct work_struct
  
  		mt7996_mac_update_stats(phy);
  
@@ -111,11 +107,9 @@ index 7512147..06c9a14 100644
  		if (mtk_wed_device_active(&phy->dev->mt76.mmio.wed)) {
  			mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_ADM_STAT);
  			mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_MSDU_COUNT);
-diff --git a/mt7996/main.c b/mt7996/main.c
-index e9e1fd9..0b3f8c8 100644
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -991,6 +991,7 @@ static void mt7996_sta_statistics(struct ieee80211_hw *hw,
+@@ -991,6 +991,7 @@ static void mt7996_sta_statistics(struct
  			sinfo->txrate.he_gi = txrate->he_gi;
  			sinfo->txrate.he_dcm = txrate->he_dcm;
  			sinfo->txrate.he_ru_alloc = txrate->he_ru_alloc;
@@ -123,11 +117,9 @@ index e9e1fd9..0b3f8c8 100644
  		}
  		sinfo->txrate.flags = txrate->flags;
  		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BITRATE);
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index 652a600..c190067 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -477,6 +477,43 @@ mt7996_mcu_rx_thermal_notify(struct mt7996_dev *dev, struct sk_buff *skb)
+@@ -477,6 +477,43 @@ mt7996_mcu_rx_thermal_notify(struct mt79
  	phy->throttle_state = n->duty_percent;
  }
  
@@ -171,7 +163,7 @@ index 652a600..c190067 100644
  static void
  mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
-@@ -493,6 +530,16 @@ mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
+@@ -493,6 +530,16 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		struct mt76_wcid *wcid;
  
  		switch (le16_to_cpu(res->tag)) {
@@ -188,8 +180,6 @@ index 652a600..c190067 100644
  		case UNI_ALL_STA_TXRX_ADM_STAT:
  			wlan_idx = le16_to_cpu(res->adm_stat[i].wlan_idx);
  			wcid = rcu_dereference(dev->mt76.wcid[wlan_idx]);
-diff --git a/mt7996/mcu.h b/mt7996/mcu.h
-index 97151d1..376931e 100644
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
 @@ -191,6 +191,27 @@ struct mt7996_mcu_thermal_notify {
@@ -228,6 +218,3 @@ index 97151d1..376931e 100644
  		struct {
  			__le16 wlan_idx;
  			u8 rsv[2];
--- 
-2.18.0
-

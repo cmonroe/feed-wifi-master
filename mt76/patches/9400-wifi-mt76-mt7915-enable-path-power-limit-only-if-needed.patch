@@ -1,6 +1,6 @@
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3357,6 +3357,30 @@ int mt7915_mcu_set_txpower_frame(struct
+@@ -3373,6 +3373,30 @@ int mt7915_mcu_set_txpower_frame(struct
  				 sizeof(req), true);
  }
  
@@ -31,7 +31,7 @@
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3383,6 +3407,8 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3399,6 +3423,8 @@ int mt7915_mcu_set_txpower_sku(struct mt
  					      &la, tx_power);
  	mphy->txpower_cur = tx_power;
  
@@ -40,7 +40,7 @@
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(hdr) + MT7915_SKU_RATE_NUM);
  	if (!skb)
-@@ -3452,8 +3478,16 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3468,8 +3494,16 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		skb_put_data(skb, buf, 10);
  	}
  
@@ -58,7 +58,7 @@
  }
  
  int mt7915_mcu_get_txpower_sku(struct mt7915_phy *phy, s8 *txpower, int len,
-@@ -3539,13 +3573,9 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3555,13 +3589,9 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	if (ret)
  		return ret;
  

@@ -9,11 +9,9 @@ Subject: [PATCH 21/98] wifi: mt76: mt7996: remove periodic MPDU TXS request
  mt7996/mt7996.h |  1 -
  3 files changed, 22 insertions(+), 19 deletions(-)
 
-diff --git a/mt7996/mac.c b/mt7996/mac.c
-index 06c9a14..32c52fc 100644
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -926,15 +926,6 @@ int mt7996_tx_prepare_skb(struct mt76_dev *mdev, void *txwi_ptr,
+@@ -895,15 +895,6 @@ int mt7996_tx_prepare_skb(struct mt76_de
  	if (!wcid)
  		wcid = &dev->mt76.global_wcid;
  
@@ -29,7 +27,7 @@ index 06c9a14..32c52fc 100644
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
  
-@@ -1010,22 +1001,36 @@ u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id)
+@@ -956,22 +947,36 @@ int mt7996_tx_prepare_skb(struct mt76_de
  }
  
  static void
@@ -72,7 +70,7 @@ index 06c9a14..32c52fc 100644
  	if (unlikely(fc != (IEEE80211_FTYPE_DATA | IEEE80211_STYPE_QOS_DATA)))
  		return;
  
-@@ -1053,7 +1058,7 @@ mt7996_txwi_free(struct mt7996_dev *dev, struct mt76_txwi_cache *t,
+@@ -999,7 +1004,7 @@ mt7996_txwi_free(struct mt7996_dev *dev,
  		wcid_idx = wcid->idx;
  
  		if (likely(t->skb->protocol != cpu_to_be16(ETH_P_PAE)))
@@ -81,7 +79,7 @@ index 06c9a14..32c52fc 100644
  	} else {
  		wcid_idx = le32_get_bits(txwi[9], MT_TXD9_WLAN_IDX);
  	}
-@@ -1330,7 +1335,7 @@ static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
+@@ -1276,7 +1281,7 @@ static void mt7996_mac_add_txs(struct mt
  	wcidx = le32_get_bits(txs_data[2], MT_TXS2_MLD_ID);
  	pid = le32_get_bits(txs_data[3], MT_TXS3_PID);
  
@@ -90,11 +88,9 @@ index 06c9a14..32c52fc 100644
  		return;
  
  	if (wcidx >= mt7996_wtbl_size(dev))
-diff --git a/mt7996/main.c b/mt7996/main.c
-index 0b3f8c8..832b861 100644
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -666,7 +666,6 @@ int mt7996_mac_sta_add(struct mt76_dev *mdev, struct ieee80211_vif *vif,
+@@ -666,7 +666,6 @@ int mt7996_mac_sta_add(struct mt76_dev *
  	msta->wcid.idx = idx;
  	msta->wcid.phy_idx = band_idx;
  	msta->wcid.tx_info |= MT_WCID_TX_INFO_SET;
@@ -102,11 +98,9 @@ index 0b3f8c8..832b861 100644
  
  	ewma_avg_signal_init(&msta->avg_ack_signal);
  
-diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
-index 420d113..f268773 100644
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -147,7 +147,6 @@ struct mt7996_sta {
+@@ -120,7 +120,6 @@ struct mt7996_sta {
  	struct ewma_avg_signal avg_ack_signal;
  
  	unsigned long changed;
@@ -114,6 +108,3 @@ index 420d113..f268773 100644
  
  	struct mt76_connac_sta_key_conf bip;
  
--- 
-2.18.0
-

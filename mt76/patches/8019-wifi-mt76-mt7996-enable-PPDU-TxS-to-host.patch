@@ -13,8 +13,6 @@ but we'll get that from mcu command and TxFree instead.
  mt7996/regs.h      |  7 +++++++
  4 files changed, 60 insertions(+), 19 deletions(-)
 
-diff --git a/mt76_connac3_mac.h b/mt76_connac3_mac.h
-index 20a2fe9..7402de2 100644
 --- a/mt76_connac3_mac.h
 +++ b/mt76_connac3_mac.h
 @@ -281,6 +281,12 @@ enum tx_mgnt_type {
@@ -65,11 +63,9 @@ index 20a2fe9..7402de2 100644
 +#define MT_TXS7_MPDU_RETRY_BYTE		GENMASK(14, 0)
 +
  #endif /* __MT76_CONNAC3_MAC_H */
-diff --git a/mt7996/init.c b/mt7996/init.c
-index 17a4abd..3656b89 100644
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -456,6 +456,11 @@ mt7996_mac_init_band(struct mt7996_dev *dev, u8 band)
+@@ -454,6 +454,11 @@ mt7996_mac_init_band(struct mt7996_dev *
  	set = FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_MODE, 0) |
  	      FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_PARAM, 0x3);
  	mt76_rmw(dev, MT_WTBLOFF_RSCR(band), mask, set);
@@ -81,11 +77,9 @@ index 17a4abd..3656b89 100644
  }
  
  static void mt7996_mac_init_basic_rates(struct mt7996_dev *dev)
-diff --git a/mt7996/mac.c b/mt7996/mac.c
-index 4828f10..7512147 100644
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1227,22 +1227,35 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
+@@ -1173,22 +1173,35 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  	bool cck = false;
  	u32 txrate, txs, mode, stbc;
  
@@ -101,27 +95,28 @@ index 4828f10..7512147 100644
 +		info = IEEE80211_SKB_CB(skb);
 +		if (!(txs & MT_TXS0_ACK_ERROR_MASK))
 +			info->flags |= IEEE80211_TX_STAT_ACK;
++
++		info->status.ampdu_len = 1;
++		info->status.ampdu_ack_len = !!(info->flags &
++				IEEE80211_TX_STAT_ACK);
  
 -	info = IEEE80211_SKB_CB(skb);
 -	if (!(txs & MT_TXS0_ACK_ERROR_MASK))
 -		info->flags |= IEEE80211_TX_STAT_ACK;
-+		info->status.ampdu_len = 1;
-+		info->status.ampdu_ack_len = !!(info->flags &
-+				IEEE80211_TX_STAT_ACK);
-+
-+		info->status.rates[0].idx = -1;
-+	}
- 
+-
 -	info->status.ampdu_len = 1;
 -	info->status.ampdu_ack_len = !!(info->flags &
 -					IEEE80211_TX_STAT_ACK);
++		info->status.rates[0].idx = -1;
++	}
+ 
+-	info->status.rates[0].idx = -1;
 +	/* PPDU based reporting */
 +	if (FIELD_GET(MT_TXS0_TXS_FORMAT,txs) == MT_TXS_PPDU_FM) {
 +		if (wcid->sta) {
 +			struct ieee80211_sta *sta;
 +			u8 tid;
- 
--	info->status.rates[0].idx = -1;
++
 +			sta = container_of((void *)wcid, struct ieee80211_sta,
 +					drv_priv);
 +			tid = FIELD_GET(MT_TXS0_TID, txs);
@@ -131,7 +126,7 @@ index 4828f10..7512147 100644
  
  	txrate = FIELD_GET(MT_TXS0_TX_RATE, txs);
  
-@@ -1342,9 +1355,8 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
+@@ -1288,9 +1301,8 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  	wcid->rate = rate;
  
  out:
@@ -143,7 +138,7 @@ index 4828f10..7512147 100644
  	mt76_tx_status_unlock(mdev, &list);
  
  	return !!skb;
-@@ -1358,13 +1370,10 @@ static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
+@@ -1304,13 +1316,10 @@ static void mt7996_mac_add_txs(struct mt
  	u16 wcidx;
  	u8 pid;
  
@@ -159,11 +154,9 @@ index 4828f10..7512147 100644
  		return;
  
  	if (wcidx >= mt7996_wtbl_size(dev))
-diff --git a/mt7996/regs.h b/mt7996/regs.h
-index bd0eb51..865e005 100644
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
-@@ -275,6 +275,13 @@ enum base_rev {
+@@ -243,6 +243,13 @@ enum base_rev {
  						 FIELD_PREP(MT_WTBL_LMAC_ID, _id) | \
  						 FIELD_PREP(MT_WTBL_LMAC_DW, _dw))
  
@@ -177,6 +170,3 @@ index bd0eb51..865e005 100644
  /* ARB: band 0(0x820e3000), band 1(0x820f3000), band 2(0x830e3000) */
  #define MT_WF_ARB_BASE(_band)			__BASE(WF_ARB_BASE, (_band))
  #define MT_WF_ARB(_band, ofs)			(MT_WF_ARB_BASE(_band) + (ofs))
--- 
-2.18.0
-

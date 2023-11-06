@@ -9,8 +9,6 @@ Signed-off-by: sujuan.chen <sujuan.chen@mediatek.com>
  mt7996/mcu.h | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mt7996/mcu.h b/mt7996/mcu.h
-index c20a947..78ecd75 100644
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
 @@ -259,7 +259,7 @@ struct bss_rate_tlv {
@@ -22,6 +20,3 @@ index c20a947..78ecd75 100644
  } __packed;
  
  struct bss_ra_tlv {
--- 
-2.18.0
-

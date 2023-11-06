@@ -14,11 +14,9 @@ Change-Id: I7054c3b3c64ec447cc280ea810f4958afdfa9e02
  mt76_connac_mcu.c | 3 +++
  2 files changed, 8 insertions(+)
 
-diff --git a/mt76_connac.h b/mt76_connac.h
-index e5ebde1..c6726ab 100644
 --- a/mt76_connac.h
 +++ b/mt76_connac.h
-@@ -245,6 +245,11 @@ static inline bool is_connac_v1(struct mt76_dev *dev)
+@@ -245,6 +245,11 @@ static inline bool is_connac_v1(struct m
  	return is_mt7615(dev) || is_mt7663(dev) || is_mt7622(dev);
  }
  
@@ -30,11 +28,9 @@ index e5ebde1..c6726ab 100644
  static inline bool is_mt76_fw_txp(struct mt76_dev *dev)
  {
  	switch (mt76_chip(dev)) {
-diff --git a/mt76_connac_mcu.c b/mt76_connac_mcu.c
-index bcd6c20..68de525 100644
 --- a/mt76_connac_mcu.c
 +++ b/mt76_connac_mcu.c
-@@ -282,6 +282,9 @@ __mt76_connac_mcu_alloc_sta_req(struct mt76_dev *dev, struct mt76_vif *mvif,
+@@ -282,6 +282,9 @@ __mt76_connac_mcu_alloc_sta_req(struct m
  	};
  	struct sk_buff *skb;
  
@@ -44,6 +40,3 @@ index bcd6c20..68de525 100644
  	mt76_connac_mcu_get_wlan_idx(dev, wcid, &hdr.wlan_idx_lo,
  				     &hdr.wlan_idx_hi);
  	skb = mt76_mcu_msg_alloc(dev, NULL, len);
--- 
-2.18.0
-

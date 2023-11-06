@@ -1,0 +1,37 @@
+From 02120d0ab9b6d2f864706c2a0d6583c7b8fc60e8 Mon Sep 17 00:00:00 2001
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Tue, 31 Oct 2023 16:28:52 +0800
+Subject: [PATCH] wifi: mt76: mt7915: add cheetah eeprom related fix
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+---
+ mt7915/eeprom.h | 3 ++-
+ mt7915/main.c   | 5 +++--
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+--- a/mt7915/eeprom.h
++++ b/mt7915/eeprom.h
+@@ -160,7 +160,8 @@ static inline bool
+ mt7915_tssi_enabled(struct mt7915_dev *dev, enum nl80211_band band)
+ {
+ 	u8 *eep = dev->mt76.eeprom.data;
+-	u8 val = eep[MT_EE_WIFI_CONF + 7];
++	u8 offs = is_mt7981(&dev->mt76) ? 8 : 7;
++	u8 val = eep[MT_EE_WIFI_CONF + offs];
+ 
+ 	if (band == NL80211_BAND_2GHZ)
+ 		return val & MT_EE_WIFI_CONF7_TSSI0_2G;
+--- a/mt7915/main.c
++++ b/mt7915/main.c
+@@ -1077,8 +1077,9 @@ mt7915_set_antenna(struct ieee80211_hw *
+ 
+ 	phy->mt76->antenna_mask = tx_ant;
+ 
+-	/* handle a variant of mt7916 which has 3T3R but nss2 on 5 GHz band */
+-	if (is_mt7916(&dev->mt76) && band && hweight8(tx_ant) == max_nss)
++	/* handle a variant of mt7916/mt7981 which has 3T3R but nss2 on 5 GHz band */
++	if ((is_mt7916(&dev->mt76) || is_mt7981(&dev->mt76)) &&
++	    band && hweight8(tx_ant) == max_nss)
+ 		phy->mt76->chainmask = (dev->chainmask >> chainshift) << chainshift;
+ 	else
+ 		phy->mt76->chainmask = tx_ant << (chainshift * band);

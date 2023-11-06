@@ -116,7 +116,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
-@@ -2958,7 +2961,7 @@ int mt7915_mcu_apply_group_cal(struct mt
+@@ -2957,7 +2960,7 @@ int mt7915_mcu_apply_group_cal(struct mt
  	u8 idx = 0, *cal = dev->cal, *eep = dev->mt76.eeprom.data;
  	u32 total = MT_EE_CAL_GROUP_SIZE;
  
@@ -125,7 +125,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		return 0;
  
  	/*
-@@ -3038,11 +3041,29 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
+@@ -3037,11 +3040,29 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
  {
  	struct mt7915_dev *dev = phy->dev;
  	struct cfg80211_chan_def *chandef = &phy->mt76->chandef;
@@ -159,7 +159,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	idx = mt7915_dpd_freq_idx(center_freq, chandef->width);
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -353,6 +353,10 @@ struct mt7915_dev {
+@@ -354,6 +354,10 @@ struct mt7915_dev {
  	struct rchan *relay_fwlog;
  
  	void *cal;
@@ -170,7 +170,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	struct {
  		u8 debug_wm;
-@@ -580,6 +584,7 @@ int mt7915_mcu_fw_log_2_host(struct mt79
+@@ -581,6 +585,7 @@ int mt7915_mcu_fw_log_2_host(struct mt79
  int mt7915_mcu_fw_dbg_ctrl(struct mt7915_dev *dev, u32 module, u8 level);
  void mt7915_mcu_rx_event(struct mt7915_dev *dev, struct sk_buff *skb);
  void mt7915_mcu_exit(struct mt7915_dev *dev);

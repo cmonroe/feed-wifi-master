@@ -16,6 +16,8 @@ struct atenl_channel {
 	/* center ch */
 	u16 ch_80;
 	u16 ch_160;
+	u16 ch_320_1;
+	u16 ch_320_2;
 	/* only use for channels that don't have 80 but has 40 */
 	u16 ch_40;
 };
@@ -72,65 +74,65 @@ static const struct atenl_channel atenl_channels_5ghz[] = {
 
 static const struct atenl_channel atenl_channels_6ghz[] = {
 	/* UNII-5 */
-	CHAN(1, 5955, 7, 15),
-	CHAN(5, 5975, 7, 15),
-	CHAN(9, 5995, 7, 15),
-	CHAN(13, 6015, 7, 15),
-	CHAN(17, 6035, 23, 15),
-	CHAN(21, 6055, 23, 15),
-	CHAN(25, 6075, 23, 15),
-	CHAN(29, 6095, 23, 15),
-	CHAN(33, 6115, 39, 47),
-	CHAN(37, 6135, 39, 47),
-	CHAN(41, 6155, 39, 47),
-	CHAN(45, 6175, 39, 47),
-	CHAN(49, 6195, 55, 47),
-	CHAN(53, 6215, 55, 47),
-	CHAN(57, 6235, 55, 47),
-	CHAN(61, 6255, 55, 47),
-	CHAN(65, 6275, 71, 79),
-	CHAN(69, 6295, 71, 79),
-	CHAN(73, 6315, 71, 79),
-	CHAN(77, 6335, 71, 79),
-	CHAN(81, 6355, 87, 79),
-	CHAN(85, 6375, 87, 79),
-	CHAN(89, 6395, 87, 79),
-	CHAN(93, 6415, 87, 79),
+	CHAN(1, 5955, 7, 15, .ch_320_1 = 31),
+	CHAN(5, 5975, 7, 15, .ch_320_1 = 31),
+	CHAN(9, 5995, 7, 15, .ch_320_1 = 31),
+	CHAN(13, 6015, 7, 15, .ch_320_1 = 31),
+	CHAN(17, 6035, 23, 15, .ch_320_1 = 31),
+	CHAN(21, 6055, 23, 15, .ch_320_1 = 31),
+	CHAN(25, 6075, 23, 15, .ch_320_1 = 31),
+	CHAN(29, 6095, 23, 15, .ch_320_1 = 31),
+	CHAN(33, 6115, 39, 47, .ch_320_1 = 31, .ch_320_2 = 63),
+	CHAN(37, 6135, 39, 47, .ch_320_1 = 31, .ch_320_2 = 63),
+	CHAN(41, 6155, 39, 47, .ch_320_1 = 31, .ch_320_2 = 63),
+	CHAN(45, 6175, 39, 47, .ch_320_1 = 31, .ch_320_2 = 63),
+	CHAN(49, 6195, 55, 47, .ch_320_1 = 31, .ch_320_2 = 63),
+	CHAN(53, 6215, 55, 47, .ch_320_1 = 31, .ch_320_2 = 63),
+	CHAN(57, 6235, 55, 47, .ch_320_1 = 31, .ch_320_2 = 63),
+	CHAN(61, 6255, 55, 47, .ch_320_1 = 31, .ch_320_2 = 63),
+	CHAN(65, 6275, 71, 79, .ch_320_1 = 95, .ch_320_2 = 63),
+	CHAN(69, 6295, 71, 79, .ch_320_1 = 95, .ch_320_2 = 63),
+	CHAN(73, 6315, 71, 79, .ch_320_1 = 95, .ch_320_2 = 63),
+	CHAN(77, 6335, 71, 79, .ch_320_1 = 95, .ch_320_2 = 63),
+	CHAN(81, 6355, 87, 79, .ch_320_1 = 95, .ch_320_2 = 63),
+	CHAN(85, 6375, 87, 79, .ch_320_1 = 95, .ch_320_2 = 63),
+	CHAN(89, 6395, 87, 79, .ch_320_1 = 95, .ch_320_2 = 63),
+	CHAN(93, 6415, 87, 79, .ch_320_1 = 95, .ch_320_2 = 63),
 	/* UNII-6 */
-	CHAN(97, 6435, 103, 111),
-	CHAN(101, 6455, 103, 111),
-	CHAN(105, 6475, 103, 111),
-	CHAN(109, 6495, 103, 111),
-	CHAN(113, 6515, 119, 111),
-	CHAN(117, 6535, 119, 111),
+	CHAN(97, 6435, 103, 111, .ch_320_1 = 95, .ch_320_2 = 127),
+	CHAN(101, 6455, 103, 111, .ch_320_1 = 95, .ch_320_2 = 127),
+	CHAN(105, 6475, 103, 111, .ch_320_1 = 95, .ch_320_2 = 127),
+	CHAN(109, 6495, 103, 111, .ch_320_1 = 95, .ch_320_2 = 127),
+	CHAN(113, 6515, 119, 111, .ch_320_1 = 95, .ch_320_2 = 127),
+	CHAN(117, 6535, 119, 111, .ch_320_1 = 95, .ch_320_2 = 127),
 	/* UNII-7 */
-	CHAN(121, 6555, 119, 111),
-	CHAN(125, 6575, 119, 111),
-	CHAN(129, 6595, 135, 143),
-	CHAN(133, 6615, 135, 143),
-	CHAN(137, 6635, 135, 143),
-	CHAN(141, 6655, 135, 143),
-	CHAN(145, 6675, 151, 143),
-	CHAN(149, 6695, 151, 143),
-	CHAN(153, 6715, 151, 143),
-	CHAN(157, 6735, 151, 143),
-	CHAN(161, 6755, 167, 175),
-	CHAN(165, 6775, 167, 175),
-	CHAN(169, 6795, 167, 175),
-	CHAN(173, 6815, 167, 175),
-	CHAN(177, 6835, 183, 175),
-	CHAN(181, 6855, 183, 175),
-	CHAN(185, 6875, 183, 175),
+	CHAN(121, 6555, 119, 111, .ch_320_1 = 95, .ch_320_2 = 127),
+	CHAN(125, 6575, 119, 111, .ch_320_1 = 95, .ch_320_2 = 127),
+	CHAN(129, 6595, 135, 143, .ch_320_1 = 159, .ch_320_2 = 127),
+	CHAN(133, 6615, 135, 143, .ch_320_1 = 159, .ch_320_2 = 127),
+	CHAN(137, 6635, 135, 143, .ch_320_1 = 159, .ch_320_2 = 127),
+	CHAN(141, 6655, 135, 143, .ch_320_1 = 159, .ch_320_2 = 127),
+	CHAN(145, 6675, 151, 143, .ch_320_1 = 159, .ch_320_2 = 127),
+	CHAN(149, 6695, 151, 143, .ch_320_1 = 159, .ch_320_2 = 127),
+	CHAN(153, 6715, 151, 143, .ch_320_1 = 159, .ch_320_2 = 127),
+	CHAN(157, 6735, 151, 143, .ch_320_1 = 159, .ch_320_2 = 127),
+	CHAN(161, 6755, 167, 175, .ch_320_1 = 159, .ch_320_2 = 191),
+	CHAN(165, 6775, 167, 175, .ch_320_1 = 159, .ch_320_2 = 191),
+	CHAN(169, 6795, 167, 175, .ch_320_1 = 159, .ch_320_2 = 191),
+	CHAN(173, 6815, 167, 175, .ch_320_1 = 159, .ch_320_2 = 191),
+	CHAN(177, 6835, 183, 175, .ch_320_1 = 159, .ch_320_2 = 191),
+	CHAN(181, 6855, 183, 175, .ch_320_1 = 159, .ch_320_2 = 191),
+	CHAN(185, 6875, 183, 175, .ch_320_1 = 159, .ch_320_2 = 191),
 	/* UNII-8 */
-	CHAN(189, 6895, 183, 175),
-	CHAN(193, 6915, 199, 207),
-	CHAN(197, 6935, 199, 207),
-	CHAN(201, 6955, 199, 207),
-	CHAN(205, 6975, 199, 207),
-	CHAN(209, 6995, 215, 207),
-	CHAN(213, 7015, 215, 207),
-	CHAN(217, 7035, 215, 207),
-	CHAN(221, 7055, 215, 207),
+	CHAN(189, 6895, 183, 175, .ch_320_1 = 159, .ch_320_2 = 191),
+	CHAN(193, 6915, 199, 207, .ch_320_2 = 191),
+	CHAN(197, 6935, 199, 207, .ch_320_2 = 191),
+	CHAN(201, 6955, 199, 207, .ch_320_2 = 191),
+	CHAN(205, 6975, 199, 207, .ch_320_2 = 191),
+	CHAN(209, 6995, 215, 207, .ch_320_2 = 191),
+	CHAN(213, 7015, 215, 207, .ch_320_2 = 191),
+	CHAN(217, 7035, 215, 207, .ch_320_2 = 191),
+	CHAN(221, 7055, 215, 207, .ch_320_2 = 191),
 	CHAN(225, 7075, 0, 0, .ch_40 = 227),
 	CHAN(229, 7095, 0, 0, .ch_40 = 227),
 	CHAN(233, 7115, 0, 0),
@@ -158,7 +160,6 @@ atenl_hqa_adapter(struct atenl *an, struct atenl_data *data)
 			/* set a special-defined country */
 			sprintf(cmd, "iw reg set VV");
 			system(cmd);
-			atenl_nl_set_state(an, i, MT76_TM_STATE_IDLE);
 		} else {
 			atenl_nl_set_state(an, i, MT76_TM_STATE_OFF);
 			sprintf(cmd, "iw reg set 00");
@@ -169,6 +170,9 @@ atenl_hqa_adapter(struct atenl *an, struct atenl_data *data)
 			system(cmd);
 		}
 	}
+
+	for (i = 0; i < MAX_BAND_NUM; i++)
+		atenl_nl_set_state(an, i, MT76_TM_STATE_IDLE);
 
 	return 0;
 }
@@ -566,6 +570,9 @@ u16 atenl_get_center_channel(u8 bw, u8 ch_band, u16 ctrl_ch)
 static void atenl_get_bw_string(u8 bw, char *buf)
 {
 	switch (bw) {
+	case TEST_CBW_320MHZ:
+		sprintf(buf, "320");
+		break;
 	case TEST_CBW_160MHZ:
 		sprintf(buf, "160");
 		break;
@@ -627,7 +634,8 @@ atenl_hqa_set_channel(struct atenl *an, struct atenl_data *data)
 	if (band >= MAX_BAND_NUM)
 		return -EINVAL;
 
-	if ((bw == TEST_CBW_160MHZ && pri_sel > 7) ||
+	if ((bw == TEST_CBW_320MHZ && pri_sel > 15) ||
+	    (bw == TEST_CBW_160MHZ && pri_sel > 7) ||
 	    (bw == TEST_CBW_80MHZ && pri_sel > 3) ||
 	    (bw == TEST_CBW_40MHZ && pri_sel > 1)) {
 		atenl_err("%s: ctrl channel select error\n", __func__);
@@ -664,7 +672,17 @@ atenl_hqa_set_channel(struct atenl *an, struct atenl_data *data)
 			ch_num = ARRAY_SIZE(atenl_channels_5ghz);
 		}
 
-		if (bw == TEST_CBW_160MHZ) {
+		if (bw == TEST_CBW_320MHZ) {
+			for (i = 0; i < ch_num; i++) {
+				if (ch1 == ch_list[i].ch_320_1) {
+					chan = &ch_list[i];
+					break;
+				} else if (ch1 == ch_list[i].ch_320_2) {
+					chan = &ch_list[i];
+					break;
+				}
+			}
+		} else if (bw == TEST_CBW_160MHZ) {
 			for (i = 0; i < ch_num; i++) {
 				if (ch1 == ch_list[i].ch_160) {
 					chan = &ch_list[i];

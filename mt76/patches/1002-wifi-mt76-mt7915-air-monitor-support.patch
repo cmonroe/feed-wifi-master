@@ -25,7 +25,7 @@ Subject: [PATCH 1002/1033] wifi: mt76: mt7915: air monitor support
  
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -524,6 +524,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+@@ -531,6 +531,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  			seq_ctrl = le16_to_cpu(hdr->seq_ctrl);
  			qos_ctl = *ieee80211_get_qos_ctl(hdr);
  		}
@@ -38,7 +38,7 @@ Subject: [PATCH 1002/1033] wifi: mt76: mt7915: air monitor support
  		mt7915_wed_check_ppe(dev, &dev->mt76.q_rx[q], msta, skb,
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -772,6 +772,9 @@ int mt7915_mac_sta_add(struct mt76_dev *
+@@ -773,6 +773,9 @@ int mt7915_mac_sta_add(struct mt76_dev *
  	if (ret)
  		return ret;
  
@@ -95,7 +95,7 @@ Subject: [PATCH 1002/1033] wifi: mt76: mt7915: air monitor support
  #endif
  };
  
-@@ -642,6 +673,9 @@ int mt7915_mmio_wed_init(struct mt7915_d
+@@ -643,6 +674,9 @@ int mt7915_mmio_wed_init(struct mt7915_d
  void mt7915_vendor_register(struct mt7915_phy *phy);
  int mt7915_mcu_set_csi(struct mt7915_phy *phy, u8 mode,
  			u8 cfg, u8 v1, u32 v2, u8 *mac_addr);

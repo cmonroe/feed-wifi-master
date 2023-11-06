@@ -14,7 +14,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  struct mt76_rx_tid {
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -25,8 +25,11 @@ static int mt7996_check_eeprom(struct mt
+@@ -61,8 +61,11 @@ static int mt7996_check_eeprom(struct mt
  	}
  }
  
@@ -27,7 +27,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	/* reserve for future variants */
  	if (dev->testmode_enable)
  		return MT7996_EEPROM_DEFAULT_TM;
-@@ -48,7 +51,10 @@ mt7996_eeprom_load_default(struct mt7996
+@@ -114,7 +117,10 @@ mt7996_eeprom_load_default(struct mt7996
  		return ret;
  
  	if (!fw || !fw->data) {
@@ -39,7 +39,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		ret = -EINVAL;
  		goto out;
  	}
-@@ -62,18 +68,45 @@ out:
+@@ -128,18 +134,45 @@ out:
  	return ret;
  }
  
@@ -86,7 +86,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		eeprom = dev->mt76.eeprom.data;
  		/* testmode enable priority: eeprom field > module parameter */
  		dev->testmode_enable = !mt7996_check_eeprom(dev) ? eeprom[MT_EE_TESTMODE_EN] :
-@@ -107,6 +140,7 @@ static int mt7996_eeprom_load(struct mt7
+@@ -173,6 +206,7 @@ static int mt7996_eeprom_load(struct mt7
  			if (ret < 0)
  				return ret;
  		}
@@ -94,7 +94,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	return mt7996_check_eeprom(dev);
-@@ -242,6 +276,8 @@ int mt7996_eeprom_init(struct mt7996_dev
+@@ -308,6 +342,8 @@ int mt7996_eeprom_init(struct mt7996_dev
  			return ret;
  
  		dev_warn(dev->mt76.dev, "eeprom load fail, use default bin\n");
@@ -105,7 +105,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			return ret;
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
-@@ -52,6 +52,13 @@ enum mt7996_eeprom_band {
+@@ -99,6 +99,13 @@ enum mt7996_eeprom_band {
  	MT_EE_BAND_SEL_6GHZ,
  };
  
@@ -130,7 +130,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	bool ibf;
  	u8 fw_debug_wm;
-@@ -436,6 +438,7 @@ irqreturn_t mt7996_irq_handler(int irq,
+@@ -434,6 +436,7 @@ irqreturn_t mt7996_irq_handler(int irq,
  u64 __mt7996_get_tsf(struct ieee80211_hw *hw, struct mt7996_vif *mvif);
  int mt7996_register_device(struct mt7996_dev *dev);
  void mt7996_unregister_device(struct mt7996_dev *dev);

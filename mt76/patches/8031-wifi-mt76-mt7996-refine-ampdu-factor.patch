@@ -10,8 +10,6 @@ Firmware would parse ht/vht/he/eht cap to get correct ampdu parameters.
  mt7996/mcu.h      |  1 -
  3 files changed, 7 insertions(+), 42 deletions(-)
 
-diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
-index 6fac67b..ca2e573 100644
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
 @@ -298,7 +298,9 @@ struct sta_rec_ht {
@@ -25,11 +23,9 @@ index 6fac67b..ca2e573 100644
  } __packed;
  
  struct sta_rec_vht {
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index 60af1d4..8b81644 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1195,6 +1195,10 @@ mt7996_mcu_sta_ht_tlv(struct sk_buff *skb, struct ieee80211_sta *sta)
+@@ -1196,6 +1196,10 @@ mt7996_mcu_sta_ht_tlv(struct sk_buff *sk
  
  	ht = (struct sta_rec_ht *)tlv;
  	ht->ht_cap = cpu_to_le16(sta->deflink.ht_cap.cap);
@@ -40,11 +36,10 @@ index 60af1d4..8b81644 100644
  }
  
  static void
-@@ -1651,44 +1655,6 @@ mt7996_mcu_sta_bfee_tlv(struct mt7996_dev *dev, struct sk_buff *skb,
- 	bfee->fb_identity_matrix = (nrow == 1 && tx_ant == 2);
+@@ -1653,44 +1657,6 @@ mt7996_mcu_sta_bfee_tlv(struct mt7996_de
  }
  
--static void
+ static void
 -mt7996_mcu_sta_phy_tlv(struct mt7996_dev *dev, struct sk_buff *skb,
 -		       struct ieee80211_vif *vif, struct ieee80211_sta *sta)
 -{
@@ -82,10 +77,11 @@ index 60af1d4..8b81644 100644
 -	phy->max_ampdu_len = af;
 -}
 -
- static void
+-static void
  mt7996_mcu_sta_hdrt_tlv(struct mt7996_dev *dev, struct sk_buff *skb)
  {
-@@ -2100,8 +2066,6 @@ int mt7996_mcu_add_sta(struct mt7996_dev *dev, struct ieee80211_vif *vif,
+ 	struct sta_rec_hdrt *hdrt;
+@@ -2101,8 +2067,6 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  
  	/* tag order is in accordance with firmware dependency. */
  	if (sta) {
@@ -94,8 +90,6 @@ index 60af1d4..8b81644 100644
  		/* starec hdrt mode */
  		mt7996_mcu_sta_hdrt_tlv(dev, skb);
  		/* starec bfer */
-diff --git a/mt7996/mcu.h b/mt7996/mcu.h
-index af7cd18..ca16336 100644
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
 @@ -730,7 +730,6 @@ enum {
@@ -106,6 +100,3 @@ index af7cd18..ca16336 100644
  					 sizeof(struct sta_rec_ra_uni) +	\
  					 sizeof(struct sta_rec_sec) +		\
  					 sizeof(struct sta_rec_ra_fixed_uni) +	\
--- 
-2.18.0
-
