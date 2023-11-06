@@ -1,7 +1,5 @@
-Index: backports-6.5/net/mac80211/scan.c
-===================================================================
---- backports-6.5.orig/net/mac80211/scan.c
-+++ backports-6.5/net/mac80211/scan.c
+--- a/net/mac80211/scan.c
++++ b/net/mac80211/scan.c
 @@ -574,11 +574,23 @@ static bool __ieee80211_can_leave_ch(str
  	return true;
  }

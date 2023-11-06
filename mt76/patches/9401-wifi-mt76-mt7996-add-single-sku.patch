@@ -151,7 +151,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  static inline bool mt76_queue_is_wed_rx(struct mt76_queue *q)
 --- a/mt76_connac_mcu.c
 +++ b/mt76_connac_mcu.c
-@@ -2268,7 +2268,7 @@ mt76_connac_mcu_rate_txpower_band(struct
+@@ -2269,7 +2269,7 @@ mt76_connac_mcu_rate_txpower_band(struct
  			sar_power = mt76_get_sar_power(phy, &chan, reg_power);
  
  			mt76_get_rate_power_limits(phy, &chan, limits,
@@ -180,9 +180,9 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  		target_power = DIV_ROUND_UP(target_power, 2);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -77,6 +77,15 @@ int mt7996_run(struct ieee80211_hw *hw)
- 	if (ret)
- 		goto out;
+@@ -85,6 +85,15 @@ int mt7996_run(struct ieee80211_hw *hw)
+ 	phy->enhanced_sr_enable = true;
+ #endif
  
 +#ifdef CONFIG_MTK_DEBUG
 +	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
@@ -196,7 +196,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
  
  	ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
-@@ -423,6 +432,12 @@ static int mt7996_config(struct ieee8021
+@@ -440,6 +449,12 @@ static int mt7996_config(struct ieee8021
  		ieee80211_wake_queues(hw);
  	}
  
@@ -209,7 +209,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  	mutex_lock(&dev->mt76.mutex);
  
  	if (changed & IEEE80211_CONF_CHANGE_MONITOR) {
-@@ -995,6 +1010,7 @@ mt7996_set_antenna(struct ieee80211_hw *
+@@ -1016,6 +1031,7 @@ mt7996_set_antenna(struct ieee80211_hw *
  	mt76_set_stream_caps(phy->mt76, true);
  	mt7996_set_stream_vht_txbf_caps(phy);
  	mt7996_set_stream_he_eht_caps(phy);
@@ -219,7 +219,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4646,6 +4646,98 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -4735,6 +4735,98 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  				 &req, sizeof(req), false);
  }
  
@@ -320,7 +320,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  {
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -760,6 +760,18 @@ enum {
+@@ -777,6 +777,18 @@ enum {
  #define MT7996_MAX_BSS_OFFLOAD_SIZE	(MT7996_MAX_BEACON_SIZE +		\
  					 MT7996_BEACON_UPDATE_SIZE)
  
@@ -338,10 +338,10 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
 +
  enum {
  	UNI_BAND_CONFIG_RADIO_ENABLE,
- 	UNI_BAND_CONFIG_RTS_THRESHOLD = 0x08,
+ 	UNI_BAND_CONFIG_EDCCA_ENABLE = 0x05,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -63,6 +63,7 @@
+@@ -88,6 +88,7 @@
  #define MT7996_BUILD_TIME_LEN		24
  
  #define MT7996_SKU_RATE_NUM			417
@@ -349,7 +349,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  
  struct mt7996_vif;
  struct mt7996_sta;
-@@ -527,6 +528,7 @@ int mt7996_mcu_set_tx_power_ctrl(struct
+@@ -608,6 +609,7 @@ int mt7996_mcu_set_tx_power_ctrl(struct
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
  int mt7996_mcu_apply_group_cal(struct mt7996_dev *dev);
  int mt7996_mcu_apply_tx_dpd(struct mt7996_phy *phy);

@@ -121,7 +121,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -291,6 +291,8 @@ struct mt7996_dev {
+@@ -323,6 +323,8 @@ struct mt7996_dev {
  	bool has_eht:1;
  
  	bool testmode_enable;
@@ -130,7 +130,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	bool ibf;
  	u8 fw_debug_wm;
-@@ -434,6 +436,7 @@ irqreturn_t mt7996_irq_handler(int irq,
+@@ -466,6 +468,7 @@ irqreturn_t mt7996_irq_handler(int irq,
  u64 __mt7996_get_tsf(struct ieee80211_hw *hw, struct mt7996_vif *mvif);
  int mt7996_register_device(struct mt7996_dev *dev);
  void mt7996_unregister_device(struct mt7996_dev *dev);
