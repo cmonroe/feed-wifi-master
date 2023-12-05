@@ -1,7 +1,5 @@
-Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ieee802_11.c
-===================================================================
---- hostapd-2023-09-08-e5ccbfc6.orig/src/ap/ieee802_11.c
-+++ hostapd-2023-09-08-e5ccbfc6/src/ap/ieee802_11.c
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
 @@ -4293,6 +4293,12 @@ static int __check_assoc_ies(struct host
  		sta->power_capab = 0;
  	}
@@ -15,10 +13,8 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ieee802_11.c
  	return WLAN_STATUS_SUCCESS;
  }
  
-Index: hostapd-2023-09-08-e5ccbfc6/src/ap/sta_info.c
-===================================================================
---- hostapd-2023-09-08-e5ccbfc6.orig/src/ap/sta_info.c
-+++ hostapd-2023-09-08-e5ccbfc6/src/ap/sta_info.c
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
 @@ -377,6 +377,7 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->t_c_url);
  	wpabuf_free(sta->hs20_deauth_req);
@@ -27,10 +23,8 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/sta_info.c
  
  #ifdef CONFIG_SAE
  	sae_clear_data(sta->sae);
-Index: hostapd-2023-09-08-e5ccbfc6/src/ap/sta_info.h
-===================================================================
---- hostapd-2023-09-08-e5ccbfc6.orig/src/ap/sta_info.h
-+++ hostapd-2023-09-08-e5ccbfc6/src/ap/sta_info.h
+--- a/src/ap/sta_info.h
++++ b/src/ap/sta_info.h
 @@ -334,6 +334,7 @@ struct sta_info {
  	struct mld_info mld_info;
  	u8 mld_assoc_link_id;
@@ -39,10 +33,8 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/sta_info.h
  };
  
  
-Index: hostapd-2023-09-08-e5ccbfc6/src/common/ieee802_11_common.c
-===================================================================
---- hostapd-2023-09-08-e5ccbfc6.orig/src/common/ieee802_11_common.c
-+++ hostapd-2023-09-08-e5ccbfc6/src/common/ieee802_11_common.c
+--- a/src/common/ieee802_11_common.c
++++ b/src/common/ieee802_11_common.c
 @@ -1149,6 +1149,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
  }
  
@@ -77,10 +69,8 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/common/ieee802_11_common.c
  const u8 * get_hdr_bssid(const struct ieee80211_hdr *hdr, size_t len)
  {
  	u16 fc, type, stype;
-Index: hostapd-2023-09-08-e5ccbfc6/src/common/ieee802_11_common.h
-===================================================================
---- hostapd-2023-09-08-e5ccbfc6.orig/src/common/ieee802_11_common.h
-+++ hostapd-2023-09-08-e5ccbfc6/src/common/ieee802_11_common.h
+--- a/src/common/ieee802_11_common.h
++++ b/src/common/ieee802_11_common.h
 @@ -199,6 +199,7 @@ ParseRes ieee802_11_parse_link_assoc_req
  int ieee802_11_ie_count(const u8 *ies, size_t ies_len);
  struct wpabuf * ieee802_11_vendor_ie_concat(const u8 *ies, size_t ies_len,
@@ -89,10 +79,8 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/common/ieee802_11_common.h
  struct ieee80211_hdr;
  const u8 * get_hdr_bssid(const struct ieee80211_hdr *hdr, size_t len);
  
-Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
-===================================================================
---- hostapd-2023-09-08-e5ccbfc6.orig/src/ap/ubus.c
-+++ hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
+--- a/src/ap/ubus.c
++++ b/src/ap/ubus.c
 @@ -24,6 +24,7 @@
  #include "taxonomy.h"
  #include "airtime_policy.h"
@@ -106,11 +94,26 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
  
  static void
 -hostapd_parse_vht_map_blobmsg(uint16_t map)
-+hostapd_parse_map_blobmsg(uint16_t map)
++hostapd_parse_map_blobmsg(uint16_t map, u32 flags)
  {
  	char label[4];
  	int16_t val;
-@@ -183,6 +184,14 @@ hostapd_parse_vht_map_blobmsg(uint16_t m
+@@ -177,12 +178,26 @@ hostapd_parse_vht_map_blobmsg(uint16_t m
+ 	for (i = 0; i < 8; i++) {
+ 		snprintf(label, 4, "%dss", i + 1);
+ 
+-		val = (map & (BIT(1) | BIT(0))) + 7;
+-		blobmsg_add_u16(&b, label, val == 10 ? -1 : val);
+-		map = map >> 2;
++		if (flags & WLAN_STA_VHT) {
++			val = (map & (BIT(1) | BIT(0))) + 7;
++			blobmsg_add_u16(&b, label, val == 10 ? -1 : val);
++			map = map >> 2;
++		} else if (flags & WLAN_STA_HE) {
++			val = (map & (BIT(1) | BIT(0))) * 2 + 7;
++			blobmsg_add_u16(&b, label, val == 13 ? -1 : val);
++			map = map >> 2;
++		}
  	}
  }
  
@@ -125,7 +128,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
  static void
  hostapd_parse_vht_capab_blobmsg(struct ieee80211_vht_capabilities *vhtc)
  {
-@@ -194,24 +203,233 @@ hostapd_parse_vht_capab_blobmsg(struct i
+@@ -194,24 +209,233 @@ hostapd_parse_vht_capab_blobmsg(struct i
  		const char *name;
  		uint32_t flag;
  	} vht_capas[] = {
@@ -169,18 +172,16 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +		blobmsg_add_u32(&b, vht_capas_value[i].name, value);
 +	}
 +
- 	supported_mcs = blobmsg_open_table(&b, "mcs_map");
- 
- 	/* RX map */
- 	map = blobmsg_open_table(&b, "rx");
--	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map));
-+	hostapd_parse_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map));
- 	blobmsg_close_table(&b, map);
- 
- 	/* TX map */
- 	map = blobmsg_open_table(&b, "tx");
--	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map));
-+	hostapd_parse_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map));
++	supported_mcs = blobmsg_open_table(&b, "mcs_map");
++
++	/* RX map */
++	map = blobmsg_open_table(&b, "rx");
++	hostapd_parse_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map), WLAN_STA_VHT);
++	blobmsg_close_table(&b, map);
++
++	/* TX map */
++	map = blobmsg_open_table(&b, "tx");
++	hostapd_parse_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map), WLAN_STA_VHT);
 +	blobmsg_close_table(&b, map);
 +
 +	blobmsg_close_table(&b, supported_mcs);
@@ -348,20 +349,22 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
 +	}
 +	blobmsg_close_table(&b, phy_caps);
 +
-+	supported_mcs = blobmsg_open_table(&b, "mcs_map");
-+
-+	/* RX map */
-+	map = blobmsg_open_table(&b, "rx");
-+	hostapd_parse_map_blobmsg(le_to_host16(*((le16 *)&hec->optional[0])));
-+	blobmsg_close_table(&b, map);
-+
-+	/* TX map */
-+	map = blobmsg_open_table(&b, "tx");
-+	hostapd_parse_map_blobmsg(le_to_host16(*((le16 *)&hec->optional[2])));
+ 	supported_mcs = blobmsg_open_table(&b, "mcs_map");
+ 
+ 	/* RX map */
+ 	map = blobmsg_open_table(&b, "rx");
+-	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map));
++	hostapd_parse_map_blobmsg(le_to_host16(*((le16 *)&hec->optional[0])), WLAN_STA_HE);
+ 	blobmsg_close_table(&b, map);
+ 
+ 	/* TX map */
+ 	map = blobmsg_open_table(&b, "tx");
+-	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map));
++	hostapd_parse_map_blobmsg(le_to_host16(*((le16 *)&hec->optional[2])), WLAN_STA_HE);
  	blobmsg_close_table(&b, map);
  
  	blobmsg_close_table(&b, supported_mcs);
-@@ -230,11 +448,56 @@ hostapd_parse_capab_blobmsg(struct sta_i
+@@ -230,11 +454,56 @@ hostapd_parse_capab_blobmsg(struct sta_i
  		blobmsg_close_table(&b, r);
  	}
  
@@ -419,7 +422,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
  static int
  hostapd_bss_get_clients(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
-@@ -279,9 +542,24 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -279,9 +548,24 @@ hostapd_bss_get_clients(struct ubus_cont
  		blobmsg_add_u8(&b, "mbo", !!(sta->cell_capa));
  #endif
  
@@ -445,7 +448,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
  		blobmsg_close_array(&b, r);
  
  		r = blobmsg_open_array(&b, "extended_capabilities");
-@@ -323,6 +601,7 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -323,6 +607,7 @@ hostapd_bss_get_clients(struct ubus_cont
  		}
  
  		hostapd_parse_capab_blobmsg(sta);
@@ -453,7 +456,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
  
  		blobmsg_close_table(&b, c);
  	}
-@@ -362,7 +641,7 @@ hostapd_bss_get_status(struct ubus_conte
+@@ -362,7 +647,7 @@ hostapd_bss_get_status(struct ubus_conte
  
  	if (hapd->conf->ssid.ssid_len < SSID_MAX_LEN)
  		ssid_len = hapd->conf->ssid.ssid_len;
@@ -462,7 +465,7 @@ Index: hostapd-2023-09-08-e5ccbfc6/src/ap/ubus.c
  	ieee80211_freq_to_channel_ext(hapd->iface->freq,
  				      hapd->iconf->secondary_channel,
  				      hostapd_get_oper_chwidth(hapd->iconf),
-@@ -1958,7 +2237,7 @@ void hostapd_ubus_notify_bss_transition_
+@@ -1958,7 +2243,7 @@ void hostapd_ubus_notify_bss_transition_
  	blobmsg_add_u8(&b, "bss-termination-delay", bss_termination_delay);
  	if (target_bssid)
  		blobmsg_add_macaddr(&b, "target-bssid", target_bssid);
