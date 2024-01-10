@@ -1,4 +1,4 @@
-From 09961de38c33d2cf5ba12679862726e6937e5c58 Mon Sep 17 00:00:00 2001
+From fc62783246a5f95bbb82928b8395ec695e0ca69c Mon Sep 17 00:00:00 2001
 From: Shayne Chen <shayne.chen@mediatek.com>
 Date: Wed, 22 Jun 2022 10:39:47 +0800
 Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
@@ -12,18 +12,18 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  mt7915/mcu.c          |   48 +-
  mt7915/mcu.h          |    4 +
  mt7915/mt7915.h       |   43 +
- mt7915/mt7915_debug.h | 1418 ++++++++++++++++
- mt7915/mtk_debugfs.c  | 3622 +++++++++++++++++++++++++++++++++++++++++
+ mt7915/mt7915_debug.h | 1442 ++++++++++++++++
+ mt7915/mtk_debugfs.c  | 3743 +++++++++++++++++++++++++++++++++++++++++
  mt7915/mtk_mcu.c      |   51 +
  tools/fwlog.c         |   44 +-
- 12 files changed, 5327 insertions(+), 19 deletions(-)
+ 12 files changed, 5472 insertions(+), 19 deletions(-)
  create mode 100644 mt7915/mt7915_debug.h
  create mode 100644 mt7915/mtk_debugfs.c
  create mode 100644 mt7915/mtk_mcu.c
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1162,6 +1162,7 @@ enum {
+@@ -1183,6 +1183,7 @@ enum {
  	MCU_EXT_CMD_SET_TX_POWER_CTRL = 0x11,
  	MCU_EXT_CMD_FW_LOG_2_HOST = 0x13,
  	MCU_EXT_CMD_TXBF_ACTION = 0x1e,
@@ -31,7 +31,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	MCU_EXT_CMD_EFUSE_BUFFER_MODE = 0x21,
  	MCU_EXT_CMD_THERMAL_PROT = 0x23,
  	MCU_EXT_CMD_STA_REC_UPDATE = 0x25,
-@@ -1186,6 +1187,11 @@ enum {
+@@ -1207,6 +1208,11 @@ enum {
  	MCU_EXT_CMD_TX_POWER_FEATURE_CTRL = 0x58,
  	MCU_EXT_CMD_RXDCOC_CAL = 0x59,
  	MCU_EXT_CMD_GET_MIB_INFO = 0x5a,
@@ -309,7 +309,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  {
  #define RED_DISABLE		0
  #define RED_BY_WA_ENABLE	2
-@@ -3394,6 +3402,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3395,6 +3403,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -318,7 +318,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -4048,6 +4058,23 @@ out:
+@@ -4049,6 +4059,23 @@ out:
  	return ret;
  }
  
@@ -342,7 +342,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-@@ -4076,3 +4103,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+@@ -4077,3 +4104,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
  
  	return 0;
  }
@@ -444,7 +444,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  #endif
 --- /dev/null
 +++ b/mt7915/mt7915_debug.h
-@@ -0,0 +1,1432 @@
+@@ -0,0 +1,1442 @@
 +#ifndef __MT7915_DEBUG_H
 +#define __MT7915_DEBUG_H
 +
@@ -922,12 +922,22 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +};
 +
 +struct cos_program_trace_t{
-+	u32    dest_id;
-+	u32    msg_id;
-+	u32    msg_sn;
-+	u32    ts_gpt2;
-+	u32    LP;
-+	char   name[12];
++	u32    _dest_id;
++	u32    _msg_id;
++	u32    _msg_sn;
++	u32    _ts_gpt2;
++	u32    _LP;
++	char   _name[12];
++} ;
++
++struct mt7915_cos_program_trace_t{
++	u32    _dest_id;
++	u32    _msg_id;
++	u32    _msg_sn;
++	u32    _ts_gpt2;
++	u32    _ts_gpt4;
++	u32    _LP;
++	char   _name[12];
 +} ;
 +
 +struct cos_msg_type {
@@ -1879,7 +1889,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +#endif
 --- /dev/null
 +++ b/mt7915/mtk_debugfs.c
-@@ -0,0 +1,3622 @@
+@@ -0,0 +1,3743 @@
 +#include<linux/inet.h>
 +#include "mt7915.h"
 +#include "mt7915_debug.h"
@@ -3247,8 +3257,6 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +	{"TWT UL Q1", ENUM_UMAC_LMAC_PORT_2, 0x59},
 +	{NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0}, {NULL, 0, 0},
 +};
-+
-+
 +
 +static char* sta_ctrl_reg[] = {"ENABLE", "DISABLE", "PAUSE"};
 +static u32 chip_show_sta_acq_info(struct seq_file *s, struct mt7915_dev *dev, u32 *ple_stat,
@@ -4806,7 +4814,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +{
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
 +	struct mt76_dev *mdev = NULL;
-+	seq_printf(s, "Version: 2.2.14.0\n");
++	seq_printf(s, "Version: 2.2.15.0\n");
 +
 +	if (!test_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state))
 +		return 0;
@@ -4818,16 +4826,11 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +	return 0;
 +}
 +
-+static inline int mt7915_snprintf_error(size_t size, int res)
-+{
-+	return res < 0 || (unsigned int) res >= size;
-+}
-+
 +static void mt7915_show_lp_history(struct seq_file *s, bool fgIsExp)
 +{
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
-+	u32 macVal = 0, gpr_log_idx = 0, oldest_idx = 0;
-+	u32 idx = 0, i = 0;
++	u32 macVal, gpr_log_idx, oldest_idx;
++	u32 idx, i;
 +
 +	if (!fgIsExp) {
 +		/* disable LP recored */
@@ -4837,7 +4840,6 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +		udelay(100);
 +	}
 +
-+	macVal = 0;
 +	macVal = mt76_rr(dev, 0x89050200);
 +	gpr_log_idx = ((macVal >> 16) & 0x1f);
 +	oldest_idx = gpr_log_idx + 2;
@@ -4861,26 +4863,44 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +{
 +#define SYSIRQ_INTERRUPT_HISTORY_NUM	10
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
-+	u32 macVal = 0;
-+	u32 i = 0;
-+	u32 start = 0;
-+	u32 idx = 0;
-+	u8 ucIrqDisIdx = 0;
-+	u8 ucIrqResIdx = 0;
-+	u32 irq_dis_time[10];
-+	u32 irq_dis_lp[10];
-+	u32 irq_res_time[10];
-+	u32 irq_res_lp[10];
++	u32 macVal, i, start, idx;
++	u8 ucIrqDisIdx, ucIrqResIdx;
++	u32 irq_dis_time[SYSIRQ_INTERRUPT_HISTORY_NUM], irq_dis_lp[SYSIRQ_INTERRUPT_HISTORY_NUM];
++	u32 irq_res_time[SYSIRQ_INTERRUPT_HISTORY_NUM], irq_res_lp[SYSIRQ_INTERRUPT_HISTORY_NUM];
++	u32 irq_idx_addr, irq_dis_addr, irq_res_addr;
 +
-+	macVal = 0;
-+	macVal = mt76_rr(dev, 0x022051C0);
++	switch (mt76_chip(&dev->mt76)) {
++	case 0x7915:
++		irq_idx_addr = 0x2170BC;
++		irq_dis_addr = 0x2170B8;
++		irq_res_addr = 0x2170B4;
++		break;
++	case 0x7981:
++		irq_idx_addr = 0x02205138;
++		irq_dis_addr = 0x02205140;
++		irq_res_addr = 0x0220513C;
++		break;
++	case 0x7906:
++		irq_idx_addr = 0x02205288;
++		irq_dis_addr = 0x02205290;
++		irq_res_addr = 0x0220528C;
++		break;
++	case 0x7986:
++	default:
++		irq_idx_addr = 0x022051C0;
++		irq_dis_addr = 0x022051C8;
++		irq_res_addr = 0x022051C4;
++		break;
++	}
++
++	macVal = mt76_rr(dev, irq_idx_addr);
 +	ucIrqResIdx = (macVal & 0xff);
 +	ucIrqDisIdx = ((macVal >> 8) & 0xff);
 +
 +	seq_printf(s, "\n\n\n       Irq Idx (Dis=%d Res=%d):\n",
 +		   ucIrqDisIdx, ucIrqResIdx);
 +
-+	start = mt76_rr(dev, 0x022051C8);
++	start = mt76_rr(dev, irq_dis_addr);
 +	for (i = 0; i < SYSIRQ_INTERRUPT_HISTORY_NUM; i++) {
 +		macVal = mt76_rr(dev, (start + (i * 8)));
 +		irq_dis_time[i] = macVal;
@@ -4888,8 +4908,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +		irq_dis_lp[i] = macVal;
 +	}
 +
-+	start = mt76_rr(dev, 0x022051C4);
-+
++	start = mt76_rr(dev, irq_res_addr);
 +	for (i = 0; i < SYSIRQ_INTERRUPT_HISTORY_NUM; i++) {
 +		macVal = mt76_rr(dev, (start + (i * 8)));
 +		irq_res_time[i] = macVal;
@@ -4924,30 +4943,57 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +	}
 +}
 +
++static int MemReadOneByte(struct mt7915_dev *dev, u32 addr)
++{
++	u32 val, tmpval;
++
++	val = mt76_rr(dev, (addr & ~(0x3)));
++	tmpval = (val >> (8 * (addr & (0x3)))) & 0xff;
++	return tmpval;
++}
++
 +static void mt7915_show_msg_trace(struct seq_file *s)
 +{
-+#define MSG_HISTORY_NUM	64
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
 +	struct cos_msg_trace_t *msg_trace = NULL;
-+	u32 ptr_addr = 0;
-+	u32 length = 0;
-+	u32 idx = 0;
-+	u32 cnt = 0;
-+	u32 msg_history_num = 0;
++	u32 ptr_addr, length;
++	u32 idx = 0, cnt = 0;
++	u32 msg_history_num, num_addr;
++	u32 trace_ptr_addr, trace_num_addr;
 +
-+	msg_trace = kmalloc(MSG_HISTORY_NUM * sizeof(struct cos_msg_trace_t), GFP_KERNEL);
++	switch (mt76_chip(&dev->mt76)) {
++	case 0x7915:
++		trace_ptr_addr = 0x41F054;
++		trace_num_addr = 0x41F058;
++		num_addr = mt76_rr(dev, 0x41F05C);
++		break;
++	case 0x7981:
++		trace_ptr_addr = 0x02205100;
++		trace_num_addr = 0x02205104;
++		break;
++	case 0x7906:
++		trace_ptr_addr = 0x02205250;
++		trace_num_addr = 0x02205254;
++		break;
++	case 0x7986:
++	default:
++		trace_ptr_addr = 0x02205188;
++		trace_num_addr = 0x0220518C;
++		break;
++	}
++
++
++
++	ptr_addr = mt76_rr(dev, trace_ptr_addr);
++	msg_history_num = mt76_rr(dev, trace_num_addr);
++	idx = (is_mt7915(&dev->mt76) ? MemReadOneByte(dev, num_addr) : (msg_history_num >> 8)) & 0xff;
++	msg_history_num = msg_history_num & 0xff;
++	msg_trace = kzalloc(msg_history_num * sizeof(struct cos_msg_trace_t), GFP_KERNEL);
++
 +	if (!msg_trace) {
 +		seq_printf(s, "can not allocate cmd msg_trace\n");
 +		return;
 +	}
-+
-+	memset(msg_trace, 0,  MSG_HISTORY_NUM * sizeof(struct cos_msg_trace_t));
-+
-+	ptr_addr = mt76_rr(dev, 0x02205188);
-+	msg_history_num = mt76_rr(dev, 0x0220518C);
-+
-+	idx = (msg_history_num >> 8) & 0xff;
-+	msg_history_num = msg_history_num & 0xff;
 +
 +	if (idx >= msg_history_num) {
 +		kfree(msg_trace);
@@ -4956,7 +5002,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +
 +	length = msg_history_num * sizeof(struct cos_msg_trace_t);
 +	MemSectionRead(dev, (char *)&(msg_trace[0]), length, ptr_addr);
-+	seq_printf(s,"\n");
++	seq_printf(s, "\n");
 +	seq_printf(s, "       msg trace:\n");
 +	seq_printf(s, "       format: t_id=task_id/task_prempt_cnt/msg_read_idx\n");
 +
@@ -5008,9 +5054,9 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +	}
 +
 +	*ptr = 0;
-+	seq_printf(s,"\n\n");
-+	seq_printf(s,"       Assert line\n");
-+	seq_printf(s,"       %s\n", msg);
++	seq_printf(s, "\n\n");
++	seq_printf(s, "       Assert line\n");
++	seq_printf(s, "       %s\n", msg);
 +	if (msg)
 +		kfree(msg);
 +
@@ -5022,33 +5068,47 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +{
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
 +	struct cos_task_info_struct  task_info_g[2];
-+	u32 length = 0, i = 0;
-+	u32 idx = 0;
-+	u32 km_total_time = 0;
-+	u32 addr = 0;
++	u32 length, idx;
++	u32 addr, km_total_time;
++	u32 task_info_addr, km_total_time_addr;
 +	struct cos_task_type tcb;
 +	struct cos_task_type *tcb_ptr;
 +	char   name[2][15] = {
 +		"WIFI	", "WIFI2   "
 +	};
 +
-+	length = 2 * sizeof(struct cos_task_info_struct);
-+	MemSectionRead(dev, (char *)&(task_info_g[0]), length, 0x02202A18);
++	switch (mt76_chip(&dev->mt76)) {
++	case 0x7915:
++		task_info_addr = 0x215400;
++		km_total_time_addr = 0x219838;
++		break;
++	case 0x7981:
++		task_info_addr = 0x02202978;
++		km_total_time_addr = 0x0220512C;
++		break;
++	case 0x7906:
++		task_info_addr = 0x02202ACC;
++		km_total_time_addr = 0x0220527C;
++		break;
++	case 0x7986:
++	default:
++		task_info_addr = 0x02202A18;
++		km_total_time_addr = 0x022051B4;
++		break;
++	}
 +
-+	/*while(i < length) {
-+		task_info_g[i] = mt76_rr(dev, 0x02202A18 + i * 0x4);
-+		i++;
-+	}*/
-+	km_total_time = mt76_rr(dev, 0x022051B4);
++	length = 2 * sizeof(struct cos_task_info_struct);
++	MemSectionRead(dev, (char *)&(task_info_g[0]), length, task_info_addr);
++
++	km_total_time = mt76_rr(dev, km_total_time_addr);
 +	if (km_total_time == 0) {
 +		seq_printf(s, "km_total_time zero!\n");
 +		return;
 +	}
 +
-+	seq_printf(s,"\n\n\n	  TASK	 XTIME	  RATIO    PREMPT CNT\n");
++	seq_printf(s, "\n\n\n	  TASK	 XTIME	  RATIO    PREMPT CNT\n");
 +	for (idx = 0 ;	idx < 2 ; idx++) {
 +		addr = task_info_g[idx].task_id;
-+		i = 0;
 +		MemSectionRead(dev, (char *)&(tcb), sizeof(struct cos_task_type), addr);
 +
 +		length = sizeof(struct cos_task_type);
@@ -5068,67 +5128,96 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +
 +static void mt7915_show_prog_trace(struct seq_file *s)
 +{
-+#define PROGRAM_TRACE_HISTORY_NUM 32
++#define mt7915_cos_access_ptr(_idx, _member)	(is_mt7915(&dev->mt76) ? \
++						mt7915_cos_program_trace_ptr[_idx]._##_member : \
++						cos_program_trace_ptr[_idx]._##_member)
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
 +	struct cos_program_trace_t *cos_program_trace_ptr = NULL;
-+	u32 trace_ptr = 0;
-+	u32 idx = 0;
-+	u32 old_idx = 0;
-+	u32 old_idx_addr = 0;
-+	u32 prev_idx = 0;
-+	u32 prev_time = 0;
-+	u32 curr_time = 0;
-+	u32 diff = 0;
-+	//u32 length = 0, i = 0;
++	struct mt7915_cos_program_trace_t *mt7915_cos_program_trace_ptr = NULL;
++	char *buf;
++	u32 trace_ptr;
++	u32 idx;
++	u32 old_idx;
++	u32 old_idx_addr;
++	u32 prev_idx, diff;
++	u32 prev_time, prev_dest_id, prev_msg_sn;
++	u32 old_time, old_dest_id, old_msg_sn;
++	u32 trace_ptr_addr, trace_idx_addr, trace_num_addr, trace_num;
++	int size;
 +
-+	cos_program_trace_ptr = kmalloc(PROGRAM_TRACE_HISTORY_NUM * sizeof(struct cos_program_trace_t), GFP_KERNEL);
-+	if (!cos_program_trace_ptr) {
++	switch (mt76_chip(&dev->mt76)) {
++	case 0x7915:
++		trace_ptr_addr = 0x41F0E0;
++		trace_idx_addr = 0x41F0E8;
++		trace_num_addr = mt76_rr(dev, 0x41F0E4);
++		break;
++	case 0x7981:
++		trace_ptr_addr = 0x022050C4;
++		trace_idx_addr = 0x022050C0;
++		break;
++	case 0x7906:
++		trace_ptr_addr = 0x02205214;
++		trace_idx_addr = 0x02205210;
++		break;
++	case 0x7986:
++	default:
++		trace_ptr_addr = 0x0220514C;
++		trace_idx_addr = 0x02205148;
++		break;
++	}
++
++	size = is_mt7915(&dev->mt76) ? sizeof(struct mt7915_cos_program_trace_t) : sizeof(struct cos_program_trace_t);
++	trace_num = is_mt7915(&dev->mt76) ? MemReadOneByte(dev, trace_num_addr) & 0xff : 32;
++	buf = kzalloc(trace_num * size, GFP_KERNEL);
++	if (!buf) {
 +		seq_printf(s, "can not allocate cos_program_trace_ptr memory\n");
 +		return;
 +	}
-+	memset(cos_program_trace_ptr, 0, PROGRAM_TRACE_HISTORY_NUM * sizeof(struct cos_program_trace_t));
 +
-+	trace_ptr = mt76_rr(dev, 0x0220514C);
-+	old_idx_addr = mt76_rr(dev, 0x02205148);
++	trace_ptr = mt76_rr(dev, trace_ptr_addr);
++	old_idx_addr = mt76_rr(dev, trace_idx_addr);
++	old_idx = (is_mt7915(&dev->mt76) ? MemReadOneByte(dev, old_idx_addr) : (old_idx_addr >> 8)) & 0xff;
 +
-+	old_idx = (old_idx_addr >> 8) & 0xff;
++	MemSectionRead(dev, &buf[0], trace_num * size, trace_ptr);
 +
-+	MemSectionRead(dev, (char *)&cos_program_trace_ptr[0], PROGRAM_TRACE_HISTORY_NUM * sizeof(struct cos_program_trace_t), trace_ptr);
++	if (is_mt7915(&dev->mt76))
++		mt7915_cos_program_trace_ptr = (struct mt7915_cos_program_trace_t *)buf;
++	else
++		cos_program_trace_ptr = (struct cos_program_trace_t *)buf;
 +
-+	/*length = PROGRAM_TRACE_HISTORY_NUM * sizeof(struct cos_program_trace_t);
-+	while(i < length) {
-+		cos_program_trace_ptr[i] = mt76_rr(dev, trace_ptr + i * 0x4);
-+		i++;
-+	}*/
 +	seq_printf(s, "\n");
 +	seq_printf(s, "       program trace:\n");
-+	for (idx = 0 ; idx < PROGRAM_TRACE_HISTORY_NUM ; idx++) {
-+		prev_idx = ((old_idx + 32 - 1) % 32);
++	for (idx = 0 ; idx < trace_num ; idx++) {
++		prev_idx = ((old_idx + trace_num - 1) % trace_num);
++
++		prev_time = mt7915_cos_access_ptr(prev_idx, ts_gpt2);
++		old_time = mt7915_cos_access_ptr(old_idx, ts_gpt2);
++		prev_dest_id = mt7915_cos_access_ptr(prev_idx, dest_id);
++		old_dest_id = mt7915_cos_access_ptr(old_idx, dest_id);
++		prev_msg_sn = mt7915_cos_access_ptr(prev_idx, msg_sn);
++		old_msg_sn = mt7915_cos_access_ptr(old_idx, msg_sn);
 +
 +		seq_printf(s, "       (p_%d)t_id=%x/%d, m_id=%d, LP=0x%x, name=%s, ts2=%d, ",
 +			old_idx,
-+			cos_program_trace_ptr[old_idx].dest_id,
-+			cos_program_trace_ptr[old_idx].msg_sn,
-+			cos_program_trace_ptr[old_idx].msg_id,
-+			cos_program_trace_ptr[old_idx].LP,
-+			cos_program_trace_ptr[old_idx].name,
-+			cos_program_trace_ptr[old_idx].ts_gpt2);
++			old_dest_id,
++			old_msg_sn,
++			mt7915_cos_access_ptr(old_idx, msg_id),
++			mt7915_cos_access_ptr(old_idx, LP),
++			mt7915_cos_access_ptr(old_idx, name),
++			old_time);
 +
 +		/* diff for gpt2 */
-+		prev_time = cos_program_trace_ptr[prev_idx].ts_gpt2;
-+		curr_time = cos_program_trace_ptr[old_idx].ts_gpt2;
++
++		diff = 0xFFFFFFFF;
 +
 +		if (prev_time) {
-+			if ((cos_program_trace_ptr[prev_idx].dest_id == cos_program_trace_ptr[old_idx].dest_id) &&
-+				(cos_program_trace_ptr[prev_idx].msg_sn == cos_program_trace_ptr[old_idx].msg_sn)) {
-+				if (curr_time > prev_time)
-+					diff = curr_time - prev_time;
++			if ((prev_dest_id == old_dest_id) && (prev_msg_sn == old_msg_sn)) {
++				if (old_time > prev_time)
++					diff = old_time - prev_time;
 +				else
-+					diff = 0xFFFFFFFF - prev_time + curr_time + 1;
-+			} else
-+				diff = 0xFFFFFFFF;
-+		} else
-+			diff = 0xFFFFFFFF;
++					diff = 0xFFFFFFFF - prev_time + old_time + 1;
++			}
++		}
 +
 +		if (diff == 0xFFFFFFFF)
 +			seq_printf(s, "diff2=NA, \n");
@@ -5136,117 +5225,205 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +			seq_printf(s, "diff2=%8d\n", diff);
 +
 +		old_idx++;
-+		if (old_idx >= 32)
++		if (old_idx >= trace_num)
 +			old_idx = 0;
 +	}
-+	if (cos_program_trace_ptr)
-+		kfree(cos_program_trace_ptr);
++	if (buf)
++		kfree(buf);
 +}
 +
 +static int mt7915_fw_wm_info_read(struct seq_file *s, void *data)
 +{
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
-+	u32 macVal = 0, g_exp_type = 0, COS_Interrupt_Count = 0;
-+	u8 exp_assert_proc_entry_cnt = 0, exp_assert_state = 0, g_irq_history_num = 0;
-+	u16 processing_irqx = 0;
-+	u32 processing_lisr = 0, Current_Task_Id = 0, Current_Task_Indx = 0;
-+	u8 km_irq_info_idx = 0, km_eint_info_idx = 0, km_sched_info_idx = 0, g_sched_history_num = 0;
-+	u32 km_sched_trace_ptr = 0,km_irq_trace_ptr = 0, km_total_time  = 0, TaskStart[3] = {0};
++	u32 macVal, g_exp_type, COS_Interrupt_Count;
++	u8 exp_assert_proc_entry_cnt, exp_assert_state, g_irq_history_num;
++	u16 processing_irqx;
++	u32 processing_lisr, Current_Task_Id, Current_Task_Indx;
++	u8 km_irq_info_idx, km_eint_info_idx, km_sched_info_idx, g_sched_history_num;
++	u32 km_sched_trace_ptr, km_irq_trace_ptr, km_total_time;
 +	bool fgIsExp = false, fgIsAssert = false;
-+	u32 TaskEnd[3] = {0}, exp_assert_state_addr = 0, g1_exp_counter_addr = 0;
-+	u32 g_exp_type_addr = 0, cos_interrupt_count_addr = 0;
-+	u32 processing_irqx_addr = 0, processing_lisr_addr = 0;
-+	u32 Current_Task_Id_addr = 0, Current_Task_Indx_addr = 0, last_dequeued_msg_id_addr = 0;
-+	u32 km_irq_info_idx_addr = 0, km_eint_info_idx_addr = 0, km_sched_info_idx_addr = 0;
-+	u32 g_sched_history_num_addr = 0, km_sched_trace_ptr_addr = 0;
-+	u32 km_irq_trace_ptr_addr = 0, km_total_time_addr  = 0, last_dequeued_msg_id = 0;
-+	u32 i = 0 ,t1 = 0, t2 = 0, t3 = 0;
-+	u8 idx = 0, str[32], exp_type[64];
-+	int ret;
++	u32 TaskStart[2], TaskEnd[2];
++	u32 exp_assert_state_addr, g1_exp_counter_addr;
++	u32 g_exp_type_addr, cos_interrupt_count_addr;
++	u32 processing_irqx_addr, processing_lisr_addr;
++	u32 Current_Task_Id_addr, Current_Task_Indx_addr, last_dequeued_msg_id_addr;
++	u32 km_irq_info_idx_addr, km_eint_info_idx_addr, km_sched_info_idx_addr;
++	u32 g_sched_history_num_addr, km_sched_trace_ptr_addr;
++	u32 km_irq_trace_ptr_addr, km_total_time_addr, last_dequeued_msg_id;
++	u32 TaskStart_0, TaskEnd_0, TaskStart_1, TaskEnd_1;
++	u32 t1_base_addr, t2_base_addr, t3_base_addr, t_addr_ofs;
++	u32 cpu_itype_addr, cpu_eva_addr, cpu_ipc_addr, pc_addr;
++	u32 busy_addr, peak_addr;
++	u32 i, t1, t2, t3;
++	u8 idx, exp_type[64];
 +
-+	g_exp_type_addr = 0x022050DC;
-+	exp_assert_state_addr = 0x02204B54;
-+	g1_exp_counter_addr = 0x02204FFC;
-+	cos_interrupt_count_addr = 0x022001AC;
-+	processing_irqx_addr = 0x02204EC4;
-+	processing_lisr_addr = 0x02205010;
-+	Current_Task_Id_addr = 0x02204FAC;
-+	Current_Task_Indx_addr = 0x02204F4C;
-+	last_dequeued_msg_id_addr = 0x02204F28;
-+	km_irq_info_idx_addr = 0x0220519C;
-+	km_eint_info_idx_addr = 0x02205194;
-+	km_sched_info_idx_addr = 0x022051A4;
-+	g_sched_history_num_addr = 0x022051A4;
-+	km_sched_trace_ptr_addr = 0x022051A0;
-+	km_irq_trace_ptr_addr = 0x02205198;
-+	km_total_time_addr = 0x022051B4;
++	switch (mt76_chip(&dev->mt76)) {
++	case 0x7915:
++		g_exp_type_addr = 0x21987C;
++		exp_assert_state_addr = 0x219848;
++		g1_exp_counter_addr = 0x219848;
++		cos_interrupt_count_addr = 0x216F94;
++		processing_irqx_addr = 0x216EF8;
++		processing_lisr_addr = 0x2170AC;
++		Current_Task_Id_addr = 0x216F90;
++		Current_Task_Indx_addr = 0x216F9C;
++		last_dequeued_msg_id_addr = 0x216F70;
++		km_irq_info_idx_addr = 0x219820;
++		km_eint_info_idx_addr = 0x219818;
++		km_sched_info_idx_addr = 0x219828;
++		g_sched_history_num_addr = 0x219828;
++		km_sched_trace_ptr_addr = 0x219824;
++		km_irq_trace_ptr_addr = 0x21981C;
++		km_total_time_addr = 0x219838;
++		TaskStart_0 = 0x2195A0;
++		TaskEnd_0 = 0x21959C;
++		TaskStart_1 = 0x219680;
++		TaskEnd_1 = 0x21967C;
++		t1_base_addr = 0x219558;
++		t2_base_addr = 0x219554;
++		t3_base_addr = 0x219560;
++		cpu_itype_addr = 0x41F088;
++		cpu_eva_addr = 0x41F08C;
++		cpu_ipc_addr = 0x41F094;
++		pc_addr = 0x7C060204;
++		busy_addr = 0x41F030;
++		peak_addr = 0x41F034;
++		break;
++	case 0x7981:
++		g_exp_type_addr = 0x02205054;
++		exp_assert_state_addr = 0x02204AC0;
++		g1_exp_counter_addr = 0x02204F68;
++		cos_interrupt_count_addr = 0x02204FFC;
++		processing_irqx_addr = 0x02204E30;
++		processing_lisr_addr = 0x02204F7C;
++		Current_Task_Id_addr = 0x02204F18;
++		Current_Task_Indx_addr = 0x02204F18;
++		last_dequeued_msg_id_addr = 0x02204E94;
++		km_irq_info_idx_addr = 0x02205114;
++		km_eint_info_idx_addr = 0x0220510C;
++		km_sched_info_idx_addr = 0x0220511C;
++		g_sched_history_num_addr = 0x0220511C;
++		km_sched_trace_ptr_addr = 0x02205118;
++		km_irq_trace_ptr_addr = 0x02205110;
++		km_total_time_addr = 0x0220512C;
++		TaskStart_0 = 0x022028B4;
++		TaskEnd_0 = 0x022028C0;
++		TaskStart_1 = 0x02202A38;
++		TaskEnd_1 = 0x02202934;
++		t1_base_addr = 0x02202718;
++		t2_base_addr = 0x0220287C;
++		t3_base_addr = 0x02202884;
++		cpu_itype_addr = 0x02205058;
++		cpu_eva_addr = 0x02205060;
++		cpu_ipc_addr = 0x0220505C;
++		pc_addr = 0x7C060204;
++		busy_addr = 0x7C053B20;
++		peak_addr = 0x7C053B24;
++		break;
++	case 0x7906:
++		g_exp_type_addr = 0x022051A4;
++		exp_assert_state_addr = 0x02204C14;
++		g1_exp_counter_addr = 0x022050BC;
++		cos_interrupt_count_addr = 0x022001AC;
++		processing_irqx_addr = 0x02204F84;
++		processing_lisr_addr = 0x022050D0;
++		Current_Task_Id_addr = 0x0220406C;
++		Current_Task_Indx_addr = 0x0220500C;
++		last_dequeued_msg_id_addr = 0x02204FE8;
++		km_irq_info_idx_addr = 0x02205264;
++		km_eint_info_idx_addr = 0x0220525C;
++		km_sched_info_idx_addr = 0x0220526C;
++		g_sched_history_num_addr = 0x0220516C;
++		km_sched_trace_ptr_addr = 0x02205268;
++		km_irq_trace_ptr_addr = 0x02205260;
++		km_total_time_addr = 0x0220517C;
++		TaskStart_0 = 0x022028C8;
++		TaskEnd_0 = 0x022028C4;
++		TaskStart_1 = 0x02202A38;
++		TaskEnd_1 = 0x02202934;
++		t1_base_addr = 0x0220286C;
++		t2_base_addr = 0x02202870;
++		t3_base_addr = 0x02202878;
++		cpu_itype_addr = 0x022051A8;
++		cpu_eva_addr = 0x022051B0;
++		cpu_ipc_addr = 0x022051AC;
++		pc_addr = 0x7C060204;
++		busy_addr = 0x7C053B20;
++		peak_addr = 0x7C053B24;
++		break;
++	case 0x7986:
++	default:
++		g_exp_type_addr = 0x022050DC;
++		exp_assert_state_addr = 0x02204B54;
++		g1_exp_counter_addr = 0x02204FFC;
++		cos_interrupt_count_addr = 0x022001AC;
++		processing_irqx_addr = 0x02204EC4;
++		processing_lisr_addr = 0x02205010;
++		Current_Task_Id_addr = 0x02204FAC;
++		Current_Task_Indx_addr = 0x02204F4C;
++		last_dequeued_msg_id_addr = 0x02204F28;
++		km_irq_info_idx_addr = 0x0220519C;
++		km_eint_info_idx_addr = 0x02205194;
++		km_sched_info_idx_addr = 0x022051A4;
++		g_sched_history_num_addr = 0x022051A4;
++		km_sched_trace_ptr_addr = 0x022051A0;
++		km_irq_trace_ptr_addr = 0x02205198;
++		km_total_time_addr = 0x022051B4;
++		TaskStart_0 = 0x02202814;
++		TaskEnd_0 = 0x02202810;
++		TaskStart_1 = 0x02202984;
++		TaskEnd_1 = 0x02202980;
++		t1_base_addr = 0x022027B8;
++		t2_base_addr = 0x022027BC;
++		t3_base_addr = 0x022027C4;
++		cpu_itype_addr = 0x022050E0;
++		cpu_eva_addr = 0x022050E8;
++		cpu_ipc_addr = 0x022050E4;
++		pc_addr = 0x7C060204;
++		busy_addr = 0x7C053B20;
++		peak_addr = 0x7C053B24;
++		break;
++	}
 +
-+	macVal = 0;
 +	macVal = mt76_rr(dev, exp_assert_state_addr);
 +	exp_assert_state = (macVal & 0xff);
 +
-+	macVal = 0;
 +	macVal = mt76_rr(dev, g1_exp_counter_addr);
-+	exp_assert_proc_entry_cnt = (macVal & 0xff);
++	exp_assert_proc_entry_cnt = (is_mt7915(&dev->mt76) ? (macVal >> 8) : macVal) & 0xff;
 +
-+	macVal = 0;
 +	macVal = mt76_rr(dev, g_exp_type_addr);
-+	g_exp_type = macVal;
++	g_exp_type = is_mt7915(&dev->mt76) ? ((macVal >> 8) & 0xff) : macVal;
 +
-+	macVal = 0;
-+	macVal = mt76_rr(dev, cos_interrupt_count_addr);
-+	COS_Interrupt_Count = macVal;
++	COS_Interrupt_Count = mt76_rr(dev, cos_interrupt_count_addr);
 +
-+	macVal = 0;
 +	macVal = mt76_rr(dev, processing_irqx_addr);
-+	processing_irqx = (macVal & 0xffff);
++	processing_irqx = (is_mt7915(&dev->mt76) ? (macVal >> 16) : macVal) & 0xffff;
 +
-+	macVal = 0;
-+	macVal = mt76_rr(dev, processing_lisr_addr);
-+	processing_lisr = macVal;
++	processing_lisr = mt76_rr(dev, processing_lisr_addr);
++	Current_Task_Id = mt76_rr(dev, Current_Task_Id_addr);
++	Current_Task_Indx = mt76_rr(dev, Current_Task_Indx_addr);
++	last_dequeued_msg_id = mt76_rr(dev, last_dequeued_msg_id_addr);
 +
-+	macVal = 0;
-+	macVal = mt76_rr(dev, Current_Task_Id_addr);
-+	Current_Task_Id = macVal;
-+
-+	macVal = 0;
-+	macVal = mt76_rr(dev, Current_Task_Indx_addr);
-+	Current_Task_Indx = macVal;
-+
-+	macVal = 0;
-+	macVal = mt76_rr(dev, last_dequeued_msg_id_addr);
-+	last_dequeued_msg_id = macVal;
-+
-+	macVal = 0;
 +	macVal = mt76_rr(dev, km_eint_info_idx_addr);
-+	km_eint_info_idx = ((macVal >> 8) & 0xff);
++	km_eint_info_idx = (is_mt7915(&dev->mt76) ? macVal : (macVal >> 8)) & 0xff;
 +
-+	macVal = 0;
 +	macVal = mt76_rr(dev, g_sched_history_num_addr);
-+	g_sched_history_num = (macVal & 0xff);
-+	km_sched_info_idx = ((macVal >> 8) & 0xff);
++	g_sched_history_num = (is_mt7915(&dev->mt76) ? (macVal >> 8) : macVal) & 0xff;
++	km_sched_info_idx = (is_mt7915(&dev->mt76) ? macVal : (macVal >> 8)) & 0xff;
 +
-+	macVal = 0;
-+	macVal = mt76_rr(dev, km_sched_trace_ptr_addr);
-+	km_sched_trace_ptr = macVal;
++	km_sched_trace_ptr = mt76_rr(dev, km_sched_trace_ptr_addr);
 +
-+	macVal = 0;
 +	macVal = mt76_rr(dev, km_irq_info_idx_addr);
-+	g_irq_history_num = (macVal & 0xff);
-+	km_irq_info_idx = ((macVal >> 16) & 0xff);
++	g_irq_history_num = (is_mt7915(&dev->mt76) ? (macVal >> 8) : macVal) & 0xff;
++	km_irq_info_idx = (is_mt7915(&dev->mt76) ? macVal : (macVal >> 16)) & 0xff;
 +
-+	macVal = 0;
-+	macVal = mt76_rr(dev, km_irq_trace_ptr_addr);
-+	km_irq_trace_ptr = macVal;
++	km_irq_trace_ptr = mt76_rr(dev, km_irq_trace_ptr_addr);
++	km_total_time = mt76_rr(dev, km_total_time_addr);
 +
-+	macVal = 0;
-+	macVal = mt76_rr(dev, km_total_time_addr);
-+	km_total_time = macVal;
-+
-+	TaskStart[0] = mt76_rr(dev, 0x02202814);
-+	TaskEnd[0] = mt76_rr(dev, 0x02202810);
-+	TaskStart[1] = mt76_rr(dev, 0x02202984);
-+	TaskEnd[1] = mt76_rr(dev, 0x02202980);
++	TaskStart[0] = mt76_rr(dev, TaskStart_0);
++	TaskEnd[0] = mt76_rr(dev, TaskEnd_0);
++	TaskStart[1] = mt76_rr(dev, TaskStart_1);
++	TaskEnd[1] = mt76_rr(dev, TaskEnd_1);
 +
 +	seq_printf(s, "================FW DBG INFO===================\n");
 +	seq_printf(s, "       exp_assert_proc_entry_cnt = 0x%x\n",
@@ -5255,40 +5432,19 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +		  exp_assert_state);
 +
 +	if (exp_assert_proc_entry_cnt == 0) {
-+		ret = snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Normal");
-+		if (mt7915_snprintf_error(sizeof(exp_type), ret)) {
-+			seq_printf(s, " exp_type Snprintf failed!\n");
-+			return 0;
-+		}
-+	} else if (exp_assert_proc_entry_cnt == 1 &&
-+		exp_assert_state > 1 && g_exp_type == 5) {
-+		ret = snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Assert");
-+		if (mt7915_snprintf_error(sizeof(exp_type), ret)) {
-+			seq_printf(s, " exp_type Snprintf failed!\n");
-+			return 0;
-+		}
++		snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Normal");
++	} else if (exp_assert_proc_entry_cnt == 1 && exp_assert_state > 1 && g_exp_type == 5) {
++		snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Assert");
 +		fgIsExp = true;
 +		fgIsAssert = true;
 +	} else if (exp_assert_proc_entry_cnt == 1 && exp_assert_state > 1) {
-+		ret = snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Exception");
-+		if (mt7915_snprintf_error(sizeof(exp_type), ret)) {
-+			seq_printf(s, " exp_type Snprintf failed!\n");
-+			return 0;
-+		}
++		snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Exception");
 +		fgIsExp = true;
 +	} else if (exp_assert_proc_entry_cnt > 1) {
-+		ret = snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Exception re-entry");
-+		if (mt7915_snprintf_error(sizeof(exp_type), ret)) {
-+			seq_printf(s, " exp_type Snprintf failed!\n");
-+			return 0;
-+		}
++		snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Exception re-entry");
 +		fgIsExp = true;
 +	} else {
-+		ret = snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Unknown'?");
-+		if (mt7915_snprintf_error(sizeof(exp_type), ret)) {
-+			seq_printf(s, " exp_type Snprintf failed!\n");
-+			return 0;
-+		}
++		snprintf(exp_type, sizeof(exp_type), "%s", "exp_type : Unknown?");
 +	}
 +
 +	seq_printf(s, "       COS_Interrupt_Count = 0x%x\n", COS_Interrupt_Count);
@@ -5343,27 +5499,14 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +	seq_printf(s, "\n       <4>TASK STACK INFO (size in byte)\n");
 +	seq_printf(s, "       TASK  START       END       SIZE  PEAK  INTEGRITY\n");
 +
++	t_addr_ofs = is_mt7915(&dev->mt76) ? 224 : 368;
 +	for (i = 0 ; i < 2 ; i++) {
-+		t1 = mt76_rr(dev,  0x022027B8+(i*368));
-+		t2 = mt76_rr(dev,  0x022027BC+(i*368));
-+		t3 = mt76_rr(dev,  0x022027C4+(i*368));
-+
-+		if (i == 0) {
-+			ret = snprintf(str, sizeof(str), "%s", "WIFI");
-+			if (mt7915_snprintf_error(sizeof(str), ret)) {
-+				seq_printf(s, " str Snprintf failed!\n");
-+				return 0;
-+			}
-+		} else if (i == 1) {
-+			ret = snprintf(str, sizeof(str), "%s", "WIFI2");
-+			if (mt7915_snprintf_error(sizeof(str), ret)) {
-+				seq_printf(s, " str Snprintf failed!\n");
-+				return 0;
-+			}
-+		}
++		t1 = mt76_rr(dev,  t1_base_addr + (i*t_addr_ofs));
++		t2 = mt76_rr(dev,  t2_base_addr + (i*t_addr_ofs));
++		t3 = mt76_rr(dev,  t3_base_addr + (i*t_addr_ofs));
 +
 +		seq_printf(s, "       %s  0x%x  0x%x  %d\n",
-+			str, t1, t2, t3);
++			i == 0 ? "WIFI" : "WIFI2", t1, t2, t3);
 +	}
 +
 +	seq_printf(s, "\n       <5>fw state\n");
@@ -5380,38 +5523,26 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +				Current_Task_Id, Current_Task_Indx);
 +	}
 +
-+	macVal = 0;
-+	macVal= mt76_rr(dev, g1_exp_counter_addr);
++	macVal = mt76_rr(dev, is_mt7915(&dev->mt76) ? 0x41F080 : g1_exp_counter_addr);
 +	seq_printf(s, "       EXCP_CNT = 0x%x\n", macVal);
 +
 +	seq_printf(s, "       EXCP_TYPE = 0x%x\n", g_exp_type);
-+
-+	macVal = 0;
-+	macVal = mt76_rr(dev, 0x022050E0);
-+	seq_printf(s, "       CPU_ITYPE = 0x%x\n", macVal);
-+
-+	macVal = 0;
-+	macVal = mt76_rr(dev,  0x022050E8);
-+	seq_printf(s, "       CPU_EVA = 0x%x\n", macVal);
-+
-+	macVal = 0;
-+	macVal = mt76_rr(dev, 0x022050E4);
-+	seq_printf(s, "       CPU_IPC = 0x%x\n", macVal);
-+
-+	macVal = 0;
-+	macVal = mt76_rr(dev, 0x7C060204);
-+	seq_printf(s, "       PC = 0x%x\n\n\n", macVal);
++	seq_printf(s, "       CPU_ITYPE = 0x%x\n", mt76_rr(dev, cpu_itype_addr));
++	seq_printf(s, "       CPU_EVA = 0x%x\n", mt76_rr(dev, cpu_eva_addr));
++	seq_printf(s, "       CPU_IPC = 0x%x\n", mt76_rr(dev, cpu_ipc_addr));
++	seq_printf(s, "       PC = 0x%x\n\n\n", mt76_rr(dev, pc_addr));
 +
 +	mt7915_show_lp_history(s, fgIsExp);
 +	mt7915_show_irq_history(s);
 +
-+	seq_printf(s, "\n\n       cpu ultility\n");
++	seq_printf(s, "\n\n       cpu utility\n");
 +	seq_printf(s, "       Busy:%d%% Peak:%d%%\n\n",
-+		   mt76_rr(dev, 0x7C053B20), mt76_rr(dev, 0x7C053B24));
++		   mt76_rr(dev, busy_addr), mt76_rr(dev, peak_addr));
 +
 +	mt7915_show_msg_trace(s);
 +	mt7915_show_sech_trace(s);
 +	mt7915_show_prog_trace(s);
++
 +	if (fgIsAssert)
 +		mt7915_show_assert_line(s);
 +

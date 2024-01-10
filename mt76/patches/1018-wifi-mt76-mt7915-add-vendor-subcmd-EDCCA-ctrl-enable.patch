@@ -1,7 +1,7 @@
-From 77df44ad45a75af9eb84e40fc81a57b39776cb17 Mon Sep 17 00:00:00 2001
+From 8fa041e702bd756560a1f409f4ad783f90b412d9 Mon Sep 17 00:00:00 2001
 From: Howard Hsu <howard-yh.hsu@mediatek.com>
 Date: Fri, 24 Jun 2022 11:15:45 +0800
-Subject: [PATCH 1018/1034] wifi: mt76: mt7915: add vendor subcmd EDCCA ctrl
+Subject: [PATCH 30/76] wifi: mt76: mt7915: add vendor subcmd EDCCA ctrl
  enable/threshold/compensation
 
 Change-Id: I06a3f94d5e444be894200e2b6588d76ed38d09d0
@@ -17,7 +17,7 @@ Change-Id: I06a3f94d5e444be894200e2b6588d76ed38d09d0
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1214,6 +1214,7 @@ enum {
+@@ -1235,6 +1235,7 @@ enum {
  	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
  	/* for vendor csi and air monitor */
  	MCU_EXT_CMD_SMESH_CTRL = 0xae,
@@ -39,7 +39,7 @@ Change-Id: I06a3f94d5e444be894200e2b6588d76ed38d09d0
  		if (ret)
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4355,3 +4355,76 @@ int mt7915_mcu_ipi_hist_scan(struct mt79
+@@ -4356,3 +4356,76 @@ int mt7915_mcu_ipi_hist_scan(struct mt79
  
  	return 0;
  }

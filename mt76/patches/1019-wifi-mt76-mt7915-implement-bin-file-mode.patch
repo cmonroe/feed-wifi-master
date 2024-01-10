@@ -1,4 +1,4 @@
-From 819b0590e6b8ef9e44e3f0a01c3db33eb236f463 Mon Sep 17 00:00:00 2001
+From 2b5f249307be0134f4ee8ee3ddf7a5374294ffce Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Thu, 7 Jul 2022 11:09:59 +0800
 Subject: [PATCH] wifi: mt76: mt7915: implement bin file mode
@@ -6,19 +6,20 @@ Subject: [PATCH] wifi: mt76: mt7915: implement bin file mode
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 ---
- eeprom.c             | 20 ++++++++++++++++++++
- mt76.h               |  4 ++++
- mt7915/eeprom.c      | 36 +++++++++++++++++++++++++++++++++---
- mt7915/eeprom.h      |  7 +++++++
+ eeprom.c             | 25 ++++++++++++++++++
+ mt76.h               |  4 +++
+ mt7915/eeprom.c      | 63 +++++++++++++++++++++++++++++++++++++++++---
+ mt7915/eeprom.h      |  7 +++++
  mt7915/mt7915.h      |  3 +++
- mt7915/mtk_debugfs.c | 44 ++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 111 insertions(+), 3 deletions(-)
+ mt7915/mtk_debugfs.c | 44 +++++++++++++++++++++++++++++++
+ testmode.h           |  2 +-
+ 7 files changed, 144 insertions(+), 4 deletions(-)
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -226,6 +226,26 @@ int mt76_get_of_eeprom(struct mt76_dev *
+@@ -228,6 +228,31 @@ static int mt76_get_of_eeprom(struct mt7
+ 	return mt76_get_of_data_from_nvmem(dev, eep, "eeprom", len);
  }
- EXPORT_SYMBOL_GPL(mt76_get_of_eeprom);
  
 +bool mt76_check_bin_file_mode(struct mt76_dev *dev)
 +{
@@ -31,8 +32,13 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 +	of_property_read_string(np, "bin_file_name", &bin_file_name);
 +
 +	dev->bin_file_name = bin_file_name;
-+	if (dev->bin_file_name)
++	if (dev->bin_file_name) {
 +		dev_info(dev->dev, "Using bin file %s\n", dev->bin_file_name);
++#ifdef CONFIG_NL80211_TESTMODE
++		dev->test_mtd.name = devm_kstrdup(dev->dev, bin_file_name, GFP_KERNEL);
++		dev->test_mtd.offset = -1;
++#endif
++	}
 +
 +	of_node_put(np);
 +
@@ -45,27 +51,68 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -903,6 +903,9 @@ struct mt76_dev {
+@@ -935,6 +935,9 @@ struct mt76_dev {
+ 		struct mt76_sdio sdio;
+ 	};
  
- 	int first_failed_mcu_cmd;
- 	int last_successful_mcu_cmd;
-+
 +	/* for mtk internal */
 +	const char *bin_file_name;
++
+ 	int first_failed_mcu_cmd;
+ 	int last_successful_mcu_cmd;
  };
- 
- /* per-phy stats.  */
-@@ -1136,6 +1139,7 @@ int mt76_eeprom_init(struct mt76_dev *de
- void mt76_eeprom_override(struct mt76_phy *phy);
- int mt76_get_of_eeprom(struct mt76_dev *dev, void *data, int offset, int len);
- int mt76_get_of_eeprom_file(struct mt76_dev *dev, void *eep, u32 offset, int len);
+@@ -1186,6 +1189,7 @@ int mt76_get_of_data_from_file(struct mt
+ int mt76_get_of_data_from_mtd(struct mt76_dev *dev, void *eep, int offset, int len);
+ int mt76_get_of_data_from_nvmem(struct mt76_dev *dev, void *eep,
+ 				const char *cell_name, int len);
 +bool mt76_check_bin_file_mode(struct mt76_dev *dev);
  
  struct mt76_queue *
  mt76_init_queue(struct mt76_dev *dev, int qid, int idx, int n_desc,
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
-@@ -62,8 +62,11 @@ static int mt7915_check_eeprom(struct mt
+@@ -6,6 +6,30 @@
+ #include "mt7915.h"
+ #include "eeprom.h"
+ 
++static int
++mt7915_eeprom_load_precal_binfile(struct mt7915_dev *dev, u32 offs, u32 size)
++{
++	const struct firmware *fw = NULL;
++	int ret;
++
++	ret = request_firmware(&fw, dev->mt76.bin_file_name, dev->mt76.dev);
++	if (ret)
++		return ret;
++
++	if (!fw || !fw->data) {
++		dev_err(dev->mt76.dev, "Invalid bin (bin file mode), load precal fail\n");
++		ret = -EINVAL;
++		goto out;
++	}
++
++	memcpy(dev->cal, fw->data + offs, size);
++
++out:
++	release_firmware(fw);
++
++	return ret;
++}
++
+ static int mt7915_eeprom_load_precal(struct mt7915_dev *dev)
+ {
+ 	struct mt76_dev *mdev = &dev->mt76;
+@@ -40,6 +64,9 @@ static int mt7915_eeprom_load_precal(str
+ 	}
+ #endif
+ 
++	if (dev->bin_file_mode)
++		return mt7915_eeprom_load_precal_binfile(dev, offs, size);
++
+ 	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, size);
+ 	if (!ret)
+ 		return ret;
+@@ -67,8 +94,11 @@ static int mt7915_check_eeprom(struct mt
  	}
  }
  
@@ -78,7 +125,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	switch (mt76_chip(&dev->mt76)) {
  	case 0x7915:
  		return dev->dbdc_support ?
-@@ -104,7 +107,10 @@ mt7915_eeprom_load_default(struct mt7915
+@@ -109,7 +139,10 @@ mt7915_eeprom_load_default(struct mt7915
  		return ret;
  
  	if (!fw || !fw->data) {
@@ -90,7 +137,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		ret = -EINVAL;
  		goto out;
  	}
-@@ -171,6 +177,7 @@ static int mt7915_eeprom_load(struct mt7
+@@ -176,6 +209,7 @@ static int mt7915_eeprom_load(struct mt7
  
  	if (ret) {
  		dev->flash_mode = true;
@@ -98,7 +145,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	} else {
  		u8 free_block_num;
  		u32 block_num, i;
-@@ -191,6 +198,8 @@ static int mt7915_eeprom_load(struct mt7
+@@ -196,6 +230,8 @@ static int mt7915_eeprom_load(struct mt7
  			if (ret < 0)
  				return ret;
  		}
@@ -107,7 +154,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	}
  
  	return mt7915_check_eeprom(dev);
-@@ -296,12 +305,33 @@ int mt7915_eeprom_init(struct mt7915_dev
+@@ -301,12 +337,33 @@ int mt7915_eeprom_init(struct mt7915_dev
  {
  	int ret;
  
@@ -187,7 +234,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  #ifdef MTK_DEBUG
  #define LWTBL_IDX2BASE_ID		GENMASK(14, 8)
-@@ -3537,6 +3538,47 @@ static int mt7915_fw_wm_info_read(struct
+@@ -3658,6 +3659,47 @@ static int mt7915_fw_wm_info_read(struct
  	return 0;
  }
  
@@ -235,7 +282,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -3617,6 +3659,8 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3738,6 +3780,8 @@ int mt7915_mtk_init_debugfs(struct mt791
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  
@@ -244,3 +291,14 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	return 0;
  }
  #endif
+--- a/testmode.h
++++ b/testmode.h
+@@ -15,7 +15,7 @@
+  * @MT76_TM_ATTR_RESET: reset parameters to default (flag)
+  * @MT76_TM_ATTR_STATE: test state (u32), see &enum mt76_testmode_state
+  *
+- * @MT76_TM_ATTR_MTD_PART: mtd partition used for eeprom data (string)
++ * @MT76_TM_ATTR_MTD_PART: mtd partition or binfile used for eeprom data (string)
+  * @MT76_TM_ATTR_MTD_OFFSET: offset of eeprom data within the partition (u32)
+  * @MT76_TM_ATTR_BAND_IDX: band idx of the chip (u8)
+  *

@@ -11,7 +11,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
-@@ -119,11 +119,53 @@ out:
+@@ -124,11 +124,53 @@ out:
  	return ret;
  }
  

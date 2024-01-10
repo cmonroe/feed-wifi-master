@@ -1,14 +1,14 @@
-From 6ed8355ed9d1e4e8bd15c9ed3b1799ed25358240 Mon Sep 17 00:00:00 2001
+From 3139498918652ecf180fa6ccfa465cbcdf5185fc Mon Sep 17 00:00:00 2001
 From: Peter Chiu <chui-hao.chiu@mediatek.com>
 Date: Fri, 20 May 2022 19:19:25 +0800
-Subject: [PATCH 1015/1031] wifi: mt76: mt7915: add mt7986 and mt7916
- pre-calibration
+Subject: [PATCH] wifi: mt76: mt7915: add mt7986 and mt7916 pre-calibration
 
 Add pre-calibration for mt7986 and mt7916. It has different data size
 with mt7915. Group cal needs 54k and 94k for 2G + 5G and 2G + 6G,
 respectively. DPD cal needs 300k.
 
 Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---
  mt7915/eeprom.c | 15 +++++------
  mt7915/eeprom.h |  1 +
@@ -17,7 +17,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
-@@ -10,17 +10,16 @@ static int mt7915_eeprom_load_precal(str
+@@ -10,18 +10,17 @@ static int mt7915_eeprom_load_precal(str
  {
  	struct mt76_dev *mdev = &dev->mt76;
  	u8 *eeprom = mdev->eeprom.data;
@@ -25,6 +25,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 -	u32 offs;
 +	u32 offs = is_mt7915(&dev->mt76) ? MT_EE_DO_PRE_CAL : MT_EE_DO_PRE_CAL_V2;
 +	u32 size, val = eeprom[offs];
+ 	int ret;
  
 -	if (!dev->flash_mode)
 +	if (!dev->flash_mode || !val)
@@ -33,7 +34,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 -	if (val != (MT_EE_WIFI_CAL_DPD | MT_EE_WIFI_CAL_GROUP))
 -		return 0;
 +	size = mt7915_get_cal_group_size(dev) +
-+	       (is_mt7915(&dev->mt76) ? MT_EE_CAL_DPD_SIZE_V1 : MT_EE_CAL_DPD_SIZE_V2);
++		(is_mt7915(&dev->mt76) ? MT_EE_CAL_DPD_SIZE_V1 : MT_EE_CAL_DPD_SIZE_V2);
  
 -	val = MT_EE_CAL_GROUP_SIZE + MT_EE_CAL_DPD_SIZE;
 -	dev->cal = devm_kzalloc(mdev->dev, val, GFP_KERNEL);
@@ -41,21 +42,26 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	if (!dev->cal)
  		return -ENOMEM;
  
-@@ -33,14 +32,14 @@ static int mt7915_eeprom_load_precal(str
+@@ -34,18 +33,18 @@ static int mt7915_eeprom_load_precal(str
  
  		if (np && of_property_read_u32(np, "mediatek,eeprom-file-offset", &dts_offset) == 0) {
  			dev_warn(dev->mt76.dev, "pre-cal offset=0x%x dts offset=0x%x size=0x%x\n",
 -					offs, dts_offset, val);
 +					offs, dts_offset, size);
  
--			return mt76_get_of_eeprom_file(mdev, dev->cal, (offs + dts_offset), val);
-+			return mt76_get_of_eeprom_file(mdev, dev->cal, (offs + dts_offset), size);
+-			return mt76_get_of_data_from_file(mdev, dev->cal, (offs + dts_offset), val);
++			return mt76_get_of_data_from_file(mdev, dev->cal, (offs + dts_offset), size);
  		}
  	}
  #endif
  
--	return mt76_get_of_eeprom(mdev, dev->cal, offs, val);
-+	return mt76_get_of_eeprom(mdev, dev->cal, offs, size);
+-	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, val);
++	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, size);
+ 	if (!ret)
+ 		return ret;
+ 
+-	return mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", val);
++	return mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
  }
  
  static int mt7915_check_eeprom(struct mt7915_dev *dev)
@@ -71,7 +77,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	MT_EE_TX0_POWER_2G =	0x2fc,
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2959,7 +2959,8 @@ static int mt7915_mcu_set_pre_cal(struct
+@@ -2960,7 +2960,8 @@ static int mt7915_mcu_set_pre_cal(struct
  int mt7915_mcu_apply_group_cal(struct mt7915_dev *dev)
  {
  	u8 idx = 0, *cal = dev->cal, *eep = dev->mt76.eeprom.data;
@@ -81,7 +87,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	if (!(eep[offs] & MT_EE_WIFI_CAL_GROUP))
  		return 0;
-@@ -2997,9 +2998,9 @@ static int mt7915_find_freq_idx(const u1
+@@ -2998,9 +2999,9 @@ static int mt7915_find_freq_idx(const u1
  	return -1;
  }
  
@@ -93,7 +99,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		5180, 5200, 5220, 5240,
  		5260, 5280, 5300, 5320,
  		5500, 5520, 5540, 5560,
-@@ -3007,34 +3008,69 @@ static int mt7915_dpd_freq_idx(u16 freq,
+@@ -3008,34 +3009,69 @@ static int mt7915_dpd_freq_idx(u16 freq,
  		5660, 5680, 5700, 5745,
  		5765, 5785, 5805, 5825
  	};
@@ -173,7 +179,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  }
  
  int mt7915_mcu_apply_tx_dpd(struct mt7915_phy *phy)
-@@ -3066,24 +3102,24 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
+@@ -3067,24 +3103,24 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
  	if (!(eep[offs] & dpd_mask))
  		return 0;
  

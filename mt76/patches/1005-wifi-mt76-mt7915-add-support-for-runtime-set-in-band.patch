@@ -1,8 +1,8 @@
-From e1fb54da7217b4c2c88666cf1b782669632a795c Mon Sep 17 00:00:00 2001
+From a49b1acefb6d57b8147a931edbbe77536f870d12 Mon Sep 17 00:00:00 2001
 From: MeiChia Chiu <meichia.chiu@mediatek.com>
 Date: Thu, 23 Mar 2023 09:55:50 +0800
-Subject: [PATCH 1005/1040] wifi: mt76: mt7915: add support for runtime set
- in-band discovery
+Subject: [PATCH 17/76] wifi: mt76: mt7915: add support for runtime set in-band
+ discovery
 
 Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
 ---

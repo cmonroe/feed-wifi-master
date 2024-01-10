@@ -1,7 +1,7 @@
-From 2471603cc433dfe9d5d9ba9f22e4692e4170a6a8 Mon Sep 17 00:00:00 2001
+From 824fba94e1bc5a00182da6e1bad32795c4b85882 Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Wed, 31 Aug 2022 20:06:52 +0800
-Subject: [PATCH 1009/1031] wifi: mt76: testmode: add pre-cal support
+Subject: [PATCH 22/76] wifi: mt76: testmode: add pre-cal support
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---
@@ -20,7 +20,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -94,8 +94,10 @@ static int mt76_get_of_epprom_from_mtd(s
+@@ -94,8 +94,10 @@ int mt76_get_of_data_from_mtd(struct mt7
  	}
  
  #ifdef CONFIG_NL80211_TESTMODE
@@ -35,7 +35,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  out_put_node:
 --- a/mt76.h
 +++ b/mt76.h
-@@ -670,6 +670,7 @@ struct mt76_testmode_ops {
+@@ -704,6 +704,7 @@ struct mt76_testmode_ops {
  	int (*set_params)(struct mt76_phy *phy, struct nlattr **tb,
  			  enum mt76_testmode_state new_state);
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
@@ -45,7 +45,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_TM_FW_RX_COUNT	BIT(0)
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -998,6 +998,7 @@ enum {
+@@ -1008,6 +1008,7 @@ enum {
  
  /* ext event table */
  enum {
@@ -77,7 +77,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  #define MT_EE_WIFI_CONF0_TX_PATH		GENMASK(2, 0)
  #define MT_EE_WIFI_CONF0_BAND_SEL		GENMASK(7, 6)
-@@ -155,6 +163,26 @@ mt7915_tssi_enabled(struct mt7915_dev *d
+@@ -156,6 +164,26 @@ mt7915_tssi_enabled(struct mt7915_dev *d
  		return val & MT_EE_WIFI_CONF7_TSSI0_5G;
  }
  
@@ -116,7 +116,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
-@@ -2957,7 +2960,7 @@ int mt7915_mcu_apply_group_cal(struct mt
+@@ -2958,7 +2961,7 @@ int mt7915_mcu_apply_group_cal(struct mt
  	u8 idx = 0, *cal = dev->cal, *eep = dev->mt76.eeprom.data;
  	u32 total = MT_EE_CAL_GROUP_SIZE;
  
@@ -125,7 +125,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		return 0;
  
  	/*
-@@ -3037,11 +3040,29 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
+@@ -3038,11 +3041,29 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
  {
  	struct mt7915_dev *dev = phy->dev;
  	struct cfg80211_chan_def *chandef = &phy->mt76->chandef;

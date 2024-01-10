@@ -1,7 +1,7 @@
-From a8a300579541b1e29f498d887e4711c481af1809 Mon Sep 17 00:00:00 2001
+From 35f6ac0e81382f76932b195a75fe0fa4ebc690e7 Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Tue, 11 Jul 2023 17:06:04 +0800
-Subject: [PATCH 1033/1040] wifi: mt76: mt7915: add txpower info dump support
+Subject: [PATCH 45/76] wifi: mt76: mt7915: add txpower info dump support
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---
@@ -12,7 +12,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7915/debugfs.c
 +++ b/mt7915/debugfs.c
-@@ -1247,6 +1247,91 @@ mt7915_txpower_path_show(struct seq_file
+@@ -1259,6 +1259,91 @@ mt7915_txpower_path_show(struct seq_file
  DEFINE_SHOW_ATTRIBUTE(mt7915_txpower_path);
  
  static int
@@ -104,7 +104,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7915_twt_stats(struct seq_file *s, void *data)
  {
  	struct mt7915_dev *dev = dev_get_drvdata(s->private);
-@@ -1335,6 +1420,8 @@ int mt7915_init_debugfs(struct mt7915_ph
+@@ -1347,6 +1432,8 @@ int mt7915_init_debugfs(struct mt7915_ph
  			    &mt7915_txpower_fops);
  	debugfs_create_file("txpower_path", 0400, dir, phy,
  			    &mt7915_txpower_path_fops);
@@ -115,7 +115,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3486,6 +3486,8 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3526,6 +3526,8 @@ int mt7915_mcu_get_txpower_sku(struct mt
  			txpower[i] = res[i][req.band_idx];
  	} else if (category == TX_POWER_INFO_PATH) {
  		memcpy(txpower, skb->data + 4, len);
