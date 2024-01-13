@@ -625,6 +625,11 @@ define KernelPackage/mt7996-firmware/install
 		./files/firmware/mt7996/mt7996_dsp.bin \
 		./files/firmware/mt7996/mt7996_eeprom.bin \
 		./files/firmware/mt7996/mt7996_eeprom_tm.bin \
+		./files/firmware/mt7996/mt7996_wa_233.bin \
+		./files/firmware/mt7996/mt7996_wm_233.bin \
+		./files/firmware/mt7996/mt7996_wm_tm_233.bin \
+		./files/firmware/mt7996/mt7996_rom_patch_233.bin \
+		./files/firmware/mt7996/mt7996_eeprom_233.bin \
 		$(1)/lib/firmware/mediatek/mt7996
 endef
 
