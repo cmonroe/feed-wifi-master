@@ -17,10 +17,10 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 +	dev_info(dev->mt76.dev,"\n%s L1 SER recovery start.",
 +		 wiphy_name(dev->mt76.hw->wiphy));
 +
- 	if (mtk_wed_device_active(&dev->mt76.mmio.wed)) {
- 		mtk_wed_device_stop(&dev->mt76.mmio.wed);
- 		if (!is_mt798x(&dev->mt76))
-@@ -1629,6 +1632,9 @@ void mt7915_mac_reset_work(struct work_s
+ 	ieee80211_stop_queues(mt76_hw(dev));
+ 	if (ext_phy)
+ 		ieee80211_stop_queues(ext_phy->hw);
+@@ -1626,6 +1629,9 @@ void mt7915_mac_reset_work(struct work_s
  		ieee80211_queue_delayed_work(ext_phy->hw,
  					     &phy2->mt76->mac_work,
  					     MT7915_WATCHDOG_TIME);
@@ -30,7 +30,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  }
  
  /* firmware coredump */
-@@ -1744,6 +1750,9 @@ void mt7915_coredump(struct mt7915_dev *
+@@ -1741,6 +1747,9 @@ void mt7915_coredump(struct mt7915_dev *
  
  void mt7915_reset(struct mt7915_dev *dev)
  {

@@ -141,7 +141,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -1957,6 +1951,27 @@ static void mt7915_mac_severe_check(stru
+@@ -1954,6 +1948,27 @@ static void mt7915_mac_severe_check(stru
  	phy->trb_ts = trb;
  }
  
@@ -169,7 +169,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7915_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev, rc_work);
-@@ -2015,6 +2030,11 @@ void mt7915_mac_work(struct work_struct
+@@ -2012,6 +2027,11 @@ void mt7915_mac_work(struct work_struct
  			mt7915_mcu_muru_debug_get(phy);
  	}
  
@@ -474,7 +474,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  #ifdef CONFIG_NL80211_TESTMODE
  	struct {
  		u32 *reg_backup;
-@@ -495,6 +500,7 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -496,6 +501,7 @@ int mt7915_mcu_get_chan_mib_info(struct
  int mt7915_mcu_get_temperature(struct mt7915_phy *phy);
  int mt7915_mcu_set_thermal_throttling(struct mt7915_phy *phy, u8 state);
  int mt7915_mcu_set_thermal_protect(struct mt7915_phy *phy);

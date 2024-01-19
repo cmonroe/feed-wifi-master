@@ -12,11 +12,9 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  tx.c | 8 ++++++++
  1 file changed, 8 insertions(+)
 
-diff --git a/tx.c b/tx.c
-index 1809b032..4596b367 100644
 --- a/tx.c
 +++ b/tx.c
-@@ -345,6 +345,14 @@ mt76_tx(struct mt76_phy *phy, struct ieee80211_sta *sta,
+@@ -345,6 +345,14 @@ mt76_tx(struct mt76_phy *phy, struct iee
  
  	info->hw_queue |= FIELD_PREP(MT_TX_HW_QUEUE_PHY, phy->band_idx);
  
@@ -31,6 +29,3 @@ index 1809b032..4596b367 100644
  	spin_lock_bh(&wcid->tx_pending.lock);
  	__skb_queue_tail(&wcid->tx_pending, skb);
  	spin_unlock_bh(&wcid->tx_pending.lock);
--- 
-2.18.0
-
