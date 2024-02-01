@@ -585,7 +585,6 @@ define KernelPackage/mt7981-firmware/install
 		./files/firmware/mt7981_rom_patch.bin \
 		./files/firmware/mt7981_eeprom_mt7976_dbdc.bin \
 		./files/firmware/mt7981_wo.bin \
-		./files/firmware/mt7981_wo_0.bin \
 		$(1)/lib/firmware/mediatek
 endef
 
