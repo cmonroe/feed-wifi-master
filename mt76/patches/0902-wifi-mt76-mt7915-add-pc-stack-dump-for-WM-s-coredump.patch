@@ -38,7 +38,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  enum mt76_wed_type {
  	MT76_WED_Q_TX,
  	MT76_WED_Q_TXFREE,
-@@ -832,6 +840,9 @@ struct mt76_dev {
+@@ -833,6 +841,9 @@ struct mt76_dev {
  	struct device *dma_dev;
  
  	struct mt76_mcu mcu;
@@ -50,7 +50,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	struct net_device tx_napi_dev;
 --- a/mt76_connac_mcu.c
 +++ b/mt76_connac_mcu.c
-@@ -2930,6 +2930,9 @@ int mt76_connac2_load_ram(struct mt76_de
+@@ -2933,6 +2933,9 @@ int mt76_connac2_load_ram(struct mt76_de
  		goto out;
  	}
  
@@ -60,7 +60,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	snprintf(dev->hw->wiphy->fw_version,
  		 sizeof(dev->hw->wiphy->fw_version),
  		 "%.10s-%.15s", hdr->fw_ver, hdr->build_date);
-@@ -2959,6 +2962,9 @@ int mt76_connac2_load_ram(struct mt76_de
+@@ -2962,6 +2965,9 @@ int mt76_connac2_load_ram(struct mt76_de
  		goto out;
  	}
  
@@ -70,7 +70,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	snprintf(dev->hw->wiphy->fw_version,
  		 sizeof(dev->hw->wiphy->fw_version),
  		 "%.10s-%.15s", hdr->fw_ver, hdr->build_date);
-@@ -3029,6 +3035,9 @@ int mt76_connac2_load_patch(struct mt76_
+@@ -3032,6 +3038,9 @@ int mt76_connac2_load_patch(struct mt76_
  	dev_info(dev->dev, "HW/SW Version: 0x%x, Build Time: %.16s\n",
  		 be32_to_cpu(hdr->hw_sw_ver), hdr->build_date);
  

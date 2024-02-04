@@ -18,7 +18,7 @@ Subject: [PATCH 1001/1033] wifi: mt76: mt7915: csi: implement csi support
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1017,6 +1017,7 @@ enum {
+@@ -1021,6 +1021,7 @@ enum {
  	MCU_EXT_EVENT_WA_TX_STAT = 0x74,
  	MCU_EXT_EVENT_BCC_NOTIFY = 0x75,
  	MCU_EXT_EVENT_MURU_CTRL = 0x9f,
@@ -26,7 +26,7 @@ Subject: [PATCH 1001/1033] wifi: mt76: mt7915: csi: implement csi support
  };
  
  /* unified event table */
-@@ -1229,6 +1230,7 @@ enum {
+@@ -1233,6 +1234,7 @@ enum {
  	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
  	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
  	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
@@ -150,7 +150,7 @@ Subject: [PATCH 1001/1033] wifi: mt76: mt7915: csi: implement csi support
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
-@@ -4059,6 +4068,108 @@ out:
+@@ -4077,6 +4086,108 @@ out:
  	return ret;
  }
  

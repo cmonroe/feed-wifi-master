@@ -30,7 +30,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -310,6 +310,7 @@ struct mt76_sta_stats {
+@@ -311,6 +311,7 @@ struct mt76_sta_stats {
  	u64 tx_nss[4];		/* 1, 2, 3, 4 */
  	u64 tx_mcs[16];		/* mcs idx */
  	u64 tx_bytes;
@@ -38,7 +38,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	/* WED TX */
  	u32 tx_packets;		/* unit: MSDU */
  	u32 tx_retries;
-@@ -319,6 +320,7 @@ struct mt76_sta_stats {
+@@ -320,6 +321,7 @@ struct mt76_sta_stats {
  	u32 rx_packets;
  	u32 rx_errors;
  	u32 rx_drops;
@@ -48,7 +48,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  enum mt76_wcid_flags {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1222,6 +1222,7 @@ enum {
+@@ -1226,6 +1226,7 @@ enum {
  	MCU_EXT_CMD_SET_RDD_PATTERN = 0x7d,
  	MCU_EXT_CMD_MWDS_SUPPORT = 0x80,
  	MCU_EXT_CMD_SET_SER_TRIGGER = 0x81,
@@ -144,7 +144,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	}
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4561,3 +4561,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
+@@ -4579,3 +4579,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
  
  	return 0;
  }

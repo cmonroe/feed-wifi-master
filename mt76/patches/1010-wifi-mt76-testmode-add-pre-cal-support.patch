@@ -35,7 +35,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  out_put_node:
 --- a/mt76.h
 +++ b/mt76.h
-@@ -704,6 +704,7 @@ struct mt76_testmode_ops {
+@@ -705,6 +705,7 @@ struct mt76_testmode_ops {
  	int (*set_params)(struct mt76_phy *phy, struct nlattr **tb,
  			  enum mt76_testmode_state new_state);
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
@@ -45,7 +45,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_TM_FW_RX_COUNT	BIT(0)
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1008,6 +1008,7 @@ enum {
+@@ -1012,6 +1012,7 @@ enum {
  
  /* ext event table */
  enum {
