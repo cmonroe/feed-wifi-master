@@ -66,7 +66,7 @@ hostapd_append_wpa_key_mgmt() {
 		psk-sae)
 			append wpa_key_mgmt "WPA-PSK"
 			[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt "FT-PSK"
-			[ "${ieee80211w:-0}" -gt 0 ] && append wpa_key_mgmt "WPA-PSK-SHA256"
+			[ "${ieee80211w:-0}" -gt 1 ] && append wpa_key_mgmt "WPA-PSK-SHA256"
 			append wpa_key_mgmt "SAE"
 			[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt "FT-SAE"
 		;;
@@ -120,6 +120,8 @@ hostapd_common_add_device_config() {
 	config_add_int rssi_reject_assoc_rssi
 	config_add_int rssi_ignore_probe_request
 	config_add_int maxassoc
+	config_add_int acs_num_scans
+	config_add_boolean acs_exclude_6ghz_non_psc
 
 	config_add_string acs_chan_bias
 	config_add_array hostapd_options
@@ -139,7 +141,7 @@ hostapd_prepare_device_config() {
 	json_get_vars country country3 country_ie beacon_int:100 doth require_mode legacy_rates \
 		acs_chan_bias local_pwr_constraint spectrum_mgmt_required airtime_mode cell_density \
 		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_ignore_probe_request maxassoc \
-		mbssid:0
+		acs_num_scans acs_exclude_6ghz_non_psc mbssid:0
 
 	hostapd_set_log_options base_cfg
 
@@ -163,6 +165,8 @@ hostapd_prepare_device_config() {
 	}
 
 	[ -n "$acs_chan_bias" ] && append base_cfg "acs_chan_bias=$acs_chan_bias" "$N"
+	[ -n "$acs_num_scans" ] && append base_cfg "acs_num_scans=$acs_num_scans" "$N"
+	[ "$acs_exclude_6ghz_non_psc" -eq "1" ] && append base_cfg "acs_exclude_6ghz_non_psc=1" "$N"
 
 	local brlist= br
 	json_get_values basic_rate_list basic_rate
@@ -318,7 +322,7 @@ hostapd_common_add_bss_config() {
 	config_add_string time_zone
 	config_add_string vendor_elements
 
-	config_add_boolean ieee80211k rrm_neighbor_report rrm_beacon_report
+	config_add_boolean ieee80211k rrm_neighbor_report rrm_beacon_report rnr
 
 	config_add_boolean ftm_responder stationary_ap
 	config_add_string lci civic
@@ -666,6 +670,8 @@ hostapd_set_bss_options() {
 			[ -n "$owe_transition_bssid" ] && append bss_conf "owe_transition_bssid=$owe_transition_bssid" "$N"
 			[ -n "$owe_transition_ifname" ] && append bss_conf "owe_transition_ifname=$owe_transition_ifname" "$N"
 
+			set_default dynamic_vlan 0
+			vlan_possible=1
 			wps_possible=1
 			# Here we make the assumption that if we're in open mode
 			# with WPS enabled, we got to be in unconfigured state.
@@ -687,7 +693,8 @@ hostapd_set_bss_options() {
 				wireless_setup_vif_failed INVALID_WPA_PSK
 				return 1
 			fi
-			[ -z "$wpa_psk_file" ] && set_default wpa_psk_file /var/run/hostapd-$ifname.psk
+			# Don't set the psk file in order to force use of single default key.
+			# [ -z "$wpa_psk_file" ] && set_default wpa_psk_file /var/run/hostapd-$ifname.psk
 			[ -n "$wpa_psk_file" ] && {
 				[ -e "$wpa_psk_file" ] || touch "$wpa_psk_file"
 				append bss_conf "wpa_psk_file=$wpa_psk_file" "$N"
@@ -1214,7 +1221,7 @@ _wpa_supplicant_common() {
 
 wpa_supplicant_teardown_interface() {
 	_wpa_supplicant_common "$1"
-	rm -rf "$_rpath/$1" "$_config"
+	rm -rf "$_config"
 }
 
 wpa_supplicant_prepare_interface() {
