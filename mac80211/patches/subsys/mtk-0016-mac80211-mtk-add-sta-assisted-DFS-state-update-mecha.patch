@@ -14,7 +14,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -8483,6 +8483,20 @@ void cfg80211_cac_event(struct net_devic
+@@ -8529,6 +8529,20 @@ void cfg80211_cac_event(struct net_devic
  			enum nl80211_radar_event event, gfp_t gfp);
  
  /**
@@ -82,7 +82,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  }
  
  static void ieee80211_reset_ap_probe(struct ieee80211_sub_if_data *sdata)
-@@ -5445,6 +5454,9 @@ static void ieee80211_rx_mgmt_assoc_resp
+@@ -5469,6 +5478,9 @@ static void ieee80211_rx_mgmt_assoc_resp
  		event.u.mlme.status = MLME_SUCCESS;
  		drv_event_callback(sdata->local, sdata, &event);
  		sdata_info(sdata, "associated\n");
@@ -102,7 +102,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  static bool cfg80211_valid_60g_freq(u32 freq)
  {
-@@ -1481,6 +1482,65 @@ bool cfg80211_any_usable_channels(struct
+@@ -1483,6 +1484,65 @@ bool cfg80211_any_usable_channels(struct
  }
  EXPORT_SYMBOL(cfg80211_any_usable_channels);
  

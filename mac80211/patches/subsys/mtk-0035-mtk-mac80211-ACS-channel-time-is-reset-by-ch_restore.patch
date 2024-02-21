@@ -28,11 +28,9 @@ Signed-off-by: fancy.liu <fancy.liu@mediatek.com>
  net/mac80211/util.c    | 9 +++++++++
  2 files changed, 16 insertions(+)
 
-diff --git a/include/net/mac80211.h b/include/net/mac80211.h
-index cef6577..2e4b66e 100644
 --- a/include/net/mac80211.h
 +++ b/include/net/mac80211.h
-@@ -7482,4 +7482,11 @@ int ieee80211_set_active_links(struct ieee80211_vif *vif, u16 active_links);
+@@ -7457,4 +7457,11 @@ int ieee80211_set_active_links(struct ie
  void ieee80211_set_active_links_async(struct ieee80211_vif *vif,
  				      u16 active_links);
  
@@ -44,11 +42,9 @@ index cef6577..2e4b66e 100644
 +unsigned long ieee80211_get_scanning(struct ieee80211_hw *hw);
 +
  #endif /* MAC80211_H */
-diff --git a/net/mac80211/util.c b/net/mac80211/util.c
-index 3650dcd..5bd40c6 100644
 --- a/net/mac80211/util.c
 +++ b/net/mac80211/util.c
-@@ -5155,3 +5155,12 @@ void ieee80211_fragment_element(struct sk_buff *skb, u8 *len_pos, u8 frag_id)
+@@ -5145,3 +5145,12 @@ void ieee80211_fragment_element(struct s
  
  	*len_pos = elem_len;
  }
@@ -61,6 +57,3 @@ index 3650dcd..5bd40c6 100644
 +}
 +EXPORT_SYMBOL(ieee80211_get_scanning);
 +
--- 
-2.18.0
-

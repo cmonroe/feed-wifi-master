@@ -14,7 +14,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -1358,6 +1358,7 @@ struct cfg80211_fils_discovery {
+@@ -1382,6 +1382,7 @@ struct cfg80211_fils_discovery {
  	u32 max_interval;
  	size_t tmpl_len;
  	const u8 *tmpl;
@@ -44,7 +44,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  	__NL80211_FILS_DISCOVERY_ATTR_LAST,
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -990,6 +990,7 @@ static int ieee80211_set_fils_discovery(
+@@ -993,6 +993,7 @@ static int ieee80211_set_fils_discovery(
  	fd = &link_conf->fils_discovery;
  	fd->min_interval = params->min_interval;
  	fd->max_interval = params->max_interval;
@@ -52,7 +52,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  
  	old = sdata_dereference(link->u.ap.fils_discovery, sdata);
  	new = kzalloc(sizeof(*new) + params->tmpl_len, GFP_KERNEL);
-@@ -1513,9 +1514,11 @@ static int ieee80211_change_beacon(struc
+@@ -1516,9 +1517,11 @@ static int ieee80211_change_beacon(struc
  	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
  	struct ieee80211_link_data *link;
  	struct beacon_data *old;
@@ -65,7 +65,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  
  	sdata_assert_lock(sdata);
  
-@@ -1546,6 +1549,31 @@ static int ieee80211_change_beacon(struc
+@@ -1549,6 +1552,31 @@ static int ieee80211_change_beacon(struc
  		changed |= BSS_CHANGED_HE_BSS_COLOR;
  	}
  
@@ -99,7 +99,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  }
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -423,6 +423,7 @@ nl80211_fils_discovery_policy[NL80211_FI
+@@ -424,6 +424,7 @@ nl80211_fils_discovery_policy[NL80211_FI
  	[NL80211_FILS_DISCOVERY_ATTR_INT_MAX] = NLA_POLICY_MAX(NLA_U32, 10000),
  	[NL80211_FILS_DISCOVERY_ATTR_TMPL] =
  			NLA_POLICY_BINARY_RANGE(NL80211_FILS_DISCOVERY_TMPL_MIN_LEN, IEEE80211_MAX_DATA_LEN),
@@ -116,7 +116,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  
  	return 0;
  }
-@@ -6221,7 +6224,8 @@ static int nl80211_set_beacon(struct sk_
+@@ -6240,7 +6243,8 @@ static int nl80211_set_beacon(struct sk_
  	unsigned int link_id = nl80211_link_id(info->attrs);
  	struct net_device *dev = info->user_ptr[1];
  	struct wireless_dev *wdev = dev->ieee80211_ptr;
@@ -126,7 +126,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  	int err;
  
  	if (dev->ieee80211_ptr->iftype != NL80211_IFTYPE_AP &&
-@@ -6234,17 +6238,36 @@ static int nl80211_set_beacon(struct sk_
+@@ -6253,17 +6257,36 @@ static int nl80211_set_beacon(struct sk_
  	if (!wdev->links[link_id].ap.beacon_interval)
  		return -EINVAL;
  

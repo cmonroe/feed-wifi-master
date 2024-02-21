@@ -30,7 +30,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  		if (!mbss) {
  			/* Firmware 10.x requires setting channel after enabling
  			 * AP and before bringing interface up.
-@@ -8284,6 +8297,22 @@ static void brcmf_cfg80211_reg_notifier(
+@@ -8286,6 +8299,22 @@ static void brcmf_cfg80211_reg_notifier(
  			return;
  		}
  

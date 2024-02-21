@@ -9,7 +9,7 @@ Subject: [PATCH] nl80211: mtk: Mark DFS channel as available for CSA.
 
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -10253,6 +10253,11 @@ skip_beacons:
+@@ -10272,6 +10272,11 @@ skip_beacons:
  	if (err)
  		goto free;
  

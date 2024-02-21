@@ -8,11 +8,9 @@ Subject: [PATCH 08/37] mtk: mac80211: fix tx amsdu aggregation
  net/mac80211/agg-tx.c  | 6 ++++--
  2 files changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/include/net/mac80211.h b/include/net/mac80211.h
-index 96e4ec9..eb229aa 100644
 --- a/include/net/mac80211.h
 +++ b/include/net/mac80211.h
-@@ -2921,6 +2921,13 @@ static inline void _ieee80211_hw_set(struct ieee80211_hw *hw,
+@@ -2924,6 +2924,13 @@ static inline void _ieee80211_hw_set(str
  }
  #define ieee80211_hw_set(hw, flg)	_ieee80211_hw_set(hw, IEEE80211_HW_##flg)
  
@@ -26,11 +24,9 @@ index 96e4ec9..eb229aa 100644
  /**
   * struct ieee80211_scan_request - hw scan request
   *
-diff --git a/net/mac80211/agg-tx.c b/net/mac80211/agg-tx.c
-index b6b7726..80cd642 100644
 --- a/net/mac80211/agg-tx.c
 +++ b/net/mac80211/agg-tx.c
-@@ -66,7 +66,8 @@ static void ieee80211_send_addba_request(struct ieee80211_sub_if_data *sdata,
+@@ -66,7 +66,8 @@ static void ieee80211_send_addba_request
  	struct ieee80211_local *local = sdata->local;
  	struct sk_buff *skb;
  	struct ieee80211_mgmt *mgmt;
@@ -40,7 +36,7 @@ index b6b7726..80cd642 100644
  
  	skb = dev_alloc_skb(sizeof(*mgmt) + local->hw.extra_tx_headroom);
  
-@@ -95,7 +96,8 @@ static void ieee80211_send_addba_request(struct ieee80211_sub_if_data *sdata,
+@@ -95,7 +96,8 @@ static void ieee80211_send_addba_request
  	mgmt->u.action.u.addba_req.action_code = WLAN_ACTION_ADDBA_REQ;
  
  	mgmt->u.action.u.addba_req.dialog_token = dialog_token;
@@ -50,6 +46,3 @@ index b6b7726..80cd642 100644
  	capab |= IEEE80211_ADDBA_PARAM_POLICY_MASK;
  	capab |= u16_encode_bits(tid, IEEE80211_ADDBA_PARAM_TID_MASK);
  	capab |= u16_encode_bits(agg_size, IEEE80211_ADDBA_PARAM_BUF_SIZE_MASK);
--- 
-2.18.0
-

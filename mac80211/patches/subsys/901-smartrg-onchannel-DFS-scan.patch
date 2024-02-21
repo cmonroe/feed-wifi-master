@@ -1,6 +1,6 @@
 --- a/net/mac80211/scan.c
 +++ b/net/mac80211/scan.c
-@@ -574,11 +574,23 @@ static bool __ieee80211_can_leave_ch(str
+@@ -573,11 +573,23 @@ static bool __ieee80211_can_leave_ch(str
  	return true;
  }
  
@@ -27,7 +27,7 @@
  
  	if (!list_empty(&local->roc_list))
  		return false;
-@@ -600,7 +612,7 @@ void ieee80211_run_deferred_scan(struct
+@@ -599,7 +611,7 @@ void ieee80211_run_deferred_scan(struct
  	if (!ieee80211_can_scan(local,
  				rcu_dereference_protected(
  					local->scan_sdata,
@@ -35,8 +35,8 @@
 +					lockdep_is_held(&local->mtx)), local->scan_req))
  		return;
  
- 	ieee80211_queue_delayed_work(&local->hw, &local->scan_work,
-@@ -686,10 +698,11 @@ static int __ieee80211_start_scan(struct
+ 	wiphy_delayed_work_queue(local->hw.wiphy, &local->scan_work,
+@@ -685,10 +697,11 @@ static int __ieee80211_start_scan(struct
  	if (local->scan_req)
  		return -EBUSY;
  

@@ -26,7 +26,7 @@ OBSS BSS Color will be ageout if not seen for 10 seconds.
  	struct cfg80211_bitrate_mask beacon_tx_rate;
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -4880,6 +4880,36 @@ out:
+@@ -4889,6 +4889,36 @@ out:
  	return err;
  }
  
@@ -121,7 +121,7 @@ OBSS BSS Color will be ageout if not seen for 10 seconds.
  		switch (sdata->vif.type) {
 --- a/net/mac80211/rx.c
 +++ b/net/mac80211/rx.c
-@@ -3358,6 +3358,7 @@ ieee80211_rx_check_bss_color_collision(s
+@@ -3357,6 +3357,7 @@ ieee80211_rx_check_bss_color_collision(s
  				      IEEE80211_HE_OPERATION_BSS_COLOR_MASK);
  
  		bss_conf->used_color_bitmap |= BIT_ULL(color);
