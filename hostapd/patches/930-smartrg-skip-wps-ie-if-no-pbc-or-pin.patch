@@ -4,7 +4,7 @@
 
 --- a/src/wps/wps_registrar.c
 +++ b/src/wps/wps_registrar.c
-@@ -1312,6 +1312,10 @@ static int wps_set_ie(struct wps_registr
+@@ -1311,6 +1311,10 @@ static int wps_set_ie(struct wps_registr
  	if (reg->set_ie_cb == NULL)
  		return 0;
  

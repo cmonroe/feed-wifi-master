@@ -1,6 +1,6 @@
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4293,6 +4293,12 @@ static int __check_assoc_ies(struct host
+@@ -4300,6 +4300,12 @@ static int __check_assoc_ies(struct host
  		sta->power_capab = 0;
  	}
  
@@ -15,7 +15,7 @@
  
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -377,6 +377,7 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -378,6 +378,7 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->t_c_url);
  	wpabuf_free(sta->hs20_deauth_req);
  	os_free(sta->hs20_session_info_url);
@@ -25,7 +25,7 @@
  	sae_clear_data(sta->sae);
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -334,6 +334,7 @@ struct sta_info {
+@@ -331,6 +331,7 @@ struct sta_info {
  	struct mld_info mld_info;
  	u8 mld_assoc_link_id;
  #endif /* CONFIG_IEEE80211BE */
@@ -35,7 +35,7 @@
  
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -1149,6 +1149,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
+@@ -1150,6 +1150,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
  }
  
  
@@ -465,7 +465,7 @@
  	ieee80211_freq_to_channel_ext(hapd->iface->freq,
  				      hapd->iconf->secondary_channel,
  				      hostapd_get_oper_chwidth(hapd->iconf),
-@@ -1958,7 +2243,7 @@ void hostapd_ubus_notify_bss_transition_
+@@ -1961,7 +2246,7 @@ void hostapd_ubus_notify_bss_transition_
  	blobmsg_add_u8(&b, "bss-termination-delay", bss_termination_delay);
  	if (target_bssid)
  		blobmsg_add_macaddr(&b, "target-bssid", target_bssid);
