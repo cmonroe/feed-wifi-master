@@ -1,7 +1,7 @@
-From 79c8a28d435df3a9b0da8145675ea8d70a4de463 Mon Sep 17 00:00:00 2001
+From 62168c0fee1186ee20b0cda198b61b302a67b501 Mon Sep 17 00:00:00 2001
 From: Shayne Chen <shayne.chen@mediatek.com>
 Date: Tue, 19 Sep 2023 11:21:23 +0800
-Subject: [PATCH 01/25] mtk: Revert "wifi: mt76: mt7996: fill txd by host
+Subject: [PATCH 01/17] mtk: Revert "wifi: mt76: mt7996: fill txd by host
  driver"
 
 This reverts commit 325a0c4931990d553487024c4f76c776492bdcc2.

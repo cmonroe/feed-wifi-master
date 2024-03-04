@@ -1,7 +1,7 @@
-From b7325781bb79f1ffa9d3f5a9ea9f79a59aa92e41 Mon Sep 17 00:00:00 2001
+From 8bb073134b677cfe0503066f58d8fc063db83ec4 Mon Sep 17 00:00:00 2001
 From: Shayne Chen <shayne.chen@mediatek.com>
 Date: Thu, 24 Aug 2023 18:38:11 +0800
-Subject: [PATCH 02/25] mtk: wifi: mt76: connac: use peer address for station
+Subject: [PATCH 02/17] mtk: wifi: mt76: connac: use peer address for station
  BMC entry
 
 Set peer address and aid for the BMC wtbl of station interface. For some

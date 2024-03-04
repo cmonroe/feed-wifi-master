@@ -1,7 +1,7 @@
-From 70f582db962c977a71d3d618081f894c0e658046 Mon Sep 17 00:00:00 2001
+From 45b1c5f7430a9cc19fe95a05cdacfe3a573cdf92 Mon Sep 17 00:00:00 2001
 From: Shayne Chen <shayne.chen@mediatek.com>
 Date: Tue, 5 Sep 2023 17:31:49 +0800
-Subject: [PATCH 03/25] mtk: wifi: mt76: mt7996: disable rx header translation
+Subject: [PATCH 03/17] mtk: wifi: mt76: mt7996: disable rx header translation
  for BMC entry
 
 Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>

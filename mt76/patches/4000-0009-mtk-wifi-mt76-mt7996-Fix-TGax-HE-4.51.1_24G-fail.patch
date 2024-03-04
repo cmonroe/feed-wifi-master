@@ -1,7 +1,7 @@
-From 73aed7092e7da26eaf17b1e29bdb94222e073e94 Mon Sep 17 00:00:00 2001
+From ea6564f0b6bd6246b034aad083e1d3f5877cd30b Mon Sep 17 00:00:00 2001
 From: mtk27745 <rex.lu@mediatek.com>
 Date: Fri, 17 Nov 2023 11:01:04 +0800
-Subject: [PATCH 14/25] mtk: wifi: mt76: mt7996: Fix TGax HE-4.51.1_24G fail
+Subject: [PATCH 09/17] mtk: wifi: mt76: mt7996: Fix TGax HE-4.51.1_24G fail
 
 According to sta capability to decide to enable/disable wed pao when create ppe entry.
 without this patch, TGax HE-4.51.1_24G will test fail

@@ -1,10 +1,14 @@
-From c59e5d1ee99fbe46418efb2eacb6755db54b8e57 Mon Sep 17 00:00:00 2001
+From 86c22ea560a0b2853bef25653db0ef4f6b816e7d Mon Sep 17 00:00:00 2001
 From: Peter Chiu <chui-hao.chiu@mediatek.com>
 Date: Mon, 13 Nov 2023 20:15:39 +0800
-Subject: [PATCH 13/25] mtk: wifi: mt76: mt7996: init rcpi to use better init
- mcs
+Subject: [PATCH 04/17] mtk: wifi: mt76: mt7996: set RCPI value in rate control
+ command
+
+Set RCPI values in mt7996_mcu_sta_rate_ctrl_tlv(), which can make the
+FW rate control be initialized with a better MCS selection table.
 
 Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
+Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 ---
  mt7996/mcu.c | 3 +++
  1 file changed, 3 insertions(+)

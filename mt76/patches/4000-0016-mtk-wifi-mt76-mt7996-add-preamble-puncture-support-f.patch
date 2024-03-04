@@ -1,7 +1,7 @@
-From 5fd32e152d666b1385953a42193ca0063dc78a10 Mon Sep 17 00:00:00 2001
+From caf4cdd101e795aeff0c269f34c4496bda7609b6 Mon Sep 17 00:00:00 2001
 From: Howard Hsu <howard-yh.hsu@mediatek.com>
 Date: Fri, 22 Sep 2023 10:32:37 +0800
-Subject: [PATCH 24/25] mtk: wifi: mt76: mt7996: add preamble puncture support
+Subject: [PATCH 16/17] mtk: wifi: mt76: mt7996: add preamble puncture support
  for mt7996
 
 Add support configure preamble puncture feature through mcu commands.
@@ -16,7 +16,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1283,6 +1283,7 @@ enum {
+@@ -1290,6 +1290,7 @@ enum {
  	MCU_UNI_CMD_CHANNEL_SWITCH = 0x34,
  	MCU_UNI_CMD_THERMAL = 0x35,
  	MCU_UNI_CMD_VOW = 0x37,
@@ -26,7 +26,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_OFFCH_SCAN_CTRL = 0x58,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4517,3 +4517,33 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4535,3 +4535,33 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	return mt76_mcu_skb_send_msg(&dev->mt76, skb,
  				     MCU_WM_UNI_CMD(TXPOWER), true);
  }
@@ -62,7 +62,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -923,6 +923,10 @@ enum {
+@@ -933,6 +933,10 @@ enum {
  	MT7996_SEC_MODE_MAX,
  };
  
@@ -75,7 +75,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -641,6 +641,8 @@ int mt7996_mcu_bcn_prot_enable(struct mt
+@@ -654,6 +654,8 @@ int mt7996_mcu_bcn_prot_enable(struct mt
  int mt7996_mcu_wtbl_update_hdr_trans(struct mt7996_dev *dev,
  				     struct ieee80211_vif *vif,
  				     struct ieee80211_sta *sta);

@@ -1,7 +1,7 @@
-From db3119c60343e526a18e668a3b600c9c5feaa825 Mon Sep 17 00:00:00 2001
+From 6d572b455e417cdb54129d1761dcadb412f4631f Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Thu, 20 Jul 2023 17:27:22 +0800
-Subject: [PATCH 16/25] mtk: wifi: mt76: mt7996: add eagle default bin of
+Subject: [PATCH 10/17] mtk: wifi: mt76: mt7996: add eagle default bin of
  different sku variants
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>

@@ -1,7 +1,7 @@
-From b78ba04740ae976f2a6ce9703c97430667be170a Mon Sep 17 00:00:00 2001
+From 4ee85beabab31995bb3bdc198a051621ccc6ac9f Mon Sep 17 00:00:00 2001
 From: Bo Jiao <Bo.Jiao@mediatek.com>
 Date: Fri, 19 May 2023 14:16:50 +0800
-Subject: [PATCH 23/25] mtk: wifi: mt76: mt7996: add firmware WA's coredump.
+Subject: [PATCH 15/17] mtk: wifi: mt76: mt7996: add firmware WA's coredump.
 
 Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 ---
@@ -503,7 +503,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2679,6 +2679,8 @@ static int mt7996_load_patch(struct mt79
+@@ -2702,6 +2702,8 @@ static int mt7996_load_patch(struct mt79
  
  	dev_info(dev->mt76.dev, "HW/SW Version: 0x%x, Build Time: %.16s\n",
  		 be32_to_cpu(hdr->hw_sw_ver), hdr->build_date);
@@ -512,7 +512,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
  	for (i = 0; i < be32_to_cpu(hdr->desc.n_region); i++) {
  		struct mt7996_patch_sec *sec;
-@@ -2805,6 +2807,9 @@ static int __mt7996_load_ram(struct mt79
+@@ -2828,6 +2830,9 @@ static int __mt7996_load_ram(struct mt79
  	}
  
  	hdr = (const void *)(fw->data + fw->size - sizeof(*hdr));
@@ -524,7 +524,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -68,6 +68,8 @@
+@@ -83,6 +83,8 @@
  #define MT7996_CRIT_TEMP		110
  #define MT7996_MAX_TEMP			120
  
@@ -533,7 +533,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  #define MT7996_RRO_MAX_SESSION		1024
  #define MT7996_RRO_WINDOW_MAX_LEN	1024
  #define MT7996_RRO_ADDR_ELEM_LEN	128
-@@ -98,6 +100,7 @@ enum mt7996_ram_type {
+@@ -126,6 +128,7 @@ enum mt7996_ram_type {
  	MT7996_RAM_TYPE_WM,
  	MT7996_RAM_TYPE_WA,
  	MT7996_RAM_TYPE_DSP,
@@ -541,7 +541,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  };
  
  enum mt7996_txq_id {
-@@ -287,9 +290,11 @@ struct mt7996_dev {
+@@ -316,9 +319,11 @@ struct mt7996_dev {
  	struct mutex dump_mutex;
  #ifdef CONFIG_DEV_COREDUMP
  	struct {
@@ -566,7 +566,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
  #define MT_SWDEF_BASE				0x00401400
  
-@@ -707,11 +708,15 @@ enum offs_rev {
+@@ -714,11 +715,15 @@ enum offs_rev {
  #define MT_WF_PHYRX_CSD_BAND_RXTD12_IRPI_SW_CLR		BIT(29)
  
  /* CONN MCU EXCP CON */

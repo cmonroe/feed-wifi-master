@@ -1,7 +1,7 @@
-From b6fa1060af0c2a8f2d950481fd3d962ba9bcbf41 Mon Sep 17 00:00:00 2001
+From a5ac6950d517ef9ae77e97653ecdd8bc40aa9408 Mon Sep 17 00:00:00 2001
 From: Howard Hsu <howard-yh.hsu@mediatek.com>
 Date: Wed, 3 Jan 2024 15:21:44 +0800
-Subject: [PATCH 25/25] mtk: wifi: mt76: mt7996: enable hw cso module
+Subject: [PATCH 05/17] mtk: wifi: mt76: mt7996: enable hw cso module
 
 The cso module needs to be enabled. The cso mudule can help identify if the traffic
 is TCP traffic. This can assist the firmware in adjusting algorithms to

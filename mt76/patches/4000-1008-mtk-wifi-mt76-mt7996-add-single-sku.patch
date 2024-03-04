@@ -1,0 +1,126 @@
+From 07f2157b3e65d2721ed8d83d8e628a9d7b0056ed Mon Sep 17 00:00:00 2001
+From: "Allen.Ye" <allen.ye@mediatek.com>
+Date: Mon, 10 Jul 2023 19:56:16 +0800
+Subject: [PATCH 1008/1044] mtk: wifi: mt76: mt7996: add single sku
+
+Add single sku and default enable sku.
+
+Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
+---
+ eeprom.c          | 50 ++++++++++++++++++++++++++++++++++++++++++-----
+ mt76.h            |  9 +++++++++
+ mt76_connac_mcu.c |  2 +-
+ mt7996/init.c     |  2 ++
+ mt7996/main.c     |  9 +++++++++
+ mt7996/mcu.c      | 41 ++++++++++++++++++++++++++++++++++----
+ mt7996/mt7996.h   |  1 +
+ 7 files changed, 104 insertions(+), 10 deletions(-)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -63,6 +63,15 @@ int mt7996_run(struct ieee80211_hw *hw)
+ 	if (ret)
+ 		goto out;
+ 
++#ifdef CONFIG_MTK_DEBUG
++	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
++					   !dev->dbg.sku_disable);
++#else
++	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL, true);
++#endif
++	if (ret)
++		goto out;
++
+ 	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
+ 
+ 	ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -4480,6 +4480,7 @@ int mt7996_mcu_wed_rro_reset_sessions(st
+ int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy)
+ {
+ #define TX_POWER_LIMIT_TABLE_RATE	0
++#define TX_POWER_LIMIT_TABLE_PATH	1
+ 	struct mt7996_dev *dev = phy->dev;
+ 	struct mt76_phy *mphy = phy->mt76;
+ 	struct ieee80211_hw *hw = mphy->hw;
+@@ -4493,14 +4494,14 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 		u8 band_idx;
+ 	} __packed req = {
+ 		.tag = cpu_to_le16(UNI_TXPOWER_POWER_LIMIT_TABLE_CTRL),
+-		.len = cpu_to_le16(sizeof(req) + MT7996_SKU_RATE_NUM - 4),
++		.len = cpu_to_le16(sizeof(req) + MT7996_SKU_PATH_NUM - 4),
+ 		.power_ctrl_id = UNI_TXPOWER_POWER_LIMIT_TABLE_CTRL,
+ 		.power_limit_type = TX_POWER_LIMIT_TABLE_RATE,
+ 		.band_idx = phy->mt76->band_idx,
+ 	};
+ 	struct mt76_power_limits la = {};
+ 	struct sk_buff *skb;
+-	int i, tx_power;
++	int i, ret, tx_power;
+ 
+ 	tx_power = mt7996_get_power_bound(phy, hw->conf.power_level);
+ 	tx_power = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,
+@@ -4508,7 +4509,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 	mphy->txpower_cur = tx_power;
+ 
+ 	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
+-				 sizeof(req) + MT7996_SKU_RATE_NUM);
++				 sizeof(req) + MT7996_SKU_PATH_NUM);
+ 	if (!skb)
+ 		return -ENOMEM;
+ 
+@@ -4532,8 +4533,43 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 	/* eht */
+ 	skb_put_data(skb, &la.eht[0], sizeof(la.eht));
+ 
++	/* padding */
++	skb_put_zero(skb, MT7996_SKU_PATH_NUM - MT7996_SKU_RATE_NUM);
++
++	ret = mt76_mcu_skb_send_msg(&dev->mt76, skb,
++				    MCU_WM_UNI_CMD(TXPOWER), true);
++	if (ret)
++		return ret;
++
++	return 0;
++
++#if 0
++	/* only set per-path power table when it's configured */
++	if (!la_path.ofdm[0])
++		return 0;
++
++	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
++				 sizeof(req) + MT7996_SKU_PATH_NUM);
++	if (!skb)
++		return -ENOMEM;
++	req.power_limit_type = TX_POWER_LIMIT_TABLE_PATH;
++
++	skb_put_data(skb, &req, sizeof(req));
++	skb_put_data(skb, &la_path.cck, sizeof(la_path.cck));
++	skb_put_data(skb, &la_path.ofdm, sizeof(la_path.ofdm));
++	skb_put_data(skb, &la_path.ofdm_bf, sizeof(la_path.ofdm_bf));
++
++	for (i = 0; i < 32; i++) {
++		bool bf = i % 2;
++		u8 idx = i / 2;
++		s8 *buf = bf ? la_path.ru_bf[idx] : la_path.ru[idx];
++
++		skb_put_data(skb, buf, sizeof(la_path.ru[0]));
++	}
++
+ 	return mt76_mcu_skb_send_msg(&dev->mt76, skb,
+ 				     MCU_WM_UNI_CMD(TXPOWER), true);
++#endif
+ }
+ 
+ int mt7996_mcu_set_pp_en(struct mt7996_phy *phy, bool auto_mode,
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -66,6 +66,7 @@
+ #define MT7996_CFEND_RATE_11B		0x03	/* 11B LP, 11M */
+ 
+ #define MT7996_SKU_RATE_NUM		417
++#define MT7996_SKU_PATH_NUM		494
+ 
+ #define MT7996_MAX_TWT_AGRT		16
+ #define MT7996_MAX_STA_TWT_AGRT		8
