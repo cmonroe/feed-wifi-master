@@ -272,7 +272,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	memset(txwi_ptr, 0, MT_TXD_SIZE);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -370,6 +370,17 @@ struct mt7996_dev {
+@@ -341,6 +341,17 @@ struct mt7996_dev {
  	spinlock_t reg_lock;
  
  	u8 wtbl_size_group;

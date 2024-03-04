@@ -13,8 +13,6 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  mt7996/mcu.c      | 15 +++++++++++++++
  2 files changed, 22 insertions(+)
 
-diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
-index 823b3626..d3c05894 100644
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
 @@ -610,6 +610,12 @@ struct sta_rec_ra_fixed {
@@ -38,15 +36,12 @@ index 823b3626..d3c05894 100644
  					 sizeof(struct tlv) +		\
  					 MT76_CONNAC_WTBL_UPDATE_MAX_SIZE)
  
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index deabdb1f..46ee93c0 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1766,6 +1766,19 @@ mt7996_mcu_sta_bfee_tlv(struct mt7996_dev *dev, struct sk_buff *skb,
- 	bfee->fb_identity_matrix = (nrow == 1 && tx_ant == 2);
+@@ -1749,6 +1749,19 @@ mt7996_mcu_sta_bfee_tlv(struct mt7996_de
  }
  
-+static void
+ static void
 +mt7996_mcu_sta_tx_proc_tlv(struct sk_buff *skb)
 +{
 +	struct sta_rec_tx_proc *tx_proc;
@@ -59,10 +54,11 @@ index deabdb1f..46ee93c0 100644
 +	tx_proc->flag = cpu_to_le32(0);
 +}
 +
- static void
++static void
  mt7996_mcu_sta_hdrt_tlv(struct mt7996_dev *dev, struct sk_buff *skb)
  {
-@@ -2177,6 +2190,8 @@ int mt7996_mcu_add_sta(struct mt7996_dev *dev, struct ieee80211_vif *vif,
+ 	struct sta_rec_hdrt *hdrt;
+@@ -2159,6 +2172,8 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  
  	/* starec hdr trans */
  	mt7996_mcu_sta_hdr_trans_tlv(dev, skb, vif, sta);
@@ -71,6 +67,3 @@ index deabdb1f..46ee93c0 100644
  
  	/* tag order is in accordance with firmware dependency. */
  	if (sta) {
--- 
-2.18.0
-

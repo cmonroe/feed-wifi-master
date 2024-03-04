@@ -53,7 +53,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3048,13 +3048,30 @@ static int mt7915_dpd_freq_idx(struct mt
+@@ -3051,13 +3051,30 @@ static int mt7915_dpd_freq_idx(struct mt
  		/* 5G BW160 */
  		5250, 5570, 5815
  	};

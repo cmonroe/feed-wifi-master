@@ -87,7 +87,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	if (!(eep[offs] & MT_EE_WIFI_CAL_GROUP))
  		return 0;
-@@ -2998,9 +2999,9 @@ static int mt7915_find_freq_idx(const u1
+@@ -3001,9 +3002,9 @@ static int mt7915_find_freq_idx(const u1
  	return -1;
  }
  
@@ -99,7 +99,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		5180, 5200, 5220, 5240,
  		5260, 5280, 5300, 5320,
  		5500, 5520, 5540, 5560,
-@@ -3008,34 +3009,69 @@ static int mt7915_dpd_freq_idx(u16 freq,
+@@ -3011,34 +3012,69 @@ static int mt7915_dpd_freq_idx(u16 freq,
  		5660, 5680, 5700, 5745,
  		5765, 5785, 5805, 5825
  	};
@@ -179,7 +179,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  }
  
  int mt7915_mcu_apply_tx_dpd(struct mt7915_phy *phy)
-@@ -3067,24 +3103,24 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
+@@ -3070,24 +3106,24 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
  	if (!(eep[offs] & dpd_mask))
  		return 0;
  

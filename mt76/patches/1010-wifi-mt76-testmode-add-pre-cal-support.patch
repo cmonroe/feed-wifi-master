@@ -125,7 +125,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		return 0;
  
  	/*
-@@ -3038,11 +3041,29 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
+@@ -3041,11 +3044,29 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
  {
  	struct mt7915_dev *dev = phy->dev;
  	struct cfg80211_chan_def *chandef = &phy->mt76->chandef;

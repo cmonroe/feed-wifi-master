@@ -9,11 +9,9 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  mt7996/mcu.c | 9 +++++----
  1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index 3c729b56..5a2e2d12 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1769,10 +1769,10 @@ mt7996_mcu_sta_hdr_trans_tlv(struct mt7996_dev *dev, struct sk_buff *skb,
+@@ -1778,10 +1778,10 @@ mt7996_mcu_sta_hdr_trans_tlv(struct mt79
  	else
  		hdr_trans->from_ds = true;
  
@@ -26,7 +24,7 @@ index 3c729b56..5a2e2d12 100644
  	hdr_trans->dis_rx_hdr_tran = !test_bit(MT_WCID_FLAG_HDR_TRANS, &wcid->flags);
  	if (test_bit(MT_WCID_FLAG_4ADDR, &wcid->flags)) {
  		hdr_trans->to_ds = true;
-@@ -2145,6 +2145,9 @@ int mt7996_mcu_add_sta(struct mt7996_dev *dev, struct ieee80211_vif *vif,
+@@ -2154,6 +2154,9 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  	if (!enable)
  		goto out;
  
@@ -36,7 +34,7 @@ index 3c729b56..5a2e2d12 100644
  	/* tag order is in accordance with firmware dependency. */
  	if (sta) {
  		/* starec hdrt mode */
-@@ -2169,8 +2172,6 @@ int mt7996_mcu_add_sta(struct mt7996_dev *dev, struct ieee80211_vif *vif,
+@@ -2178,8 +2181,6 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  		mt7996_mcu_sta_muru_tlv(dev, skb, vif, sta);
  		/* starec bfee */
  		mt7996_mcu_sta_bfee_tlv(dev, skb, vif, sta);
@@ -45,6 +43,3 @@ index 3c729b56..5a2e2d12 100644
  	}
  
  	ret = mt7996_mcu_add_group(dev, vif, sta);
--- 
-2.18.0
-

@@ -9,11 +9,9 @@ This reverts commit 325a0c4931990d553487024c4f76c776492bdcc2.
  mt7996/mac.c | 13 +++++++++----
  1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/mt7996/mac.c b/mt7996/mac.c
-index 53258488..db06a982 100644
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -937,8 +937,11 @@ int mt7996_tx_prepare_skb(struct mt76_dev *mdev, void *txwi_ptr,
+@@ -938,8 +938,11 @@ int mt7996_tx_prepare_skb(struct mt76_de
  		return id;
  
  	pid = mt76_tx_status_skb_add(mdev, wcid, tx_info->skb);
@@ -27,7 +25,7 @@ index 53258488..db06a982 100644
  
  	txp = (struct mt76_connac_txp_common *)(txwi + MT_TXD_SIZE);
  	for (i = 0; i < nbuf; i++) {
-@@ -955,8 +958,10 @@ int mt7996_tx_prepare_skb(struct mt76_dev *mdev, void *txwi_ptr,
+@@ -956,8 +959,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
  	}
  	txp->fw.nbuf = nbuf;
  
@@ -40,6 +38,3 @@ index 53258488..db06a982 100644
  
  	if (!key)
  		txp->fw.flags |= cpu_to_le16(MT_CT_INFO_NONE_CIPHER_FRAME);
--- 
-2.18.0
-

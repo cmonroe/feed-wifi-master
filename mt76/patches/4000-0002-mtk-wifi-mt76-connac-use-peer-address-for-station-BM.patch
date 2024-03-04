@@ -15,11 +15,9 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  mt7996/main.c     | 3 +++
  2 files changed, 11 insertions(+), 1 deletion(-)
 
-diff --git a/mt76_connac_mcu.c b/mt76_connac_mcu.c
-index 96494ba2..0d05404f 100644
 --- a/mt76_connac_mcu.c
 +++ b/mt76_connac_mcu.c
-@@ -389,7 +389,14 @@ void mt76_connac_mcu_sta_basic_tlv(struct mt76_dev *dev, struct sk_buff *skb,
+@@ -392,7 +392,14 @@ void mt76_connac_mcu_sta_basic_tlv(struc
  
  	if (!sta) {
  		basic->conn_type = cpu_to_le32(CONNECTION_INFRA_BC);
@@ -35,11 +33,9 @@ index 96494ba2..0d05404f 100644
  		return;
  	}
  
-diff --git a/mt7996/main.c b/mt7996/main.c
-index 51deea84..be914ced 100644
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -595,6 +595,9 @@ static void mt7996_bss_info_changed(struct ieee80211_hw *hw,
+@@ -598,6 +598,9 @@ static void mt7996_bss_info_changed(stru
  	if ((changed & BSS_CHANGED_BSSID && !is_zero_ether_addr(info->bssid)) ||
  	    (changed & BSS_CHANGED_ASSOC && vif->cfg.assoc) ||
  	    (changed & BSS_CHANGED_BEACON_ENABLED && info->enable_beacon)) {
@@ -49,6 +45,3 @@ index 51deea84..be914ced 100644
  		mt7996_mcu_add_bss_info(phy, vif, true);
  		mt7996_mcu_add_sta(dev, vif, NULL, true);
  	}
--- 
-2.18.0
-

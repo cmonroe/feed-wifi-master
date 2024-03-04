@@ -16,11 +16,9 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  mt7996/main.c | 7 +++++++
  1 file changed, 7 insertions(+)
 
-diff --git a/mt7996/main.c b/mt7996/main.c
-index 4db8899c..9fbd87d5 100644
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1063,9 +1063,16 @@ static void mt7996_sta_rc_update(struct ieee80211_hw *hw,
+@@ -1063,9 +1063,16 @@ static void mt7996_sta_rc_update(struct
  				 struct ieee80211_sta *sta,
  				 u32 changed)
  {
@@ -37,6 +35,3 @@ index 4db8899c..9fbd87d5 100644
  	mt7996_sta_rc_work(&changed, sta);
  	ieee80211_queue_work(hw, &dev->rc_work);
  }
--- 
-2.18.0
-

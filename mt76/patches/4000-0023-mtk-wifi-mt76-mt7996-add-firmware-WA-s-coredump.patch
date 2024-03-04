@@ -13,8 +13,6 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  mt7996/regs.h     |   7 +-
  6 files changed, 182 insertions(+), 83 deletions(-)
 
-diff --git a/mt7996/coredump.c b/mt7996/coredump.c
-index ccab0d7b..60b88085 100644
 --- a/mt7996/coredump.c
 +++ b/mt7996/coredump.c
 @@ -7,11 +7,11 @@
@@ -31,7 +29,7 @@ index ccab0d7b..60b88085 100644
  	{
  		.start = 0x00800000,
  		.len = 0x0004ffff,
-@@ -44,27 +44,55 @@ static const struct mt7996_mem_region mt7996_mem_regions[] = {
+@@ -44,27 +44,55 @@ static const struct mt7996_mem_region mt
  	},
  };
  
@@ -92,7 +90,7 @@ index ccab0d7b..60b88085 100644
  	if (!mem_region)
  		return 0;
  
-@@ -81,14 +109,13 @@ static int mt7996_coredump_get_mem_size(struct mt7996_dev *dev)
+@@ -81,14 +109,13 @@ static int mt7996_coredump_get_mem_size(
  	return size;
  }
  
@@ -110,7 +108,7 @@ index ccab0d7b..60b88085 100644
  		return NULL;
  
  	guid_gen(&crash_data->guid);
-@@ -98,12 +125,15 @@ struct mt7996_crash_data *mt7996_coredump_new(struct mt7996_dev *dev)
+@@ -98,12 +125,15 @@ struct mt7996_crash_data *mt7996_coredum
  }
  
  static void
@@ -129,7 +127,7 @@ index ccab0d7b..60b88085 100644
  
  	/* normal mode: driver can manually trigger assert for detail info */
  	if (!count)
-@@ -115,53 +145,59 @@ mt7996_coredump_fw_state(struct mt7996_dev *dev, struct mt7996_coredump *dump,
+@@ -115,53 +145,59 @@ mt7996_coredump_fw_state(struct mt7996_d
  }
  
  static void
@@ -213,7 +211,7 @@ index ccab0d7b..60b88085 100644
  	struct mt7996_coredump *dump;
  	struct mt7996_coredump_mem *dump_mem;
  	size_t len, sofar = 0, hdr_len = sizeof(*dump);
-@@ -186,20 +222,31 @@ static struct mt7996_coredump *mt7996_coredump_build(struct mt7996_dev *dev)
+@@ -186,20 +222,31 @@ static struct mt7996_coredump *mt7996_co
  
  	dump = (struct mt7996_coredump *)(buf);
  	dump->len = len;
@@ -247,7 +245,7 @@ index ccab0d7b..60b88085 100644
  
  	/* gather memory content */
  	dump_mem = (struct mt7996_coredump_mem *)(buf + sofar);
-@@ -213,17 +260,19 @@ static struct mt7996_coredump *mt7996_coredump_build(struct mt7996_dev *dev)
+@@ -213,17 +260,19 @@ static struct mt7996_coredump *mt7996_co
  	return dump;
  }
  
@@ -269,7 +267,7 @@ index ccab0d7b..60b88085 100644
  
  	return 0;
  }
-@@ -231,23 +280,26 @@ int mt7996_coredump_submit(struct mt7996_dev *dev)
+@@ -231,23 +280,26 @@ int mt7996_coredump_submit(struct mt7996
  int mt7996_coredump_register(struct mt7996_dev *dev)
  {
  	struct mt7996_crash_data *crash_data;
@@ -278,29 +276,31 @@ index ccab0d7b..60b88085 100644
 -	crash_data = vzalloc(sizeof(*dev->coredump.crash_data));
 -	if (!crash_data)
 -		return -ENOMEM;
-+	for (i = 0; i < MT7996_COREDUMP_MAX; i++) {
-+		crash_data = vzalloc(sizeof(*dev->coredump.crash_data[i]));
-+		if (!crash_data)
-+			return -ENOMEM;
- 
+-
 -	dev->coredump.crash_data = crash_data;
-+		dev->coredump.crash_data[i] = crash_data;
- 
+-
 -	if (coredump_memdump) {
 -		crash_data->memdump_buf_len = mt7996_coredump_get_mem_size(dev);
 -		if (!crash_data->memdump_buf_len)
 -			/* no memory content */
 -			return 0;
+-
+-		crash_data->memdump_buf = vzalloc(crash_data->memdump_buf_len);
+-		if (!crash_data->memdump_buf) {
+-			vfree(crash_data);
++	for (i = 0; i < MT7996_COREDUMP_MAX; i++) {
++		crash_data = vzalloc(sizeof(*dev->coredump.crash_data[i]));
++		if (!crash_data)
+ 			return -ENOMEM;
++
++		dev->coredump.crash_data[i] = crash_data;
++
 +		if (coredump_memdump) {
 +			crash_data->memdump_buf_len = mt7996_coredump_get_mem_size(dev, i);
 +			if (!crash_data->memdump_buf_len)
 +				/* no memory content */
 +				return 0;
- 
--		crash_data->memdump_buf = vzalloc(crash_data->memdump_buf_len);
--		if (!crash_data->memdump_buf) {
--			vfree(crash_data);
--			return -ENOMEM;
++
 +			crash_data->memdump_buf = vzalloc(crash_data->memdump_buf_len);
 +			if (!crash_data->memdump_buf) {
 +				vfree(crash_data);
@@ -309,7 +309,7 @@ index ccab0d7b..60b88085 100644
  		}
  	}
  
-@@ -256,13 +308,17 @@ int mt7996_coredump_register(struct mt7996_dev *dev)
+@@ -256,13 +308,17 @@ int mt7996_coredump_register(struct mt79
  
  void mt7996_coredump_unregister(struct mt7996_dev *dev)
  {
@@ -334,8 +334,6 @@ index ccab0d7b..60b88085 100644
 +	}
  }
  
-diff --git a/mt7996/coredump.h b/mt7996/coredump.h
-index af2ba219..01ed3731 100644
 --- a/mt7996/coredump.h
 +++ b/mt7996/coredump.h
 @@ -6,10 +6,13 @@
@@ -427,11 +425,9 @@ index af2ba219..01ed3731 100644
  {
  	return NULL;
  }
-diff --git a/mt7996/mac.c b/mt7996/mac.c
-index 19b34066..adbfd23f 100644
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2001,28 +2001,25 @@ void mt7996_mac_reset_work(struct work_struct *work)
+@@ -2002,28 +2002,25 @@ void mt7996_mac_reset_work(struct work_s
  }
  
  /* firmware coredump */
@@ -464,7 +460,7 @@ index 19b34066..adbfd23f 100644
  	if (!mem_region || !crash_data->memdump_buf_len) {
  		mutex_unlock(&dev->dump_mutex);
  		goto skip_memdump;
-@@ -2032,6 +2029,9 @@ void mt7996_mac_dump_work(struct work_struct *work)
+@@ -2033,6 +2030,9 @@ void mt7996_mac_dump_work(struct work_st
  	buf_len = crash_data->memdump_buf_len;
  
  	/* dumping memory content... */
@@ -474,7 +470,7 @@ index 19b34066..adbfd23f 100644
  	memset(buf, 0, buf_len);
  	for (i = 0; i < num; i++) {
  		if (mem_region->len > buf_len) {
-@@ -2048,6 +2048,7 @@ void mt7996_mac_dump_work(struct work_struct *work)
+@@ -2049,6 +2049,7 @@ void mt7996_mac_dump_work(struct work_st
  		mt7996_memcpy_fromio(dev, buf, mem_region->start,
  				     mem_region->len);
  
@@ -482,7 +478,7 @@ index 19b34066..adbfd23f 100644
  		hdr->start = mem_region->start;
  		hdr->len = mem_region->len;
  
-@@ -2064,8 +2065,20 @@ void mt7996_mac_dump_work(struct work_struct *work)
+@@ -2065,8 +2066,20 @@ void mt7996_mac_dump_work(struct work_st
  	mutex_unlock(&dev->dump_mutex);
  
  skip_memdump:
@@ -505,11 +501,9 @@ index 19b34066..adbfd23f 100644
  	queue_work(dev->mt76.wq, &dev->reset_work);
  }
  
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index 8a3b9f81..475a5e18 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2697,6 +2697,8 @@ static int mt7996_load_patch(struct mt7996_dev *dev)
+@@ -2679,6 +2679,8 @@ static int mt7996_load_patch(struct mt79
  
  	dev_info(dev->mt76.dev, "HW/SW Version: 0x%x, Build Time: %.16s\n",
  		 be32_to_cpu(hdr->hw_sw_ver), hdr->build_date);
@@ -518,7 +512,7 @@ index 8a3b9f81..475a5e18 100644
  
  	for (i = 0; i < be32_to_cpu(hdr->desc.n_region); i++) {
  		struct mt7996_patch_sec *sec;
-@@ -2823,6 +2825,9 @@ static int __mt7996_load_ram(struct mt7996_dev *dev, const char *fw_type,
+@@ -2805,6 +2807,9 @@ static int __mt7996_load_ram(struct mt79
  	}
  
  	hdr = (const void *)(fw->data + fw->size - sizeof(*hdr));
@@ -528,11 +522,9 @@ index 8a3b9f81..475a5e18 100644
  	dev_info(dev->mt76.dev, "%s Firmware Version: %.10s, Build Time: %.15s\n",
  		 fw_type, hdr->fw_ver, hdr->build_date);
  
-diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
-index 7e5ec212..e1610d3b 100644
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -83,6 +83,8 @@
+@@ -68,6 +68,8 @@
  #define MT7996_CRIT_TEMP		110
  #define MT7996_MAX_TEMP			120
  
@@ -541,7 +533,7 @@ index 7e5ec212..e1610d3b 100644
  #define MT7996_RRO_MAX_SESSION		1024
  #define MT7996_RRO_WINDOW_MAX_LEN	1024
  #define MT7996_RRO_ADDR_ELEM_LEN	128
-@@ -126,6 +128,7 @@ enum mt7996_ram_type {
+@@ -98,6 +100,7 @@ enum mt7996_ram_type {
  	MT7996_RAM_TYPE_WM,
  	MT7996_RAM_TYPE_WA,
  	MT7996_RAM_TYPE_DSP,
@@ -549,7 +541,7 @@ index 7e5ec212..e1610d3b 100644
  };
  
  enum mt7996_txq_id {
-@@ -316,9 +319,11 @@ struct mt7996_dev {
+@@ -287,9 +290,11 @@ struct mt7996_dev {
  	struct mutex dump_mutex;
  #ifdef CONFIG_DEV_COREDUMP
  	struct {
@@ -562,8 +554,6 @@ index 7e5ec212..e1610d3b 100644
  
  	struct list_head sta_rc_list;
  	struct list_head twt_list;
-diff --git a/mt7996/regs.h b/mt7996/regs.h
-index cf12c5e0..4c20a67d 100644
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
 @@ -597,7 +597,8 @@ enum offs_rev {
@@ -576,7 +566,7 @@ index cf12c5e0..4c20a67d 100644
  
  #define MT_SWDEF_BASE				0x00401400
  
-@@ -714,11 +715,15 @@ enum offs_rev {
+@@ -707,11 +708,15 @@ enum offs_rev {
  #define MT_WF_PHYRX_CSD_BAND_RXTD12_IRPI_SW_CLR		BIT(29)
  
  /* CONN MCU EXCP CON */
@@ -592,6 +582,3 @@ index cf12c5e0..4c20a67d 100644
  #define MT_MCU_WM_EXCP_LR_LOG			MT_MCU_WM_EXCP(0x204)
  
  /* CONN AFE CTL CON */
--- 
-2.18.0
-
