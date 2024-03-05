@@ -422,7 +422,7 @@
  static int
  hostapd_bss_get_clients(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
-@@ -279,9 +548,24 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -279,9 +548,25 @@ hostapd_bss_get_clients(struct ubus_cont
  		blobmsg_add_u8(&b, "mbo", !!(sta->cell_capa));
  #endif
  
@@ -434,7 +434,8 @@
 +			memcpy(rate_array, sta->supported_rates, rates_len);
 +			qsort(rate_array, rates_len, sizeof(char), compare_char);
 +			for (i = 0; i < rates_len; i++) {
-+				blobmsg_add_u32(&b, "", rate_array[i]);
++				// OWRT-9263 mask the BSSBasicRateSet bit and convert speed from units of 500kbps to units of 1Mbps
++				blobmsg_add_u32(&b, "", ( rate_array[i] & 0x7f) >> 1 );
 +			}
 +			free(rate_array);
 +		}
@@ -448,7 +449,7 @@
  		blobmsg_close_array(&b, r);
  
  		r = blobmsg_open_array(&b, "extended_capabilities");
-@@ -323,6 +607,7 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -323,6 +608,7 @@ hostapd_bss_get_clients(struct ubus_cont
  		}
  
  		hostapd_parse_capab_blobmsg(sta);
@@ -456,7 +457,7 @@
  
  		blobmsg_close_table(&b, c);
  	}
-@@ -362,7 +647,7 @@ hostapd_bss_get_status(struct ubus_conte
+@@ -362,7 +648,7 @@ hostapd_bss_get_status(struct ubus_conte
  
  	if (hapd->conf->ssid.ssid_len < SSID_MAX_LEN)
  		ssid_len = hapd->conf->ssid.ssid_len;
