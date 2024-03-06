@@ -1,7 +1,7 @@
-From 01820e36780c58fbb8fa58c6fa669a22f0ae6bab Mon Sep 17 00:00:00 2001
+From 44a55f1f2dbe5c2324b24e70772339c490b8e2af Mon Sep 17 00:00:00 2001
 From: Peter Chiu <chui-hao.chiu@mediatek.com>
 Date: Mon, 29 Jan 2024 11:02:06 +0800
-Subject: [PATCH 15/15] wifi: mt76: fix tx statistics about tx retry and tx
+Subject: [PATCH 12/15] wifi: mt76: fix tx statistics about tx retry and tx
  fail
 
 The tx retry and tx failed are reported by PPDU TxS.

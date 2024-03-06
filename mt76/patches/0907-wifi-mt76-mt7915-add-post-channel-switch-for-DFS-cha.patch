@@ -1,8 +1,8 @@
-From 6a213f89194b5449a071b805ea32fba05e2a0673 Mon Sep 17 00:00:00 2001
+From 38052cd0314deee3874609064a924e394b5e0115 Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Thu, 16 Nov 2023 14:41:54 +0800
-Subject: [PATCH] wifi: mt76: mt7915: add post channel switch for DFS channel
- switching
+Subject: [PATCH 07/15] wifi: mt76: mt7915: add post channel switch for DFS
+ channel switching
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---

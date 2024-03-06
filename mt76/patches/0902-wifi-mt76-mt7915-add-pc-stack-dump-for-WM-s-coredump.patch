@@ -1,7 +1,8 @@
-From 585c6bb0ad5ef459c62f68f4c5addf6a29c07eda Mon Sep 17 00:00:00 2001
+From a74a188c1fbce728e9ec1fff821c87d9f28ec501 Mon Sep 17 00:00:00 2001
 From: Bo Jiao <Bo.Jiao@mediatek.com>
 Date: Mon, 22 May 2023 13:49:37 +0800
-Subject: [PATCH] wifi: mt76: mt7915: add pc stack dump for WM's coredump.
+Subject: [PATCH 02/15] wifi: mt76: mt7915: add pc stack dump for WM's
+ coredump.
 
 Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 ---

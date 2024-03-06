@@ -68,7 +68,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1483,6 +1483,8 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1479,6 +1479,8 @@ mt7915_mac_full_reset(struct mt7915_dev
  	if (ext_phy)
  		cancel_delayed_work_sync(&ext_phy->mac_work);
  
@@ -77,7 +77,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	mutex_lock(&dev->mt76.mutex);
  	for (i = 0; i < 10; i++) {
  		if (!mt7915_mac_restart(dev))
-@@ -1508,6 +1510,10 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1504,6 +1506,10 @@ mt7915_mac_full_reset(struct mt7915_dev
  		ieee80211_queue_delayed_work(ext_phy->hw,
  					     &ext_phy->mac_work,
  					     MT7915_WATCHDOG_TIME);
@@ -88,7 +88,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  }
  
  /* system error recovery */
-@@ -1566,6 +1572,7 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1562,6 +1568,7 @@ void mt7915_mac_reset_work(struct work_s
  		set_bit(MT76_RESET, &phy2->mt76->state);
  		cancel_delayed_work_sync(&phy2->mt76->mac_work);
  	}
@@ -96,7 +96,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	mt76_worker_disable(&dev->mt76.tx_worker);
  	mt76_for_each_q_rx(&dev->mt76, i)
  		napi_disable(&dev->mt76.napi[i]);
-@@ -1630,6 +1637,10 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1626,6 +1633,10 @@ void mt7915_mac_reset_work(struct work_s
  					     &phy2->mt76->mac_work,
  					     MT7915_WATCHDOG_TIME);
  
@@ -144,7 +144,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	}
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4582,3 +4582,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
+@@ -4580,3 +4580,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
  
  	return 0;
  }
@@ -303,14 +303,14 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7915_dev {
-@@ -411,6 +421,7 @@ struct mt7915_dev {
- 	} dbg;
- 	const struct mt7915_dbg_reg_desc *dbg_reg;
+@@ -349,6 +359,7 @@ struct mt7915_dev {
+ 		struct mt7915_crash_data *crash_data[__MT76_RAM_TYPE_MAX];
+ 	} coredump;
  #endif
 +	struct delayed_work scs_work;
- };
  
- enum {
+ 	struct list_head sta_rc_list;
+ 	struct list_head twt_list;
 @@ -711,6 +722,8 @@ int mt7915_mcu_get_edcca(struct mt7915_p
  int mt7915_mcu_ipi_hist_ctrl(struct mt7915_phy *phy, void *data, u8 cmd, bool wait_resp);
  int mt7915_mcu_ipi_hist_scan(struct mt7915_phy *phy, void *data, u8 mode, bool wait_resp);
@@ -322,7 +322,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir);
 --- a/mt7915/mtk_debugfs.c
 +++ b/mt7915/mtk_debugfs.c
-@@ -3728,6 +3728,29 @@ mt7915_sr_enable_set(void *data, u64 val
+@@ -3744,6 +3744,29 @@ mt7915_sr_enable_set(void *data, u64 val
  DEFINE_DEBUGFS_ATTRIBUTE(fops_sr_enable, NULL,
  			 mt7915_sr_enable_set, "%llx\n");
  
@@ -352,7 +352,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -3813,6 +3836,7 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3829,6 +3852,7 @@ int mt7915_mtk_init_debugfs(struct mt791
  	debugfs_create_file("sw_aci", 0600, dir, dev,
  			    &fops_sw_aci);
  	debugfs_create_file("sr_enable", 0200, dir, phy, &fops_sr_enable);

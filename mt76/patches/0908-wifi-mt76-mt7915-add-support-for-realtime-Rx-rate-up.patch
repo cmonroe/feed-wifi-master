@@ -1,7 +1,8 @@
-From f45a145c19c31f993176f6771256a7f954c7ff0d Mon Sep 17 00:00:00 2001
+From e8e17022a0af4f32da84885c4920ffebe64469cf Mon Sep 17 00:00:00 2001
 From: "Henry.Yen" <henry.yen@mediatek.com>
 Date: Mon, 8 Jan 2024 17:19:01 +0800
-Subject: [PATCH] wifi: mt76: mt7915: add support for realtime Rx rate updates
+Subject: [PATCH 08/15] wifi: mt76: mt7915: add support for realtime Rx rate
+ updates
 
 Add support for realtime Rx rate updates.
 

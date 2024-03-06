@@ -84,7 +84,7 @@
  		return max_power;
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3470,7 +3470,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3565,7 +3565,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &la.cck, len[SKU_CCK]);
  
  	if (phy->mt76->cap.has_6ghz && mphy->beacon_dup &&
@@ -93,7 +93,7 @@
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la.mcs[0], len[SKU_OFDM]);
-@@ -3685,7 +3685,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3780,7 +3780,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	if (ret)
  		return ret;
  

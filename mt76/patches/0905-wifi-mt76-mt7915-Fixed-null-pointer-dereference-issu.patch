@@ -1,7 +1,7 @@
-From 5e5c03f7f7fe349d4d835bd6809bc40b32a9ec8a Mon Sep 17 00:00:00 2001
+From b52ec4819ad63084398ba4bba7f987b74b1441bd Mon Sep 17 00:00:00 2001
 From: MeiChia Chiu <meichia.chiu@mediatek.com>
 Date: Thu, 26 Oct 2023 21:11:05 +0800
-Subject: [PATCH 08/76] wifi: mt76: mt7915: Fixed null pointer dereference
+Subject: [PATCH 05/15] wifi: mt76: mt7915: Fixed null pointer dereference
  issue
 
 Without this patch, when the station is still in Authentication stage and

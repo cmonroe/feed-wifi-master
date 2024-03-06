@@ -260,8 +260,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -936,6 +936,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
- 	id = mt76_token_consume(mdev, &t);
+@@ -937,6 +937,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+ 	id = mt76_token_consume(mdev, &t, phy_idx);
  	if (id < 0)
  		return id;
 +#ifdef CONFIG_MTK_DEBUG

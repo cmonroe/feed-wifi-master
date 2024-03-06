@@ -35,7 +35,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  out_put_node:
 --- a/mt76.h
 +++ b/mt76.h
-@@ -705,6 +705,7 @@ struct mt76_testmode_ops {
+@@ -707,6 +707,7 @@ struct mt76_testmode_ops {
  	int (*set_params)(struct mt76_phy *phy, struct nlattr **tb,
  			  enum mt76_testmode_state new_state);
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
@@ -116,7 +116,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
-@@ -2958,7 +2961,7 @@ int mt7915_mcu_apply_group_cal(struct mt
+@@ -2956,7 +2959,7 @@ int mt7915_mcu_apply_group_cal(struct mt
  	u8 idx = 0, *cal = dev->cal, *eep = dev->mt76.eeprom.data;
  	u32 total = MT_EE_CAL_GROUP_SIZE;
  
@@ -125,7 +125,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		return 0;
  
  	/*
-@@ -3041,11 +3044,29 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
+@@ -3039,11 +3042,29 @@ int mt7915_mcu_apply_tx_dpd(struct mt791
  {
  	struct mt7915_dev *dev = phy->dev;
  	struct cfg80211_chan_def *chandef = &phy->mt76->chandef;

@@ -1,7 +1,7 @@
-From bc0336844099fc23c44b0249a41562d4da675d00 Mon Sep 17 00:00:00 2001
+From 677047b23e7e4a2d96f86f235f21694873c8e13a Mon Sep 17 00:00:00 2001
 From: Howard Hsu <howard-yh.hsu@mediatek.com>
 Date: Thu, 13 Jul 2023 15:50:00 +0800
-Subject: [PATCH 03/76] wifi: mt76: mt7915: move temperature margin check to
+Subject: [PATCH 03/15] wifi: mt76: mt7915: move temperature margin check to
  mt7915_thermal_temp_store()
 
 Originally, we would reduce the 10-degree margin to the restore
