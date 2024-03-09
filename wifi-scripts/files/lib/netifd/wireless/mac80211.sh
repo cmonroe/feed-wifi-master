@@ -162,8 +162,8 @@ mac80211_hostapd_setup_base() {
 	ieee80211n=1
 	ht_capab=
 	case "$htmode" in
-		VHT20|HT20|HE20) ;;
-		HT40*|VHT40|VHT80|VHT160|HE40|HE80|HE160)
+		VHT20|HT20|HE20|EHT20) ;;
+		HT40*|VHT40|VHT80|VHT160|HE40|HE80|HE160|EHT40|EHT80|EHT160|EHT320*)
 			case "$hwmode" in
 				a)
 					case "$(( (($channel / 4) + $chan_ofs) % 2 ))" in
@@ -173,8 +173,8 @@ mac80211_hostapd_setup_base() {
 				;;
 				*)
 					case "$htmode" in
-						HT40+) ht_capab="[HT40+]";;
-						HT40-) ht_capab="[HT40-]";;
+						HT40+|HE40+|EHT40+) ht_capab="[HT40+]";;
+						HT40-|HE40-|EHT40-) ht_capab="[HT40-]";;
 						*)
 							if [ "$channel" -lt 7 ]; then
 								ht_capab="[HT40+]"
@@ -207,7 +207,7 @@ mac80211_hostapd_setup_base() {
 			dsss_cck_40:1
 
 		ht_cap_mask=0
-		for cap in $(iw phy "$phy" info | grep 'Capabilities:' | cut -d: -f2); do
+		for cap in $(iw phy "$phy" info | grep 'Capabilities: 0x' | cut -d: -f2); do
 			ht_cap_mask="$(($ht_cap_mask | $cap))"
 		done
 
@@ -238,8 +238,8 @@ mac80211_hostapd_setup_base() {
 
 	idx="$channel"
 	case "$htmode" in
-		VHT20|HE20) enable_ac=1;;
-		VHT40|HE40)
+		VHT20|HE20|EHT20) enable_ac=1;;
+		VHT40|HE40|EHT40)
 			case "$(( (($channel / 4) + $chan_ofs) % 2 ))" in
 				1) idx=$(($channel + 2));;
 				0) idx=$(($channel - 2));;
@@ -247,7 +247,7 @@ mac80211_hostapd_setup_base() {
 			enable_ac=1
 			vht_center_seg0=$idx
 		;;
-		VHT80|HE80)
+		VHT80|HE80|EHT80)
 			case "$(( (($channel / 4) + $chan_ofs) % 4 ))" in
 				1) idx=$(($channel + 6));;
 				2) idx=$(($channel + 2));;
@@ -258,7 +258,7 @@ mac80211_hostapd_setup_base() {
 			vht_oper_chwidth=1
 			vht_center_seg0=$idx
 		;;
-		VHT160|HE160)
+		VHT160|HE160|EHT160)
 			if [ "$band" = "6g" ]; then
 				case "$channel" in
 					1|5|9|13|17|21|25|29) idx=15;;
@@ -273,11 +273,48 @@ mac80211_hostapd_setup_base() {
 				case "$channel" in
 					36|40|44|48|52|56|60|64) idx=50;;
 					100|104|108|112|116|120|124|128) idx=114;;
+					149|153|157|161|165|169|173|177) idx=163;;
 				esac
 			fi
 			enable_ac=1
 			vht_oper_chwidth=2
 			vht_center_seg0=$idx
+		;;
+		EHT320*)
+			case "$channel" in
+				1|5|9|13|17|21|25|29) idx=31;;
+				33|37|41|45|49|53|57|61| \
+				65|69|73|77|81|85|89|93) idx=63;;
+				97|101|105|109|113|117|121|125| \
+				129|133|137|141|145|149|153|157) idx=127;;
+				161|165|169|173|177|181|185|189| \
+				193|197|201|205|209|213|217|221) idx=191;;
+			esac
+			if [[ "$htmode" = "EHT320-1" && "$channel" -ge "193" ]] ||
+			   [[ "$htmode" = "EHT320-2" && "$channel" -le "29" ]]; then
+				echo "Could not set the center freq with this EHT setting"
+				return 1
+			elif [[ "$htmode" = "EHT320-1" && "$channel" -ge "33" ]]; then
+				if [ "$channel" -gt $idx ]; then
+					idx=$(($idx + 32))
+				else
+					idx=$(($idx - 32))
+				fi
+			fi
+			vht_oper_chwidth=2
+			if [ "$channel" -gt $idx ]; then
+				vht_center_seg0=$(($idx + 16))
+			else
+				vht_center_seg0=$(($idx - 16))
+			fi
+			eht_oper_chwidth=9
+			eht_oper_centr_freq_seg0_idx=$idx
+
+			case $htmode in
+				EHT320-1) eht_bw320_offset=1;;
+				EHT320-2) eht_bw320_offset=2;;
+				EHT320) eht_bw320_offset=0;;
+			esac
 		;;
 	esac
 	[ "$band" = "5g" ] && {
@@ -288,8 +325,9 @@ mac80211_hostapd_setup_base() {
 	[ "$band" = "6g" ] && {
 		op_class=
 		case "$htmode" in
-			HE20) op_class=131;;
-			HE*) op_class=$((132 + $vht_oper_chwidth))
+			HE20|EHT20) op_class=131;;
+			EHT320*) op_class=137;;
+			HE*|EHT*) op_class=$((132 + $vht_oper_chwidth))
 		esac
 		[ -n "$op_class" ] && append base_cfg "op_class=$op_class" "$N"
 	}
@@ -417,7 +455,7 @@ mac80211_hostapd_setup_base() {
 	# 802.11ax
 	enable_ax=0
 	case "$htmode" in
-		HE*) enable_ax=1 ;;
+		HE*|EHT*) enable_ax=1 ;;
 	esac
 
 	if [ "$enable_ax" != "0" ]; then
@@ -489,6 +527,38 @@ mac80211_hostapd_setup_base() {
 		append base_cfg "he_mu_edca_ac_vo_ecwmin=5" "$N"
 		append base_cfg "he_mu_edca_ac_vo_ecwmax=7" "$N"
 		append base_cfg "he_mu_edca_ac_vo_timer=255" "$N"
+	fi
+
+	set_default tx_burst 2
+
+	# 802.11be
+	enable_be=0
+	case "$htmode" in
+		EHT*) enable_be=1 ;;
+	esac
+
+	if [ "$enable_be" != "0" ]; then
+		append base_cfg "ieee80211be=1" "$N"
+		if [ "$etxbfen" -eq 0 ]; then
+			append base_cfg "eht_su_beamformee=1" "$N"
+		else
+			append base_cfg "eht_su_beamformer=1" "$N"
+			append base_cfg "eht_su_beamformee=1" "$N"
+			append base_cfg "eht_mu_beamformer=1" "$N"
+		fi
+		[ "$hwmode" = "a" ] && {
+			case $htmode in
+				EHT320*)
+					append base_cfg "eht_oper_chwidth=$eht_oper_chwidth" "$N"
+					append base_cfg "eht_oper_centr_freq_seg0_idx=$eht_oper_centr_freq_seg0_idx" "$N"
+					append base_cfg "eht_bw320_offset=$eht_bw320_offset" "$N"
+				;;
+				*)
+					append base_cfg "eht_oper_chwidth=$vht_oper_chwidth" "$N"
+					append base_cfg "eht_oper_centr_freq_seg0_idx=$vht_center_seg0" "$N"
+				;;
+			esac
+		}
 	fi
 
 	hostapd_prepare_device_config "$hostapd_conf_file" nl80211
