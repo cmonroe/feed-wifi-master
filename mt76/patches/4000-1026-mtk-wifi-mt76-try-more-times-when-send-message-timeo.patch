@@ -1,0 +1,118 @@
+From 4e6fefff8c2ba7734524ed596a51d49280ab3111 Mon Sep 17 00:00:00 2001
+From: Bo Jiao <Bo.Jiao@mediatek.com>
+Date: Mon, 6 Nov 2023 11:10:10 +0800
+Subject: [PATCH 1026/1044] mtk: wifi: mt76: try more times when send message
+ timeout.
+
+Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
+---
+ dma.c        |  7 ++++--
+ mcu.c        | 65 ++++++++++++++++++++++++++++++++++++----------------
+ mt7996/mac.c | 49 ++++++++++-----------------------------
+ 3 files changed, 62 insertions(+), 59 deletions(-)
+
+--- a/mcu.c
++++ b/mcu.c
+@@ -80,7 +80,7 @@ int mt76_mcu_skb_send_and_get_msg(struct
+ 	unsigned long expires;
+ 	int ret, seq, retry_cnt;
+ 	struct sk_buff *skb_tmp;
+-	bool retry = wait_resp && is_connac_v2(dev);
++	bool retry = wait_resp && (is_connac_v2(dev) || is_mt799x(dev));
+ 
+ 	if (ret_skb)
+ 		*ret_skb = NULL;
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -1663,18 +1663,6 @@ mt7996_mac_restart(struct mt7996_dev *de
+ 			mt76_wr(dev, MT_PCIE1_MAC_INT_ENABLE, 0x0);
+ 	}
+ 
+-	set_bit(MT76_RESET, &dev->mphy.state);
+-	set_bit(MT76_MCU_RESET, &dev->mphy.state);
+-	wake_up(&dev->mt76.mcu.wait);
+-	if (phy2) {
+-		set_bit(MT76_RESET, &phy2->mt76->state);
+-		set_bit(MT76_MCU_RESET, &phy2->mt76->state);
+-	}
+-	if (phy3) {
+-		set_bit(MT76_RESET, &phy3->mt76->state);
+-		set_bit(MT76_MCU_RESET, &phy3->mt76->state);
+-	}
+-
+ 	/* lock/unlock all queues to ensure that no tx is pending */
+ 	mt76_txq_schedule_all(&dev->mphy);
+ 	if (phy2)
+@@ -1788,13 +1776,24 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 	phy3 = mt7996_phy3(dev);
+ 	dev->recovery.hw_full_reset = true;
+ 
+-	wake_up(&dev->mt76.mcu.wait);
+ 	ieee80211_stop_queues(mt76_hw(dev));
+ 	if (phy2)
+ 		ieee80211_stop_queues(phy2->mt76->hw);
+ 	if (phy3)
+ 		ieee80211_stop_queues(phy3->mt76->hw);
+ 
++	set_bit(MT76_RESET, &dev->mphy.state);
++	set_bit(MT76_MCU_RESET, &dev->mphy.state);
++	wake_up(&dev->mt76.mcu.wait);
++	if (phy2) {
++		set_bit(MT76_RESET, &phy2->mt76->state);
++		set_bit(MT76_MCU_RESET, &phy2->mt76->state);
++	}
++	if (phy3) {
++		set_bit(MT76_RESET, &phy3->mt76->state);
++		set_bit(MT76_MCU_RESET, &phy3->mt76->state);
++	}
++
+ 	cancel_work_sync(&dev->wed_rro.work);
+ 	cancel_delayed_work_sync(&dev->mphy.mac_work);
+ 	if (phy2)
+@@ -1897,16 +1896,6 @@ void mt7996_mac_reset_work(struct work_s
+ 	set_bit(MT76_MCU_RESET, &dev->mphy.state);
+ 	wake_up(&dev->mt76.mcu.wait);
+ 
+-	cancel_work_sync(&dev->wed_rro.work);
+-	cancel_delayed_work_sync(&dev->mphy.mac_work);
+-	if (phy2) {
+-		set_bit(MT76_RESET, &phy2->mt76->state);
+-		cancel_delayed_work_sync(&phy2->mt76->mac_work);
+-	}
+-	if (phy3) {
+-		set_bit(MT76_RESET, &phy3->mt76->state);
+-		cancel_delayed_work_sync(&phy3->mt76->mac_work);
+-	}
+ 	mt76_worker_disable(&dev->mt76.tx_worker);
+ 	mt76_for_each_q_rx(&dev->mt76, i) {
+ 		if (mtk_wed_device_active(&dev->mt76.mmio.wed) &&
+@@ -1917,8 +1906,6 @@ void mt7996_mac_reset_work(struct work_s
+ 	}
+ 	napi_disable(&dev->mt76.tx_napi);
+ 
+-	mutex_lock(&dev->mt76.mutex);
+-
+ 	mt76_wr(dev, MT_MCU_INT_EVENT, MT_MCU_INT_EVENT_DMA_STOPPED);
+ 
+ 	if (mt7996_wait_reset_state(dev, MT_MCU_CMD_RESET_DONE)) {
+@@ -1991,20 +1978,8 @@ void mt7996_mac_reset_work(struct work_s
+ 	if (phy3)
+ 		ieee80211_wake_queues(phy3->mt76->hw);
+ 
+-	mutex_unlock(&dev->mt76.mutex);
+-
+ 	mt7996_update_beacons(dev);
+ 
+-	ieee80211_queue_delayed_work(mt76_hw(dev), &dev->mphy.mac_work,
+-				     MT7996_WATCHDOG_TIME);
+-	if (phy2)
+-		ieee80211_queue_delayed_work(phy2->mt76->hw,
+-					     &phy2->mt76->mac_work,
+-					     MT7996_WATCHDOG_TIME);
+-	if (phy3)
+-		ieee80211_queue_delayed_work(phy3->mt76->hw,
+-					     &phy3->mt76->mac_work,
+-					     MT7996_WATCHDOG_TIME);
+ 	dev_info(dev->mt76.dev,"\n%s L1 SER recovery completed.",
+ 		 wiphy_name(dev->mt76.hw->wiphy));
+ }

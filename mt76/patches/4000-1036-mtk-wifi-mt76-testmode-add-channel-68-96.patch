@@ -1,0 +1,166 @@
+From ad9e95b534d4605cbbca3e4fe7fcf35cdce8866f Mon Sep 17 00:00:00 2001
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Mon, 11 Sep 2023 14:43:07 +0800
+Subject: [PATCH 1036/1044] mtk: wifi: mt76: testmode: add channel 68 & 96
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+
+Add all the channel between 68 & 96 since ibf 5g channel group 3 will use channel 84.
+Also, "mtk: wifi: mt76: testmode: add channel 68 & 96" can be
+merged into to "mtk: wifi: mt76: testmode: add basic testmode support"
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+
+Fix 5g channel list size
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+---
+ mac80211.c        |  9 +++++++++
+ mt7996/eeprom.c   | 49 +++++++++++++++++++++++++++++++++++++++++++++--
+ mt7996/eeprom.h   |  2 ++
+ mt7996/mcu.c      | 10 +++++++++-
+ mt7996/testmode.c | 15 ++++++++++++---
+ mt7996/testmode.h |  6 +++---
+ 6 files changed, 82 insertions(+), 9 deletions(-)
+
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -35,6 +35,15 @@ static const struct ieee80211_channel mt
+ 	CHAN5G(60, 5300),
+ 	CHAN5G(64, 5320),
+ 
++	CHAN5G(68, 5340),
++	CHAN5G(72, 5360),
++	CHAN5G(76, 5380),
++	CHAN5G(80, 5400),
++	CHAN5G(84, 5420),
++	CHAN5G(88, 5440),
++	CHAN5G(92, 5460),
++	CHAN5G(96, 5480),
++
+ 	CHAN5G(100, 5500),
+ 	CHAN5G(104, 5520),
+ 	CHAN5G(108, 5540),
+--- a/mt7996/eeprom.c
++++ b/mt7996/eeprom.c
+@@ -13,6 +13,17 @@ const struct ieee80211_channel dpd_2g_ch
+ 	CHAN2G(11, 2462)
+ };
+ 
++const struct ieee80211_channel dpd_5g_skip_ch_list[] = {
++	CHAN5G(68, 5340),
++	CHAN5G(72, 5360),
++	CHAN5G(76, 5380),
++	CHAN5G(80, 5400),
++	CHAN5G(84, 5420),
++	CHAN5G(88, 5440),
++	CHAN5G(92, 5460),
++	CHAN5G(96, 5480)
++};
++
+ const struct ieee80211_channel dpd_5g_ch_list_bw160[] = {
+ 	CHAN5G(50, 5250),
+ 	CHAN5G(114, 5570),
+@@ -39,6 +50,7 @@ const struct ieee80211_channel dpd_6g_ch
+ };
+ 
+ const u32 dpd_2g_bw20_ch_num = ARRAY_SIZE(dpd_2g_ch_list_bw20);
++const u32 dpd_5g_skip_ch_num = ARRAY_SIZE(dpd_5g_skip_ch_list);
+ const u32 dpd_5g_bw160_ch_num = ARRAY_SIZE(dpd_5g_ch_list_bw160);
+ const u32 dpd_6g_bw160_ch_num = ARRAY_SIZE(dpd_6g_ch_list_bw160);
+ const u32 dpd_6g_bw320_ch_num = ARRAY_SIZE(dpd_6g_ch_list_bw320);
+@@ -133,8 +145,8 @@ mt7996_get_dpd_per_band_size(struct mt79
+ 	if (band == NL80211_BAND_2GHZ)
+ 		dpd_size = dpd_2g_bw20_ch_num * DPD_PER_CH_BW20_SIZE;
+ 	else if (band == NL80211_BAND_5GHZ)
+-		dpd_size = mphy->sband_5g.sband.n_channels * DPD_PER_CH_BW20_SIZE +
+-			   dpd_5g_bw160_ch_num * DPD_PER_CH_GT_BW20_SIZE;
++		dpd_size = (mphy->sband_5g.sband.n_channels - dpd_5g_skip_ch_num) *
++			   DPD_PER_CH_BW20_SIZE + dpd_5g_bw160_ch_num * DPD_PER_CH_GT_BW20_SIZE;
+ 	else
+ 		dpd_size = mphy->sband_6g.sband.n_channels * DPD_PER_CH_BW20_SIZE +
+ 			   (dpd_6g_bw160_ch_num + dpd_6g_bw320_ch_num) * DPD_PER_CH_GT_BW20_SIZE;
+@@ -377,6 +389,39 @@ out:
+ 	return ret;
+ }
+ 
++static void mt7996_eeprom_init_precal(struct mt7996_dev *dev)
++{
++#define MT76_CHANNELS_5GHZ_SIZE		36	/* ARRAY_SIZE(mt76_channels_5ghz) */
++#define MT76_CHANNELS_6GHZ_SIZE		59	/* ARRAY_SIZE(mt76_channels_6ghz) */
++
++	dev->prek.dpd_ch_num[DPD_CH_NUM_BW20_2G] = ARRAY_SIZE(dpd_2g_ch_list_bw20);
++	dev->prek.dpd_ch_num[DPD_CH_NUM_BW20_5G_SKIP] = ARRAY_SIZE(dpd_5g_skip_ch_list);
++	dev->prek.dpd_ch_num[DPD_CH_NUM_BW20_5G] = MT76_CHANNELS_5GHZ_SIZE -
++						   DPD_CH_NUM(BW20_5G_SKIP);
++	dev->prek.dpd_ch_num[DPD_CH_NUM_BW160_5G] = ARRAY_SIZE(dpd_5g_ch_list_bw160);
++	dev->prek.dpd_ch_num[DPD_CH_NUM_BW20_6G] = MT76_CHANNELS_6GHZ_SIZE;
++	dev->prek.dpd_ch_num[DPD_CH_NUM_BW160_6G] = ARRAY_SIZE(dpd_6g_ch_list_bw160);
++
++	switch (mt76_chip(&dev->mt76)) {
++	case 0x7990:
++		dev->prek.rev = mt7996_prek_rev;
++		/* 5g & 6g bw 80 dpd channel list is not used */
++		dev->prek.dpd_ch_num[DPD_CH_NUM_BW320_6G] = ARRAY_SIZE(dpd_6g_ch_list_bw320);
++		break;
++	case 0x7992:
++		dev->prek.rev  = mt7992_prek_rev;
++		dev->prek.dpd_ch_num[DPD_CH_NUM_BW80_5G] = ARRAY_SIZE(dpd_5g_ch_list_bw80);
++		/* 6g is not used in current sku */
++		dev->prek.dpd_ch_num[DPD_CH_NUM_BW20_6G] = 0;
++		dev->prek.dpd_ch_num[DPD_CH_NUM_BW80_6G] = 0;
++		dev->prek.dpd_ch_num[DPD_CH_NUM_BW160_6G] = 0;
++		break;
++	default:
++		dev->prek.rev  = mt7996_prek_rev;
++		break;
++	}
++}
++
+ static int mt7996_eeprom_load_precal(struct mt7996_dev *dev)
+ {
+ 	struct mt76_dev *mdev = &dev->mt76;
+--- a/mt7996/eeprom.h
++++ b/mt7996/eeprom.h
+@@ -66,6 +66,8 @@ enum mt7996_eeprom_field {
+ 
+ extern const struct ieee80211_channel dpd_2g_ch_list_bw20[];
+ extern const u32 dpd_2g_bw20_ch_num;
++extern const struct ieee80211_channel dpd_5g_skip_ch_list[];
++extern const u32 dpd_5g_skip_ch_num;
+ extern const struct ieee80211_channel dpd_5g_ch_list_bw160[];
+ extern const u32 dpd_5g_bw160_ch_num;
+ extern const struct ieee80211_channel dpd_6g_ch_list_bw160[];
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -3743,7 +3743,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+ 		chan_list_size = mphy->sband_5g.sband.n_channels;
+ 		base_offset += dpd_size_2g;
+ 		if (bw == NL80211_CHAN_WIDTH_160) {
+-			base_offset += mphy->sband_5g.sband.n_channels * DPD_PER_CH_BW20_SIZE;
++			base_offset += (mphy->sband_5g.sband.n_channels - dpd_5g_skip_ch_num) *
++				       DPD_PER_CH_BW20_SIZE;
+ 			per_chan_size = DPD_PER_CH_GT_BW20_SIZE;
+ 			cal_id = RF_DPD_FLAT_5G_MEM_CAL;
+ 			chan_list = dpd_5g_ch_list_bw160;
+@@ -3752,6 +3753,9 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+ 			/* apply (center channel - 2)'s dpd cal data for bw 40/80 channels */
+ 			channel -= 2;
+ 		}
++		if (channel >= dpd_5g_skip_ch_list[0].hw_value &&
++		    channel <= dpd_5g_skip_ch_list[dpd_5g_skip_ch_num - 1].hw_value)
++			return 0;
+ 		break;
+ 	case NL80211_BAND_6GHZ:
+ 		dpd_mask = MT_EE_WIFI_CAL_DPD_6G;
+@@ -3791,6 +3795,10 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+ 	if (idx == chan_list_size)
+ 		return -EINVAL;
+ 
++	if (band == NL80211_BAND_5GHZ && bw != NL80211_CHAN_WIDTH_160 &&
++	    channel > dpd_5g_skip_ch_list[dpd_5g_skip_ch_num - 1].hw_value)
++		idx -= dpd_5g_skip_ch_num;
++
+ 	cal += MT_EE_CAL_GROUP_SIZE + base_offset + idx * per_chan_size;
+ 
+ 	for (i = 0; i < per_chan_size / MT_EE_CAL_UNIT; i++) {
