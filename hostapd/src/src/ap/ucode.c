@@ -9,6 +9,7 @@
 #include "ap_drv_ops.h"
 #include "dfs.h"
 #include "acs.h"
+#include "sta_info.h"
 #include <libubox/uloop.h>
 
 static uc_resource_type_t *global_type, *bss_type, *iface_type;
