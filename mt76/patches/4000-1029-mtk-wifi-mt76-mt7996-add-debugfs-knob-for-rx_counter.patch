@@ -128,7 +128,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	}
 --- a/mt76.h
 +++ b/mt76.h
-@@ -440,6 +440,7 @@ struct mt76_rx_tid {
+@@ -439,6 +439,7 @@ struct mt76_rx_tid {
  	struct rcu_head rcu_head;
  
  	struct mt76_dev *dev;
@@ -136,10 +136,10 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	spinlock_t lock;
  	struct delayed_work reorder_work;
-@@ -869,6 +870,19 @@ struct mt76_phy {
+@@ -867,6 +868,19 @@ struct mt76_phy {
+ 		bool al;
  		u8 pin;
  	} leds;
- 	int tokens;
 +
 +	struct {
 +		u32 rx_mac80211;
@@ -156,7 +156,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  };
  
  struct mt76_dev {
-@@ -984,6 +998,8 @@ struct mt76_dev {
+@@ -980,6 +994,8 @@ struct mt76_dev {
  
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
@@ -197,7 +197,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	if (FIELD_GET(MT_RXD2_NORMAL_SEC_MODE, rxd2) != 0 &&
  	    !(rxd1 & (MT_RXD1_NORMAL_CLM | MT_RXD1_NORMAL_CM))) {
-@@ -1415,8 +1421,10 @@ void mt7996_queue_rx_skb(struct mt76_dev
+@@ -1414,8 +1420,10 @@ void mt7996_queue_rx_skb(struct mt76_dev
  			 struct sk_buff *skb, u32 *info)
  {
  	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
@@ -208,7 +208,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	enum rx_pkt_type type;
  
  	type = le32_get_bits(rxd[0], MT_RXD0_PKT_TYPE);
-@@ -1458,6 +1466,10 @@ void mt7996_queue_rx_skb(struct mt76_dev
+@@ -1457,6 +1465,10 @@ void mt7996_queue_rx_skb(struct mt76_dev
  		}
  		fallthrough;
  	default:
