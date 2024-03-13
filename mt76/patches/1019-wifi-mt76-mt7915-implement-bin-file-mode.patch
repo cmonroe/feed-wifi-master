@@ -51,7 +51,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -941,6 +941,9 @@ struct mt76_dev {
+@@ -936,6 +936,9 @@ struct mt76_dev {
  		struct mt76_sdio sdio;
  	};
  
@@ -61,7 +61,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
  };
-@@ -1207,6 +1210,7 @@ int mt76_get_of_data_from_file(struct mt
+@@ -1202,6 +1205,7 @@ int mt76_get_of_data_from_file(struct mt
  int mt76_get_of_data_from_mtd(struct mt76_dev *dev, void *eep, int offset, int len);
  int mt76_get_of_data_from_nvmem(struct mt76_dev *dev, void *eep,
  				const char *cell_name, int len);

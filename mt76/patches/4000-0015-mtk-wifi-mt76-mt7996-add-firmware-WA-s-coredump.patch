@@ -427,7 +427,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  }
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2003,28 +2003,25 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2002,28 +2002,25 @@ void mt7996_mac_reset_work(struct work_s
  }
  
  /* firmware coredump */
@@ -460,7 +460,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	if (!mem_region || !crash_data->memdump_buf_len) {
  		mutex_unlock(&dev->dump_mutex);
  		goto skip_memdump;
-@@ -2034,6 +2031,9 @@ void mt7996_mac_dump_work(struct work_st
+@@ -2033,6 +2030,9 @@ void mt7996_mac_dump_work(struct work_st
  	buf_len = crash_data->memdump_buf_len;
  
  	/* dumping memory content... */
@@ -470,7 +470,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	memset(buf, 0, buf_len);
  	for (i = 0; i < num; i++) {
  		if (mem_region->len > buf_len) {
-@@ -2050,6 +2050,7 @@ void mt7996_mac_dump_work(struct work_st
+@@ -2049,6 +2049,7 @@ void mt7996_mac_dump_work(struct work_st
  		mt7996_memcpy_fromio(dev, buf, mem_region->start,
  				     mem_region->len);
  
@@ -478,7 +478,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  		hdr->start = mem_region->start;
  		hdr->len = mem_region->len;
  
-@@ -2066,8 +2067,20 @@ void mt7996_mac_dump_work(struct work_st
+@@ -2065,8 +2066,20 @@ void mt7996_mac_dump_work(struct work_st
  	mutex_unlock(&dev->dump_mutex);
  
  skip_memdump:

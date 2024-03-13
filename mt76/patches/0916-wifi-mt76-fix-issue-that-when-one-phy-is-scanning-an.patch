@@ -32,7 +32,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	t = mt76_get_txwi(dev);
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1428,7 +1428,7 @@ out:
+@@ -1421,7 +1421,7 @@ out:
  	/* reset done */
  	clear_bit(MT76_RESET, &dev->mphy.state);
  	if (phy2)

@@ -12,7 +12,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -675,6 +675,7 @@ static void mt7996_init_work(struct work
+@@ -673,6 +673,7 @@ static void mt7996_init_work(struct work
  	mt7996_mcu_set_eeprom(dev);
  	mt7996_mac_init(dev);
  	mt7996_txbf_init(dev);

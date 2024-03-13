@@ -35,7 +35,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  out_put_node:
 --- a/mt76.h
 +++ b/mt76.h
-@@ -707,6 +707,7 @@ struct mt76_testmode_ops {
+@@ -705,6 +705,7 @@ struct mt76_testmode_ops {
  	int (*set_params)(struct mt76_phy *phy, struct nlattr **tb,
  			  enum mt76_testmode_state new_state);
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);

@@ -13,7 +13,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1877,6 +1877,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -1876,6 +1876,7 @@ void mt7996_mac_reset_work(struct work_s
  	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
  		return;
  
@@ -21,7 +21,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	dev_info(dev->mt76.dev,"\n%s L1 SER recovery start.",
  		 wiphy_name(dev->mt76.hw->wiphy));
  
-@@ -1894,6 +1895,10 @@ void mt7996_mac_reset_work(struct work_s
+@@ -1893,6 +1894,10 @@ void mt7996_mac_reset_work(struct work_s
  
  	set_bit(MT76_RESET, &dev->mphy.state);
  	set_bit(MT76_MCU_RESET, &dev->mphy.state);
@@ -32,7 +32,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	wake_up(&dev->mt76.mcu.wait);
  
  	mt76_worker_disable(&dev->mt76.tx_worker);
-@@ -2108,6 +2113,9 @@ void mt7996_reset(struct mt7996_dev *dev
+@@ -2107,6 +2112,9 @@ void mt7996_reset(struct mt7996_dev *dev
  		return;
  	}
  

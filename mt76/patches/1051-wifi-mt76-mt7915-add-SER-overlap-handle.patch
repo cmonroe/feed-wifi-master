@@ -50,7 +50,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  				cmd, (MT76_MSG_MAX_RETRY_CNT - retry_cnt));
 --- a/mt76.h
 +++ b/mt76.h
-@@ -478,6 +478,14 @@ enum {
+@@ -477,6 +477,14 @@ enum {
  	MT76_STATE_WED_RESET,
  };
  
@@ -65,7 +65,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  struct mt76_hw_cap {
  	bool has_2ghz;
  	bool has_5ghz;
-@@ -901,6 +909,7 @@ struct mt76_dev {
+@@ -897,6 +905,7 @@ struct mt76_dev {
  	wait_queue_head_t tx_wait;
  	/* spinclock used to protect wcid pktid linked list */
  	spinlock_t status_lock;
@@ -75,7 +75,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	u32 wcid_phy_mask[DIV_ROUND_UP(MT76_N_WCIDS, 32)];
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1552,6 +1552,7 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1555,6 +1555,7 @@ void mt7915_mac_reset_work(struct work_s
  	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
  		return;
  
@@ -83,7 +83,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	dev_info(dev->mt76.dev,"\n%s L1 SER recovery start.",
  		 wiphy_name(dev->mt76.hw->wiphy));
  
-@@ -1618,6 +1619,7 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1621,6 +1622,7 @@ void mt7915_mac_reset_work(struct work_s
  
  	mt7915_update_beacons(dev);
  
@@ -91,7 +91,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	dev_info(dev->mt76.dev,"\n%s L1 SER recovery completed.",
  		 wiphy_name(dev->mt76.hw->wiphy));
  }
-@@ -1756,6 +1758,15 @@ void mt7915_reset(struct mt7915_dev *dev
+@@ -1759,6 +1761,15 @@ void mt7915_reset(struct mt7915_dev *dev
  		return;
  	}
  

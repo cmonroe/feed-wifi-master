@@ -9,7 +9,7 @@ Subject: [PATCH 1021/1044] mtk: wifi: mt76: mt7996: Establish BA in VO queue
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1032,8 +1032,6 @@ mt7996_tx_check_aggr(struct ieee80211_st
+@@ -1031,8 +1031,6 @@ mt7996_tx_check_aggr(struct ieee80211_st
  		return;
  
  	tid = skb->priority & IEEE80211_QOS_CTL_TID_MASK;

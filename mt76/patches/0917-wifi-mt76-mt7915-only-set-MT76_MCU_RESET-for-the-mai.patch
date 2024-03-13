@@ -12,7 +12,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1345,10 +1345,8 @@ mt7915_mac_restart(struct mt7915_dev *de
+@@ -1338,10 +1338,8 @@ mt7915_mac_restart(struct mt7915_dev *de
  	set_bit(MT76_RESET, &dev->mphy.state);
  	set_bit(MT76_MCU_RESET, &dev->mphy.state);
  	wake_up(&dev->mt76.mcu.wait);
