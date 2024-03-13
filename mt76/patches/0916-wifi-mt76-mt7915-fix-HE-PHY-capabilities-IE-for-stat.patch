@@ -1,0 +1,41 @@
+From 2df4c19784f0d37e9beaa3282bb855f8b4231bf7 Mon Sep 17 00:00:00 2001
+From: Howard Hsu <howard-yh.hsu@mediatek.com>
+Date: Wed, 6 Mar 2024 20:51:19 +0800
+Subject: [PATCH] wifi: mt76: mt7915: fix HE PHY capabilities IE for station
+ mode
+
+Set correct beamformer capabilities for station vif in HE PHY
+capabilities IE.
+
+Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
+---
+ mt7915/init.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -945,11 +945,10 @@ mt7915_set_stream_he_txbf_caps(struct mt
+ 	/* the maximum cap is 4 x 3, (Nr, Nc) = (3, 2) */
+ 	elem->phy_cap_info[7] |= min_t(int, sts - 1, 2) << 3;
+ 
+-	if (vif != NL80211_IFTYPE_AP)
++	if (vif != NL80211_IFTYPE_AP || vif != NL80211_IFTYPE_STATION)
+ 		return;
+ 
+ 	elem->phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER;
+-	elem->phy_cap_info[4] |= IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER;
+ 
+ 	c = FIELD_PREP(IEEE80211_HE_PHY_CAP5_BEAMFORMEE_NUM_SND_DIM_UNDER_80MHZ_MASK,
+ 		       sts - 1);
+@@ -958,6 +957,11 @@ mt7915_set_stream_he_txbf_caps(struct mt
+ 				sts_160 - 1);
+ 	elem->phy_cap_info[5] |= c;
+ 
++	if (vif != NL80211_IFTYPE_AP)
++		return;
++
++	elem->phy_cap_info[4] |= IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER;
++
+ 	c = IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB |
+ 	    IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMING_PARTIAL_BW_FB;
+ 	elem->phy_cap_info[6] |= c;

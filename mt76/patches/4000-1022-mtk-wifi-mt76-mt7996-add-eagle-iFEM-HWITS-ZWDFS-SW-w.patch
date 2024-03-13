@@ -136,9 +136,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -407,6 +407,8 @@ struct mt7996_dev {
- 		spinlock_t lock;
- 	} wed_rro;
+@@ -419,6 +419,8 @@ struct mt7996_dev {
+ 	bool bin_file_mode;
+ 	u8 eeprom_mode;
  
 +	u32 bg_nxt_freq;
 +

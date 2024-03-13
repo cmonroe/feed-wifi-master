@@ -13,11 +13,9 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  mt7996/mt7996.h   |  1 +
  2 files changed, 67 insertions(+), 14 deletions(-)
 
-diff --git a/mt7996/coredump.c b/mt7996/coredump.c
-index a7f91b56..d09bcd4b 100644
 --- a/mt7996/coredump.c
 +++ b/mt7996/coredump.c
-@@ -67,6 +67,44 @@ static const struct mt7996_mem_region mt7996_wa_mem_regions[] = {
+@@ -67,6 +67,44 @@ static const struct mt7996_mem_region mt
  	},
  };
  
@@ -62,7 +60,7 @@ index a7f91b56..d09bcd4b 100644
  const struct mt7996_mem_region*
  mt7996_coredump_get_mem_layout(struct mt7996_dev *dev, u8 type, u32 *num)
  {
-@@ -80,6 +118,14 @@ mt7996_coredump_get_mem_layout(struct mt7996_dev *dev, u8 type, u32 *num)
+@@ -80,6 +118,14 @@ mt7996_coredump_get_mem_layout(struct mt
  
  		*num = ARRAY_SIZE(mt7996_wm_mem_regions);
  		return &mt7996_wm_mem_regions[0];
@@ -77,7 +75,7 @@ index a7f91b56..d09bcd4b 100644
  	default:
  		return NULL;
  	}
-@@ -115,7 +161,7 @@ struct mt7996_crash_data *mt7996_coredump_new(struct mt7996_dev *dev, u8 type)
+@@ -115,7 +161,7 @@ struct mt7996_crash_data *mt7996_coredum
  
  	lockdep_assert_held(&dev->dump_mutex);
  
@@ -86,7 +84,7 @@ index a7f91b56..d09bcd4b 100644
  		return NULL;
  
  	guid_gen(&crash_data->guid);
-@@ -289,40 +335,46 @@ int mt7996_coredump_register(struct mt7996_dev *dev)
+@@ -289,40 +335,46 @@ int mt7996_coredump_register(struct mt79
  	for (i = 0; i < MT7996_COREDUMP_MAX; i++) {
  		crash_data = vzalloc(sizeof(*dev->coredump.crash_data[i]));
  		if (!crash_data)
@@ -146,11 +144,9 @@ index a7f91b56..d09bcd4b 100644
  	}
  }
  
-diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
-index dd9aa9e2..7ca9d57e 100644
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -230,6 +230,7 @@ struct mt7996_vif {
+@@ -224,6 +224,7 @@ struct mt7996_vif {
  struct mt7996_crash_data {
  	guid_t guid;
  	struct timespec64 timestamp;
@@ -158,6 +154,3 @@ index dd9aa9e2..7ca9d57e 100644
  
  	u8 *memdump_buf;
  	size_t memdump_buf_len;
--- 
-2.18.0
-

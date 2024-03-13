@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -314,3 +314,37 @@ s8 mt7996_eeprom_get_power_delta(struct
+@@ -380,3 +380,37 @@ s8 mt7996_eeprom_get_power_delta(struct
  
  	return val & MT_EE_RATE_DELTA_SIGN ? delta : -delta;
  }
@@ -57,7 +57,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +};
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
-@@ -75,4 +75,46 @@ mt7996_get_channel_group_6g(int channel)
+@@ -122,4 +122,46 @@ mt7996_get_channel_group_6g(int channel)
  	return DIV_ROUND_UP(channel - 29, 32);
  }
  
@@ -143,7 +143,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  enum {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -576,6 +576,8 @@ void mt7996_mcu_rx_event(struct mt7996_d
+@@ -580,6 +580,8 @@ void mt7996_mcu_rx_event(struct mt7996_d
  void mt7996_mcu_exit(struct mt7996_dev *dev);
  int mt7996_mcu_get_all_sta_info(struct mt7996_phy *phy, u16 tag);
  int mt7996_mcu_wed_rro_reset_sessions(struct mt7996_dev *dev, u16 id);
@@ -673,7 +673,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4670,3 +4670,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -4676,3 +4676,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(SCS),
  				 &req, sizeof(req), false);
  }

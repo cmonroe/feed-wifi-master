@@ -9,11 +9,9 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  mt7996/vendor.h | 23 +++++++++++++++++
  2 files changed, 88 insertions(+)
 
-diff --git a/mt7996/vendor.c b/mt7996/vendor.c
-index 9f333d0e..dae3260a 100644
 --- a/mt7996/vendor.c
 +++ b/mt7996/vendor.c
-@@ -60,6 +60,11 @@ edcca_dump_policy[NUM_MTK_VENDOR_ATTRS_EDCCA_DUMP] = {
+@@ -60,6 +60,11 @@ edcca_dump_policy[NUM_MTK_VENDOR_ATTRS_E
  	[MTK_VENDOR_ATTR_EDCCA_DUMP_SEC160_VAL] = { .type = NLA_U8 },
  };
  
@@ -25,7 +23,7 @@ index 9f333d0e..dae3260a 100644
  struct mt7996_amnt_data {
  	u8 idx;
  	u8 addr[ETH_ALEN];
-@@ -556,6 +561,54 @@ mt7996_vendor_edcca_ctrl_dump(struct wiphy *wiphy, struct wireless_dev *wdev,
+@@ -556,6 +561,54 @@ mt7996_vendor_edcca_ctrl_dump(struct wip
  	return EDCCA_MAX_BW_NUM;
  }
  
@@ -80,7 +78,7 @@ index 9f333d0e..dae3260a 100644
  static const struct wiphy_vendor_command mt7996_vendor_commands[] = {
  	{
  		.info = {
-@@ -604,6 +657,18 @@ static const struct wiphy_vendor_command mt7996_vendor_commands[] = {
+@@ -604,6 +657,18 @@ static const struct wiphy_vendor_command
  		.policy = edcca_ctrl_policy,
  		.maxattr = MTK_VENDOR_ATTR_EDCCA_CTRL_MAX,
  	},
@@ -99,8 +97,6 @@ index 9f333d0e..dae3260a 100644
  };
  
  void mt7996_vendor_register(struct mt7996_phy *phy)
-diff --git a/mt7996/vendor.h b/mt7996/vendor.h
-index 4465bc9d..49f46f25 100644
 --- a/mt7996/vendor.h
 +++ b/mt7996/vendor.h
 @@ -7,6 +7,7 @@ enum mtk_nl80211_vendor_subcmds {
@@ -138,6 +134,3 @@ index 4465bc9d..49f46f25 100644
 +};
 +
  #endif
--- 
-2.18.0
-

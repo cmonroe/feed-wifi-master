@@ -21,7 +21,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1280,6 +1280,7 @@ enum {
+@@ -1282,6 +1282,7 @@ enum {
  	MCU_UNI_CMD_GET_STAT_INFO = 0x23,
  	MCU_UNI_CMD_SNIFFER = 0x24,
  	MCU_UNI_CMD_SR = 0x25,
@@ -87,7 +87,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4565,3 +4565,108 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -4571,3 +4571,108 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
@@ -247,7 +247,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -678,6 +691,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -682,6 +695,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
  #endif

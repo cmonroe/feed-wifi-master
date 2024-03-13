@@ -71,7 +71,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -805,6 +805,7 @@ static void mt76_rx_release_amsdu(struct
+@@ -784,6 +784,7 @@ static void mt76_rx_release_amsdu(struct
  		}
  
  		if (ether_addr_equal(skb->data + offset, rfc1042_header)) {
@@ -79,7 +79,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  			dev_kfree_skb(skb);
  			return;
  		}
-@@ -1121,10 +1122,16 @@ mt76_rx_convert(struct mt76_dev *dev, st
+@@ -1100,10 +1101,16 @@ mt76_rx_convert(struct mt76_dev *dev, st
  
  	*sta = wcid_to_sta(mstat.wcid);
  	*hw = mt76_phy_hw(dev, mstat.phy_idx);
@@ -97,7 +97,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  {
  	struct mt76_rx_status *status = (struct mt76_rx_status *)skb->cb;
  	struct mt76_wcid *wcid = status->wcid;
-@@ -1171,7 +1178,11 @@ skip_hdr_check:
+@@ -1150,7 +1157,11 @@ skip_hdr_check:
  	ret = memcmp(status->iv, wcid->rx_key_pn[security_idx],
  		     sizeof(status->iv));
  	if (ret <= 0) {
@@ -109,7 +109,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		return;
  	}
  
-@@ -1352,7 +1363,7 @@ void mt76_rx_complete(struct mt76_dev *d
+@@ -1331,7 +1342,7 @@ void mt76_rx_complete(struct mt76_dev *d
  	while ((skb = __skb_dequeue(frames)) != NULL) {
  		struct sk_buff *nskb = skb_shinfo(skb)->frag_list;
  
@@ -118,7 +118,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		skb_shinfo(skb)->frag_list = NULL;
  		mt76_rx_convert(dev, skb, &hw, &sta);
  		ieee80211_rx_list(hw, sta, skb, &list);
-@@ -1375,6 +1386,7 @@ void mt76_rx_complete(struct mt76_dev *d
+@@ -1354,6 +1365,7 @@ void mt76_rx_complete(struct mt76_dev *d
  	}
  
  	list_for_each_entry_safe(skb, tmp, &list, list) {
@@ -128,7 +128,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	}
 --- a/mt76.h
 +++ b/mt76.h
-@@ -417,6 +417,7 @@ struct mt76_rx_tid {
+@@ -440,6 +440,7 @@ struct mt76_rx_tid {
  	struct rcu_head rcu_head;
  
  	struct mt76_dev *dev;
@@ -136,7 +136,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	spinlock_t lock;
  	struct delayed_work reorder_work;
-@@ -846,6 +847,19 @@ struct mt76_phy {
+@@ -869,6 +870,19 @@ struct mt76_phy {
  		u8 pin;
  	} leds;
  	int tokens;
@@ -156,7 +156,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  };
  
  struct mt76_dev {
-@@ -961,6 +975,8 @@ struct mt76_dev {
+@@ -984,6 +998,8 @@ struct mt76_dev {
  
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
@@ -221,7 +221,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	}
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2816,6 +2816,46 @@ mt7996_sr_scene_cond_show(struct seq_fil
+@@ -2854,6 +2854,46 @@ mt7996_sr_scene_cond_show(struct seq_fil
  }
  DEFINE_SHOW_ATTRIBUTE(mt7996_sr_scene_cond);
  
@@ -268,7 +268,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2879,6 +2919,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2917,6 +2957,8 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_devm_seqfile(dev->mt76.dev, "tr_info", dir,
  				    mt7996_trinfo_read);

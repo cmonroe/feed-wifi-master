@@ -1,15 +1,15 @@
-From 6095169dd81a2dc26314ded00075544ff2717350 Mon Sep 17 00:00:00 2001
+From ca842f6d403a5d4fd11944d10a4a1d7be4b65290 Mon Sep 17 00:00:00 2001
 From: Bo Jiao <Bo.Jiao@mediatek.com>
-Date: Tue, 6 Feb 2024 14:32:46 +0800
-Subject: [PATCH 1/2] wifi: mt76: try more times when send message timeout.
+Date: Thu, 7 Mar 2024 11:13:45 +0800
+Subject: [PATCH] wifi: mt76: try more times when send message timeout.
 
 CR-Id: WCNCR00334773
 Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 ---
  dma.c        |  7 ++++--
  mcu.c        | 66 ++++++++++++++++++++++++++++++++++++----------------
- mt7915/mac.c | 45 +++++++++++------------------------
- 3 files changed, 64 insertions(+), 54 deletions(-)
+ mt7915/mac.c | 43 +++++++++++-----------------------
+ 3 files changed, 64 insertions(+), 52 deletions(-)
 
 --- a/dma.c
 +++ b/dma.c
@@ -128,22 +128,20 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	return ret;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1362,14 +1362,6 @@ mt7915_mac_restart(struct mt7915_dev *de
+@@ -1362,12 +1362,6 @@ mt7915_mac_restart(struct mt7915_dev *de
  		}
  	}
  
 -	set_bit(MT76_RESET, &dev->mphy.state);
 -	set_bit(MT76_MCU_RESET, &dev->mphy.state);
 -	wake_up(&dev->mt76.mcu.wait);
--	if (ext_phy) {
+-	if (ext_phy)
 -		set_bit(MT76_RESET, &ext_phy->state);
--		set_bit(MT76_MCU_RESET, &ext_phy->state);
--	}
 -
  	/* lock/unlock all queues to ensure that no tx is pending */
  	mt76_txq_schedule_all(&dev->mphy);
  	if (ext_phy)
-@@ -1470,11 +1462,18 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1468,11 +1462,18 @@ mt7915_mac_full_reset(struct mt7915_dev
  
  	dev->recovery.hw_full_reset = true;
  
@@ -163,7 +161,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	cancel_delayed_work_sync(&dev->mphy.mac_work);
  	if (ext_phy)
  		cancel_delayed_work_sync(&ext_phy->mac_work);
-@@ -1562,20 +1561,15 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1560,20 +1561,15 @@ void mt7915_mac_reset_work(struct work_s
  
  	set_bit(MT76_RESET, &dev->mphy.state);
  	set_bit(MT76_MCU_RESET, &dev->mphy.state);
@@ -187,7 +185,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	if (mtk_wed_device_active(&dev->mt76.mmio.wed))
  		mtk_wed_device_stop(&dev->mt76.mmio.wed);
  
-@@ -1599,8 +1593,8 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1597,8 +1593,8 @@ void mt7915_mac_reset_work(struct work_s
  
  	clear_bit(MT76_MCU_RESET, &dev->mphy.state);
  	clear_bit(MT76_RESET, &dev->mphy.state);
@@ -198,7 +196,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
  	local_bh_disable();
  	mt76_for_each_q_rx(&dev->mt76, i) {
-@@ -1622,21 +1616,8 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1620,21 +1616,8 @@ void mt7915_mac_reset_work(struct work_s
  	if (ext_phy)
  		ieee80211_wake_queues(ext_phy->hw);
  

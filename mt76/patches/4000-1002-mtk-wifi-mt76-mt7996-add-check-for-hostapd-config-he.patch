@@ -14,11 +14,9 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  mt7996/mcu.c | 12 +++++++++---
  1 file changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index e92a3e53..b488a78f 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1185,7 +1185,8 @@ int mt7996_mcu_add_rx_ba(struct mt7996_dev *dev,
+@@ -1184,7 +1184,8 @@ int mt7996_mcu_add_rx_ba(struct mt7996_d
  }
  
  static void
@@ -28,7 +26,7 @@ index e92a3e53..b488a78f 100644
  {
  	struct ieee80211_he_cap_elem *elem = &sta->deflink.he_cap.he_cap_elem;
  	struct ieee80211_he_mcs_nss_supp mcs_map;
-@@ -1205,6 +1206,11 @@ mt7996_mcu_sta_he_tlv(struct sk_buff *skb, struct ieee80211_sta *sta)
+@@ -1204,6 +1205,11 @@ mt7996_mcu_sta_he_tlv(struct sk_buff *sk
  		he->he_phy_cap[i] = elem->phy_cap_info[i];
  	}
  
@@ -40,7 +38,7 @@ index e92a3e53..b488a78f 100644
  	mcs_map = sta->deflink.he_cap.he_mcs_nss_supp;
  	switch (sta->deflink.bandwidth) {
  	case IEEE80211_STA_RX_BW_160:
-@@ -2111,7 +2117,7 @@ int mt7996_mcu_add_rate_ctrl(struct mt7996_dev *dev, struct ieee80211_vif *vif,
+@@ -2110,7 +2116,7 @@ int mt7996_mcu_add_rate_ctrl(struct mt79
  	 * update sta_rec_he here.
  	 */
  	if (changed)
@@ -49,7 +47,7 @@ index e92a3e53..b488a78f 100644
  
  	/* sta_rec_ra accommodates BW, NSS and only MCS range format
  	 * i.e 0-{7,8,9} for VHT.
-@@ -2199,7 +2205,7 @@ int mt7996_mcu_add_sta(struct mt7996_dev *dev, struct ieee80211_vif *vif,
+@@ -2198,7 +2204,7 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  		/* starec amsdu */
  		mt7996_mcu_sta_amsdu_tlv(dev, skb, vif, sta);
  		/* starec he */
@@ -58,6 +56,3 @@ index e92a3e53..b488a78f 100644
  		/* starec he 6g*/
  		mt7996_mcu_sta_he_6g_tlv(skb, sta);
  		/* starec eht */
--- 
-2.18.0
-

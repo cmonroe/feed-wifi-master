@@ -1,0 +1,43 @@
+From 43185c6fd277538d378db3fb9e2d0520d9c5dfb2 Mon Sep 17 00:00:00 2001
+From: Bo Jiao <Bo.Jiao@mediatek.com>
+Date: Thu, 7 Mar 2024 10:57:09 +0800
+Subject: [PATCH] wifi: mt76: fix issue that when one phy is scanning and
+ another phy occur packet loss
+
+Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
+---
+ dma.c        | 5 ++++-
+ mt7915/mac.c | 2 +-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+--- a/dma.c
++++ b/dma.c
+@@ -543,13 +543,16 @@ mt76_dma_tx_queue_skb(struct mt76_dev *d
+ 		.skb = skb,
+ 	};
+ 	struct ieee80211_hw *hw;
++	struct mt76_phy *phy;
+ 	int len, n = 0, ret = -ENOMEM;
+ 	struct mt76_txwi_cache *t;
+ 	struct sk_buff *iter;
+ 	dma_addr_t addr;
+ 	u8 *txwi;
+ 
+-	if (test_bit(MT76_RESET, &dev->phy.state))
++	hw = mt76_phy_hw(dev, wcid->phy_idx);
++	phy = hw->priv;
++	if (test_bit(MT76_RESET, &phy->state))
+ 		goto free_skb;
+ 
+ 	t = mt76_get_txwi(dev);
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -1428,7 +1428,7 @@ out:
+ 	/* reset done */
+ 	clear_bit(MT76_RESET, &dev->mphy.state);
+ 	if (phy2)
+-		clear_bit(MT76_RESET, &phy2->mt76->state);
++		clear_bit(MT76_RESET, &ext_phy->state);
+ 
+ 	local_bh_disable();
+ 	napi_enable(&dev->mt76.tx_napi);

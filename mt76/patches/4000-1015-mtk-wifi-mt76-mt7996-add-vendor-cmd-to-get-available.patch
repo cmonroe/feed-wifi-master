@@ -13,11 +13,9 @@ Signed-off-by: Yi-Chia Hsieh <yi-chia.hsieh@mediatek.com>
  mt7996/vendor.h | 11 +++++++++++
  2 files changed, 47 insertions(+)
 
-diff --git a/mt7996/vendor.c b/mt7996/vendor.c
-index f3b089d7..39101577 100644
 --- a/mt7996/vendor.c
 +++ b/mt7996/vendor.c
-@@ -35,6 +35,11 @@ amnt_dump_policy[NUM_MTK_VENDOR_ATTRS_AMNT_DUMP] = {
+@@ -35,6 +35,11 @@ amnt_dump_policy[NUM_MTK_VENDOR_ATTRS_AM
  	[MTK_VENDOR_ATTR_AMNT_DUMP_RESULT] = { .type = NLA_NESTED },
  };
  
@@ -29,7 +27,7 @@ index f3b089d7..39101577 100644
  struct mt7996_amnt_data {
  	u8 idx;
  	u8 addr[ETH_ALEN];
-@@ -410,6 +415,26 @@ mt7966_vendor_amnt_ctrl_dump(struct wiphy *wiphy, struct wireless_dev *wdev,
+@@ -410,6 +415,26 @@ mt7966_vendor_amnt_ctrl_dump(struct wiph
  	return len + 1;
  }
  
@@ -56,7 +54,7 @@ index f3b089d7..39101577 100644
  
  static const struct wiphy_vendor_command mt7996_vendor_commands[] = {
  	{
-@@ -436,6 +461,17 @@ static const struct wiphy_vendor_command mt7996_vendor_commands[] = {
+@@ -436,6 +461,17 @@ static const struct wiphy_vendor_command
  		.policy = amnt_ctrl_policy,
  		.maxattr = MTK_VENDOR_ATTR_AMNT_CTRL_MAX,
  	},
@@ -74,8 +72,6 @@ index f3b089d7..39101577 100644
  };
  
  void mt7996_vendor_register(struct mt7996_phy *phy)
-diff --git a/mt7996/vendor.h b/mt7996/vendor.h
-index 2078cafa..eec9e74a 100644
 --- a/mt7996/vendor.h
 +++ b/mt7996/vendor.h
 @@ -6,6 +6,7 @@
@@ -102,6 +98,3 @@ index 2078cafa..eec9e74a 100644
 +};
  
  #endif
--- 
-2.18.0
-

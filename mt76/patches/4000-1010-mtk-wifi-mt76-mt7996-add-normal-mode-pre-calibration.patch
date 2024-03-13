@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1294,6 +1294,7 @@ enum {
+@@ -1296,6 +1296,7 @@ enum {
  	MCU_UNI_CMD_VOW = 0x37,
  	MCU_UNI_CMD_PP = 0x38,
  	MCU_UNI_CMD_FIXED_RATE_TABLE = 0x40,
@@ -27,7 +27,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	MCU_UNI_CMD_PER_STA_INFO = 0x6d,
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -266,6 +266,10 @@ int mt7996_eeprom_init(struct mt7996_dev
+@@ -427,6 +427,10 @@ int mt7996_eeprom_init(struct mt7996_dev
  			return ret;
  	}
  
@@ -40,7 +40,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		return ret;
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
-@@ -23,6 +23,8 @@ enum mt7996_eeprom_field {
+@@ -24,6 +24,8 @@ enum mt7996_eeprom_field {
  	MT_EE_TX0_POWER_6G =	0x1310,
  
  	__MT_EE_MAX =	0x1dff,
@@ -256,7 +256,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define NIC_CAP	3
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -579,6 +579,8 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -588,6 +588,8 @@ int mt7996_mcu_get_all_sta_info(struct m
  int mt7996_mcu_wed_rro_reset_sessions(struct mt7996_dev *dev, u16 id);
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);

@@ -31,7 +31,7 @@
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3742,7 +3742,7 @@ static int mt7996_mcu_set_pre_cal(struct
+@@ -3684,7 +3684,7 @@ static int mt7996_mcu_set_pre_cal(struct
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, cal, len);
  
@@ -40,7 +40,7 @@
  }
  
  int mt7996_mcu_apply_group_cal(struct mt7996_dev *dev)
-@@ -3756,6 +3756,9 @@ int mt7996_mcu_apply_group_cal(struct mt
+@@ -3698,6 +3698,9 @@ int mt7996_mcu_apply_group_cal(struct mt
  		return 0;
  
  	for (idx = 0; idx < total_idx; idx++, cal += MT_EE_CAL_UNIT) {
@@ -50,7 +50,7 @@
  		ret = mt7996_mcu_set_pre_cal(dev, idx, cal, MT_EE_CAL_UNIT, RF_PRE_CAL);
  		if (ret)
  			goto out;
-@@ -3879,6 +3882,9 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3821,6 +3824,9 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	cal += MT_EE_CAL_GROUP_SIZE + base_offset + idx * per_chan_size;
  
  	for (i = 0; i < per_chan_size / MT_EE_CAL_UNIT; i++) {

@@ -15,11 +15,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7996/mcu.c     |   6 +-
  3 files changed, 190 insertions(+), 2 deletions(-)
 
-diff --git a/mt7996/debugfs.c b/mt7996/debugfs.c
-index 7a03de12..50ac6d4d 100644
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -862,6 +862,46 @@ mt7996_rf_regval_set(void *data, u64 val)
+@@ -827,6 +827,46 @@ mt7996_rf_regval_set(void *data, u64 val
  DEFINE_DEBUGFS_ATTRIBUTE(fops_rf_regval, mt7996_rf_regval_get,
  			 mt7996_rf_regval_set, "0x%08llx\n");
  
@@ -66,7 +64,7 @@ index 7a03de12..50ac6d4d 100644
  int mt7996_init_debugfs(struct mt7996_phy *phy)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -888,6 +928,7 @@ int mt7996_init_debugfs(struct mt7996_phy *phy)
+@@ -853,6 +893,7 @@ int mt7996_init_debugfs(struct mt7996_ph
  	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
  				    mt7996_twt_stats);
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
@@ -74,11 +72,9 @@ index 7a03de12..50ac6d4d 100644
  
  	if (phy->mt76->cap.has_5ghz) {
  		debugfs_create_u32("dfs_hw_pattern", 0400, dir,
-diff --git a/mt7996/eeprom.c b/mt7996/eeprom.c
-index 39e65010..45cbd03d 100644
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -464,6 +464,147 @@ static int mt7996_eeprom_load_precal(struct mt7996_dev *dev)
+@@ -442,6 +442,147 @@ static int mt7996_eeprom_load_precal(str
  	return mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
  }
  
@@ -226,7 +222,7 @@ index 39e65010..45cbd03d 100644
  int mt7996_eeprom_init(struct mt7996_dev *dev)
  {
  	int ret;
-@@ -489,6 +630,10 @@ int mt7996_eeprom_init(struct mt7996_dev *dev)
+@@ -467,6 +608,10 @@ int mt7996_eeprom_init(struct mt7996_dev
  	if (ret)
  		return ret;
  
@@ -237,11 +233,9 @@ index 39e65010..45cbd03d 100644
  	ret = mt7996_eeprom_parse_hw_cap(dev, &dev->phy);
  	if (ret < 0)
  		return ret;
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index c97a3204..26d0a1c1 100644
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3620,7 +3620,7 @@ int mt7996_mcu_get_eeprom(struct mt7996_dev *dev, u32 offset, u8 *read_buf)
+@@ -3583,7 +3583,7 @@ int mt7996_mcu_get_eeprom(struct mt7996_
  	};
  	struct sk_buff *skb;
  	bool valid;
@@ -250,7 +244,7 @@ index c97a3204..26d0a1c1 100644
  	u8 *buf = read_buf;
  
  	ret = mt76_mcu_send_and_get_msg(&dev->mt76,
-@@ -3638,11 +3638,13 @@ int mt7996_mcu_get_eeprom(struct mt7996_dev *dev, u32 offset, u8 *read_buf)
+@@ -3601,11 +3601,13 @@ int mt7996_mcu_get_eeprom(struct mt7996_
  
  		skb_pull(skb, 48);
  		memcpy(buf, skb->data, MT7996_EEPROM_BLOCK_SIZE);
@@ -265,6 +259,3 @@ index c97a3204..26d0a1c1 100644
  }
  
  int mt7996_mcu_get_eeprom_free_block(struct mt7996_dev *dev, u8 *block_num)
--- 
-2.18.0
-
