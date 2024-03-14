@@ -1,0 +1,28 @@
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -35,14 +35,12 @@ static const struct ieee80211_channel mt
+ 	CHAN5G(60, 5300),
+ 	CHAN5G(64, 5320),
+ 
+-	CHAN5G(68, 5340),
+ 	CHAN5G(72, 5360),
+ 	CHAN5G(76, 5380),
+ 	CHAN5G(80, 5400),
+ 	CHAN5G(84, 5420),
+ 	CHAN5G(88, 5440),
+ 	CHAN5G(92, 5460),
+-	CHAN5G(96, 5480),
+ 
+ 	CHAN5G(100, 5500),
+ 	CHAN5G(104, 5520),
+--- a/mt7996/eeprom.c
++++ b/mt7996/eeprom.c
+@@ -385,7 +385,7 @@ out:
+ 
+ static void mt7996_eeprom_init_precal(struct mt7996_dev *dev)
+ {
+-#define MT76_CHANNELS_5GHZ_SIZE		36	/* ARRAY_SIZE(mt76_channels_5ghz) */
++#define MT76_CHANNELS_5GHZ_SIZE		34	/* ARRAY_SIZE(mt76_channels_5ghz) */
+ #define MT76_CHANNELS_6GHZ_SIZE		59	/* ARRAY_SIZE(mt76_channels_6ghz) */
+ 
+ 	dev->prek.dpd_ch_num[DPD_CH_NUM_BW20_2G] = ARRAY_SIZE(dpd_2g_ch_list_bw20);
