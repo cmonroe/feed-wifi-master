@@ -131,7 +131,7 @@
  #ifdef CONFIG_MBO
  		blobmsg_add_u8(&b, "mbo", !!(sta->cell_capa));
  #endif
-@@ -584,29 +615,32 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -585,29 +616,32 @@ hostapd_bss_get_clients(struct ubus_cont
  			blobmsg_add_string_buffer(&b);
  #endif
  
@@ -185,7 +185,7 @@
  		hostapd_parse_vendors(sta);
  
  		blobmsg_close_table(&b, c);
-@@ -618,6 +652,22 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -619,6 +653,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -208,7 +208,7 @@
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -1901,6 +1951,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1902,6 +1952,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),
@@ -216,7 +216,7 @@
  #ifdef CONFIG_TAXONOMY
  	UBUS_METHOD("get_sta_ies", hostapd_bss_get_sta_ies, addr_policy),
  #endif
-@@ -2288,3 +2339,4 @@ int hostapd_ubus_notify_bss_transition_q
+@@ -2289,3 +2340,4 @@ int hostapd_ubus_notify_bss_transition_q
  	return ureq.resp;
  #endif
  }
