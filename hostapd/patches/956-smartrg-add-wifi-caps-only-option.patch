@@ -208,7 +208,7 @@
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -1902,6 +1952,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1903,6 +1953,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),
@@ -216,7 +216,7 @@
  #ifdef CONFIG_TAXONOMY
  	UBUS_METHOD("get_sta_ies", hostapd_bss_get_sta_ies, addr_policy),
  #endif
-@@ -2289,3 +2340,4 @@ int hostapd_ubus_notify_bss_transition_q
+@@ -2290,3 +2341,4 @@ int hostapd_ubus_notify_bss_transition_q
  	return ureq.resp;
  #endif
  }

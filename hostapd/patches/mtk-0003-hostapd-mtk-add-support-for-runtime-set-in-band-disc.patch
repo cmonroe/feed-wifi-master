@@ -22,7 +22,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -772,6 +772,69 @@ static int hostapd_ctrl_iface_send_qos_m
+@@ -774,6 +774,69 @@ static int hostapd_ctrl_iface_send_qos_m
  
  #endif /* CONFIG_INTERWORKING */
  
@@ -92,7 +92,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  
  #ifdef CONFIG_WNM_AP
  
-@@ -3776,6 +3839,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4067,6 +4130,9 @@ static int hostapd_ctrl_iface_receive_pr
  		if (hostapd_ctrl_iface_coloc_intf_req(hapd, buf + 15))
  			reply_len = -1;
  #endif /* CONFIG_WNM_AP */
@@ -129,7 +129,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  
  static int hostapd_cli_cmd_disassoc_imminent(struct wpa_ctrl *ctrl, int argc,
  					     char *argv[])
-@@ -1850,6 +1868,8 @@ static const struct hostapd_cli_cmd host
+@@ -1859,6 +1877,8 @@ static const struct hostapd_cli_cmd host
  	{ "driver", hostapd_cli_cmd_driver, NULL,
  	  "<driver sub command> [<hex formatted data>] = send driver command data" },
  #endif /* ANDROID */
@@ -161,7 +161,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4784,9 +4784,10 @@ static int nl80211_fils_discovery(struct
+@@ -4783,9 +4783,10 @@ static int nl80211_fils_discovery(struct
  			params->fd_max_int) ||
  	    (params->fd_frame_tmpl &&
  	     nla_put(msg, NL80211_FILS_DISCOVERY_ATTR_TMPL,
@@ -174,7 +174,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  	nla_nest_end(msg, attr);
  	return 0;
  }
-@@ -5421,7 +5422,10 @@ static int wpa_driver_nl80211_set_ap(voi
+@@ -5418,7 +5419,10 @@ static int wpa_driver_nl80211_set_ap(voi
  #endif /* CONFIG_SAE */
  
  #ifdef CONFIG_FILS

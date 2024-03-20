@@ -12,7 +12,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -2004,6 +2004,7 @@ static void hostapd_cli_ping(void *eloop
+@@ -2013,6 +2013,7 @@ static void hostapd_cli_ping(void *eloop
  
  static void hostapd_cli_eloop_terminate(int sig, void *signal_ctx)
  {

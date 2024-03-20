@@ -9,7 +9,7 @@ Subject: [PATCH 45/54] mtk: hostapd: update eht operation element
 
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -245,9 +245,9 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -237,9 +237,9 @@ u8 * hostapd_eid_eht_operation(struct ho
  
  	/* TODO: Fill in appropriate EHT-MCS max Nss information */
  	oper->basic_eht_mcs_nss_set[0] = 0x11;

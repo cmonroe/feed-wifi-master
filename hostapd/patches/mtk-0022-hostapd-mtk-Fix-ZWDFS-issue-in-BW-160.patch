@@ -187,7 +187,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	return 0;
-@@ -1202,6 +1253,15 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1204,6 +1255,15 @@ int hostapd_dfs_complete_cac(struct host
  				hostapd_setup_interface_complete(iface, 0);
  				iface->cac_started = 0;
  			}

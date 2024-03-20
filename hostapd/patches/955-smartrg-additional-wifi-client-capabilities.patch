@@ -1,6 +1,6 @@
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4300,6 +4300,12 @@ static int __check_assoc_ies(struct host
+@@ -4306,6 +4306,12 @@ static int __check_assoc_ies(struct host
  		sta->power_capab = 0;
  	}
  
@@ -466,7 +466,7 @@
  	ieee80211_freq_to_channel_ext(hapd->iface->freq,
  				      hapd->iconf->secondary_channel,
  				      hostapd_get_oper_chwidth(hapd->iconf),
-@@ -1961,7 +2247,7 @@ void hostapd_ubus_notify_bss_transition_
+@@ -1962,7 +2248,7 @@ void hostapd_ubus_notify_bss_transition_
  	blobmsg_add_u8(&b, "bss-termination-delay", bss_termination_delay);
  	if (target_bssid)
  		blobmsg_add_macaddr(&b, "target-bssid", target_bssid);

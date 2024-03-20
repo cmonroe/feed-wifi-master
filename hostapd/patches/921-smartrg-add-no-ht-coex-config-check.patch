@@ -8,7 +8,7 @@ Subject: Use no_ht_coex to bypass HT coexistence checks.
 
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -357,6 +357,8 @@ static void ieee80211n_check_scan(struct
+@@ -355,6 +355,8 @@ static void ieee80211n_check_scan(struct
  
  	if (iface->current_mode->mode == HOSTAPD_MODE_IEEE80211A)
  		oper40 = ieee80211n_check_40mhz_5g(iface, scan_res);

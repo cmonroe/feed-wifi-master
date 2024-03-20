@@ -54,7 +54,7 @@
  
  static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
  				      struct sta_info *sta,
-@@ -418,6 +465,16 @@ static int hostapd_ctrl_iface_sta_mib(st
+@@ -464,6 +511,16 @@ static int hostapd_ctrl_iface_sta_mib(st
  		if (!os_snprintf_error(buflen - len, ret))
  			len += ret;
  	}
