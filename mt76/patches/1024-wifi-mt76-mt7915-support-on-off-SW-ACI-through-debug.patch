@@ -13,7 +13,7 @@ Change-Id: I8a9c277c41d1ba76f9737d8af6f42e5e8f00ba64
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1240,6 +1240,7 @@ enum {
+@@ -1239,6 +1239,7 @@ enum {
  	/* for vendor csi and air monitor */
  	MCU_EXT_CMD_SMESH_CTRL = 0xae,
  	MCU_EXT_CMD_EDCCA = 0xba,
@@ -23,7 +23,7 @@ Change-Id: I8a9c277c41d1ba76f9737d8af6f42e5e8f00ba64
  };
 --- a/mt7915/mtk_debugfs.c
 +++ b/mt7915/mtk_debugfs.c
-@@ -3700,6 +3700,25 @@ static int mt7915_show_eeprom_mode(struc
+@@ -3707,6 +3707,25 @@ static int mt7915_show_eeprom_mode(struc
  	return 0;
  }
  
@@ -49,7 +49,7 @@ Change-Id: I8a9c277c41d1ba76f9737d8af6f42e5e8f00ba64
  int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -3782,6 +3801,8 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3789,6 +3808,8 @@ int mt7915_mtk_init_debugfs(struct mt791
  
  	debugfs_create_devm_seqfile(dev->mt76.dev, "eeprom_mode", dir,
  				    mt7915_show_eeprom_mode);

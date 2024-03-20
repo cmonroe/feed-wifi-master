@@ -65,7 +65,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  struct mt76_hw_cap {
  	bool has_2ghz;
  	bool has_5ghz;
-@@ -897,6 +905,7 @@ struct mt76_dev {
+@@ -896,6 +904,7 @@ struct mt76_dev {
  	wait_queue_head_t tx_wait;
  	/* spinclock used to protect wcid pktid linked list */
  	spinlock_t status_lock;

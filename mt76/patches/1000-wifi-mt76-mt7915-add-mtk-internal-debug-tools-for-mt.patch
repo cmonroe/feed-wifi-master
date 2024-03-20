@@ -1,7 +1,8 @@
-From fc62783246a5f95bbb82928b8395ec695e0ca69c Mon Sep 17 00:00:00 2001
+From 70f7de3de779dda186c73feecdbd1d72fd367085 Mon Sep 17 00:00:00 2001
 From: Shayne Chen <shayne.chen@mediatek.com>
 Date: Wed, 22 Jun 2022 10:39:47 +0800
-Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
+Subject: [PATCH 1000/1054] wifi: mt76: mt7915: add mtk internal debug tools
+ for mt76
 
 ---
  mt76_connac_mcu.h     |    6 +
@@ -11,12 +12,13 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  mt7915/main.c         |    5 +
  mt7915/mcu.c          |   48 +-
  mt7915/mcu.h          |    4 +
- mt7915/mt7915.h       |   43 +
+ mt7915/mt7915.h       |   56 +
  mt7915/mt7915_debug.h | 1442 ++++++++++++++++
- mt7915/mtk_debugfs.c  | 3743 +++++++++++++++++++++++++++++++++++++++++
+ mt7915/mtk_debugfs.c  | 3750 +++++++++++++++++++++++++++++++++++++++++
  mt7915/mtk_mcu.c      |   51 +
+ mt7915/soc.c          |    7 +
  tools/fwlog.c         |   44 +-
- 12 files changed, 5472 insertions(+), 19 deletions(-)
+ 13 files changed, 5499 insertions(+), 19 deletions(-)
  create mode 100644 mt7915/mt7915_debug.h
  create mode 100644 mt7915/mtk_debugfs.c
  create mode 100644 mt7915/mtk_mcu.c
@@ -297,7 +299,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -2329,7 +2334,10 @@ static int mt7915_red_set_watermark(stru
+@@ -2328,7 +2333,10 @@ static int mt7915_red_set_watermark(stru
  				 sizeof(req), false);
  }
  
@@ -309,7 +311,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  {
  #define RED_DISABLE		0
  #define RED_BY_WA_ENABLE	2
-@@ -3396,6 +3404,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3466,6 +3474,8 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  		.sku_enable = enable,
  	};
  
@@ -318,7 +320,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  	return mt76_mcu_send_msg(&dev->mt76,
  				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
  				 sizeof(req), true);
-@@ -4068,6 +4078,23 @@ out:
+@@ -4132,6 +4142,23 @@ out:
  	return ret;
  }
  
@@ -342,7 +344,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-@@ -4096,3 +4123,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+@@ -4160,3 +4187,22 @@ int mt7915_mcu_rf_regval(struct mt7915_d
  
  	return 0;
  }
@@ -388,11 +390,25 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_WTBL_SIZE		288
  #define MT7916_WTBL_SIZE		544
-@@ -323,6 +324,28 @@ struct mt7915_dev {
- 	struct reset_control *rstc;
+@@ -245,6 +246,14 @@ struct mt7915_phy {
+ #endif
+ };
+ 
++#ifdef MTK_DEBUG
++enum {
++	ADIE0,
++	ADIE1,
++	ADIE_MAX_CNT,
++};
++#endif
++
+ struct mt7915_dev {
+ 	union { /* must be first */
+ 		struct mt76_dev mt76;
+@@ -328,6 +337,33 @@ struct mt7915_dev {
  	void __iomem *dcm;
  	void __iomem *sku;
-+
+ 
 +#ifdef MTK_DEBUG
 +	u16 wlan_idx;
 +	struct {
@@ -413,11 +429,17 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +		u8 sku_disable;
 +	} dbg;
 +	const struct mt7915_dbg_reg_desc *dbg_reg;
++
++	struct {
++		u16 id;
++		u16 version;
++	} adie[ADIE_MAX_CNT];
 +#endif
++
+ 	u32 adie_type;
  };
  
- enum {
-@@ -602,4 +625,24 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -608,4 +644,24 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  
@@ -1889,7 +1911,7 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +#endif
 --- /dev/null
 +++ b/mt7915/mtk_debugfs.c
-@@ -0,0 +1,3743 @@
+@@ -0,0 +1,3750 @@
 +#include<linux/inet.h>
 +#include "mt7915.h"
 +#include "mt7915_debug.h"
@@ -4814,7 +4836,9 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +{
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
 +	struct mt76_dev *mdev = NULL;
-+	seq_printf(s, "Version: 2.2.15.0\n");
++	int i;
++
++	seq_printf(s, "Version: 2.2.16.0\n");
 +
 +	if (!test_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state))
 +		return 0;
@@ -4823,6 +4847,11 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +	seq_printf(s, "Rom Patch Build Time: %.16s\n", mdev->patch_hdr->build_date);
 +	seq_printf(s, "WM Patch Build Time: %.16s\n", mdev->wm_hdr->build_date);
 +	seq_printf(s, "WA Patch Build Time: %.16s\n", mdev->wa_hdr->build_date);
++
++	for (i = 0; i < ADIE_MAX_CNT; i++) {
++		seq_printf(s, "adie[%d]: id=0x%04x version=0x%04x\n",
++			   i, dev->adie[i].id, dev->adie[i].version);
++	}
 +	return 0;
 +}
 +
@@ -5687,6 +5716,22 @@ Subject: [PATCH] wifi: mt76: mt7915: add mtk internal debug tools for mt76
 +				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
 +				 sizeof(req), true);
 +}
+--- a/mt7915/soc.c
++++ b/mt7915/soc.c
+@@ -361,6 +361,13 @@ static int mt798x_wmac_sku_setup(struct
+ 	*adie_type = FIELD_GET(MT_ADIE_CHIP_ID_MASK, adie_main) |
+ 		     (MT_ADIE_CHIP_ID_MASK & adie_ext);
+ 
++#ifdef MTK_DEBUG
++	dev->adie[ADIE0].id = FIELD_GET(MT_ADIE_CHIP_ID_MASK, adie_main);
++	dev->adie[ADIE0].version = FIELD_GET(MT_ADIE_VERSION_MASK, adie_main);
++	dev->adie[ADIE1].id = FIELD_GET(MT_ADIE_CHIP_ID_MASK, adie_ext);
++	dev->adie[ADIE1].version = FIELD_GET(MT_ADIE_VERSION_MASK, adie_ext);
++#endif
++
+ out:
+ 	mt76_wmac_spi_unlock(dev);
+ 
 --- a/tools/fwlog.c
 +++ b/tools/fwlog.c
 @@ -26,7 +26,7 @@ static const char *debugfs_path(const ch

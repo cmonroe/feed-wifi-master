@@ -14,7 +14,7 @@ Subject: [PATCH 1013/1044] mtk: wifi: mt76: mt7996: Add air monitor support
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1272,6 +1272,7 @@ enum {
+@@ -1270,6 +1270,7 @@ enum {
  	MCU_UNI_CMD_REG_ACCESS = 0x0d,
  	MCU_UNI_CMD_CHIP_CONFIG = 0x0e,
  	MCU_UNI_CMD_POWER_CTRL = 0x0f,

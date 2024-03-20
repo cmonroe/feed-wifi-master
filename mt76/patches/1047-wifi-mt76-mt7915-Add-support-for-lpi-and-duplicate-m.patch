@@ -32,7 +32,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -285,8 +285,9 @@ static bool mt76_string_prop_find(struct
+@@ -283,8 +283,9 @@ static bool mt76_string_prop_find(struct
  }
  
  struct device_node *
@@ -43,7 +43,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct device_node *np = dev->dev->of_node;
  	const char *const region_names[] = {
  		[NL80211_DFS_UNSET] = "ww",
-@@ -296,6 +297,7 @@ mt76_find_power_limits_node(struct mt76_
+@@ -294,6 +295,7 @@ mt76_find_power_limits_node(struct mt76_
  	};
  	struct device_node *cur, *fallback = NULL;
  	const char *region_name = NULL;
@@ -51,7 +51,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	if (dev->region < ARRAY_SIZE(region_names))
  		region_name = region_names[dev->region];
-@@ -304,17 +306,20 @@ mt76_find_power_limits_node(struct mt76_
+@@ -302,17 +304,20 @@ mt76_find_power_limits_node(struct mt76_
  	if (!np)
  		return NULL;
  
@@ -74,7 +74,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  			of_node_put(np);
  			return cur;
  		}
-@@ -389,7 +394,7 @@ mt76_apply_array_limit(s8 *pwr, size_t p
+@@ -387,7 +392,7 @@ mt76_apply_array_limit(s8 *pwr, size_t p
  
  	for (i = 0; i < pwr_len; i++) {
  		pwr[i] = min_t(s8, target_power,
@@ -83,7 +83,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		*max_power = max(*max_power, pwr[i]);
  	}
  }
-@@ -453,7 +458,7 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -451,7 +456,7 @@ s8 mt76_get_rate_power_limits(struct mt7
  	if (!IS_ENABLED(CONFIG_OF))
  		return target_power;
  
@@ -94,7 +94,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -809,6 +809,9 @@ struct mt76_phy {
+@@ -808,6 +808,9 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -104,7 +104,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1647,7 +1650,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
+@@ -1646,7 +1649,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
  void mt76_set_irq_mask(struct mt76_dev *dev, u32 addr, u32 clear, u32 set);
  
  struct device_node *
@@ -152,7 +152,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		txwi[7] &= ~cpu_to_le32(MT_TXD7_HW_AMSDU);
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1245,6 +1245,7 @@ enum {
+@@ -1244,6 +1244,7 @@ enum {
  	MCU_EXT_CMD_SWLNA_ACI_CTRL = 0xc0,
  	MCU_EXT_CMD_CSI_CTRL = 0xc2,
  	MCU_EXT_CMD_IPI_HIST_SCAN = 0xc5,
@@ -204,7 +204,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static void
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1439,7 +1439,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
+@@ -1436,7 +1436,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
  {
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
  	struct mt76_phy *mphy = mvif->phy->mt76;
@@ -214,7 +214,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &spe_idx,
  					      RATE_PARAM_SPE_UPDATE);
-@@ -3408,6 +3409,22 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3405,6 +3406,22 @@ mt7915_update_txpower(struct mt7915_phy
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -237,7 +237,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3439,14 +3456,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3436,14 +3453,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -277,7 +277,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb_put_data(skb, &la.mcs[0], len[SKU_HT_BW20]);
  	skb_put_data(skb, &la.mcs[1], len[SKU_HT_BW40]);
  
-@@ -3476,8 +3516,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3473,8 +3513,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
@@ -314,7 +314,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	/* HT20 and HT40 */
  	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
-@@ -3553,6 +3619,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3550,6 +3616,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	return 0;
  }
  
@@ -338,7 +338,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -716,6 +716,7 @@ int mt7915_mcu_set_csi(struct mt7915_phy
+@@ -730,6 +730,7 @@ int mt7915_mcu_set_csi(struct mt7915_phy
  void mt7915_vendor_amnt_fill_rx(struct mt7915_phy *phy, struct sk_buff *skb);
  int mt7915_vendor_amnt_sta_remove(struct mt7915_phy *phy,
  				  struct ieee80211_sta *sta);
@@ -348,7 +348,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7915_mcu_get_edcca(struct mt7915_phy *phy, u8 mode, s8 *value);
 --- a/mt7915/mtk_debugfs.c
 +++ b/mt7915/mtk_debugfs.c
-@@ -3846,6 +3846,7 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3853,6 +3853,7 @@ int mt7915_mtk_init_debugfs(struct mt791
  			    &fops_txpower_level);
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);

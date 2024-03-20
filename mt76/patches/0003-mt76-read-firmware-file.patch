@@ -116,7 +116,7 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  #include <linux/firmware.h>
  #include "mt7915.h"
  #include "eeprom.h"
-@@ -26,6 +27,20 @@ static int mt7915_eeprom_load_precal(str
+@@ -24,6 +25,20 @@ static int mt7915_eeprom_load_precal(str
  
  	offs = is_mt7915(&dev->mt76) ? MT_EE_PRECAL : MT_EE_PRECAL_V2;
  
@@ -127,14 +127,14 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +
 +		if (np && of_property_read_u32(np, "mediatek,eeprom-file-offset", &dts_offset) == 0) {
 +			dev_warn(dev->mt76.dev, "pre-cal offset=0x%x dts offset=0x%x size=0x%x\n",
-+					offs, dts_offset, val);
++					offs, dts_offset, size);
 +
-+			return mt76_get_of_data_from_file(mdev, dev->cal, (offs + dts_offset), val);
++			return mt76_get_of_data_from_file(mdev, dev->cal, (offs + dts_offset), size);
 +		}
 +	}
 +#endif
 +
- 	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, val);
+ 	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, size);
  	if (!ret)
  		return ret;
 --- a/mt76.h

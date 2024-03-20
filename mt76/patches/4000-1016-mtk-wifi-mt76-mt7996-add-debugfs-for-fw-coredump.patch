@@ -64,7 +64,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  			  "\nlet's dump firmware SER statistics...\n");
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2083,15 +2083,36 @@ void mt7996_mac_dump_work(struct work_st
+@@ -2079,15 +2079,36 @@ void mt7996_mac_dump_work(struct work_st
  	struct mt7996_dev *dev;
  
  	dev = container_of(work, struct mt7996_dev, dump_work);
@@ -104,7 +104,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  void mt7996_reset(struct mt7996_dev *dev)
  {
  	if (!dev->recovery.hw_init_done)
-@@ -2109,6 +2130,7 @@ void mt7996_reset(struct mt7996_dev *dev
+@@ -2105,6 +2126,7 @@ void mt7996_reset(struct mt7996_dev *dev
  
  		mt7996_irq_disable(dev, MT_INT_MCU_CMD);
  		queue_work(dev->mt76.wq, &dev->dump_work);

@@ -17,7 +17,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -228,6 +228,31 @@ static int mt76_get_of_eeprom(struct mt7
+@@ -226,6 +226,31 @@ static int mt76_get_of_eeprom(struct mt7
  	return mt76_get_of_data_from_nvmem(dev, eep, "eeprom", len);
  }
  
@@ -51,7 +51,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -936,6 +936,9 @@ struct mt76_dev {
+@@ -935,6 +935,9 @@ struct mt76_dev {
  		struct mt76_sdio sdio;
  	};
  
@@ -61,7 +61,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
  };
-@@ -1202,6 +1205,7 @@ int mt76_get_of_data_from_file(struct mt
+@@ -1201,6 +1204,7 @@ int mt76_get_of_data_from_file(struct mt
  int mt76_get_of_data_from_mtd(struct mt76_dev *dev, void *eep, int offset, int len);
  int mt76_get_of_data_from_nvmem(struct mt76_dev *dev, void *eep,
  				const char *cell_name, int len);
@@ -102,7 +102,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  static int mt7915_eeprom_load_precal(struct mt7915_dev *dev)
  {
  	struct mt76_dev *mdev = &dev->mt76;
-@@ -40,6 +64,9 @@ static int mt7915_eeprom_load_precal(str
+@@ -39,6 +63,9 @@ static int mt7915_eeprom_load_precal(str
  	}
  #endif
  
@@ -112,7 +112,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, size);
  	if (!ret)
  		return ret;
-@@ -67,8 +94,11 @@ static int mt7915_check_eeprom(struct mt
+@@ -74,8 +101,11 @@ static int mt7915_check_eeprom(struct mt
  	}
  }
  
@@ -125,7 +125,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	switch (mt76_chip(&dev->mt76)) {
  	case 0x7915:
  		return dev->dbdc_support ?
-@@ -109,7 +139,10 @@ mt7915_eeprom_load_default(struct mt7915
+@@ -116,7 +146,10 @@ mt7915_eeprom_load_default(struct mt7915
  		return ret;
  
  	if (!fw || !fw->data) {
@@ -137,7 +137,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		ret = -EINVAL;
  		goto out;
  	}
-@@ -176,6 +209,7 @@ static int mt7915_eeprom_load(struct mt7
+@@ -183,6 +216,7 @@ static int mt7915_eeprom_load(struct mt7
  
  	if (ret) {
  		dev->flash_mode = true;
@@ -145,7 +145,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	} else {
  		u8 free_block_num;
  		u32 block_num, i;
-@@ -196,6 +230,8 @@ static int mt7915_eeprom_load(struct mt7
+@@ -203,6 +237,8 @@ static int mt7915_eeprom_load(struct mt7
  			if (ret < 0)
  				return ret;
  		}
@@ -154,7 +154,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	}
  
  	return mt7915_check_eeprom(dev);
-@@ -301,12 +337,33 @@ int mt7915_eeprom_init(struct mt7915_dev
+@@ -308,12 +344,33 @@ int mt7915_eeprom_init(struct mt7915_dev
  {
  	int ret;
  
@@ -191,7 +191,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			return ret;
 --- a/mt7915/eeprom.h
 +++ b/mt7915/eeprom.h
-@@ -108,6 +108,13 @@ enum mt7915_sku_rate_group {
+@@ -109,6 +109,13 @@ enum mt7915_sku_rate_group {
  	MAX_SKU_RATE_GROUP_NUM,
  };
  
@@ -207,7 +207,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -346,6 +346,8 @@ struct mt7915_dev {
+@@ -354,6 +354,8 @@ struct mt7915_dev {
  
  	bool dbdc_support;
  	bool flash_mode;
@@ -216,7 +216,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	bool muru_debug;
  	bool ibf;
  
-@@ -697,6 +699,7 @@ void mt7915_dump_tmac_info(u8 *tmac_info
+@@ -711,6 +713,7 @@ void mt7915_dump_tmac_info(u8 *tmac_info
  int mt7915_mcu_set_txpower_level(struct mt7915_phy *phy, u8 drop_level);
  void mt7915_packet_log_to_host(struct mt7915_dev *dev, const void *data, int len, int type, int des_len);
  int mt7915_mcu_set_amsdu_algo(struct mt7915_dev *dev, u16 wcid, u8 enable);
@@ -234,7 +234,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  #ifdef MTK_DEBUG
  #define LWTBL_IDX2BASE_ID		GENMASK(14, 8)
-@@ -3658,6 +3659,47 @@ static int mt7915_fw_wm_info_read(struct
+@@ -3665,6 +3666,47 @@ static int mt7915_fw_wm_info_read(struct
  	return 0;
  }
  
@@ -282,7 +282,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -3738,6 +3780,8 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3745,6 +3787,8 @@ int mt7915_mtk_init_debugfs(struct mt791
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  
@@ -300,5 +300,5 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 - * @MT76_TM_ATTR_MTD_PART: mtd partition used for eeprom data (string)
 + * @MT76_TM_ATTR_MTD_PART: mtd partition or binfile used for eeprom data (string)
   * @MT76_TM_ATTR_MTD_OFFSET: offset of eeprom data within the partition (u32)
-  * @MT76_TM_ATTR_BAND_IDX: band idx of the chip (u8)
   *
+  * @MT76_TM_ATTR_TX_COUNT: configured number of frames to send when setting
