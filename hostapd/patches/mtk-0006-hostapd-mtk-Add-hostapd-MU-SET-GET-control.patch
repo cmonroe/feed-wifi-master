@@ -131,7 +131,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
 +static int hostapd_cli_cmd_get_mu(struct wpa_ctrl *ctrl, int argc,
 +					   char *argv[])
 +{
-+	return hostapd_cli_cmd(ctrl, "GET_MU", 0, NULL, NULL);
++	return hostapd_cli_cmd(ctrl, "GET_MU", 0, argc, argv);
 +}
 +
 +

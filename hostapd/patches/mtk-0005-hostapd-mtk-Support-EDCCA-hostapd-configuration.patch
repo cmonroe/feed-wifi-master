@@ -181,7 +181,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
 +		return os_snprintf(pos, end - pos, "Compensation: %d\n",
 +				  hapd->iconf->edcca_compensation);
 +	} else if (os_strcmp(cmd, "threshold") == 0) {
-+		if (hostapd_drv_get_edcca(hapd, EDCCA_CTRL_GET_THRES, &value) != 0)
++		if (hostapd_drv_get_edcca(hapd, EDCCA_CTRL_GET_THRES, &value[0]) != 0)
 +			return -1;
 +		return os_snprintf(pos, end - pos,
 +				   "Threshold BW20: 0x%x, BW40: 0x%x, BW80: 0x%x, BW160: 0x%x\n",

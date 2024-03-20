@@ -60,7 +60,7 @@
  	}
 +#ifdef CONFIG_IEEE80211AX
 +	if ((sta->flags & WLAN_STA_HE) && sta->he_capab) {
-+		res = os_snprintf(buf + len, buflen - len, "he_capab_len=%d\n",
++		res = os_snprintf(buf + len, buflen - len, "he_capab_len=%zu\n",
 +				  sta->he_capab_len);
 +		if (!os_snprintf_error(buflen - len, res))
 +			len += res;

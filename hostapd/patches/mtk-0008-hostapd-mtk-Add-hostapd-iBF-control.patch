@@ -83,7 +83,7 @@ Signed-off-by: mtk27835 <shurong.wen@mediatek.com>
 +static int hostapd_cli_cmd_get_ibf(struct wpa_ctrl *ctrl, int argc,
 +					   char *argv[])
 +{
-+	return hostapd_cli_cmd(ctrl, "GET_IBF", 0, NULL, NULL);
++	return hostapd_cli_cmd(ctrl, "GET_IBF", 0, argc, argv);
 +}
 +
 +
