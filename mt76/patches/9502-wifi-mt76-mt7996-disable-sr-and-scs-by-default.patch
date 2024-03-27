@@ -1,0 +1,19 @@
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -62,13 +62,13 @@ int mt7996_run(struct ieee80211_hw *hw)
+ 	if (ret)
+ 		goto out;
+ 
+-	ret = mt7996_mcu_set_scs(phy, SCS_ENABLE);
++	ret = mt7996_mcu_set_scs(phy, SCS_DISABLE);
+ 	if (ret)
+ 		goto out;
+ 
+ #ifdef CONFIG_MTK_DEBUG
+-	phy->sr_enable = true;
+-	phy->enhanced_sr_enable = true;
++	phy->sr_enable = false;
++	phy->enhanced_sr_enable = false;
+ 
+ 	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
+ 					   !dev->dbg.sku_disable);
