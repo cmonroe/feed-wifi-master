@@ -26,7 +26,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_OFFCH_SCAN_CTRL = 0x58,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4535,3 +4535,33 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4544,3 +4544,33 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	return mt76_mcu_skb_send_msg(&dev->mt76, skb,
  				     MCU_WM_UNI_CMD(TXPOWER), true);
  }

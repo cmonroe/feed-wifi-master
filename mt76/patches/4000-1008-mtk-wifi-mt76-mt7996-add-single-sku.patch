@@ -36,7 +36,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  	ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4486,6 +4486,7 @@ int mt7996_mcu_wed_rro_reset_sessions(st
+@@ -4495,6 +4495,7 @@ int mt7996_mcu_wed_rro_reset_sessions(st
  int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
@@ -44,7 +44,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_phy *mphy = phy->mt76;
  	struct ieee80211_hw *hw = mphy->hw;
-@@ -4499,14 +4500,14 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4508,14 +4509,14 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		u8 band_idx;
  	} __packed req = {
  		.tag = cpu_to_le16(UNI_TXPOWER_POWER_LIMIT_TABLE_CTRL),
@@ -61,7 +61,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  
  	tx_power = mt7996_get_power_bound(phy, hw->conf.power_level);
  	tx_power = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,
-@@ -4514,7 +4515,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4523,7 +4524,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	mphy->txpower_cur = tx_power;
  
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
@@ -70,7 +70,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  	if (!skb)
  		return -ENOMEM;
  
-@@ -4538,8 +4539,43 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4547,8 +4548,43 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* eht */
  	skb_put_data(skb, &la.eht[0], sizeof(la.eht));
  

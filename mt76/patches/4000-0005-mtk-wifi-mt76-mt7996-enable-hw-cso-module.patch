@@ -38,7 +38,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1749,6 +1749,19 @@ mt7996_mcu_sta_bfee_tlv(struct mt7996_de
+@@ -1758,6 +1758,19 @@ mt7996_mcu_sta_bfee_tlv(struct mt7996_de
  }
  
  static void
@@ -58,7 +58,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  mt7996_mcu_sta_hdrt_tlv(struct mt7996_dev *dev, struct sk_buff *skb)
  {
  	struct sta_rec_hdrt *hdrt;
-@@ -2159,6 +2172,8 @@ int mt7996_mcu_add_sta(struct mt7996_dev
+@@ -2168,6 +2181,8 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  
  	/* starec hdr trans */
  	mt7996_mcu_sta_hdr_trans_tlv(dev, skb, vif, sta);

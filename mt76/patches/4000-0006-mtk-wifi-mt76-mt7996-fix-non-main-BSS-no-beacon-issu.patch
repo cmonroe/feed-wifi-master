@@ -19,7 +19,7 @@ Signed-off-by: Henry.Yen <henry.yen@mediatek.com>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -819,11 +819,14 @@ mt7996_mcu_bss_mbssid_tlv(struct sk_buff
+@@ -828,11 +828,14 @@ mt7996_mcu_bss_mbssid_tlv(struct sk_buff
  	struct bss_info_uni_mbssid *mbssid;
  	struct tlv *tlv;
  

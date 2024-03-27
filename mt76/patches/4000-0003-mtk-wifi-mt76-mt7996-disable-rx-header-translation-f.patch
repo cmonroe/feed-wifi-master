@@ -11,7 +11,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1778,10 +1778,10 @@ mt7996_mcu_sta_hdr_trans_tlv(struct mt79
+@@ -1787,10 +1787,10 @@ mt7996_mcu_sta_hdr_trans_tlv(struct mt79
  	else
  		hdr_trans->from_ds = true;
  
@@ -24,7 +24,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	hdr_trans->dis_rx_hdr_tran = !test_bit(MT_WCID_FLAG_HDR_TRANS, &wcid->flags);
  	if (test_bit(MT_WCID_FLAG_4ADDR, &wcid->flags)) {
  		hdr_trans->to_ds = true;
-@@ -2154,6 +2154,9 @@ int mt7996_mcu_add_sta(struct mt7996_dev
+@@ -2163,6 +2163,9 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  	if (!enable)
  		goto out;
  
@@ -34,7 +34,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	/* tag order is in accordance with firmware dependency. */
  	if (sta) {
  		/* starec hdrt mode */
-@@ -2178,8 +2181,6 @@ int mt7996_mcu_add_sta(struct mt7996_dev
+@@ -2187,8 +2190,6 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  		mt7996_mcu_sta_muru_tlv(dev, skb, vif, sta);
  		/* starec bfee */
  		mt7996_mcu_sta_bfee_tlv(dev, skb, vif, sta);

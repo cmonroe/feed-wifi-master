@@ -73,7 +73,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	if (ret)
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1367,6 +1367,8 @@ static void
+@@ -1376,6 +1376,8 @@ static void
  mt7996_mcu_sta_muru_tlv(struct mt7996_dev *dev, struct sk_buff *skb,
  			struct ieee80211_vif *vif, struct ieee80211_sta *sta)
  {
@@ -82,7 +82,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	struct ieee80211_he_cap_elem *elem = &sta->deflink.he_cap.he_cap_elem;
  	struct sta_rec_muru *muru;
  	struct tlv *tlv;
-@@ -1378,11 +1380,14 @@ mt7996_mcu_sta_muru_tlv(struct mt7996_de
+@@ -1387,11 +1389,14 @@ mt7996_mcu_sta_muru_tlv(struct mt7996_de
  	tlv = mt76_connac_mcu_add_tlv(skb, STA_REC_MURU, sizeof(*muru));
  
  	muru = (struct sta_rec_muru *)tlv;
@@ -102,7 +102,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	if (sta->deflink.vht_cap.vht_supported)
  		muru->mimo_dl.vht_mu_bfee =
-@@ -4912,3 +4917,25 @@ int mt7996_mcu_set_tx_power_ctrl(struct
+@@ -4921,3 +4926,25 @@ int mt7996_mcu_set_tx_power_ctrl(struct
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(TXPOWER),
  				 &req, sizeof(req), false);
  }

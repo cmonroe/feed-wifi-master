@@ -39,3 +39,23 @@
  	if (r->band_idx == MT_RX_SEL2)
  		cfg80211_background_radar_event(mphy->hw->wiphy,
  						&dev->rdd2_chandef,
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -361,8 +361,17 @@ mt7996_mcu_rx_radar_detected(struct mt79
+ 		mphy = dev->mt76.phys[r->band_idx];
+ 
+ 	if (!mphy)
++		dev_info(dev->mt76.dev, "%s: mphy is NULL\n", __func__);
++
++	if (!mphy)
+ 		return;
+ 
++	dev_info(dev->mt76.dev, "%s: RADAR DETECTED r->band_idx=%d\n", __func__, r->band_idx);
++	dev_info(dev->mt76.dev, "%s: long_detected=%u constant_prf_detected=%u staggered_prf_detected=%u\n",
++			__func__, r->long_detected, r->constant_prf_detected, r->staggered_prf_detected);
++	dev_info(dev->mt76.dev, "%s: radar_type_idx=%u periodic_pulse_num=%u long_pulse_num=%u hw_pulse_num=%u\n",
++			__func__, r->radar_type_idx, r->periodic_pulse_num, r->long_pulse_num, r->hw_pulse_num);
++
+ 	if (r->band_idx == MT_RX_SEL2)
+ 		cfg80211_background_radar_event(mphy->hw->wiphy,
+ 						&dev->rdd2_chandef,
