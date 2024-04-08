@@ -1,6 +1,6 @@
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -35,14 +35,12 @@ static const struct ieee80211_channel mt
+@@ -34,14 +34,12 @@ static const struct ieee80211_channel mt
  	CHAN5G(60, 5300),
  	CHAN5G(64, 5320),
  
@@ -17,7 +17,7 @@
  	CHAN5G(104, 5520),
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -385,7 +385,7 @@ out:
+@@ -384,7 +384,7 @@ out:
  
  static void mt7996_eeprom_init_precal(struct mt7996_dev *dev)
  {

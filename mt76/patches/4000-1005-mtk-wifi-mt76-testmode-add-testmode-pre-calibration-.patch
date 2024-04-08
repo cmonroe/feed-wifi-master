@@ -22,8 +22,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -7,27 +7,6 @@
- #include <net/page_pool.h>
+@@ -6,27 +6,6 @@
+ #include <linux/of.h>
  #include "mt76.h"
  
 -#define CHAN2G(_idx, _freq) {			\
@@ -52,7 +52,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	CHAN2G(2, 2417),
 --- a/mt76.h
 +++ b/mt76.h
-@@ -18,6 +18,27 @@
+@@ -23,6 +23,27 @@
  #include "util.h"
  #include "testmode.h"
  
@@ -240,7 +240,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF2_TX_PATH_BAND2		GENMASK(5, 3)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -362,6 +362,9 @@ struct mt7996_dev {
+@@ -363,6 +363,9 @@ struct mt7996_dev {
  	struct dentry *debugfs_dir;
  	struct rchan *relay_fwlog;
  
@@ -250,7 +250,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	struct {
  		u16 table_mask;
  		u8 n_agrt;
-@@ -480,6 +483,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -481,6 +484,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
  				   struct ieee80211_channel *chan);
  s8 mt7996_eeprom_get_power_delta(struct mt7996_dev *dev, int band);

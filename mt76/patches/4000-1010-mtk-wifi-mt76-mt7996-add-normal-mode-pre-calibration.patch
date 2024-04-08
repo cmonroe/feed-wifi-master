@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1294,6 +1294,7 @@ enum {
+@@ -1295,6 +1295,7 @@ enum {
  	MCU_UNI_CMD_VOW = 0x37,
  	MCU_UNI_CMD_PP = 0x38,
  	MCU_UNI_CMD_FIXED_RATE_TABLE = 0x40,
@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -307,6 +307,12 @@ int mt7996_set_channel(struct mt7996_phy
+@@ -319,6 +319,12 @@ int mt7996_set_channel(struct mt7996_phy
  
  	mt76_set_channel(phy->mt76);
  
@@ -81,7 +81,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3628,6 +3628,172 @@ int mt7996_mcu_get_eeprom_free_block(str
+@@ -3630,6 +3630,172 @@ int mt7996_mcu_get_eeprom_free_block(str
  	return 0;
  }
  

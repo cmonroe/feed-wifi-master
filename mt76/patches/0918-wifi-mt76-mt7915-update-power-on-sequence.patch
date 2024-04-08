@@ -38,7 +38,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  #define MT_ADIE_CHIP_ID			0x02c
 --- a/mt7915/soc.c
 +++ b/mt7915/soc.c
-@@ -261,6 +261,7 @@ static int mt7986_wmac_consys_lockup(str
+@@ -260,6 +260,7 @@ static int mt7986_wmac_consys_lockup(str
  		      MT_INFRACFG_TX_EN_MASK,
  		      FIELD_PREP(MT_INFRACFG_TX_EN_MASK, enable));
  
@@ -46,7 +46,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	return 0;
  }
  
-@@ -845,6 +846,10 @@ static void mt7986_wmac_subsys_setting(s
+@@ -844,6 +845,10 @@ static void mt7986_wmac_subsys_setting(s
  		 MT_CONN_INFRA_OSC_STB_TIME_MASK, 0x80706);
  
  	/* prevent subsys from power on/of in a short time interval */
@@ -57,7 +57,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	mt76_rmw(dev, MT_TOP_WFSYS_PWR,
  		 MT_TOP_PWR_ACK_MASK | MT_TOP_PWR_KEY_MASK,
  		 MT_TOP_PWR_KEY);
-@@ -915,7 +920,7 @@ static void mt7986_wmac_clock_enable(str
+@@ -914,7 +919,7 @@ static void mt7986_wmac_clock_enable(str
  
  		read_poll_timeout(mt76_rr, cur, !(cur & MT_SLP_CTRL_BSY_MASK),
  				  USEC_PER_MSEC, 50 * USEC_PER_MSEC, false,
@@ -66,7 +66,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	}
  	mt76_wmac_spi_unlock(dev);
  
-@@ -1155,12 +1160,14 @@ int mt7986_wmac_enable(struct mt7915_dev
+@@ -1154,12 +1159,14 @@ int mt7986_wmac_enable(struct mt7915_dev
  	if (ret)
  		return ret;
  
@@ -82,7 +82,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	mt7986_wmac_top_wfsys_wakeup(dev, true);
  
-@@ -1179,6 +1186,20 @@ void mt7986_wmac_disable(struct mt7915_d
+@@ -1178,6 +1185,20 @@ void mt7986_wmac_disable(struct mt7915_d
  	mt76_rmw_field(dev, MT_AFE_DIG_EN_02(0), MT_AFE_MCU_BPLL_CFG_MASK, 0x2);
  	mt76_rmw_field(dev, MT_AFE_DIG_EN_02(0), MT_AFE_WPLL_CFG_MASK, 0x2);
  
@@ -103,7 +103,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	/* Reset EMI */
  	mt76_rmw_field(dev, MT_CONN_INFRA_EMI_REQ,
  		       MT_CONN_INFRA_EMI_REQ_MASK, 0x1);
-@@ -1190,6 +1211,28 @@ void mt7986_wmac_disable(struct mt7915_d
+@@ -1189,6 +1210,28 @@ void mt7986_wmac_disable(struct mt7915_d
  		       MT_CONN_INFRA_INFRA_REQ_MASK, 0x0);
  
  	mt7986_wmac_top_wfsys_wakeup(dev, false);

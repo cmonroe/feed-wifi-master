@@ -138,7 +138,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	return NULL;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -290,11 +290,39 @@ mt7996_fw_debug_wm_set(void *data, u64 v
+@@ -295,11 +295,39 @@ mt7996_fw_debug_wm_set(void *data, u64 v
  		DEBUG_SPL,
  		DEBUG_RPT_RX,
  		DEBUG_RPT_RA = 68,
@@ -179,7 +179,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	if (dev->fw_debug_bin)
  		val = MCU_FW_LOG_RELAY;
-@@ -309,18 +337,21 @@ mt7996_fw_debug_wm_set(void *data, u64 v
+@@ -314,18 +342,21 @@ mt7996_fw_debug_wm_set(void *data, u64 v
  	if (ret)
  		return ret;
  
@@ -207,7 +207,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	return 0;
-@@ -401,11 +432,12 @@ mt7996_fw_debug_bin_set(void *data, u64
+@@ -406,11 +437,12 @@ mt7996_fw_debug_bin_set(void *data, u64
  	};
  	struct mt7996_dev *dev = data;
  
@@ -223,7 +223,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	dev->fw_debug_bin = val;
  
-@@ -819,6 +851,11 @@ int mt7996_init_debugfs(struct mt7996_ph
+@@ -824,6 +856,11 @@ int mt7996_init_debugfs(struct mt7996_ph
  	if (phy == &dev->phy)
  		dev->debugfs_dir = dir;
  
@@ -235,7 +235,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	return 0;
  }
  
-@@ -831,6 +868,12 @@ mt7996_debugfs_write_fwlog(struct mt7996
+@@ -836,6 +873,12 @@ mt7996_debugfs_write_fwlog(struct mt7996
  	void *dest;
  
  	spin_lock_irqsave(&lock, flags);
@@ -248,7 +248,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	dest = relay_reserve(dev->relay_fwlog, hdrlen + len + 4);
  	if (dest) {
  		*(u32 *)dest = hdrlen + len;
-@@ -863,9 +906,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
+@@ -868,9 +911,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -272,7 +272,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	memset(txwi_ptr, 0, MT_TXD_SIZE);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -370,6 +370,17 @@ struct mt7996_dev {
+@@ -371,6 +371,17 @@ struct mt7996_dev {
  	spinlock_t reg_lock;
  
  	u8 wtbl_size_group;

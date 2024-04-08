@@ -26,7 +26,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -431,6 +431,8 @@ struct mt76_txwi_cache {
+@@ -436,6 +436,8 @@ struct mt76_txwi_cache {
  		struct sk_buff *skb;
  		void *ptr;
  	};

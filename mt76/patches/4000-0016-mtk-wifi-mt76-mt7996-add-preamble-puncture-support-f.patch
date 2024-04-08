@@ -16,7 +16,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1289,6 +1289,7 @@ enum {
+@@ -1290,6 +1290,7 @@ enum {
  	MCU_UNI_CMD_CHANNEL_SWITCH = 0x34,
  	MCU_UNI_CMD_THERMAL = 0x35,
  	MCU_UNI_CMD_VOW = 0x37,
@@ -26,9 +26,9 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_OFFCH_SCAN_CTRL = 0x58,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4544,3 +4544,33 @@ int mt7996_mcu_set_txpower_sku(struct mt
- 	return mt76_mcu_skb_send_msg(&dev->mt76, skb,
- 				     MCU_WM_UNI_CMD(TXPOWER), true);
+@@ -4565,3 +4565,33 @@ int mt7996_mcu_cp_support(struct mt7996_
+ 	return mt76_mcu_send_msg(&dev->mt76, MCU_WA_EXT_CMD(CP_SUPPORT),
+ 				 &cp_mode, sizeof(cp_mode), true);
  }
 +
 +int mt7996_mcu_set_pp_en(struct mt7996_phy *phy, bool auto_mode,
@@ -75,10 +75,10 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -654,6 +654,8 @@ int mt7996_mcu_bcn_prot_enable(struct mt
- int mt7996_mcu_wtbl_update_hdr_trans(struct mt7996_dev *dev,
+@@ -656,6 +656,8 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
  				     struct ieee80211_vif *vif,
  				     struct ieee80211_sta *sta);
+ int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode);
 +int mt7996_mcu_set_pp_en(struct mt7996_phy *phy, bool auto_mode, u8 force_bitmap,
 +			 u16 bitmap);
  #ifdef CONFIG_MAC80211_DEBUGFS

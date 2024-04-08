@@ -20,7 +20,7 @@ Signed-off-by: Henry.Yen <henry.yen@mediatek.com>
 
 --- a/mt76_connac.h
 +++ b/mt76_connac.h
-@@ -255,6 +255,12 @@ static inline bool is_connac_v1(struct m
+@@ -260,6 +260,12 @@ static inline bool is_connac_v1(struct m
  	return is_mt7615(dev) || is_mt7663(dev) || is_mt7622(dev);
  }
  

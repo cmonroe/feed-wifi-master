@@ -118,7 +118,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1043,6 +1043,14 @@ struct mt76_power_limits {
+@@ -1048,6 +1048,14 @@ struct mt76_power_limits {
  	s8 mcs[4][10];
  	s8 ru[7][12];
  	s8 eht[16][16];
@@ -135,7 +135,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  struct mt76_ethtool_worker_info {
 --- a/mt7915/debugfs.c
 +++ b/mt7915/debugfs.c
-@@ -1019,7 +1019,7 @@ mt7915_rate_txpower_get(struct file *fil
+@@ -1020,7 +1020,7 @@ mt7915_rate_txpower_get(struct file *fil
  	if (!buf)
  		return -ENOMEM;
  
@@ -144,7 +144,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	if (ret)
  		goto out;
  
-@@ -1133,7 +1133,7 @@ mt7915_rate_txpower_set(struct file *fil
+@@ -1134,7 +1134,7 @@ mt7915_rate_txpower_set(struct file *fil
  
  	mutex_lock(&dev->mt76.mutex);
  	ret = mt7915_mcu_get_txpower_sku(phy, req.txpower_sku,
@@ -153,7 +153,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	if (ret)
  		goto out;
  
-@@ -1175,7 +1175,7 @@ out:
+@@ -1176,7 +1176,7 @@ out:
  	return ret ? ret : count;
  }
  
@@ -162,7 +162,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	.write = mt7915_rate_txpower_set,
  	.read = mt7915_rate_txpower_get,
  	.open = simple_open,
-@@ -1184,6 +1184,69 @@ static const struct file_operations mt79
+@@ -1185,6 +1185,69 @@ static const struct file_operations mt79
  };
  
  static int
@@ -232,7 +232,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  mt7915_twt_stats(struct seq_file *s, void *data)
  {
  	struct mt7915_dev *dev = dev_get_drvdata(s->private);
-@@ -1269,7 +1332,9 @@ int mt7915_init_debugfs(struct mt7915_ph
+@@ -1270,7 +1333,9 @@ int mt7915_init_debugfs(struct mt7915_ph
  	debugfs_create_file("implicit_txbf", 0600, dir, dev,
  			    &fops_implicit_txbf);
  	debugfs_create_file("txpower_sku", 0400, dir, phy,

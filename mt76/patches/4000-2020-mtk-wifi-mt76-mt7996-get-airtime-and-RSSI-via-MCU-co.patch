@@ -24,7 +24,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -337,12 +337,18 @@ struct mt76_sta_stats {
+@@ -342,12 +342,18 @@ struct mt76_sta_stats {
  	u32 tx_packets;		/* unit: MSDU */
  	u32 tx_retries;
  	u32 tx_failed;
@@ -43,7 +43,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  };
  
  enum mt76_wcid_flags {
-@@ -1339,6 +1345,22 @@ static inline int mt76_decr(int val, int
+@@ -1344,6 +1350,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -68,7 +68,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1382,11 +1382,23 @@ enum {
+@@ -1383,11 +1383,23 @@ enum {
  	UNI_OFFLOAD_OFFLOAD_BMC_RPY_DETECT,
  };
  
@@ -276,7 +276,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -543,6 +543,9 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -546,6 +546,9 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		u8 ac;
  		u16 wlan_idx;
  		struct mt76_wcid *wcid;
@@ -286,7 +286,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -581,6 +584,43 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -584,6 +587,43 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			wcid->stats.rx_packets +=
  				le32_to_cpu(res->msdu_cnt[i].rx_msdu_cnt);
  			break;
@@ -330,7 +330,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -4668,9 +4708,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -4673,9 +4713,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -488,7 +488,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -4681,7 +4867,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -4686,7 +4872,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  

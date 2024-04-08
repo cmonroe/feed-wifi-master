@@ -1,6 +1,6 @@
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -62,13 +62,13 @@ int mt7996_run(struct ieee80211_hw *hw)
+@@ -70,13 +70,13 @@ int mt7996_run(struct ieee80211_hw *hw)
  	if (ret)
  		goto out;
  

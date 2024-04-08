@@ -41,7 +41,7 @@
  						&dev->rdd2_chandef,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -361,8 +361,17 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -364,8 +364,17 @@ mt7996_mcu_rx_radar_detected(struct mt79
  		mphy = dev->mt76.phys[r->band_idx];
  
  	if (!mphy)

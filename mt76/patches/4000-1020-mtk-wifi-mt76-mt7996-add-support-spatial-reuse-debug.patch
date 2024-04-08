@@ -48,7 +48,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  
  static bool mt7996_dev_running(struct mt7996_dev *dev)
  {
-@@ -64,6 +67,9 @@ int mt7996_run(struct ieee80211_hw *hw)
+@@ -72,6 +75,9 @@ int mt7996_run(struct ieee80211_hw *hw)
  		goto out;
  
  #ifdef CONFIG_MTK_DEBUG
@@ -60,7 +60,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  #else
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -623,6 +623,11 @@ mt7996_mcu_rx_unsolicited_event(struct m
+@@ -626,6 +626,11 @@ mt7996_mcu_rx_unsolicited_event(struct m
  	case MCU_EVENT_EXT:
  		mt7996_mcu_rx_ext_event(dev, skb);
  		break;
@@ -84,7 +84,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  #endif
  };
  
-@@ -769,6 +772,8 @@ enum edcca_bw_id {
+@@ -770,6 +773,8 @@ enum edcca_bw_id {
  
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);

@@ -503,7 +503,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2711,6 +2711,8 @@ static int mt7996_load_patch(struct mt79
+@@ -2713,6 +2713,8 @@ static int mt7996_load_patch(struct mt79
  
  	dev_info(dev->mt76.dev, "HW/SW Version: 0x%x, Build Time: %.16s\n",
  		 be32_to_cpu(hdr->hw_sw_ver), hdr->build_date);
@@ -512,7 +512,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
  	for (i = 0; i < be32_to_cpu(hdr->desc.n_region); i++) {
  		struct mt7996_patch_sec *sec;
-@@ -2837,6 +2839,9 @@ static int __mt7996_load_ram(struct mt79
+@@ -2839,6 +2841,9 @@ static int __mt7996_load_ram(struct mt79
  	}
  
  	hdr = (const void *)(fw->data + fw->size - sizeof(*hdr));
@@ -524,7 +524,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -83,6 +83,8 @@
+@@ -84,6 +84,8 @@
  #define MT7996_CRIT_TEMP		110
  #define MT7996_MAX_TEMP			120
  
@@ -533,7 +533,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  #define MT7996_RRO_MAX_SESSION		1024
  #define MT7996_RRO_WINDOW_MAX_LEN	1024
  #define MT7996_RRO_ADDR_ELEM_LEN	128
-@@ -126,6 +128,7 @@ enum mt7996_ram_type {
+@@ -127,6 +129,7 @@ enum mt7996_ram_type {
  	MT7996_RAM_TYPE_WM,
  	MT7996_RAM_TYPE_WA,
  	MT7996_RAM_TYPE_DSP,
@@ -541,7 +541,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  };
  
  enum mt7996_txq_id {
-@@ -316,9 +319,11 @@ struct mt7996_dev {
+@@ -317,9 +320,11 @@ struct mt7996_dev {
  	struct mutex dump_mutex;
  #ifdef CONFIG_DEV_COREDUMP
  	struct {

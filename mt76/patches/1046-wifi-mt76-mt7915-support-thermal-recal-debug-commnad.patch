@@ -21,10 +21,10 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1221,6 +1221,7 @@ enum {
- 	MCU_EXT_CMD_TXDPD_CAL = 0x60,
+@@ -1229,6 +1229,7 @@ enum {
  	MCU_EXT_CMD_CAL_CACHE = 0x67,
  	MCU_EXT_CMD_RED_ENABLE = 0x68,
+ 	MCU_EXT_CMD_CP_SUPPORT = 0x75,
 +	MCU_EXT_CMD_THERMAL_DEBUG = 0x79,
  	MCU_EXT_CMD_SET_RADAR_TH = 0x7c,
  	MCU_EXT_CMD_SET_RDD_PATTERN = 0x7d,

@@ -224,7 +224,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT7996_EEPROM_SIZE		7680
  #define MT7996_EEPROM_BLOCK_SIZE	16
  #define MT7996_TOKEN_SIZE		16384
-@@ -89,11 +104,24 @@ struct mt7996_sta;
+@@ -90,11 +105,24 @@ struct mt7996_sta;
  struct mt7996_dfs_pulse;
  struct mt7996_dfs_pattern;
  
@@ -249,7 +249,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  enum mt7996_ram_type {
  	MT7996_RAM_TYPE_WM,
  	MT7996_RAM_TYPE_WA,
-@@ -264,6 +292,7 @@ struct mt7996_dev {
+@@ -265,6 +293,7 @@ struct mt7996_dev {
  	struct mt7996_phy *rdd2_phy;
  
  	u8 chip_sku;
@@ -257,7 +257,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	u16 chainmask;
  	u8 chainshift[__MT_MAX_BAND];
-@@ -406,23 +435,6 @@ mt7996_phy3(struct mt7996_dev *dev)
+@@ -407,23 +436,6 @@ mt7996_phy3(struct mt7996_dev *dev)
  	return __mt7996_phy(dev, MT_BAND2);
  }
  
@@ -281,7 +281,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static inline bool
  mt7996_band_valid(struct mt7996_dev *dev, u8 band)
  {
-@@ -461,6 +473,7 @@ int mt7996_init_tx_queues(struct mt7996_
+@@ -462,6 +474,7 @@ int mt7996_init_tx_queues(struct mt7996_
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);
  int mt7996_txbf_init(struct mt7996_dev *dev);

@@ -18,7 +18,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -277,12 +277,16 @@ struct mt76_queue_ops {
+@@ -282,12 +282,16 @@ struct mt76_queue_ops {
  	void (*reset_q)(struct mt76_dev *dev, struct mt76_queue *q);
  };
  
@@ -484,7 +484,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  int mt7915_mcu_rdd_background_enable(struct mt7915_phy *phy,
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1194,6 +1194,7 @@ enum {
+@@ -1201,6 +1201,7 @@ enum {
  	MCU_EXT_CMD_EDCA_UPDATE = 0x27,
  	MCU_EXT_CMD_DEV_INFO_UPDATE = 0x2A,
  	MCU_EXT_CMD_THERMAL_CTRL = 0x2c,
