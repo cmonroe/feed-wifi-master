@@ -1,0 +1,32 @@
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -4781,13 +4781,15 @@ int mt7996_mcu_get_per_sta_info(struct m
+ 				rssi[3] = to_rssi(MT_PRXV_RCPI0, rcpi[3]);
+ 
+ 				msta = container_of(wcid, struct mt7996_sta, wcid);
+-				phy = msta->vif->phy->mt76;
+-				msta->ack_signal = mt76_rx_signal(phy->antenna_mask, rssi);
+-				ewma_avg_signal_add(&msta->avg_ack_signal, -msta->ack_signal);
++				if (!msta || !msta->vif) {
++					ret = -EINVAL;
++				} else {
++					phy = msta->vif->phy->mt76;
++					msta->ack_signal = mt76_rx_signal(phy->antenna_mask, rssi);
++					ewma_avg_signal_add(&msta->avg_ack_signal, -msta->ack_signal);
++				}
+ 			} else {
+ 				ret = -EINVAL;
+-				dev_err(dev->dev, "Failed to update RSSI for "
+-				                  "invalid WCID: %hu\n", wlan_idx);
+ 			}
+ 		}
+ 		break;
+@@ -4802,8 +4804,6 @@ int mt7996_mcu_get_per_sta_info(struct m
+ 				            le32_to_cpu(res->tx_cnt[i].failed);
+ 			} else {
+ 				ret = -EINVAL;
+-				dev_err(dev->dev, "Failed to update TX MPDU counts "
+-				                  "for invalid WCID: %hu\n", wlan_idx);
+ 			}
+ 		}
+ 		break;
