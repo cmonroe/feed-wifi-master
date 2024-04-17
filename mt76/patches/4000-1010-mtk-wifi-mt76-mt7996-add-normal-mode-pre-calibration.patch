@@ -81,7 +81,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3630,6 +3630,172 @@ int mt7996_mcu_get_eeprom_free_block(str
+@@ -3627,6 +3627,172 @@ int mt7996_mcu_get_eeprom_free_block(str
  	return 0;
  }
  

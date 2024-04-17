@@ -1,6 +1,6 @@
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3976,17 +3976,17 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -3973,17 +3973,17 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)

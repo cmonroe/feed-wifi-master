@@ -235,7 +235,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		return ret;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3594,7 +3594,7 @@ int mt7996_mcu_get_eeprom(struct mt7996_
+@@ -3591,7 +3591,7 @@ int mt7996_mcu_get_eeprom(struct mt7996_
  	};
  	struct sk_buff *skb;
  	bool valid;
@@ -244,7 +244,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	u8 *buf = read_buf;
  
  	ret = mt76_mcu_send_and_get_msg(&dev->mt76,
-@@ -3612,11 +3612,13 @@ int mt7996_mcu_get_eeprom(struct mt7996_
+@@ -3609,11 +3609,13 @@ int mt7996_mcu_get_eeprom(struct mt7996_
  
  		skb_pull(skb, 48);
  		memcpy(buf, skb->data, MT7996_EEPROM_BLOCK_SIZE);

@@ -60,7 +60,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  #else
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -626,6 +626,11 @@ mt7996_mcu_rx_unsolicited_event(struct m
+@@ -623,6 +623,11 @@ mt7996_mcu_rx_unsolicited_event(struct m
  	case MCU_EVENT_EXT:
  		mt7996_mcu_rx_ext_event(dev, skb);
  		break;

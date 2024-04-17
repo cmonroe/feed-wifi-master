@@ -276,7 +276,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -546,6 +546,9 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -543,6 +543,9 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		u8 ac;
  		u16 wlan_idx;
  		struct mt76_wcid *wcid;
@@ -286,7 +286,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -584,6 +587,43 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -581,6 +584,43 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			wcid->stats.rx_packets +=
  				le32_to_cpu(res->msdu_cnt[i].rx_msdu_cnt);
  			break;
@@ -330,7 +330,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -4673,9 +4713,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -4670,9 +4710,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -488,7 +488,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -4686,7 +4872,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -4683,7 +4869,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  

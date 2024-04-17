@@ -208,7 +208,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define RF_PRE_CAL				BIT(29)
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3723,13 +3723,11 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3720,13 +3720,11 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	enum nl80211_chan_width bw = chandef->width;
  	const struct ieee80211_channel *chan_list;
  	u32 cal_id, chan_list_size, base_offset = 0, offs = MT_EE_DO_PRE_CAL;
@@ -224,7 +224,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	switch (band) {
  	case NL80211_BAND_2GHZ:
-@@ -3745,27 +3743,35 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3742,27 +3740,35 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  			return 0;
  		cal_id = RF_DPD_FLAT_CAL;
  		chan_list = dpd_2g_ch_list_bw20;
@@ -266,7 +266,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			return 0;
  		break;
  	case NL80211_BAND_6GHZ:
-@@ -3773,20 +3779,27 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3770,20 +3776,27 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  		cal_id = RF_DPD_FLAT_6G_CAL;
  		chan_list = mphy->sband_6g.sband.channels;
  		chan_list_size = mphy->sband_6g.sband.n_channels;
@@ -299,7 +299,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		} else if (bw > NL80211_CHAN_WIDTH_20) {
  			/* apply (center channel - 2)'s dpd cal data for bw 40/80 channels */
  			channel -= 2;
-@@ -3806,9 +3819,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3803,9 +3816,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	if (idx == chan_list_size)
  		return -EINVAL;
  
