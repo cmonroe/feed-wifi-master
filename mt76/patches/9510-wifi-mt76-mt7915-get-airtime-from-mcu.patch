@@ -1,13 +1,15 @@
-Subject: [PATCH] [mt76]add MCU EXT CMD - get_all_sta_stats - airtime
+From 156034144c64198c0a417926fa3867d635affbb4 Mon Sep 17 00:00:00 2001
+From: TomLiu <tomml.liu@mediatek.com>
+Date: Fri, 12 Apr 2024 17:07:00 +0000
+Subject: [PATCH] [mt76] mt7915 MCU event airtime
 
 ---
- mt76.h            | 20 +++++++++++++
- mt76_connac_mcu.h | 12 ++++++++
- mt7915/mac.c      |  7 +++--
- mt7915/mcu.c      | 74 +++++++++++++++++++++++++++++++++++++++++++++++
- mt7915/mcu.h      | 16 ++++++++++
- mt7915/mt7915.h   |  1 +
- 6 files changed, 127 insertions(+), 3 deletions(-)
+ mt76_connac_mcu.h |   12 ++++++++++++
+ mt7915/mac.c      |    7 +++++++
+ mt7915/mcu.c      |   81 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7915/mcu.h      |   16 ++++++++++++++++
+ mt7915/mt7915.h   |    1 +
+ 5 files changed, 117 insertions(+)
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
@@ -131,7 +133,7 @@ Subject: [PATCH] [mt76]add MCU EXT CMD - get_all_sta_stats - airtime
  		rate = &msta->wcid.rate;
  
  		switch (rate->bw) {
-@@ -2050,10 +1989,12 @@ void mt7915_mac_work(struct work_struct
+@@ -2050,11 +1989,14 @@ void mt7915_mac_work(struct work_struct
  {
  	struct mt7915_phy *phy;
  	struct mt76_phy *mphy;
@@ -140,11 +142,13 @@ Subject: [PATCH] [mt76]add MCU EXT CMD - get_all_sta_stats - airtime
  	mphy = (struct mt76_phy *)container_of(work, struct mt76_phy,
  					       mac_work.work);
  	phy = mphy->priv;
-+	mdev = mphy->dev;
  
++	mdev = mphy->dev;
++
  	mutex_lock(&mphy->dev->mutex);
  
-@@ -2066,6 +2007,8 @@ void mt7915_mac_work(struct work_struct
+ 	mt76_update_survey(mphy);
+@@ -2066,6 +2008,8 @@ void mt7915_mac_work(struct work_struct
  
  		if (phy->dev->muru_debug)
  			mt7915_mcu_muru_debug_get(phy);
@@ -155,28 +159,27 @@ Subject: [PATCH] [mt76]add MCU EXT CMD - get_all_sta_stats - airtime
  	if (++phy->stats_work_count == 10) {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -406,12 +406,73 @@ mt7915_mcu_rx_bcc_notify(struct mt7915_d
+@@ -406,6 +406,69 @@ mt7915_mcu_rx_bcc_notify(struct mt7915_d
  }
  
  static void
 +mt7915_mcu_rx_all_sta_info_event(struct mt7915_dev *dev, struct sk_buff *skb)
 +{
-+	u8 ac;
-+	u16 i, wlan_idx;
-+	struct mt76_wcid *wcid;
-+	struct ieee80211_sta *sta;
-+	struct mt76_sta_stats *stats;
 +	struct mt7915_mcu_all_sta_info_event *res;
-+	u32 prev_tx_airtime, prev_rx_airtime;
++	u16 i;
 +
 +	res = (struct mt7915_mcu_all_sta_info_event *)skb->data;
-+
 +	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
++		u8 ac;
++		u16 wlan_idx;
++		struct mt76_wcid *wcid;
++		struct ieee80211_sta *sta;
++		u32 prev_tx_airtime, prev_rx_airtime, diff_tx_airtime, diff_rx_airtime;
++
 +		switch (res->tag) {
 +		case MCU_PHY_PER_STA_TXRX_AIR_TIME:
 +			wlan_idx = le16_to_cpu(res->airtime[i].wlan_idx);
 +			wcid = rcu_dereference(dev->mt76.wcid[wlan_idx]);
-+			stats = &wcid->stats; 
 +
 +			sta = wcid_to_sta(wcid);
 +			if (!sta)
@@ -185,29 +188,35 @@ Subject: [PATCH] [mt76]add MCU EXT CMD - get_all_sta_stats - airtime
 +			for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac) {
 +				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
 +
-+				prev_tx_airtime = stats->tx_airtime[ac];
-+				prev_rx_airtime = stats->rx_airtime[ac];
++				prev_tx_airtime = wcid->stats.tx_airtime[ac];
++				prev_rx_airtime = wcid->stats.rx_airtime[ac];
++				wcid->stats.tx_airtime[ac] = le32_to_cpu(res->airtime[i].tx[lmac_ac]);
++				wcid->stats.rx_airtime[ac] = le32_to_cpu(res->airtime[i].rx[lmac_ac]);
 +
-+				if (stats->tx_airtime[ac] - stats->buf_tx_airtime[ac] > le32_to_cpu(res->airtime[i].tx[lmac_ac])) {
-+					stats->buf_tx_airtime[ac] = stats->tx_airtime[ac];
-+					stats->tx_airtime[ac] += le32_to_cpu(res->airtime[i].tx[lmac_ac]);
++				if (wcid->stats.tx_airtime[ac] >= prev_tx_airtime) {
++					diff_tx_airtime = wcid->stats.tx_airtime[ac] - prev_tx_airtime;
 +				} else {
-+					stats->tx_airtime[ac] = stats->buf_tx_airtime[ac] + le32_to_cpu(res->airtime[i].tx[lmac_ac]);
++					diff_tx_airtime = wcid->stats.tx_airtime[ac];
 +				}
 +
-+				if (stats->rx_airtime[ac] - stats->buf_rx_airtime[ac] > le32_to_cpu(res->airtime[i].rx[lmac_ac])) {
-+					stats->buf_rx_airtime[ac] = stats->rx_airtime[ac];
-+					stats->rx_airtime[ac] += le32_to_cpu(res->airtime[i].rx[lmac_ac]);
++				if (wcid->stats.rx_airtime[ac] >= prev_rx_airtime) {
++					diff_rx_airtime = wcid->stats.rx_airtime[ac] - prev_rx_airtime;
 +				} else {
-+					stats->rx_airtime[ac] = stats->buf_rx_airtime[ac] + le32_to_cpu(res->airtime[i].rx[lmac_ac]);
++					diff_rx_airtime = wcid->stats.rx_airtime[ac];
 +				}
 +
-+				if (stats->tx_airtime[ac] < stats->buf_tx_airtime[ac]) {
-+					stats->buf_tx_airtime[ac] = 0;
-+				}
++				dev_dbg(dev->mt76.dev,
++					"ac: %u tx_read: %u rx_read: %u tx_time: %u rx_time: %u tx_prev: %u rx_prev: %u tx_diff: %u rx_diff: %u\n",
++					ac,
++					le32_to_cpu(res->airtime[i].tx[lmac_ac]),
++					le32_to_cpu(res->airtime[i].rx[lmac_ac]),
++					wcid->stats.tx_airtime[ac],
++					wcid->stats.rx_airtime[ac],
++					prev_tx_airtime, prev_rx_airtime,
++					diff_tx_airtime, diff_rx_airtime);
 +
 +				ieee80211_sta_register_airtime(sta, mt76_ac_to_tid(ac),
-+						stats->tx_airtime[ac] - prev_tx_airtime, stats->rx_airtime[ac] - prev_rx_airtime);
++					diff_tx_airtime, diff_rx_airtime);
 +			}
 +			break;
 +		default:
@@ -220,16 +229,17 @@ Subject: [PATCH] [mt76]add MCU EXT CMD - get_all_sta_stats - airtime
  mt7915_mcu_rx_ext_event(struct mt7915_dev *dev, struct sk_buff *skb)
  {
  	struct mt76_connac2_mcu_rxd *rxd;
- 
- 	rxd = (struct mt76_connac2_mcu_rxd *)skb->data;
- 	switch (rxd->ext_eid) {
+@@ -432,6 +495,9 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
+ 	case MCU_EXT_EVENT_BCC_NOTIFY:
+ 		mt7915_mcu_rx_bcc_notify(dev, skb);
+ 		break;
 +	case MCU_EXT_EVENT_GET_ALL_STA_STATS:
 +		mt7915_mcu_rx_all_sta_info_event(dev, skb);
-+		break; 
- 	case MCU_EXT_EVENT_THERMAL_PROTECT:
- 		mt7915_mcu_rx_thermal_notify(dev, skb);
++		break;
+ 	default:
  		break;
-@@ -463,6 +524,7 @@ void mt7915_mcu_rx_event(struct mt7915_d
+ 	}
+@@ -463,6 +529,7 @@ void mt7915_mcu_rx_event(struct mt7915_d
  	     rxd->ext_eid == MCU_EXT_EVENT_ASSERT_DUMP ||
  	     rxd->ext_eid == MCU_EXT_EVENT_PS_SYNC ||
  	     rxd->ext_eid == MCU_EXT_EVENT_BCC_NOTIFY ||
@@ -237,7 +247,7 @@ Subject: [PATCH] [mt76]add MCU EXT CMD - get_all_sta_stats - airtime
  	     !rxd->seq) &&
  	     !(rxd->eid == MCU_CMD_EXT_CID &&
  	       rxd->ext_eid == MCU_EXT_EVENT_WA_TX_STAT))
-@@ -4798,3 +4860,16 @@ int mt7915_mcu_thermal_debug(struct mt79
+@@ -4798,3 +4865,16 @@ int mt7915_mcu_thermal_debug(struct mt79
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(THERMAL_DEBUG), &req,
  				 sizeof(req), true);
  }
@@ -252,7 +262,7 @@ Subject: [PATCH] [mt76]add MCU EXT CMD - get_all_sta_stats - airtime
 +	};
 +
 +	return mt76_mcu_send_msg(dev, MCU_EXT_CMD(GET_ALL_STA_STATS),
-+				 &req, sizeof(req), false);
++				&req, sizeof(req), false);
 +}
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
@@ -281,11 +291,11 @@ Subject: [PATCH] [mt76]add MCU EXT CMD - get_all_sta_stats - airtime
  					 sizeof(struct bss_info_bcn) +	\
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -630,6 +630,7 @@ int mt7915_mcu_fw_log_2_host(struct mt79
- int mt7915_mcu_fw_dbg_ctrl(struct mt7915_dev *dev, u32 module, u8 level);
- void mt7915_mcu_rx_event(struct mt7915_dev *dev, struct sk_buff *skb);
- void mt7915_mcu_exit(struct mt7915_dev *dev);
+@@ -621,6 +621,7 @@ int mt7915_mcu_set_thermal_protect(struc
+ int mt7915_mcu_get_tx_rate(struct mt7915_phy *phy, u16 wcidx);
+ int mt7915_mcu_get_rx_rate(struct mt7915_phy *phy, struct ieee80211_vif *vif,
+ 			   struct ieee80211_sta *sta, struct rate_info *rate);
 +int mt7915_mcu_get_all_sta_info(struct mt76_dev *dev, u16 tag);
- 
- static inline u16 mt7915_wtbl_size(struct mt7915_dev *dev)
- {
+ int mt7915_mcu_rdd_background_enable(struct mt7915_phy *phy,
+ 				     struct cfg80211_chan_def *chandef);
+ int mt7915_mcu_wed_wa_tx_stats(struct mt7915_dev *dev, u16 wcid);
