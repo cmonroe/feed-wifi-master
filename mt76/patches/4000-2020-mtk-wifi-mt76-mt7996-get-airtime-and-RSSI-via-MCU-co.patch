@@ -316,7 +316,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +				}
 +
 +				if ((diff_tx_airtime > 500000) || (diff_rx_airtime > 500000)) {
-+					dev_info(dev->mt76.dev,
++					dev_dbg(dev->mt76.dev,
 +						"sta: %02X:%02X:%02X:%02X:%02X:%02X ac: %u tx_read: %u rx_read: %u tx_time: %u rx_time: %u tx_prev: %u rx_prev: %u tx_diff: %u rx_diff: %u\n",
 +						sta->addr[0], sta->addr[1], sta->addr[2], sta->addr[3], sta->addr[4], sta->addr[5],
 +						ac,
