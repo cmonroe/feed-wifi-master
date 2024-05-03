@@ -72,7 +72,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	if (!IS_ENABLED(CONFIG_OF))
  		return target_power;
-@@ -487,14 +492,40 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -487,12 +492,35 @@ s8 mt76_get_rate_power_limits(struct mt7
  	val = mt76_get_of_array(np, "rates-mcs", &len, mcs_rates + 1);
  	mt76_apply_multi_array_limit(dest->mcs[0], ARRAY_SIZE(dest->mcs[0]),
  				     ARRAY_SIZE(dest->mcs), val, len,
@@ -84,8 +84,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  				     ARRAY_SIZE(dest->ru), val, len,
 -				     target_power, txs_delta, &max_power);
 +				     target_power, txs_delta);
- 
--	return max_power;
++
 +	max_power_backoff = max_power;
 +	val = mt76_get_of_array(np, "paths-cck", &len, ARRAY_SIZE(dest->path.cck));
 +	mt76_apply_array_limit(dest->path.cck, ARRAY_SIZE(dest->path.cck), val,
@@ -108,14 +107,9 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 +	mt76_apply_multi_array_limit(dest->path.ru_bf[0], ARRAY_SIZE(dest->path.ru_bf[0]),
 +				     ARRAY_SIZE(dest->path.ru_bf), val, len,
 +				     target_power_combine, txs_delta);
-+
-+	if (max_power_backoff == target_power_combine)
-+		return max_power;
-+
-+	return max_power_backoff;
- }
- EXPORT_SYMBOL_GPL(mt76_get_rate_power_limits);
  
+ 	return max_power;
+ }
 --- a/mt76.h
 +++ b/mt76.h
 @@ -1048,6 +1048,14 @@ struct mt76_power_limits {
