@@ -80,8 +80,8 @@
 -				     target_power_combine, txs_delta);
 +				     target_power_combine, txs_delta, &max_power_backoff);
  
- 	if (max_power_backoff == target_power_combine)
- 		return max_power;
+ 	return max_power;
+ }
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
 @@ -3475,7 +3475,7 @@ int mt7915_mcu_set_txpower_sku(struct mt

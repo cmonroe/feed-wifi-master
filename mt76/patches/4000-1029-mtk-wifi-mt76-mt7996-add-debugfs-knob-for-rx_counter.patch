@@ -71,7 +71,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -783,6 +783,7 @@ static void mt76_rx_release_amsdu(struct
+@@ -784,6 +784,7 @@ static void mt76_rx_release_amsdu(struct
  		}
  
  		if (ether_addr_equal(skb->data + offset, rfc1042_header)) {
@@ -79,7 +79,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  			dev_kfree_skb(skb);
  			return;
  		}
-@@ -1099,10 +1100,16 @@ mt76_rx_convert(struct mt76_dev *dev, st
+@@ -1100,10 +1101,16 @@ mt76_rx_convert(struct mt76_dev *dev, st
  
  	*sta = wcid_to_sta(mstat.wcid);
  	*hw = mt76_phy_hw(dev, mstat.phy_idx);
@@ -97,7 +97,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  {
  	struct mt76_rx_status *status = (struct mt76_rx_status *)skb->cb;
  	struct mt76_wcid *wcid = status->wcid;
-@@ -1149,7 +1156,11 @@ skip_hdr_check:
+@@ -1150,7 +1157,11 @@ skip_hdr_check:
  	ret = memcmp(status->iv, wcid->rx_key_pn[security_idx],
  		     sizeof(status->iv));
  	if (ret <= 0) {
@@ -109,7 +109,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		return;
  	}
  
-@@ -1330,7 +1341,7 @@ void mt76_rx_complete(struct mt76_dev *d
+@@ -1331,7 +1342,7 @@ void mt76_rx_complete(struct mt76_dev *d
  	while ((skb = __skb_dequeue(frames)) != NULL) {
  		struct sk_buff *nskb = skb_shinfo(skb)->frag_list;
  
@@ -118,7 +118,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		skb_shinfo(skb)->frag_list = NULL;
  		mt76_rx_convert(dev, skb, &hw, &sta);
  		ieee80211_rx_list(hw, sta, skb, &list);
-@@ -1353,6 +1364,7 @@ void mt76_rx_complete(struct mt76_dev *d
+@@ -1354,6 +1365,7 @@ void mt76_rx_complete(struct mt76_dev *d
  	}
  
  	list_for_each_entry_safe(skb, tmp, &list, list) {

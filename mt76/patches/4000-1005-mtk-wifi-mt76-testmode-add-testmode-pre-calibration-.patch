@@ -82,7 +82,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_SKB_HEAD_LEN		256
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1043,8 +1043,10 @@ enum {
+@@ -1044,8 +1044,10 @@ enum {
  	MCU_UNI_EVENT_RDD_REPORT = 0x11,
  	MCU_UNI_EVENT_ROC = 0x27,
  	MCU_UNI_EVENT_TX_DONE = 0x2d,

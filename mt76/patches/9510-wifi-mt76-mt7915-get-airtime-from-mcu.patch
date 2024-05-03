@@ -13,7 +13,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1028,6 +1028,7 @@ enum {
+@@ -1029,6 +1029,7 @@ enum {
  	MCU_EXT_EVENT_WA_TX_STAT = 0x74,
  	MCU_EXT_EVENT_BCC_NOTIFY = 0x75,
  	MCU_EXT_EVENT_MURU_CTRL = 0x9f,
@@ -21,7 +21,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  	MCU_EXT_EVENT_CSI_REPORT = 0xc2,
  };
  
-@@ -1251,6 +1252,7 @@ enum {
+@@ -1253,6 +1254,7 @@ enum {
  	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
  	/* for vendor csi and air monitor */
  	MCU_EXT_CMD_SMESH_CTRL = 0xae,
@@ -29,7 +29,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  	MCU_EXT_CMD_EDCCA = 0xba,
  	MCU_EXT_CMD_SWLNA_ACI_CTRL = 0xc0,
  	MCU_EXT_CMD_CSI_CTRL = 0xc2,
-@@ -1258,6 +1260,16 @@ enum {
+@@ -1260,6 +1262,16 @@ enum {
  	MCU_EXT_CMD_LPI_CTRL = 0xc8,
  };
  
