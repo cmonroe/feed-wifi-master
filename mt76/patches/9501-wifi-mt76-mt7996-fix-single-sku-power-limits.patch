@@ -1,0 +1,188 @@
+--- a/eeprom.c
++++ b/eeprom.c
+@@ -526,6 +526,119 @@ s8 mt76_get_rate_power_limits(struct mt7
+ }
+ EXPORT_SYMBOL_GPL(mt76_get_rate_power_limits);
+ 
++s8 mt76_mt7996_get_rate_power_limits(struct mt76_phy *phy,
++			      struct ieee80211_channel *chan,
++			      struct mt76_power_limits *dest,
++			      struct mt76_mt7996_power_path_limits *dest_path,
++			      s8 target_power)
++{
++	struct mt76_dev *dev = phy->dev;
++	struct device_node *np;
++	const __be32 *val;
++	char name[16];
++	u32 mcs_rates = dev->drv->mcs_rates;
++	char band;
++	size_t len;
++	s8 max_power = -127;
++	s8 max_power_backoff = -127;
++	s8 txs_delta;
++	int n_chains = hweight16(phy->chainmask);
++	s8 target_power_combine = target_power + mt76_tx_power_nss_delta(n_chains);
++
++	if (!mcs_rates)
++		mcs_rates = 12;
++
++	memset(dest, target_power, sizeof(*dest));
++	if (dest_path != NULL)
++		memset(dest_path, 0, sizeof(*dest_path));
++
++	if (!IS_ENABLED(CONFIG_OF))
++		return target_power;
++
++	np = mt76_find_power_limits_node(phy);
++	if (!np)
++		return target_power;
++
++	switch (chan->band) {
++	case NL80211_BAND_2GHZ:
++		band = '2';
++		break;
++	case NL80211_BAND_5GHZ:
++		band = '5';
++		break;
++	case NL80211_BAND_6GHZ:
++		band = '6';
++		break;
++	default:
++		return target_power;
++	}
++
++	snprintf(name, sizeof(name), "txpower-%cg", band);
++	np = of_get_child_by_name(np, name);
++	if (!np)
++		return target_power;
++
++	np = mt76_find_channel_node(np, chan);
++	if (!np)
++		return target_power;
++
++	txs_delta = mt76_get_txs_delta(np, hweight16(phy->chainmask));
++
++	val = mt76_get_of_array(np, "rates-cck", &len, ARRAY_SIZE(dest->cck));
++	mt76_apply_array_limit(dest->cck, ARRAY_SIZE(dest->cck), val,
++			       target_power, txs_delta, &max_power);
++
++	val = mt76_get_of_array(np, "rates-ofdm",
++				&len, ARRAY_SIZE(dest->ofdm));
++	mt76_apply_array_limit(dest->ofdm, ARRAY_SIZE(dest->ofdm), val,
++			       target_power, txs_delta, &max_power);
++
++	val = mt76_get_of_array(np, "rates-mcs", &len, mcs_rates + 1);
++	mt76_apply_multi_array_limit(dest->mcs[0], ARRAY_SIZE(dest->mcs[0]),
++				     ARRAY_SIZE(dest->mcs), val, len,
++				     target_power, txs_delta, &max_power);
++
++	val = mt76_get_of_array(np, "rates-ru", &len, ARRAY_SIZE(dest->ru[0]) + 1);
++	mt76_apply_multi_array_limit(dest->ru[0], ARRAY_SIZE(dest->ru[0]),
++				     ARRAY_SIZE(dest->ru), val, len,
++				     target_power, txs_delta, &max_power);
++
++	val = mt76_get_of_array(np, "rates-eht", &len, ARRAY_SIZE(dest->eht[0]) + 1);
++	mt76_apply_multi_array_limit(dest->eht[0], ARRAY_SIZE(dest->eht[0]),
++				     ARRAY_SIZE(dest->eht), val, len,
++				     target_power, txs_delta, &max_power);
++
++	if (dest_path == NULL)
++		return max_power;
++
++	max_power_backoff = max_power;
++
++	val = mt76_get_of_array(np, "paths-cck", &len, ARRAY_SIZE(dest_path->cck));
++	mt76_apply_array_limit(dest_path->cck, ARRAY_SIZE(dest_path->cck), val,
++			       target_power_combine, txs_delta, &max_power_backoff);
++
++	val = mt76_get_of_array(np, "paths-ofdm", &len, ARRAY_SIZE(dest_path->ofdm));
++	mt76_apply_array_limit(dest_path->ofdm, ARRAY_SIZE(dest_path->ofdm), val,
++			       target_power_combine, txs_delta, &max_power_backoff);
++
++	val = mt76_get_of_array(np, "paths-ofdm-bf", &len, ARRAY_SIZE(dest_path->ofdm_bf));
++	mt76_apply_array_limit(dest_path->ofdm_bf, ARRAY_SIZE(dest_path->ofdm_bf), val,
++			       target_power_combine, txs_delta, &max_power_backoff);
++
++	val = mt76_get_of_array(np, "paths-ru", &len, ARRAY_SIZE(dest_path->ru[0]) + 1);
++	mt76_apply_multi_array_limit(dest_path->ru[0], ARRAY_SIZE(dest_path->ru[0]),
++				     ARRAY_SIZE(dest_path->ru), val, len,
++				     target_power_combine, txs_delta, &max_power);
++
++	val = mt76_get_of_array(np, "paths-ru-bf", &len, ARRAY_SIZE(dest_path->ru_bf[0]) + 1);
++	mt76_apply_multi_array_limit(dest_path->ru_bf[0], ARRAY_SIZE(dest_path->ru_bf[0]),
++				     ARRAY_SIZE(dest_path->ru_bf), val, len,
++				     target_power_combine, txs_delta, &max_power);
++
++	return max_power;
++}
++EXPORT_SYMBOL_GPL(mt76_mt7996_get_rate_power_limits);
++
+ int
+ mt76_eeprom_init(struct mt76_dev *dev, int len)
+ {
+--- a/mt76.h
++++ b/mt76.h
+@@ -1117,6 +1117,14 @@ struct mt76_power_limits {
+ 	} path;
+ };
+ 
++struct mt76_mt7996_power_path_limits {
++	s8 cck[5];
++	s8 ofdm[5];
++	s8 ofdm_bf[4];
++	s8 ru[16][15];
++	s8 ru_bf[16][15];
++};
++
+ struct mt76_ethtool_worker_info {
+ 	u64 *data;
+ 	int idx;
+@@ -1731,6 +1739,12 @@ s8 mt76_get_rate_power_limits(struct mt7
+ 			      struct mt76_power_limits *dest,
+ 			      s8 target_power);
+ 
++s8 mt76_mt7996_get_rate_power_limits(struct mt76_phy *phy,
++			      struct ieee80211_channel *chan,
++			      struct mt76_power_limits *dest,
++			      struct mt76_mt7996_power_path_limits *dest_path,
++			      s8 target_power);
++
+ static inline bool mt76_queue_is_wed_tx_free(struct mt76_queue *q)
+ {
+ 	return (q->flags & MT_QFLAG_WED) &&
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -4927,12 +4927,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 		.band_idx = phy->mt76->band_idx,
+ 	};
+ 	struct mt76_power_limits la = {};
++	struct mt76_mt7996_power_path_limits la_path = {};
+ 	struct sk_buff *skb;
+ 	int i, ret, tx_power;
+ 
+ 	tx_power = mt7996_get_power_bound(phy, hw->conf.power_level);
+-	tx_power = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,
+-					      &la, tx_power);
++	tx_power = mt76_mt7996_get_rate_power_limits(mphy, mphy->chandef.chan,
++					      &la, &la_path, tx_power);
+ 	mphy->txpower_cur = tx_power;
+ 
+ 	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
+@@ -4968,9 +4969,6 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 	if (ret)
+ 		return ret;
+ 
+-	return 0;
+-
+-#if 0
+ 	/* only set per-path power table when it's configured */
+ 	if (!la_path.ofdm[0])
+ 		return 0;
+@@ -4996,7 +4994,6 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 
+ 	return mt76_mcu_skb_send_msg(&dev->mt76, skb,
+ 				     MCU_WM_UNI_CMD(TXPOWER), true);
+-#endif
+ }
+ 
+ int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode)
