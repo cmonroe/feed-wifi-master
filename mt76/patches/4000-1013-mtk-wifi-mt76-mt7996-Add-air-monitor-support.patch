@@ -37,7 +37,7 @@ Subject: [PATCH 1013/1044] mtk: wifi: mt76: mt7996: Add air monitor support
  		mt7996_wed_check_ppe(dev, &dev->mt76.q_rx[q], msta, skb,
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -724,6 +724,10 @@ int mt7996_mac_sta_add(struct mt76_dev *
+@@ -730,6 +730,10 @@ int mt7996_mac_sta_add(struct mt76_dev *
  	mt7996_mac_wtbl_update(dev, idx,
  			       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
  
@@ -85,8 +85,8 @@ Subject: [PATCH 1013/1044] mtk: wifi: mt76: mt7996: Add air monitor support
  struct mt7996_phy {
  	struct mt76_phy *mt76;
  	struct mt7996_dev *dev;
-@@ -289,6 +317,11 @@ struct mt7996_phy {
- 	struct mt7996_scs_ctrl scs_ctrl;
+@@ -292,6 +320,11 @@ struct mt7996_phy {
+ 	bool sku_path_en;
  
  	u8 muru_onoff;
 +
@@ -97,7 +97,7 @@ Subject: [PATCH 1013/1044] mtk: wifi: mt76: mt7996: Add air monitor support
  };
  
  struct mt7996_dev {
-@@ -708,6 +741,9 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -707,6 +740,9 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  #ifdef CONFIG_MTK_VENDOR
  void mt7996_set_wireless_vif(void *data, u8 *mac, struct ieee80211_vif *vif);
  void mt7996_vendor_register(struct mt7996_phy *phy);

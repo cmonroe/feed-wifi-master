@@ -221,7 +221,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	}
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2854,6 +2854,46 @@ mt7996_sr_scene_cond_show(struct seq_fil
+@@ -2890,6 +2890,46 @@ mt7996_sr_scene_cond_show(struct seq_fil
  }
  DEFINE_SHOW_ATTRIBUTE(mt7996_sr_scene_cond);
  
@@ -268,7 +268,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2917,6 +2957,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2953,6 +2993,8 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_devm_seqfile(dev->mt76.dev, "tr_info", dir,
  				    mt7996_trinfo_read);

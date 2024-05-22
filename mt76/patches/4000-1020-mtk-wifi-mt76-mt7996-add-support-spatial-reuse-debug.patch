@@ -56,8 +56,8 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
 +	phy->enhanced_sr_enable = true;
 +
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
- 					   !dev->dbg.sku_disable);
- #else
+ 						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
+ 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
 @@ -623,6 +623,11 @@ mt7996_mcu_rx_unsolicited_event(struct m
@@ -74,7 +74,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  		break;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -330,6 +330,9 @@ struct mt7996_phy {
+@@ -333,6 +333,9 @@ struct mt7996_phy {
  #ifdef CONFIG_MTK_VENDOR
  	spinlock_t amnt_lock;
  	struct mt7996_air_monitor_ctrl amnt_ctrl;
@@ -84,18 +84,18 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  #endif
  };
  
-@@ -770,6 +773,8 @@ enum edcca_bw_id {
+@@ -769,6 +772,8 @@ enum edcca_bw_id {
  
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
 +int mt7996_mcu_set_sr_enable(struct mt7996_phy *phy, u8 action, u64 val, bool set);
 +void mt7996_mcu_rx_sr_event(struct mt7996_dev *dev, struct sk_buff *skb);
  #endif
- int mt7996_mcu_set_scs(struct mt7996_phy *phy, u8 enable);
- void mt7996_mcu_scs_sta_poll(struct work_struct *work);
+ int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
+ int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2777,6 +2777,83 @@ static int mt7996_show_eeprom_mode(struc
+@@ -2813,6 +2813,83 @@ static int mt7996_show_eeprom_mode(struc
  	return 0;
  }
  
@@ -179,7 +179,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2856,6 +2933,11 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2892,6 +2969,11 @@ int mt7996_mtk_init_debugfs(struct mt799
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  	debugfs_create_file("scs_enable", 0200, dir, phy, &fops_scs_enable);
  

@@ -106,12 +106,12 @@
 +	val = mt76_get_of_array(np, "paths-ru", &len, ARRAY_SIZE(dest_path->ru[0]) + 1);
 +	mt76_apply_multi_array_limit(dest_path->ru[0], ARRAY_SIZE(dest_path->ru[0]),
 +				     ARRAY_SIZE(dest_path->ru), val, len,
-+				     target_power_combine, txs_delta, &max_power);
++				     target_power_combine, txs_delta, &max_power_backoff);
 +
 +	val = mt76_get_of_array(np, "paths-ru-bf", &len, ARRAY_SIZE(dest_path->ru_bf[0]) + 1);
 +	mt76_apply_multi_array_limit(dest_path->ru_bf[0], ARRAY_SIZE(dest_path->ru_bf[0]),
 +				     ARRAY_SIZE(dest_path->ru_bf), val, len,
-+				     target_power_combine, txs_delta, &max_power);
++				     target_power_combine, txs_delta, &max_power_backoff);
 +
 +	return max_power;
 +}
@@ -150,39 +150,118 @@
  static inline bool mt76_queue_is_wed_tx_free(struct mt76_queue *q)
  {
  	return (q->flags & MT_QFLAG_WED) &&
+--- a/mt7996/mcu.h
++++ b/mt7996/mcu.h
+@@ -943,9 +943,34 @@ enum {
+ 	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
+ };
+ 
+-enum {
+-	UNI_TXPOWER_POWER_LIMIT_TABLE_CTRL = 4,
+-};
++struct tx_power_ctrl {
++	u8 _rsv[4];
++
++	__le16 tag;
++	__le16 len;
++
++	u8 power_ctrl_id;
++	union {
++		bool sku_enable;
++		bool ate_mode_enable;
++		bool percentage_ctrl_enable;
++		bool bf_backoff_enable;
++		u8 show_info_category;
++		u8 power_drop_level;
++	};
++	u8 band_idx;
++	u8 rsv[1];
++} __packed;
++
++ enum {
++	UNI_TXPOWER_SKU_POWER_LIMIT_CTRL = 0,
++	UNI_TXPOWER_PERCENTAGE_CTRL = 1,
++	UNI_TXPOWER_PERCENTAGE_DROP_CTRL = 2,
++	UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL = 3,
++ 	UNI_TXPOWER_POWER_LIMIT_TABLE_CTRL = 4,
++	UNI_TXPOWER_ATE_MODE_CTRL = 6,
++	UNI_TXPOWER_SHOW_INFO = 7,
++ };
+ 
+ enum {
+ 	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4927,12 +4927,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4948,7 +4948,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
+-	struct mt76_power_path_limits la_path = {};
 +	struct mt76_mt7996_power_path_limits la_path = {};
  	struct sk_buff *skb;
- 	int i, ret, tx_power;
+ 	int i, ret, txpower_limit;
  
- 	tx_power = mt7996_get_power_bound(phy, hw->conf.power_level);
--	tx_power = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,
--					      &la, tx_power);
-+	tx_power = mt76_mt7996_get_rate_power_limits(mphy, mphy->chandef.chan,
-+					      &la, &la_path, tx_power);
- 	mphy->txpower_cur = tx_power;
+@@ -4957,7 +4957,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 	txpower_limit = mt7996_get_power_bound(phy, hw->conf.power_level);
  
- 	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
-@@ -4968,9 +4969,6 @@ int mt7996_mcu_set_txpower_sku(struct mt
- 	if (ret)
- 		return ret;
+ 	if (phy->sku_limit_en) {
+-		txpower_limit = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,
++		txpower_limit = mt76_mt7996_get_rate_power_limits(mphy, mphy->chandef.chan,
+ 							   &la, &la_path, txpower_limit);
+ 		mt7996_update_max_txpower_cur(phy, txpower_limit);
+ 	} else {
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -295,23 +295,23 @@ static void __mt7996_init_txpower(struct
+ 	int nss_delta = mt76_tx_power_nss_delta(nss);
+ 	int pwr_delta = mt7996_eeprom_get_power_delta(dev, sband->band);
+ 	struct mt76_power_limits limits;
+-	struct mt76_power_path_limits limits_path;
++	struct mt76_mt7996_power_path_limits limits_path;
+ 	struct device_node *np;
  
--	return 0;
--
--#if 0
- 	/* only set per-path power table when it's configured */
- 	if (!la_path.ofdm[0])
- 		return 0;
-@@ -4996,7 +4994,6 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 	phy->sku_limit_en = true;
+-	phy->sku_path_en = true;
+-	np = mt76_find_power_limits_node(&dev->mt76);
++	phy->sku_path_en = false;
++	np = mt76_find_power_limits_node(phy->mt76);
+ 	for (i = 0; i < sband->n_channels; i++) {
+ 		struct ieee80211_channel *chan = &sband->channels[i];
+ 		int target_power = mt7996_eeprom_get_target_power(dev, chan);
  
- 	return mt76_mcu_skb_send_msg(&dev->mt76, skb,
- 				     MCU_WM_UNI_CMD(TXPOWER), true);
--#endif
- }
+ 		target_power += pwr_delta;
+-		target_power = mt76_get_rate_power_limits(phy->mt76, chan,
++		target_power = mt76_mt7996_get_rate_power_limits(phy->mt76, chan,
+ 							  &limits,
+ 							  &limits_path,
+ 							  target_power);
+-		if (!limits_path.ofdm[0])
+-			phy->sku_path_en = false;
++		if (limits_path.ofdm[0])
++			phy->sku_path_en = true;
  
- int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode)
+ 		target_power += nss_delta;
+ 		target_power = DIV_ROUND_UP(target_power, 2);
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -78,6 +78,9 @@ int mt7996_run(struct ieee80211_hw *hw)
+ 	phy->sr_enable = true;
+ 	phy->enhanced_sr_enable = true;
+ 
++	dev_info(dev->mt76.dev, "%s: sku enable = %d, path enable = %d\n", __func__,
++		dev->dbg.sku_disable ? 0 : phy->sku_limit_en, dev->dbg.sku_disable ? 0 : phy->sku_path_en);
++
+ 	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
+ 						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
+ 
+--- a/mt7996/mtk_debugfs.c
++++ b/mt7996/mtk_debugfs.c
+@@ -2500,7 +2500,7 @@ mt7996_get_txpower_info(struct file *fil
+ 	len += scnprintf(buf + len, size - len,
+ 			 "    Theraml Compensation Value: %d\n",
+ 			 basic_info->thermal_compensate_value);
+-	np = mt76_find_power_limits_node(phy->mt76->dev);
++	np = mt76_find_power_limits_node(phy->mt76);
+ 	len += scnprintf(buf + len, size - len,
+ 			 "    RegDB:  %s\n",
+ 			 !np ? "enable" : "disable");

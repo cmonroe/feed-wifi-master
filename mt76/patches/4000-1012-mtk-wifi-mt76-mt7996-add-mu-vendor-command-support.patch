@@ -41,7 +41,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -366,6 +366,7 @@ mt7996_init_wiphy(struct ieee80211_hw *h
+@@ -378,6 +378,7 @@ mt7996_init_wiphy(struct ieee80211_hw *h
  
  	phy->slottime = 9;
  	phy->beacon_rate = -1;
@@ -49,7 +49,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	hw->sta_data_size = sizeof(struct mt7996_sta);
  	hw->vif_data_size = sizeof(struct mt7996_vif);
-@@ -614,6 +615,10 @@ static int mt7996_register_phy(struct mt
+@@ -626,6 +627,10 @@ static int mt7996_register_phy(struct mt
  	if (ret)
  		goto error;
  
@@ -60,7 +60,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1391,6 +1396,10 @@ int mt7996_register_device(struct mt7996
+@@ -1403,6 +1408,10 @@ int mt7996_register_device(struct mt7996
  
  	mt7996_init_wiphy(hw, &dev->mt76.mmio.wed);
  
@@ -102,8 +102,8 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	if (sta->deflink.vht_cap.vht_supported)
  		muru->mimo_dl.vht_mu_bfee =
-@@ -4936,3 +4941,25 @@ int mt7996_mcu_set_tx_power_ctrl(struct
- 	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(TXPOWER),
+@@ -4928,3 +4933,25 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+ 	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(SCS),
  				 &req, sizeof(req), false);
  }
 +
@@ -153,16 +153,16 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	BF_HW_EN_UPDATE = 17,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -287,6 +287,8 @@ struct mt7996_phy {
- 	bool has_aux_rx;
+@@ -290,6 +290,8 @@ struct mt7996_phy {
  
- 	struct mt7996_scs_ctrl scs_ctrl;
+ 	bool sku_limit_en;
+ 	bool sku_path_en;
 +
 +	u8 muru_onoff;
  };
  
  struct mt7996_dev {
-@@ -703,6 +705,11 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -702,6 +704,11 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  

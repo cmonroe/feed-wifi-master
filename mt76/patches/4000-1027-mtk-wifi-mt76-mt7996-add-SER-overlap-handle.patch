@@ -61,7 +61,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	seq = ++dev->mt76.mcu.msg_seq & 0xf;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -370,6 +370,8 @@ struct mt7996_dev {
+@@ -373,6 +373,8 @@ struct mt7996_dev {
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;

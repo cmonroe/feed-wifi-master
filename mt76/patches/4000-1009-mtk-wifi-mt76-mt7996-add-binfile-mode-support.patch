@@ -216,7 +216,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT7996_EEPROM_SIZE		7680
  #define MT7996_EEPROM_BLOCK_SIZE	16
  #define MT7996_TOKEN_SIZE		16384
-@@ -367,6 +368,9 @@ struct mt7996_dev {
+@@ -370,6 +371,9 @@ struct mt7996_dev {
  		spinlock_t lock;
  	} wed_rro;
  
@@ -226,7 +226,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	bool ibf;
  	u8 fw_debug_wm;
  	u8 fw_debug_wa;
-@@ -492,6 +496,7 @@ irqreturn_t mt7996_irq_handler(int irq,
+@@ -495,6 +499,7 @@ irqreturn_t mt7996_irq_handler(int irq,
  u64 __mt7996_get_tsf(struct ieee80211_hw *hw, struct mt7996_vif *mvif);
  int mt7996_register_device(struct mt7996_dev *dev);
  void mt7996_unregister_device(struct mt7996_dev *dev);
@@ -236,7 +236,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2739,6 +2739,44 @@ static const struct file_operations mt79
+@@ -2775,6 +2775,44 @@ static const struct file_operations mt79
  	.llseek = default_llseek,
  };
  
@@ -281,7 +281,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2807,6 +2845,9 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2843,6 +2881,9 @@ int mt7996_mtk_init_debugfs(struct mt799
  	debugfs_create_file("txpower_sku", 0600, dir, phy, &mt7996_txpower_sku_fops);
  	debugfs_create_file("txpower_path", 0600, dir, phy, &mt7996_txpower_path_fops);
  

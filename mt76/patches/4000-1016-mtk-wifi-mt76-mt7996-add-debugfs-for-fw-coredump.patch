@@ -114,7 +114,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -956,7 +956,11 @@ enum {
+@@ -931,7 +931,11 @@ enum {
  	UNI_CMD_SER_SET_RECOVER_L3_BF,
  	UNI_CMD_SER_SET_RECOVER_L4_MDP,
  	UNI_CMD_SER_SET_RECOVER_FULL,
@@ -143,7 +143,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  enum mt7996_txq_id {
  	MT7996_TXQ_FWDL = 16,
  	MT7996_TXQ_MCU_WM,
-@@ -367,6 +375,7 @@ struct mt7996_dev {
+@@ -370,6 +378,7 @@ struct mt7996_dev {
  
  	/* protects coredump data */
  	struct mutex dump_mutex;
@@ -151,7 +151,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  #ifdef CONFIG_DEV_COREDUMP
  	struct {
  		struct mt7996_crash_data *crash_data[__MT7996_RAM_TYPE_MAX];
-@@ -549,6 +558,7 @@ void mt7996_init_txpower(struct mt7996_p
+@@ -552,6 +561,7 @@ void mt7996_init_txpower(struct mt7996_p
  int mt7996_txbf_init(struct mt7996_dev *dev);
  int mt7996_get_chip_sku(struct mt7996_dev *dev);
  void mt7996_reset(struct mt7996_dev *dev);

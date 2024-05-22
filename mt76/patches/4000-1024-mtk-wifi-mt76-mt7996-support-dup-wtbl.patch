@@ -12,7 +12,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -673,6 +673,7 @@ static void mt7996_init_work(struct work
+@@ -685,6 +685,7 @@ static void mt7996_init_work(struct work
  	mt7996_mcu_set_eeprom(dev);
  	mt7996_mac_init(dev);
  	mt7996_txbf_init(dev);
@@ -22,14 +22,14 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  void mt7996_wfsys_reset(struct mt7996_dev *dev)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -777,6 +777,7 @@ enum edcca_bw_id {
+@@ -776,6 +776,7 @@ enum edcca_bw_id {
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
  int mt7996_mcu_set_sr_enable(struct mt7996_phy *phy, u8 action, u64 val, bool set);
  void mt7996_mcu_rx_sr_event(struct mt7996_dev *dev, struct sk_buff *skb);
 +int mt7996_mcu_set_dup_wtbl(struct mt7996_dev *dev);
  #endif
- int mt7996_mcu_set_scs(struct mt7996_phy *phy, u8 enable);
- void mt7996_mcu_scs_sta_poll(struct work_struct *work);
+ int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
+ int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
 --- a/mt7996/mtk_mcu.c
 +++ b/mt7996/mtk_mcu.c
 @@ -235,4 +235,27 @@ void mt7996_mcu_rx_sr_event(struct mt799

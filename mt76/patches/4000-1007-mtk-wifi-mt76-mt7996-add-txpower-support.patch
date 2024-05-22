@@ -1,19 +1,38 @@
-From 3a292eca1e1aeb7a63fb4f925c03ed5f15ace34f Mon Sep 17 00:00:00 2001
-From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+From c3e9680c5a1387067019b361390df5a150eb232b Mon Sep 17 00:00:00 2001
+From: Allen Ye <allen.ye@mediatek.com>
 Date: Fri, 24 Mar 2023 23:35:30 +0800
-Subject: [PATCH 1007/1044] mtk: wifi: mt76: mt7996: add txpower support
+Subject: [PATCH 026/116] mtk: wifi: mt76: mt7996: add txpower support
+
+Add single sku and default enable sku.
+
+mtk: wifi: mt76: mt7996: Porting wifi6 txpower fix to eagle
+
+Refactor txpower flow.
+1. Fix wrong bbp CR address
+2. Ignore RegDB power limit when we have single sku table. And dump more informaiton in debugfs.
+3. Refactor get_txpower ops flow, we only consider CCK and OFDM power value as maximum.
+4. Remove sku_disable due to SQC is over and default enable both sku tables.
+
+Fix wrong power value when user set limit close to path table limit.
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 ---
- mt7996/eeprom.c      |  34 +++++
- mt7996/eeprom.h      |  42 ++++++
+ eeprom.c             |  54 ++++++-
+ mt76.h               |   9 ++
+ mt76_connac_mcu.c    |   2 +-
+ mt7996/eeprom.c      |  34 ++++
+ mt7996/eeprom.h      |  42 +++++
+ mt7996/init.c        |  16 +-
+ mt7996/main.c        |  15 ++
+ mt7996/mcu.c         |  69 ++++++++-
  mt7996/mcu.h         |   2 +
- mt7996/mt7996.h      |   1 +
- mt7996/mtk_debugfs.c | 326 +++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mt7996.h      |   4 +
+ mt7996/mtk_debugfs.c | 362 +++++++++++++++++++++++++++++++++++++++++++
  mt7996/mtk_mcu.c     |  23 +++
- mt7996/mtk_mcu.h     |  92 ++++++++++++
- mt7996/regs.h        |  29 ++--
- 8 files changed, 538 insertions(+), 11 deletions(-)
+ mt7996/mtk_mcu.h     |  92 +++++++++++
+ mt7996/regs.h        |  27 ++--
+ 14 files changed, 724 insertions(+), 27 deletions(-)
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
@@ -104,57 +123,187 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +extern const u8 mt7996_sku_group_len[MAX_SKU_RATE_GROUP_NUM];
 +
  #endif
---- a/mt7996/mcu.h
-+++ b/mt7996/mcu.h
-@@ -899,8 +899,33 @@ enum {
- 	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
- };
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -295,7 +295,12 @@ static void __mt7996_init_txpower(struct
+ 	int nss_delta = mt76_tx_power_nss_delta(nss);
+ 	int pwr_delta = mt7996_eeprom_get_power_delta(dev, sband->band);
+ 	struct mt76_power_limits limits;
++	struct mt76_power_path_limits limits_path;
++	struct device_node *np;
  
-+struct tx_power_ctrl {
-+	u8 _rsv[4];
++	phy->sku_limit_en = true;
++	phy->sku_path_en = true;
++	np = mt76_find_power_limits_node(&dev->mt76);
+ 	for (i = 0; i < sband->n_channels; i++) {
+ 		struct ieee80211_channel *chan = &sband->channels[i];
+ 		int target_power = mt7996_eeprom_get_target_power(dev, chan);
+@@ -303,11 +308,18 @@ static void __mt7996_init_txpower(struct
+ 		target_power += pwr_delta;
+ 		target_power = mt76_get_rate_power_limits(phy->mt76, chan,
+ 							  &limits,
++							  &limits_path,
+ 							  target_power);
++		if (!limits_path.ofdm[0])
++			phy->sku_path_en = false;
 +
-+	__le16 tag;
-+	__le16 len;
-+
-+	u8 power_ctrl_id;
-+	union {
-+		bool sku_enable;
-+		bool ate_mode_enable;
-+		bool percentage_ctrl_enable;
-+		bool bf_backoff_enable;
-+		u8 show_info_category;
-+		u8 power_drop_level;
-+	};
-+	u8 band_idx;
-+	u8 rsv[1];
-+} __packed;
-+
- enum {
--	UNI_TXPOWER_POWER_LIMIT_TABLE_CTRL = 4,
-+	UNI_TXPOWER_SKU_POWER_LIMIT_CTRL = 0,
-+	UNI_TXPOWER_PERCENTAGE_CTRL = 1,
-+	UNI_TXPOWER_PERCENTAGE_DROP_CTRL = 2,
-+	UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL = 3,
-+ 	UNI_TXPOWER_POWER_LIMIT_TABLE_CTRL = 4,
-+	UNI_TXPOWER_ATE_MODE_CTRL = 6,
-+	UNI_TXPOWER_SHOW_INFO = 7,
- };
+ 		target_power += nss_delta;
+ 		target_power = DIV_ROUND_UP(target_power, 2);
+-		chan->max_power = min_t(int, chan->max_reg_power,
+-					target_power);
++		if (!np)
++			chan->max_power = min_t(int, chan->max_reg_power,
++						target_power);
++		else
++			chan->max_power = target_power;
+ 		chan->orig_mpwr = target_power;
+ 	}
+ }
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -71,6 +71,21 @@ int mt7996_run(struct ieee80211_hw *hw)
+ 	if (ret)
+ 		goto out;
  
- enum {
++#ifdef CONFIG_MTK_DEBUG
++	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
++						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
++
++	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL,
++						dev->dbg.sku_disable ? 0 : phy->sku_path_en);
++#else
++	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
++						phy->sku_limit_en);
++	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL,
++						phy->sku_path_en);
++#endif
++	if (ret)
++		goto out;
++
+ 	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
+ 
+ 	ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -4494,9 +4494,31 @@ int mt7996_mcu_wed_rro_reset_sessions(st
+ 				 sizeof(req), true);
+ }
+ 
++static void
++mt7996_update_max_txpower_cur(struct mt7996_phy *phy, int tx_power)
++{
++	struct mt76_phy *mphy = phy->mt76;
++	struct ieee80211_channel *chan = mphy->main_chan;
++	int e2p_power_limit = 0;
++
++	if (chan == NULL) {
++		mphy->txpower_cur = tx_power;
++		return;
++	}
++
++	e2p_power_limit = mt7996_eeprom_get_target_power(phy->dev, chan);
++	e2p_power_limit += mt7996_eeprom_get_power_delta(phy->dev, chan->band);
++
++	if (phy->sku_limit_en)
++		mphy->txpower_cur = min_t(int, e2p_power_limit, tx_power);
++	else
++		mphy->txpower_cur = e2p_power_limit;
++}
++
+ int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy)
+ {
+ #define TX_POWER_LIMIT_TABLE_RATE	0
++#define TX_POWER_LIMIT_TABLE_PATH	1
+ 	struct mt7996_dev *dev = phy->dev;
+ 	struct mt76_phy *mphy = phy->mt76;
+ 	struct ieee80211_hw *hw = mphy->hw;
+@@ -4516,13 +4538,22 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 		.band_idx = phy->mt76->band_idx,
+ 	};
+ 	struct mt76_power_limits la = {};
++	struct mt76_power_path_limits la_path = {};
+ 	struct sk_buff *skb;
+-	int i, tx_power;
++	int i, ret, txpower_limit;
+ 
+-	tx_power = mt7996_get_power_bound(phy, hw->conf.power_level);
+-	tx_power = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,
+-					      &la, tx_power);
+-	mphy->txpower_cur = tx_power;
++	if (hw->conf.power_level == INT_MIN)
++		hw->conf.power_level = 127;
++	txpower_limit = mt7996_get_power_bound(phy, hw->conf.power_level);
++
++	if (phy->sku_limit_en) {
++		txpower_limit = mt76_get_rate_power_limits(mphy, mphy->chandef.chan,
++							   &la, &la_path, txpower_limit);
++		mt7996_update_max_txpower_cur(phy, txpower_limit);
++	} else {
++		mt7996_update_max_txpower_cur(phy, txpower_limit);
++		return 0;
++	}
+ 
+ 	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
+ 				 sizeof(req) + MT7996_SKU_PATH_NUM);
+@@ -4552,6 +4583,34 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 	/* padding */
+ 	skb_put_zero(skb, MT7996_SKU_PATH_NUM - MT7996_SKU_RATE_NUM);
+ 
++	ret = mt76_mcu_skb_send_msg(&dev->mt76, skb,
++				    MCU_WM_UNI_CMD(TXPOWER), true);
++	if (ret)
++		return ret;
++
++	/* only set per-path power table when it's configured */
++	if (!phy->sku_path_en)
++		return 0;
++
++	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
++				 sizeof(req) + MT7996_SKU_PATH_NUM);
++	if (!skb)
++		return -ENOMEM;
++	req.power_limit_type = TX_POWER_LIMIT_TABLE_PATH;
++
++	skb_put_data(skb, &req, sizeof(req));
++	skb_put_data(skb, &la_path.cck, sizeof(la_path.cck));
++	skb_put_data(skb, &la_path.ofdm, sizeof(la_path.ofdm));
++	skb_put_data(skb, &la_path.ofdm_bf, sizeof(la_path.ofdm_bf));
++
++	for (i = 0; i < 32; i++) {
++		bool bf = i % 2;
++		u8 idx = i / 2;
++		s8 *buf = bf ? la_path.ru_bf[idx] : la_path.ru[idx];
++
++		skb_put_data(skb, buf, sizeof(la_path.ru[0]));
++	}
++
+ 	return mt76_mcu_skb_send_msg(&dev->mt76, skb,
+ 				     MCU_WM_UNI_CMD(TXPOWER), true);
+ }
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -581,6 +581,8 @@ void mt7996_mcu_rx_event(struct mt7996_d
- void mt7996_mcu_exit(struct mt7996_dev *dev);
- int mt7996_mcu_get_all_sta_info(struct mt7996_phy *phy, u16 tag);
- int mt7996_mcu_wed_rro_reset_sessions(struct mt7996_dev *dev, u16 id);
+@@ -286,6 +286,9 @@ struct mt7996_phy {
+ 	bool has_aux_rx;
+ 
+ 	struct mt7996_scs_ctrl scs_ctrl;
++
++	bool sku_limit_en;
++	bool sku_path_en;
+ };
+ 
+ struct mt7996_dev {
+@@ -697,6 +700,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+ #ifdef CONFIG_MTK_DEBUG
+ int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
+ #endif
 +int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
 +int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
+ int mt7996_mcu_set_scs(struct mt7996_phy *phy, u8 enable);
+ void mt7996_mcu_scs_sta_poll(struct work_struct *work);
  
- static inline u8 mt7996_max_interface_num(struct mt7996_dev *dev)
- {
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2417,6 +2417,328 @@ mt7996_scs_enable_set(void *data, u64 va
+@@ -2417,6 +2417,364 @@ mt7996_scs_enable_set(void *data, u64 va
  DEFINE_DEBUGFS_ATTRIBUTE(fops_scs_enable, NULL,
  			 mt7996_scs_enable_set, "%lld\n");
  
@@ -184,6 +333,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	struct mt7996_phy *phy = file->private_data;
 +	struct mt7996_mcu_txpower_event *event;
 +	struct txpower_basic_info *basic_info;
++	struct device_node *np;
 +	static const size_t size = 2048;
 +	int len = 0;
 +	ssize_t ret;
@@ -240,7 +390,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	len += scnprintf(buf + len, size - len,
 +			 "    Theraml Compensation Value: %d\n",
 +			 basic_info->thermal_compensate_value);
-+
++	np = mt76_find_power_limits_node(phy->mt76->dev);
++	len += scnprintf(buf + len, size - len,
++			 "    RegDB:  %s\n",
++			 !np ? "enable" : "disable");
 +	ret = simple_read_from_buffer(user_buf, count, ppos, buf, len);
 +
 +out:
@@ -256,9 +409,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	.llseek = default_llseek,
 +};
 +
-+#define mt7996_txpower_puts(rate)							\
++#define mt7996_txpower_puts(rate, _len)							\
 +({											\
-+	len += scnprintf(buf + len, size - len, "%-21s:", #rate " (TMAC)");		\
++	len += scnprintf(buf + len, size - len, "%-*s:", _len, #rate " (TMAC)");	\
 +	for (i = 0; i < mt7996_sku_group_len[SKU_##rate]; i++, offs++)			\
 +		len += scnprintf(buf + len, size - len, " %6d",				\
 +				 event->phy_rate_info.frame_power[offs][band_idx]);	\
@@ -272,9 +425,15 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	struct mt7996_phy *phy = file->private_data;
 +	struct mt7996_dev *dev = phy->dev;
 +	struct mt7996_mcu_txpower_event *event;
++	struct ieee80211_channel *chan = phy->mt76->chandef.chan;
++	struct ieee80211_supported_band sband;
 +	u8 band_idx = phy->mt76->band_idx;
 +	static const size_t size = 5120;
 +	int i, offs = 0, len = 0;
++	u32 target_power = 0;
++	int n_chains = hweight16(phy->mt76->chainmask);
++	int nss_delta = mt76_tx_power_nss_delta(n_chains);
++	int pwr_delta;
 +	ssize_t ret;
 +	char *buf;
 +	u32 reg;
@@ -296,41 +455,45 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +			 band_idx, phy->mt76->chandef.chan->hw_value);
 +	len += scnprintf(buf + len, size - len, "%-21s  %6s %6s %6s %6s\n",
 +			 " ", "1m", "2m", "5m", "11m");
-+	mt7996_txpower_puts(CCK);
++	mt7996_txpower_puts(CCK, 21);
 +
 +	len += scnprintf(buf + len, size - len,
 +			 "%-21s  %6s %6s %6s %6s %6s %6s %6s %6s\n",
 +			 " ", "6m", "9m", "12m", "18m", "24m", "36m", "48m",
 +			 "54m");
-+	mt7996_txpower_puts(OFDM);
++	mt7996_txpower_puts(OFDM, 21);
 +
 +	len += scnprintf(buf + len, size - len,
 +			 "%-21s  %6s %6s %6s %6s %6s %6s %6s %6s\n",
 +			 " ", "mcs0", "mcs1", "mcs2", "mcs3", "mcs4",
 +			 "mcs5", "mcs6", "mcs7");
-+	mt7996_txpower_puts(HT20);
++	mt7996_txpower_puts(HT20, 21);
 +
 +	len += scnprintf(buf + len, size - len,
 +			 "%-21s  %6s %6s %6s %6s %6s %6s %6s %6s %6s\n",
 +			 " ", "mcs0", "mcs1", "mcs2", "mcs3", "mcs4", "mcs5",
 +			 "mcs6", "mcs7", "mcs32");
-+	mt7996_txpower_puts(HT40);
++	mt7996_txpower_puts(HT40, 21);
 +
 +	len += scnprintf(buf + len, size - len,
 +			 "%-21s  %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s\n",
 +			 " ", "mcs0", "mcs1", "mcs2", "mcs3", "mcs4", "mcs5",
 +			 "mcs6", "mcs7", "mcs8", "mcs9", "mcs10", "mcs11");
-+	mt7996_txpower_puts(VHT20);
-+	mt7996_txpower_puts(VHT40);
-+	mt7996_txpower_puts(VHT80);
-+	mt7996_txpower_puts(VHT160);
-+	mt7996_txpower_puts(HE26);
-+	mt7996_txpower_puts(HE52);
-+	mt7996_txpower_puts(HE106);
-+	mt7996_txpower_puts(HE242);
-+	mt7996_txpower_puts(HE484);
-+	mt7996_txpower_puts(HE996);
-+	mt7996_txpower_puts(HE2x996);
++	mt7996_txpower_puts(VHT20, 21);
++	mt7996_txpower_puts(VHT40, 21);
++	mt7996_txpower_puts(VHT80, 21);
++	mt7996_txpower_puts(VHT160, 21);
++	mt7996_txpower_puts(HE26, 21);
++	mt7996_txpower_puts(HE52, 21);
++	mt7996_txpower_puts(HE106, 21);
++	len += scnprintf(buf + len, size - len, "BW20/");
++	mt7996_txpower_puts(HE242, 16);
++	len += scnprintf(buf + len, size - len, "BW40/");
++	mt7996_txpower_puts(HE484, 16);
++	len += scnprintf(buf + len, size - len, "BW80/");
++	mt7996_txpower_puts(HE996, 16);
++	len += scnprintf(buf + len, size - len, "BW160/");
++	mt7996_txpower_puts(HE2x996, 15);
 +
 +	len += scnprintf(buf + len, size - len,
 +			 "%-21s  %6s %6s %6s %6s %6s %6s %6s %6s ",
@@ -338,22 +501,27 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	len += scnprintf(buf + len, size - len,
 +			 "%6s %6s %6s %6s %6s %6s %6s %6s\n",
 +			 "mcs8", "mcs9", "mcs10", "mcs11", "mcs12", "mcs13", "mcs14", "mcs15");
-+	mt7996_txpower_puts(EHT26);
-+	mt7996_txpower_puts(EHT52);
-+	mt7996_txpower_puts(EHT106);
-+	mt7996_txpower_puts(EHT242);
-+	mt7996_txpower_puts(EHT484);
-+	mt7996_txpower_puts(EHT996);
-+	mt7996_txpower_puts(EHT2x996);
-+	mt7996_txpower_puts(EHT4x996);
-+	mt7996_txpower_puts(EHT26_52);
-+	mt7996_txpower_puts(EHT26_106);
-+	mt7996_txpower_puts(EHT484_242);
-+	mt7996_txpower_puts(EHT996_484);
-+	mt7996_txpower_puts(EHT996_484_242);
-+	mt7996_txpower_puts(EHT2x996_484);
-+	mt7996_txpower_puts(EHT3x996);
-+	mt7996_txpower_puts(EHT3x996_484);
++	mt7996_txpower_puts(EHT26, 21);
++	mt7996_txpower_puts(EHT52, 21);
++	mt7996_txpower_puts(EHT106, 21);
++	len += scnprintf(buf + len, size - len, "BW20/");
++	mt7996_txpower_puts(EHT242, 16);
++	len += scnprintf(buf + len, size - len, "BW40/");
++	mt7996_txpower_puts(EHT484, 16);
++	len += scnprintf(buf + len, size - len, "BW80/");
++	mt7996_txpower_puts(EHT996, 16);
++	len += scnprintf(buf + len, size - len, "BW160/");
++	mt7996_txpower_puts(EHT2x996, 15);
++	len += scnprintf(buf + len, size - len, "BW320/");
++	mt7996_txpower_puts(EHT4x996, 15);
++	mt7996_txpower_puts(EHT26_52, 21);
++	mt7996_txpower_puts(EHT26_106, 21);
++	mt7996_txpower_puts(EHT484_242, 21);
++	mt7996_txpower_puts(EHT996_484, 21);
++	mt7996_txpower_puts(EHT996_484_242, 21);
++	mt7996_txpower_puts(EHT2x996_484, 21);
++	mt7996_txpower_puts(EHT3x996, 21);
++	mt7996_txpower_puts(EHT3x996_484, 21);
 +
 +	len += scnprintf(buf + len, size - len, "\nePA Gain: %d\n",
 +			 event->phy_rate_info.epa_gain);
@@ -362,16 +530,33 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	len += scnprintf(buf + len, size - len, "Min Power Bound: %d\n",
 +			 event->phy_rate_info.min_power_bound);
 +
-+	reg = MT_WF_PHYDFE_BAND_TPC_CTRL_STAT0(band_idx);
++	reg = MT_WF_PHYDFE_TSSI_TXCTRL01(band_idx);
 +	len += scnprintf(buf + len, size - len,
-+			 "BBP TX Power (target power from TMAC)  : %6ld [0.5 dBm]\n",
-+			 mt76_get_field(dev, reg, MT_WF_PHY_TPC_POWER_TMAC));
++			 "\nBBP TX Power (target power from TMAC)  : %6ld [0.5 dBm]\n",
++			 mt76_get_field(dev, reg, MT_WF_PHYDFE_TSSI_TXCTRL_POWER_TMAC));
 +	len += scnprintf(buf + len, size - len,
-+			 "BBP TX Power (target power from RMAC)  : %6ld [0.5 dBm]\n",
-+			 mt76_get_field(dev, reg, MT_WF_PHY_TPC_POWER_RMAC));
++			 "RegDB maximum power:\t%d [dBm]\n",
++			 chan->max_reg_power);
++
++	if (chan->band == NL80211_BAND_2GHZ)
++		sband = phy->mt76->sband_2g.sband;
++	else if (chan->band == NL80211_BAND_5GHZ)
++		sband = phy->mt76->sband_5g.sband;
++	else if (chan->band == NL80211_BAND_6GHZ)
++		sband = phy->mt76->sband_6g.sband;
++
++	pwr_delta = mt7996_eeprom_get_power_delta(dev, sband.band);
++
++	target_power = max_t(u32, target_power, mt7996_eeprom_get_target_power(dev, chan));
++	target_power += pwr_delta + nss_delta;
++	target_power = DIV_ROUND_UP(target_power, 2);
 +	len += scnprintf(buf + len, size - len,
-+			 "BBP TX Power (TSSI module power input)  : %6ld [0.5 dBm]\n",
-+			 mt76_get_field(dev, reg, MT_WF_PHY_TPC_POWER_TSSI));
++			 "eeprom maximum power:\t%d [dBm]\n",
++			 target_power);
++
++	len += scnprintf(buf + len, size - len,
++			 "nss_delta:\t%d [0.5 dBm]\n",
++			 nss_delta);
 +
 +	ret = simple_read_from_buffer(user_buf, count, ppos, buf, len);
 +
@@ -390,7 +575,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
 +#define mt7996_txpower_path_puts(rate, arr_length)					\
 +({											\
-+	len += scnprintf(buf + len, size - len, "%-23s:", #rate " (TMAC)");		\
++	len += scnprintf(buf + len, size - len, "%23s:", #rate " (TMAC)");		\
 +	for (i = 0; i < arr_length; i++, offs++)					\
 +		len += scnprintf(buf + len, size - len, " %4d",				\
 +				 event->backoff_table_info.frame_power[offs]);		\
@@ -483,7 +668,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2480,6 +2802,10 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2480,6 +2838,10 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_devm_seqfile(dev->mt76.dev, "tr_info", dir,
  				    mt7996_trinfo_read);
@@ -628,13 +813,17 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
-@@ -693,24 +693,31 @@ enum offs_rev {
+@@ -693,24 +693,29 @@ enum offs_rev {
  						 ((_wf) << 16) + (ofs))
  #define MT_WF_PHYRX_CSD_IRPI(_band, _wf)	MT_WF_PHYRX_CSD(_band, _wf, 0x1000)
  
 -/* PHYRX CTRL */
 -#define MT_WF_PHYRX_BAND_BASE			0x83080000
 -#define MT_WF_PHYRX_BAND(_band, ofs)		(MT_WF_PHYRX_BAND_BASE + \
++/* PHYDFE CTRL */
++#define MT_WF_PHYDFE_TSSI_TXCTRL01(_band)	MT_WF_PHYRX_CSD(_band, 0, 0xc718)
++#define MT_WF_PHYDFE_TSSI_TXCTRL_POWER_TMAC	GENMASK(31, 24)
++
 +/* PHY CTRL */
 +#define MT_WF_PHY_BAND_BASE			0x83080000
 +#define MT_WF_PHY_BAND(_band, ofs)		(MT_WF_PHY_BAND_BASE + \
@@ -659,55 +848,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_WF_PHYRX_BAND_RX_CTRL1_IPI_EN	GENMASK(2, 0)
  #define MT_WF_PHYRX_BAND_RX_CTRL1_STSCNT_EN	GENMASK(11, 9)
  
-+/* PHYDFE CTRL */
-+#define MT_WF_PHYDFE_BAND_TPC_CTRL_STAT0(_phy)	MT_WF_PHY_BAND(_phy, 0xe7a0)
-+#define MT_WF_PHY_TPC_POWER_TMAC		GENMASK(15, 8)
-+#define MT_WF_PHY_TPC_POWER_RMAC		GENMASK(23, 16)
-+#define MT_WF_PHY_TPC_POWER_TSSI		GENMASK(31, 24)
-+
  /* PHYRX CSD BAND */
 -#define MT_WF_PHYRX_CSD_BAND_RXTD12(_band)		MT_WF_PHYRX_BAND(_band, 0x8230)
 +#define MT_WF_PHYRX_CSD_BAND_RXTD12(_band)		MT_WF_PHY_BAND(_band, 0x8230)
  #define MT_WF_PHYRX_CSD_BAND_RXTD12_IRPI_SW_CLR_ONLY	BIT(18)
  #define MT_WF_PHYRX_CSD_BAND_RXTD12_IRPI_SW_CLR		BIT(29)
  
---- a/mt7996/mcu.c
-+++ b/mt7996/mcu.c
-@@ -4703,3 +4703,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
- 	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(SCS),
- 				 &req, sizeof(req), false);
- }
-+
-+int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data)
-+{
-+	struct mt7996_dev *dev = phy->dev;
-+	struct tx_power_ctrl req = {
-+		.tag = cpu_to_le16(power_ctrl_id),
-+		.len = cpu_to_le16(sizeof(req) - 4),
-+		.power_ctrl_id = power_ctrl_id,
-+		.band_idx = phy->mt76->band_idx,
-+	};
-+
-+	switch (power_ctrl_id) {
-+	case UNI_TXPOWER_SKU_POWER_LIMIT_CTRL:
-+		req.sku_enable = !!data;
-+		break;
-+	case UNI_TXPOWER_PERCENTAGE_CTRL:
-+		req.percentage_ctrl_enable = !!data;
-+		break;
-+	case UNI_TXPOWER_PERCENTAGE_DROP_CTRL:
-+		req.power_drop_level = data;
-+		break;
-+	case UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL:
-+		req.bf_backoff_enable = !!data;
-+		break;
-+	case UNI_TXPOWER_ATE_MODE_CTRL:
-+		req.ate_mode_enable = !!data;
-+		break;
-+	default:
-+		req.sku_enable = !!data;
-+	}
-+
-+	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(TXPOWER),
-+				 &req, sizeof(req), false);
-+}

@@ -15,5 +15,5 @@
 +	phy->sr_enable = false;
 +	phy->enhanced_sr_enable = false;
  
- 	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
- 					   !dev->dbg.sku_disable);
+ 	dev_info(dev->mt76.dev, "%s: sku enable = %d, path enable = %d\n", __func__,
+ 		dev->dbg.sku_disable ? 0 : phy->sku_limit_en, dev->dbg.sku_disable ? 0 : phy->sku_path_en);

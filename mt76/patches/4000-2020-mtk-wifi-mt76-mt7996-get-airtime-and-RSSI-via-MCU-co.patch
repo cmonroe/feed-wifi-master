@@ -602,7 +602,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct mt7996_phy {
  	struct mt76_phy *mt76;
  	struct mt7996_dev *dev;
-@@ -476,6 +492,7 @@ struct mt7996_dev {
+@@ -479,6 +495,7 @@ struct mt7996_dev {
  		u32 fw_dbg_module;
  		u8 fw_dbg_lv;
  		u32 bcn_total_cnt[__MT_MAX_BAND];
@@ -610,7 +610,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	} dbg;
  	const struct mt7996_dbg_reg_desc *dbg_reg;
  #endif
-@@ -681,7 +698,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -684,7 +701,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);
@@ -620,11 +620,11 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +int mt7996_mcu_get_rssi(struct mt76_dev *dev);
 +int mt7996_mcu_get_all_sta_info(struct mt76_dev *dev, u16 tag);
  int mt7996_mcu_wed_rro_reset_sessions(struct mt7996_dev *dev, u16 id);
- int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
- int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
+ 
+ static inline u8 mt7996_max_interface_num(struct mt7996_dev *dev)
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2894,6 +2894,69 @@ static int mt7996_rx_counters(struct seq
+@@ -2930,6 +2930,69 @@ static int mt7996_rx_counters(struct seq
  	return 0;
  }
  
@@ -694,7 +694,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2980,6 +3043,14 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -3016,6 +3079,14 @@ int mt7996_mtk_init_debugfs(struct mt799
  	debugfs_create_file("sr_stats", 0400, dir, phy, &mt7996_sr_stats_fops);
  	debugfs_create_file("sr_scene_cond", 0400, dir, phy, &mt7996_sr_scene_cond_fops);
  

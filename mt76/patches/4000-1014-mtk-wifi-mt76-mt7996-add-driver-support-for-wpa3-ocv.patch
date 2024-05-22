@@ -11,7 +11,7 @@ Signed-off-by: mtk23510 <rudra.shahi@mediatek.com>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -389,6 +389,8 @@ mt7996_init_wiphy(struct ieee80211_hw *h
+@@ -401,6 +401,8 @@ mt7996_init_wiphy(struct ieee80211_hw *h
  	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_CAN_REPLACE_PTK0);
  	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_MU_MIMO_AIR_SNIFFER);
  

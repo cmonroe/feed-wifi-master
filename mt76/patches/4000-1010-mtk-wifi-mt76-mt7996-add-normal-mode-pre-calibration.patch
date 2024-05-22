@@ -51,7 +51,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF0_TX_PATH		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -978,6 +978,12 @@ static int mt7996_init_hardware(struct m
+@@ -990,6 +990,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -319,6 +319,12 @@ int mt7996_set_channel(struct mt7996_phy
+@@ -325,6 +325,12 @@ int mt7996_set_channel(struct mt7996_phy
  
  	mt76_set_channel(phy->mt76);
  
@@ -256,12 +256,12 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define NIC_CAP	3
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -588,6 +588,8 @@ int mt7996_mcu_get_all_sta_info(struct m
- int mt7996_mcu_wed_rro_reset_sessions(struct mt7996_dev *dev, u16 id);
+@@ -707,6 +707,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+ #endif
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
 +int mt7996_mcu_apply_group_cal(struct mt7996_dev *dev);
 +int mt7996_mcu_apply_tx_dpd(struct mt7996_phy *phy);
+ int mt7996_mcu_set_scs(struct mt7996_phy *phy, u8 enable);
+ void mt7996_mcu_scs_sta_poll(struct work_struct *work);
  
- static inline u8 mt7996_max_interface_num(struct mt7996_dev *dev)
- {
