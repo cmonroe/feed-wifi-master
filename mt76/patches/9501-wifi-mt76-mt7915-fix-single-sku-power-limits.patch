@@ -93,7 +93,33 @@
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la.mcs[0], len[SKU_OFDM]);
-@@ -3690,7 +3690,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3493,6 +3493,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 			skb_put_data(skb, &la.ofdm, len[SKU_OFDM]);
+ 			break;
+ 		}
++
++		//ret = mt7915_mcu_set_lpi(phy, mphy->lpi_enable);
++		//if (ret)
++		//	dev_info(dev->mt76.dev, "%s: failed to enable LPI mode", __func__);
+ 	} else {
+ 		skb_put_data(skb, &la.ofdm, len[SKU_OFDM]);
+ 	}
+@@ -3637,9 +3641,13 @@ int mt7915_mcu_set_lpi(struct mt7915_phy
+ 		u8 psd_limit;
+ 		u8 _rsv[2];
+ 	} __packed req = {
+-		.enable = en,
++		.enable = 0,
+ 		.psd_limit = en ? mt7915_get_psd_country(mdev->alpha2) : 0,
+ 	};
++
++	dev_info(mdev->dev, "%s: enable = %d, psd_limit = %d",
++			__func__, req.enable, req.psd_limit);
++
+ 	return mt76_mcu_send_msg(mdev, MCU_EXT_CMD(LPI_CTRL), &req,
+ 				 sizeof(req), false);
+ }
+@@ -3690,7 +3698,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	if (ret)
  		return ret;
  
@@ -124,3 +150,34 @@
  
  		target_power += nss_delta;
  		target_power = DIV_ROUND_UP(target_power, 2);
+@@ -334,7 +334,9 @@ void mt7915_init_txpower(struct mt7915_p
+ 		__mt7915_init_txpower(phy, &phy->mt76->sband_5g.sband);
+ 	if (phy->mt76->cap.has_6ghz) {
+ 		__mt7915_init_txpower(phy, &phy->mt76->sband_6g.sband);
++		phy->mt76->lpi_enable = 1;
+ 		phy->mt76->beacon_dup = 1;
++		phy->mt76->mgmt_pwr_enhance = 0;
+ 	}
+ }
+ 
+--- a/mt76.h
++++ b/mt76.h
+@@ -849,6 +849,7 @@ struct mt76_phy {
+ 	u8 macaddr[ETH_ALEN];
+ 
+ 	int txpower_cur;
++	u8 lpi_enable;
+ 	u8 beacon_dup;
+ 	u8 mgmt_pwr_enhance;
+ 	u8 sku_idx;
+--- a/mt7915/vendor.c
++++ b/mt7915/vendor.c
+@@ -958,6 +958,8 @@ static int mt7915_vendor_txpower_ctrl(st
+ 			err = mt7915_mcu_set_lpi(phy, val);
+ 			if (err)
+ 				return err;
++
++			mphy->lpi_enable = val;
+ 		}
+ 	}
+ 

@@ -122,7 +122,7 @@
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1117,6 +1117,14 @@ struct mt76_power_limits {
+@@ -1118,6 +1118,14 @@ struct mt76_power_limits {
  	} path;
  };
  
@@ -137,7 +137,7 @@
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -1731,6 +1739,12 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -1732,6 +1740,12 @@ s8 mt76_get_rate_power_limits(struct mt7
  			      struct mt76_power_limits *dest,
  			      s8 target_power);
  
