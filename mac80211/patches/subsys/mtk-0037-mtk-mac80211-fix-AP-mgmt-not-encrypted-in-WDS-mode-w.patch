@@ -15,11 +15,9 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  net/mac80211/tx.c | 7 +++++++
  1 file changed, 7 insertions(+)
 
-diff --git a/net/mac80211/tx.c b/net/mac80211/tx.c
-index 0f6c960..8f85193 100644
 --- a/net/mac80211/tx.c
 +++ b/net/mac80211/tx.c
-@@ -1241,6 +1241,13 @@ ieee80211_tx_prepare(struct ieee80211_sub_if_data *sdata,
+@@ -1241,6 +1241,13 @@ ieee80211_tx_prepare(struct ieee80211_su
  		if (!tx->sta && !is_multicast_ether_addr(hdr->addr1)) {
  			tx->sta = sta_info_get(sdata, hdr->addr1);
  			aggr_check = true;
@@ -33,6 +31,3 @@ index 0f6c960..8f85193 100644
  		}
  	}
  
--- 
-2.18.0
-

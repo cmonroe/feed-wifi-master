@@ -26,7 +26,7 @@ OBSS BSS Color will be ageout if not seen for 10 seconds.
  	struct cfg80211_bitrate_mask beacon_tx_rate;
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -4889,6 +4889,36 @@ out:
+@@ -4888,6 +4888,36 @@ out:
  	return err;
  }
  

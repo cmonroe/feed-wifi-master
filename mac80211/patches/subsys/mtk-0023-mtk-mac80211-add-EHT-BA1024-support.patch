@@ -8,11 +8,9 @@ Subject: [PATCH 23/37] mtk: mac80211: add EHT BA1024 support
  net/mac80211/agg-tx.c     | 45 +++++++++++++++++++++++++++++++++++++--
  2 files changed, 45 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/ieee80211.h b/include/linux/ieee80211.h
-index 7aaae32..3308e85 100644
 --- a/include/linux/ieee80211.h
 +++ b/include/linux/ieee80211.h
-@@ -1267,6 +1267,8 @@ struct ieee80211_mgmt {
+@@ -1345,6 +1345,8 @@ struct ieee80211_mgmt {
  					__le16 status;
  					__le16 capab;
  					__le16 timeout;
@@ -21,11 +19,9 @@ index 7aaae32..3308e85 100644
  				} __packed addba_resp;
  				struct{
  					u8 action_code;
-diff --git a/net/mac80211/agg-tx.c b/net/mac80211/agg-tx.c
-index 7f66e69..b8b8e22 100644
 --- a/net/mac80211/agg-tx.c
 +++ b/net/mac80211/agg-tx.c
-@@ -72,10 +72,17 @@ static void ieee80211_send_addba_request(struct ieee80211_sub_if_data *sdata,
+@@ -66,10 +66,17 @@ static void ieee80211_send_addba_request
  	struct ieee80211_local *local = sdata->local;
  	struct sk_buff *skb;
  	struct ieee80211_mgmt *mgmt;
@@ -44,7 +40,7 @@ index 7f66e69..b8b8e22 100644
  
  	if (!skb)
  		return;
-@@ -114,6 +121,15 @@ static void ieee80211_send_addba_request(struct ieee80211_sub_if_data *sdata,
+@@ -108,6 +115,15 @@ static void ieee80211_send_addba_request
  	mgmt->u.action.u.addba_req.start_seq_num =
  					cpu_to_le16(start_seq_num << 4);
  
@@ -60,7 +56,7 @@ index 7f66e69..b8b8e22 100644
  	ieee80211_tx_skb_tid(sdata, skb, tid, -1);
  }
  
-@@ -481,8 +497,11 @@ static void ieee80211_send_addba_with_timeout(struct sta_info *sta,
+@@ -475,8 +491,11 @@ static void ieee80211_send_addba_with_ti
  	sta->ampdu_mlme.addba_req_num[tid]++;
  	spin_unlock_bh(&sta->lock);
  
@@ -73,7 +69,7 @@ index 7f66e69..b8b8e22 100644
  	} else {
  		/*
  		 * We really should use what the driver told us it will
-@@ -998,13 +1017,35 @@ void ieee80211_process_addba_resp(struct ieee80211_local *local,
+@@ -992,13 +1011,35 @@ void ieee80211_process_addba_resp(struct
  {
  	struct tid_ampdu_tx *tid_tx;
  	struct ieee80211_txq *txq;
@@ -109,6 +105,3 @@ index 7f66e69..b8b8e22 100644
  	buf_size = min(buf_size, local->hw.max_tx_aggregation_subframes);
  
  	txq = sta->sta.txq[tid];
--- 
-2.18.0
-

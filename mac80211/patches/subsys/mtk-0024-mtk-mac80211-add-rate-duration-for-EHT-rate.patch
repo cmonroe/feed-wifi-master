@@ -7,8 +7,6 @@ Subject: [PATCH 24/37] mtk: mac80211: add rate duration for EHT rate.
  net/mac80211/airtime.c | 349 ++++++++++++++++++++++++++++++++++++++++-
  1 file changed, 346 insertions(+), 3 deletions(-)
 
-diff --git a/net/mac80211/airtime.c b/net/mac80211/airtime.c
-index e8ebd34..b1de6d0 100644
 --- a/net/mac80211/airtime.c
 +++ b/net/mac80211/airtime.c
 @@ -55,10 +55,21 @@
@@ -121,7 +119,7 @@ index e8ebd34..b1de6d0 100644
  struct mcs_group {
  	u8 shift;
  	u16 duration[MCS_GROUP_RATES];
-@@ -376,6 +449,262 @@ static const struct mcs_group airtime_mcs_groups[] = {
+@@ -376,6 +449,262 @@ static const struct mcs_group airtime_mc
  	HE_GROUP(6, HE_GI_32, BW_160),
  	HE_GROUP(7, HE_GI_32, BW_160),
  	HE_GROUP(8, HE_GI_32, BW_160),
@@ -384,7 +382,7 @@ index e8ebd34..b1de6d0 100644
  };
  
  static u32
-@@ -422,6 +751,9 @@ static u32 ieee80211_get_rate_duration(struct ieee80211_hw *hw,
+@@ -422,6 +751,9 @@ static u32 ieee80211_get_rate_duration(s
  	case RATE_INFO_BW_160:
  		bw = BW_160;
  		break;
@@ -394,7 +392,7 @@ index e8ebd34..b1de6d0 100644
  	default:
  		WARN_ON_ONCE(1);
  		return 0;
-@@ -443,11 +775,20 @@ static u32 ieee80211_get_rate_duration(struct ieee80211_hw *hw,
+@@ -443,11 +775,20 @@ static u32 ieee80211_get_rate_duration(s
  		idx = status->rate_idx;
  		group = HE_GROUP_IDX(streams, status->he_gi, bw);
  		break;
@@ -415,7 +413,7 @@ index e8ebd34..b1de6d0 100644
  	if (WARN_ON_ONCE((status->encoding != RX_ENC_HE && streams > 4) ||
  			 (status->encoding == RX_ENC_HE && streams > 8)))
  		return 0;
-@@ -517,7 +858,9 @@ static bool ieee80211_fill_rate_info(struct ieee80211_hw *hw,
+@@ -517,7 +858,9 @@ static bool ieee80211_fill_rate_info(str
  	stat->nss = ri->nss;
  	stat->rate_idx = ri->mcs;
  
@@ -426,7 +424,7 @@ index e8ebd34..b1de6d0 100644
  		stat->encoding = RX_ENC_HE;
  	else if (ri->flags & RATE_INFO_FLAGS_VHT_MCS)
  		stat->encoding = RX_ENC_VHT;
-@@ -529,7 +872,7 @@ static bool ieee80211_fill_rate_info(struct ieee80211_hw *hw,
+@@ -529,7 +872,7 @@ static bool ieee80211_fill_rate_info(str
  	if (ri->flags & RATE_INFO_FLAGS_SHORT_GI)
  		stat->enc_flags |= RX_ENC_FLAG_SHORT_GI;
  
@@ -435,6 +433,3 @@ index e8ebd34..b1de6d0 100644
  
  	if (stat->encoding != RX_ENC_LEGACY)
  		return true;
--- 
-2.18.0
-
