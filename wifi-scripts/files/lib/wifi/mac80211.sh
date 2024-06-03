@@ -60,6 +60,7 @@ BEGIN {
 		if (vht && band != "1:") mode="VHT80"
 		if (he) mode="HE80"
 		if (he && band == "1:") mode="HE20"
+		if (he && band == "4:") mode="HE160"
 		if (eht && band == "2:") mode="EHT80"
 		if (eht && band == "4:") mode="EHT160"
 		if (eht && band == "1:") mode="EHT20"
