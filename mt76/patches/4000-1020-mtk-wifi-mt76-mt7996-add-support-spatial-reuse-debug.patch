@@ -60,18 +60,18 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -623,6 +623,11 @@ mt7996_mcu_rx_unsolicited_event(struct m
- 	case MCU_EVENT_EXT:
- 		mt7996_mcu_rx_ext_event(dev, skb);
+@@ -720,6 +720,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+ 	case MCU_UNI_EVENT_WED_RRO:
+ 		mt7996_mcu_wed_rro_event(dev, skb);
  		break;
 +#ifdef CONFIG_MTK_DEBUG
 +	case MCU_UNI_EVENT_SR:
 +		mt7996_mcu_rx_sr_event(dev, skb);
 +		break;
 +#endif
- 	case MCU_UNI_EVENT_THERMAL:
- 		mt7996_mcu_rx_thermal_notify(dev, skb);
+ 	default:
  		break;
+ 	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
 @@ -333,6 +333,9 @@ struct mt7996_phy {
