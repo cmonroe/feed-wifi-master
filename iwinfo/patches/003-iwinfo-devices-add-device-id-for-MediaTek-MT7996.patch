@@ -11,7 +11,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/devices.txt
 +++ b/devices.txt
-@@ -187,6 +187,7 @@
+@@ -188,6 +188,7 @@
  0x14c3 0x7662 0x14c3 0x7662    0      0  "MediaTek" "MT76x2E"
  0x14c3 0x7915 0x14c3 0x7915    0      0  "MediaTek" "MT7915E"
  0x14c3 0x7906 0x14c3 0x7906    0      0  "MediaTek" "MT7916AN"
