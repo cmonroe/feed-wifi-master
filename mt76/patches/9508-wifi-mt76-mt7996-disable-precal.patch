@@ -1,6 +1,6 @@
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3741,6 +3741,9 @@ int mt7996_mcu_apply_group_cal(struct mt
+@@ -3768,6 +3768,9 @@ int mt7996_mcu_apply_group_cal(struct mt
  	if (!(eeprom[offs] & MT_EE_WIFI_CAL_GROUP))
  		return 0;
  
@@ -10,7 +10,7 @@
  	for (idx = 0; idx < total_idx; idx++, cal += MT_EE_CAL_UNIT) {
  		dev_dbg(dev->mt76.dev, "apply group pre-cal idx=%u cal[0]=0x%02x len=%d total_idx=%d\n",
  				idx, ((unsigned char *)cal)[0], MT_EE_CAL_UNIT, total_idx);
-@@ -3853,7 +3856,7 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3880,7 +3883,7 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  		break;
  	}
  

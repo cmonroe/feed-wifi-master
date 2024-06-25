@@ -192,7 +192,7 @@
  	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4948,7 +4948,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4975,7 +4975,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -201,7 +201,7 @@
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
-@@ -4957,7 +4957,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4984,7 +4984,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	txpower_limit = mt7996_get_power_bound(phy, hw->conf.power_level);
  
  	if (phy->sku_limit_en) {

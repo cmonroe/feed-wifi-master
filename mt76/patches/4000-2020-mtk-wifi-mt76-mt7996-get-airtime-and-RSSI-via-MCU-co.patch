@@ -274,22 +274,25 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -543,6 +543,8 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -542,7 +542,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ 	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
  		u8 ac;
  		u16 wlan_idx;
++		bool clear;
  		struct mt76_wcid *wcid;
 +		struct ieee80211_sta *sta;
 +		u32 prev_tx_airtime, prev_rx_airtime, diff_tx_airtime, diff_rx_airtime;
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -581,6 +583,56 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -581,6 +584,82 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			wcid->stats.rx_packets +=
  				le32_to_cpu(res->msdu_cnt[i].rx_msdu_cnt);
  			break;
 +		case UNI_ALL_STA_TXRX_AIRTIME:
 +			wlan_idx = le16_to_cpu(res->airtime[i].wlan_idx);
 +			wcid = rcu_dereference(dev->mt76.wcid[wlan_idx]);
++			clear = false;
 +
 +			sta = wcid_to_sta(wcid);
 +			if (!sta)
@@ -315,7 +318,23 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +					diff_rx_airtime = wcid->stats.rx_airtime[ac];
 +				}
 +
-+				if ((diff_tx_airtime > 500000) || (diff_rx_airtime > 500000)) {
++				if ((wcid->stats.tx_airtime[ac] | wcid->stats.rx_airtime[ac]) & BIT(30)) {
++					clear = true;
++
++					dev_dbg(dev->mt76.dev,
++						"sta: %02X:%02X:%02X:%02X:%02X:%02X ac: %u tx_read: %u rx_read: %u tx_time: %u rx_time: %u tx_prev: %u rx_prev: %u tx_diff: %u rx_diff: %u clear: %d\n",
++						sta->addr[0], sta->addr[1], sta->addr[2], sta->addr[3], sta->addr[4], sta->addr[5],
++						ac,
++						le32_to_cpu(res->airtime[i].tx[lmac_ac]),
++						le32_to_cpu(res->airtime[i].rx[lmac_ac]),
++						wcid->stats.tx_airtime[ac],
++						wcid->stats.rx_airtime[ac],
++						prev_tx_airtime, prev_rx_airtime,
++						diff_tx_airtime, diff_rx_airtime,
++						clear);
++				}
++
++				if ((diff_tx_airtime > 600000) || (diff_rx_airtime > 600000)) {
 +					dev_dbg(dev->mt76.dev,
 +						"sta: %02X:%02X:%02X:%02X:%02X:%02X ac: %u tx_read: %u rx_read: %u tx_time: %u rx_time: %u tx_prev: %u rx_prev: %u tx_diff: %u rx_diff: %u\n",
 +						sta->addr[0], sta->addr[1], sta->addr[2], sta->addr[3], sta->addr[4], sta->addr[5],
@@ -327,20 +346,29 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +						prev_tx_airtime, prev_rx_airtime,
 +						diff_tx_airtime, diff_rx_airtime);
 +
-+					if (diff_tx_airtime > 500000)
++					if (diff_tx_airtime > 600000)
 +						diff_tx_airtime = 0;
-+					if (diff_rx_airtime > 500000)
++					if (diff_rx_airtime > 600000)
 +						diff_rx_airtime = 0;
 +				}
 +
 +				ieee80211_sta_register_airtime(sta, mt76_ac_to_tid(ac),
 +					diff_tx_airtime, diff_rx_airtime);
 +			}
++
++			if (clear) {
++				dev_dbg(dev->mt76.dev,
++					"sta: %02X:%02X:%02X:%02X:%02X:%02X reset airtime counters\n",
++					sta->addr[0], sta->addr[1], sta->addr[2], sta->addr[3], sta->addr[4], sta->addr[5]);
++
++				mt7996_mac_wtbl_update(dev, wcid->idx,
++						       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
++			}
 +			break;
  		default:
  			break;
  		}
-@@ -4670,9 +4722,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -4670,9 +4749,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -498,7 +526,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -4683,7 +4881,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -4683,7 +4908,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  
