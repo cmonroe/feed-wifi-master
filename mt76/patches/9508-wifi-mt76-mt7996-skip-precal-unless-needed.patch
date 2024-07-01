@@ -1,0 +1,17 @@
+--- a/mt7996/eeprom.c
++++ b/mt7996/eeprom.c
+@@ -429,7 +429,13 @@ static int mt7996_eeprom_load_precal(str
+ 
+ 	mt7996_eeprom_init_precal(dev);
+ 
+-	if (!dev->flash_mode || !val)
++	if (!dev->flash_mode)
++		return 0;
++
++	/* if only bit 6 is set for OOB emission workaround there's no
++	 * need to allocate and load pre-cal data from flash
++	 */
++	if (!(val & MT_EE_WIFI_CAL_GROUP) && !(val & MT_EE_WIFI_CAL_DPD))
+ 		return 0;
+ 
+ 	size = MT_EE_CAL_GROUP_SIZE + MT_EE_CAL_DPD_SIZE;
