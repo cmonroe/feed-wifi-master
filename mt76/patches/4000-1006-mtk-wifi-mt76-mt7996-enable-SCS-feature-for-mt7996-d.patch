@@ -31,7 +31,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TXPOWER = 0x2b,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1370,6 +1370,7 @@ int mt7996_register_device(struct mt7996
+@@ -1391,6 +1391,7 @@ int mt7996_register_device(struct mt7996
  	dev->mt76.phy.priv = &dev->phy;
  	INIT_WORK(&dev->rc_work, mt7996_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7996_mac_work);
