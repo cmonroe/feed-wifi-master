@@ -60,17 +60,20 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  extern const char * const IWINFO_HTMODE_NAMES[IWINFO_HTMODE_COUNT];
  
-@@ -224,7 +238,9 @@ struct iwinfo_rate_entry {
+@@ -222,10 +236,13 @@ struct iwinfo_rate_entry {
+ 	uint8_t is_ht:1;
+ 	uint8_t is_vht:1;
  	uint8_t is_he:1;
++	uint8_t is_eht:1;
  	uint8_t he_gi;
  	uint8_t he_dcm;
--	uint8_t mhz;
-+	uint8_t is_eht:1;
-+	uint8_t eht_gi;
-+	uint16_t mhz;
+ 	uint8_t mhz;
  	uint8_t nss;
++	uint8_t mhz_hi;
++	uint8_t eht_gi;
  };
  
+ struct iwinfo_assoclist_entry {
 --- a/iwinfo_cli.c
 +++ b/iwinfo_cli.c
 @@ -327,6 +327,17 @@ static char * format_assocrate(struct iw
@@ -79,7 +82,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
 +		else if (r->is_eht)
 +		{
-+			p += snprintf(p, l, ", EHT-MCS %d, %dMHz", r->mcs, r->mhz);
++			p += snprintf(p, l, ", EHT-MCS %d, %dMHz", r->mcs, r->mhz_hi * 256 + r->mhz);
 +			l = sizeof(buf) - (p - buf);
 +
 +			p += snprintf(p, l, ", EHT-NSS %d", r->nss);
@@ -118,16 +121,18 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  const char * const IWINFO_FREQ_FLAG_NAMES[IWINFO_FREQ_FLAG_COUNT] = {
 --- a/iwinfo_lua.c
 +++ b/iwinfo_lua.c
-@@ -279,6 +279,9 @@ static void set_rateinfo(lua_State *L, s
+@@ -279,7 +279,10 @@ static void set_rateinfo(lua_State *L, s
  	lua_pushboolean(L, r->is_he);
  	lua_setfield(L, -2, rx ? "rx_he" : "tx_he");
  
+-	lua_pushnumber(L, r->mhz);
 +	lua_pushboolean(L, r->is_eht);
 +	lua_setfield(L, -2, rx ? "rx_eht" : "tx_eht");
 +
- 	lua_pushnumber(L, r->mhz);
++	lua_pushnumber(L, r->mhz_hi * 256 + r->mhz);
  	lua_setfield(L, -2, rx ? "rx_mhz" : "tx_mhz");
  
+ 	if (r->is_ht)
 @@ -293,7 +296,7 @@ static void set_rateinfo(lua_State *L, s
  		lua_pushboolean(L, r->is_short_gi);
  		lua_setfield(L, -2, rx ? "rx_short_gi" : "tx_short_gi");
@@ -185,7 +190,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	         ri[NL80211_RATE_INFO_160_MHZ_WIDTH])
  		re->mhz = 160;
 +	else if (ri[NL80211_RATE_INFO_320_MHZ_WIDTH])
-+		re->mhz = 320;
++		re->mhz_hi = 320 / 256, re->mhz = 320 % 256;
  	else
  		re->mhz = 20;
  
@@ -229,31 +234,25 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  					if (tb[NL80211_BAND_IFTYPE_ATTR_HE_CAP_PHY]) {
  						len = nla_len(tb[NL80211_BAND_IFTYPE_ATTR_HE_CAP_PHY]);
  
-@@ -3261,6 +3292,23 @@ static int nl80211_get_modelist_cb(struc
+@@ -3261,6 +3292,17 @@ static int nl80211_get_modelist_cb(struc
  							nla_data(tb[NL80211_BAND_IFTYPE_ATTR_HE_CAP_PHY]),
  							len);
  					}
 +
 +					// EHT
-+					if (tb[NL80211_BAND_IFTYPE_ATTR_EHT_CAP_MAC]) {
-+					}
 +					if (tb[NL80211_BAND_IFTYPE_ATTR_EHT_CAP_PHY]) {
 +						len = nla_len(tb[NL80211_BAND_IFTYPE_ATTR_EHT_CAP_PHY]);
 +
 +						if (len > sizeof(m->eht_phy_cap) - 1)
 +							len = sizeof(m->eht_phy_cap) - 1;
-+						memcpy(&((__u8 *)m->eht_phy_cap)[1],
++						memcpy(&((uint8_t *)m->eht_phy_cap)[1],
 +							nla_data(tb[NL80211_BAND_IFTYPE_ATTR_EHT_CAP_PHY]),
 +							len);
-+					}
-+					if (tb[NL80211_BAND_IFTYPE_ATTR_EHT_CAP_MCS_SET]) {
-+					}
-+					if (tb[NL80211_BAND_IFTYPE_ATTR_EHT_CAP_PPE]) {
 +					}
  				}
  			}
  		}
-@@ -3325,6 +3373,7 @@ static int nl80211_get_htmode(const char
+@@ -3325,6 +3367,7 @@ static int nl80211_get_htmode(const char
  	char *res, b[2] = { 0 };
  	int err;
  	bool he = false;
@@ -261,7 +260,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	res = nl80211_phy2ifname(ifname);
  	*buf = 0;
-@@ -3335,6 +3384,9 @@ static int nl80211_get_htmode(const char
+@@ -3335,6 +3378,9 @@ static int nl80211_get_htmode(const char
  	if (err)
  		return -1;
  
@@ -271,7 +270,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (nl80211_hostapd_query(res ? res : ifname, "ieee80211ax", b, sizeof(b)))
  		he = b[0] == '1';
  	else if (nl80211_wpactl_query(res ? res : ifname, "wifi_generation", b, sizeof(b)))
-@@ -3343,7 +3395,7 @@ static int nl80211_get_htmode(const char
+@@ -3343,7 +3389,7 @@ static int nl80211_get_htmode(const char
  	switch (chn.width) {
  	case NL80211_CHAN_WIDTH_20:
  		if (he)
@@ -280,7 +279,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		else if (chn.mode == -1)
  			*buf = IWINFO_HTMODE_VHT20;
  		else
-@@ -3351,7 +3403,7 @@ static int nl80211_get_htmode(const char
+@@ -3351,7 +3397,7 @@ static int nl80211_get_htmode(const char
  		break;
  	case NL80211_CHAN_WIDTH_40:
  		if (he)
@@ -289,7 +288,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		else if (chn.mode == -1)
  			*buf = IWINFO_HTMODE_VHT40;
  		else
-@@ -3359,22 +3411,25 @@ static int nl80211_get_htmode(const char
+@@ -3359,22 +3405,25 @@ static int nl80211_get_htmode(const char
  		break;
  	case NL80211_CHAN_WIDTH_80:
  		if (he)
