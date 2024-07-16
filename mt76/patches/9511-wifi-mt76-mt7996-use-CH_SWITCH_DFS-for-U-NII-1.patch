@@ -1,15 +1,14 @@
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3588,6 +3588,13 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -3588,6 +3588,12 @@ int mt7996_mcu_set_chan_info(struct mt79
  	else if (!cfg80211_reg_can_beacon(phy->mt76->hw->wiphy, chandef,
  					  NL80211_IFTYPE_AP))
  		req.switch_reason = CH_SWITCH_DFS;
-+	/* Set the switch reason to DFS if ZWDFS is enabled and
-+	 * AP operates below 5250MHz. This avoids TX emission on ch 50.
++	/* Set the switch reason to DFS if AP operates
++	 * below 5250MHz. This avoids TX emission on ch 50.
 +	 */
-+	else if (dev->rdd2_phy && (chandef->chan->band == NL80211_BAND_5GHZ) &&
-+			!cfg80211_reg_can_beacon(phy->mt76->hw->wiphy, &dev->rdd2_chandef,
-+			 NL80211_IFTYPE_AP) && (chandef->center_freq1 < 5250))
++	else if ((chandef->chan->band == NL80211_BAND_5GHZ) &&
++			 (chandef->center_freq1 < 5250))
 +		req.switch_reason = CH_SWITCH_DFS;
  	else
  		req.switch_reason = CH_SWITCH_NORMAL;
