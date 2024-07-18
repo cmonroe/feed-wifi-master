@@ -1,6 +1,7 @@
 . /lib/functions/network.sh
 . /lib/functions.sh
 
+
 wpa_supplicant_add_rate() {
 	local var="$1"
 	local val="$(($2 / 1000))"
@@ -387,6 +388,10 @@ hostapd_common_add_bss_config() {
 	config_add_string fils_dhcp
 
 	config_add_int ocv
+
+	config_add_string auth_server_type
+	config_add_string auth_server_ca_cert auth_server_client_cert
+	config_add_string auth_server_private_key auth_server_private_key_passwd
 }
 
 hostapd_set_vlan_file() {
@@ -462,7 +467,7 @@ append_hs20_oper_friendly_name() {
 	append bss_conf "hs20_oper_friendly_name=$1" "$N"
 }
 
-append_osu_provider_friendly_name() {
+append_osu_friendly_name() {
 	append bss_conf "osu_friendly_name=$1" "$N"
 }
 
@@ -539,7 +544,12 @@ append_auth_server() {
 	[ -n "$1" ] || return
 	append bss_conf "auth_server_addr=$1" "$N"
 	append bss_conf "auth_server_port=$auth_port" "$N"
-	[ -n "$auth_secret" ] && append bss_conf "auth_server_shared_secret=$auth_secret" "$N"
+	[ -n "$auth_secret" ]                    && append bss_conf "auth_server_shared_secret=$auth_secret" "$N"
+	[ -n "$auth_server_type" ]               && append bss_conf "auth_server_type=$auth_server_type" "$N"
+	[ -n "$auth_server_ca_cert" ]            && append bss_conf "auth_server_ca_cert=$auth_server_ca_cert" "$N"
+	[ -n "$auth_server_client_cert" ]        && append bss_conf "auth_server_client_cert=$auth_server_client_cert" "$N"
+	[ -n "$auth_server_private_key" ]        && append bss_conf "auth_server_private_key=$auth_server_private_key" "$N"
+	[ -n "$auth_server_private_key_passwd" ] && append bss_conf "auth_server_private_key_passwd=$auth_server_private_key_passwd" "$N"
 }
 
 append_acct_server() {
@@ -712,7 +722,9 @@ hostapd_set_bss_options() {
 				dynamic_ownip ownip radius_client_addr \
 				eap_reauth_period request_cui \
 				erp_domain mobility_domain \
-				fils_realm fils_dhcp
+				fils_realm fils_dhcp \
+				auth_server_type auth_server_ca_cert auth_server_client_cert \
+				auth_server_private_key auth_server_private_key_passwd
 
 			# radius can provide VLAN ID for clients
 			vlan_possible=1
