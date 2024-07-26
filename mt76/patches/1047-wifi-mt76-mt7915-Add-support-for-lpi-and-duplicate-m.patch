@@ -181,7 +181,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  out:
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -288,7 +288,7 @@ static void __mt7915_init_txpower(struct
+@@ -289,7 +289,7 @@ static void __mt7915_init_txpower(struct
  
  	phy->sku_limit_en = true;
  	phy->sku_path_en = true;
@@ -190,7 +190,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	for (i = 0; i < sband->n_channels; i++) {
  		struct ieee80211_channel *chan = &sband->channels[i];
  		u32 target_power = 0;
-@@ -332,8 +332,10 @@ void mt7915_init_txpower(struct mt7915_p
+@@ -333,8 +333,10 @@ void mt7915_init_txpower(struct mt7915_p
  		__mt7915_init_txpower(phy, &phy->mt76->sband_2g.sband);
  	if (phy->mt76->cap.has_5ghz)
  		__mt7915_init_txpower(phy, &phy->mt76->sband_5g.sband);

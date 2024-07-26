@@ -1,0 +1,21 @@
+From 2531350e6d261ef54adb85ce59c5012dc4d5db90 Mon Sep 17 00:00:00 2001
+From: MeiChia Chiu <meichia.chiu@mediatek.com>
+Date: Wed, 25 Oct 2023 13:37:00 +0800
+Subject: [PATCH 34/61] mtk: mac80211: set eht_support to false when AP is not
+ in EHT mode
+
+Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
+---
+ net/mac80211/cfg.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/net/mac80211/cfg.c
++++ b/net/mac80211/cfg.c
+@@ -1384,6 +1384,7 @@ static int ieee80211_start_ap(struct wip
+ 		link_conf->eht_su_beamformer = false;
+ 		link_conf->eht_su_beamformee = false;
+ 		link_conf->eht_mu_beamformer = false;
++		link_conf->eht_support = false;
+ 	}
+ 
+ 	if (sdata->vif.type == NL80211_IFTYPE_AP &&

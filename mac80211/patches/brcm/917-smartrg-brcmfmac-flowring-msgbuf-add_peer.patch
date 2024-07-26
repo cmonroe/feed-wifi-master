@@ -11,7 +11,7 @@ Subject: [PATCH] OWRT-4809 flowring msgbuf add_peer() function added
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -6614,6 +6614,24 @@ brcmf_notify_connect_status(struct brcmf
+@@ -6606,6 +6606,24 @@ brcmf_notify_connect_status(struct brcmf
  	struct brcmf_cfg80211_profile *profile = &ifp->vif->profile;
  	struct ieee80211_channel *chan;
  	s32 err = 0;

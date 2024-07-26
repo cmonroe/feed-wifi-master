@@ -16,7 +16,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1010,8 +1010,6 @@ mt7996_set_stream_he_txbf_caps(struct mt
+@@ -1011,8 +1011,6 @@ mt7996_set_stream_he_txbf_caps(struct mt
  		return;
  
  	elem->phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER;
@@ -25,7 +25,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  
  	c = FIELD_PREP(IEEE80211_HE_PHY_CAP5_BEAMFORMEE_NUM_SND_DIM_UNDER_80MHZ_MASK,
  		       sts - 1) |
-@@ -1019,6 +1017,11 @@ mt7996_set_stream_he_txbf_caps(struct mt
+@@ -1020,6 +1018,11 @@ mt7996_set_stream_he_txbf_caps(struct mt
  		       sts - 1);
  	elem->phy_cap_info[5] |= c;
  
@@ -37,7 +37,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  	c = IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB |
  	    IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMING_PARTIAL_BW_FB;
  	elem->phy_cap_info[6] |= c;
-@@ -1178,7 +1181,6 @@ mt7996_init_eht_caps(struct mt7996_phy *
+@@ -1179,7 +1182,6 @@ mt7996_init_eht_caps(struct mt7996_phy *
  		IEEE80211_EHT_MAC_CAP0_OM_CONTROL;
  
  	eht_cap_elem->phy_cap_info[0] =
@@ -45,7 +45,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  		IEEE80211_EHT_PHY_CAP0_NDP_4_EHT_LFT_32_GI |
  		IEEE80211_EHT_PHY_CAP0_SU_BEAMFORMER |
  		IEEE80211_EHT_PHY_CAP0_SU_BEAMFORMEE;
-@@ -1192,30 +1194,36 @@ mt7996_init_eht_caps(struct mt7996_phy *
+@@ -1193,30 +1195,36 @@ mt7996_init_eht_caps(struct mt7996_phy *
  		u8_encode_bits(u8_get_bits(val, GENMASK(2, 1)),
  			       IEEE80211_EHT_PHY_CAP1_BEAMFORMEE_SS_80MHZ_MASK) |
  		u8_encode_bits(val,
@@ -92,7 +92,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  		u8_encode_bits(IEEE80211_EHT_PHY_CAP5_COMMON_NOMINAL_PKT_PAD_16US,
  			       IEEE80211_EHT_PHY_CAP5_COMMON_NOMINAL_PKT_PAD_MASK) |
  		u8_encode_bits(u8_get_bits(0x11, GENMASK(1, 0)),
-@@ -1229,14 +1237,6 @@ mt7996_init_eht_caps(struct mt7996_phy *
+@@ -1230,14 +1238,6 @@ mt7996_init_eht_caps(struct mt7996_phy *
  			       IEEE80211_EHT_PHY_CAP6_MAX_NUM_SUPP_EHT_LTF_MASK) |
  		u8_encode_bits(val, IEEE80211_EHT_PHY_CAP6_MCS15_SUPP_MASK);
  
@@ -107,7 +107,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  	val = u8_encode_bits(nss, IEEE80211_EHT_MCS_NSS_RX) |
  	      u8_encode_bits(nss, IEEE80211_EHT_MCS_NSS_TX);
  #define SET_EHT_MAX_NSS(_bw, _val) do {				\
-@@ -1247,8 +1247,29 @@ mt7996_init_eht_caps(struct mt7996_phy *
+@@ -1248,8 +1248,29 @@ mt7996_init_eht_caps(struct mt7996_phy *
  
  	SET_EHT_MAX_NSS(80, val);
  	SET_EHT_MAX_NSS(160, val);

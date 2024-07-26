@@ -24,7 +24,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		return MT7992_EEPROM_DEFAULT;
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -897,6 +897,10 @@ static int mt7996_init_hardware(struct m
+@@ -898,6 +898,10 @@ static int mt7996_init_hardware(struct m
  	INIT_LIST_HEAD(&dev->wed_rro.poll_list);
  	spin_lock_init(&dev->wed_rro.lock);
  

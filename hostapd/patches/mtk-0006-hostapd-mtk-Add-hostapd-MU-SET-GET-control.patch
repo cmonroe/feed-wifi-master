@@ -273,7 +273,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  /**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -13830,6 +13830,114 @@ fail:
+@@ -13828,6 +13828,114 @@ fail:
  }
  
  
@@ -388,7 +388,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  #ifdef CONFIG_DPP
  static int nl80211_dpp_listen(void *priv, bool enable)
  {
-@@ -14277,6 +14385,10 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -14275,6 +14383,10 @@ const struct wpa_driver_ops wpa_driver_n
  	.update_connect_params = nl80211_update_connection_params,
  	.send_external_auth_status = nl80211_send_external_auth_status,
  	.set_4addr_mode = nl80211_set_4addr_mode,

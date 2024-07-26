@@ -41,7 +41,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -378,6 +378,7 @@ mt7996_init_wiphy(struct ieee80211_hw *h
+@@ -379,6 +379,7 @@ mt7996_init_wiphy(struct ieee80211_hw *h
  
  	phy->slottime = 9;
  	phy->beacon_rate = -1;
@@ -49,7 +49,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	hw->sta_data_size = sizeof(struct mt7996_sta);
  	hw->vif_data_size = sizeof(struct mt7996_vif);
-@@ -626,6 +627,10 @@ static int mt7996_register_phy(struct mt
+@@ -627,6 +628,10 @@ static int mt7996_register_phy(struct mt
  	if (ret)
  		goto error;
  

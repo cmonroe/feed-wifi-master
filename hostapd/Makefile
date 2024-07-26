@@ -5,7 +5,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=hostapd
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE_URL:=https://w1.fi/hostap.git
 PKG_SOURCE_PROTO:=git
@@ -98,6 +98,7 @@ DRIVER_MAKEOPTS= \
 ifeq ($(LOCAL_TYPE),hostapd)
 	DRIVER_MAKEOPTS += CONFIG_ACS=y
 	DRIVER_MAKEOPTS += CONFIG_FILS=y CONFIG_FILS_SK_PFS=y
+	DRIVER_MAKEOPTS += CONFIG_RADIUS_TLS=y
 endif
 
 ifeq ($(SSL_VARIANT),openssl)

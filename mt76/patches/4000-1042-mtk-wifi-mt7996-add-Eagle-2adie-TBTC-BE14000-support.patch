@@ -82,7 +82,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	[GROUP_SIZE_2G] =			4 * MT_EE_CAL_UNIT,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -915,6 +915,12 @@ int mt7996_get_chip_sku(struct mt7996_de
+@@ -916,6 +916,12 @@ int mt7996_get_chip_sku(struct mt7996_de
  
  	switch (mt76_chip(&dev->mt76)) {
  	case 0x7990:

@@ -1,14 +1,14 @@
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -5,6 +5,7 @@
- #include <linux/hwmon.h>
+@@ -6,6 +6,7 @@
  #include <linux/hwmon-sysfs.h>
+ #include <linux/of.h>
  #include <linux/thermal.h>
 +#include <linux/of.h>
  #include "mt7915.h"
  #include "mac.h"
  #include "mcu.h"
-@@ -811,6 +812,11 @@ mt7915_init_hardware(struct mt7915_dev *
+@@ -812,6 +813,11 @@ mt7915_init_hardware(struct mt7915_dev *
  
  	INIT_WORK(&dev->init_work, mt7915_init_work);
  

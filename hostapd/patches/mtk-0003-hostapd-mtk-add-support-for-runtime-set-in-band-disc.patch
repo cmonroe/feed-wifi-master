@@ -1,7 +1,7 @@
-From c7e5ad8609443c3e484ea06df88755de55f5bda0 Mon Sep 17 00:00:00 2001
+From 5453bd56aa134865ecaab20bde482b6c389831cb Mon Sep 17 00:00:00 2001
 From: MeiChia Chiu <meichia.chiu@mediatek.com>
 Date: Tue, 31 May 2022 21:15:54 +0800
-Subject: [PATCH 03/28] hostapd: mtk: add support for runtime set in-band
+Subject: [PATCH 031/104] mtk: hostapd: add support for runtime set in-band
  discovery
 
 Usage:
@@ -12,13 +12,17 @@ hostapd_cli unsolic_probe_resp [tx_type] [interval]
 2: enable FILS discovery
 
 Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
+
+The mac80211 layer already has a new variable "update",
+so the redundant variable "disable" has been removed.
+
+Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
 ---
  hostapd/ctrl_iface.c         | 66 ++++++++++++++++++++++++++++++++++++
  hostapd/hostapd_cli.c        | 20 +++++++++++
  src/ap/beacon.c              |  5 ++-
- src/drivers/driver_nl80211.c | 10 ++++--
- src/drivers/nl80211_copy.h   |  1 +
- 5 files changed, 98 insertions(+), 4 deletions(-)
+ src/drivers/driver_nl80211.c |  6 ++--
+ 4 files changed, 94 insertions(+), 3 deletions(-)
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
@@ -161,20 +165,15 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4783,9 +4783,10 @@ static int nl80211_fils_discovery(struct
- 			params->fd_max_int) ||
- 	    (params->fd_frame_tmpl &&
+@@ -4785,7 +4785,6 @@ static int nl80211_fils_discovery(struct
  	     nla_put(msg, NL80211_FILS_DISCOVERY_ATTR_TMPL,
--		     params->fd_frame_tmpl_len, params->fd_frame_tmpl)))
-+		     params->fd_frame_tmpl_len, params->fd_frame_tmpl)) ||
-+	    nla_put_u32(msg, NL80211_UNSOL_BCAST_PROBE_RESP_ATTR_INTE,
-+			params->unsol_bcast_probe_resp_interval))
+ 		     params->fd_frame_tmpl_len, params->fd_frame_tmpl)))
  		return -1;
 -
  	nla_nest_end(msg, attr);
  	return 0;
  }
-@@ -5418,7 +5419,10 @@ static int wpa_driver_nl80211_set_ap(voi
+@@ -5418,7 +5417,10 @@ static int wpa_driver_nl80211_set_ap(voi
  #endif /* CONFIG_SAE */
  
  #ifdef CONFIG_FILS
@@ -186,13 +185,3 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  		goto fail;
  #endif /* CONFIG_FILS */
  
---- a/src/drivers/nl80211_copy.h
-+++ b/src/drivers/nl80211_copy.h
-@@ -7647,6 +7647,7 @@ enum nl80211_fils_discovery_attributes {
- 	NL80211_FILS_DISCOVERY_ATTR_INT_MIN,
- 	NL80211_FILS_DISCOVERY_ATTR_INT_MAX,
- 	NL80211_FILS_DISCOVERY_ATTR_TMPL,
-+	NL80211_UNSOL_BCAST_PROBE_RESP_ATTR_INTE,
- 
- 	/* keep last */
- 	__NL80211_FILS_DISCOVERY_ATTR_LAST,

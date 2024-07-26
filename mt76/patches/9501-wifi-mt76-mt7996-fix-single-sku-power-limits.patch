@@ -137,9 +137,9 @@
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -1732,6 +1740,12 @@ s8 mt76_get_rate_power_limits(struct mt7
- 			      struct mt76_power_limits *dest,
- 			      s8 target_power);
+@@ -1744,6 +1752,12 @@ static inline bool mt76_queue_is_rx(stru
+ 	return false;
+ }
  
 +s8 mt76_mt7996_get_rate_power_limits(struct mt76_phy *phy,
 +			      struct ieee80211_channel *chan,
@@ -212,7 +212,7 @@
  	} else {
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -295,23 +295,23 @@ static void __mt7996_init_txpower(struct
+@@ -296,23 +296,23 @@ static void __mt7996_init_txpower(struct
  	int nss_delta = mt76_tx_power_nss_delta(nss);
  	int pwr_delta = mt7996_eeprom_get_power_delta(dev, sband->band);
  	struct mt76_power_limits limits;

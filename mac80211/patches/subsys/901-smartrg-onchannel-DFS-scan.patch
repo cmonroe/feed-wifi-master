@@ -1,6 +1,6 @@
 --- a/net/mac80211/scan.c
 +++ b/net/mac80211/scan.c
-@@ -573,11 +573,23 @@ static bool __ieee80211_can_leave_ch(str
+@@ -591,11 +591,23 @@ static bool __ieee80211_can_leave_ch(str
  	return true;
  }
  
@@ -13,9 +13,9 @@
 -	if (!__ieee80211_can_leave_ch(sdata))
 -		return false;
 +	// validate pointers and check for scan 1 channel, our channel
-+	if ( req && local->_oper_chandef.chan && req->channels[0] &&
++	if ( req && local->hw.conf.chandef.chan && req->channels[0] &&
 +		( req->n_channels == 1 ) &&
-+		   (req->channels[0]->center_freq == local->_oper_chandef.chan->center_freq))
++		   (req->channels[0]->center_freq == local->hw.conf.chandef.chan->center_freq))
 +	{
 +		// Don't check leave in DFS if it is the current channel.
 +	}
@@ -27,18 +27,18 @@
  
  	if (!list_empty(&local->roc_list))
  		return false;
-@@ -599,7 +611,7 @@ void ieee80211_run_deferred_scan(struct
+@@ -617,7 +629,7 @@ void ieee80211_run_deferred_scan(struct
  	if (!ieee80211_can_scan(local,
  				rcu_dereference_protected(
  					local->scan_sdata,
--					lockdep_is_held(&local->mtx))))
-+					lockdep_is_held(&local->mtx)), local->scan_req))
+-					lockdep_is_held(&local->hw.wiphy->mtx))))
++					lockdep_is_held(&local->hw.wiphy->mtx)), local->scan_req))
  		return;
  
  	wiphy_delayed_work_queue(local->hw.wiphy, &local->scan_work,
-@@ -685,10 +697,11 @@ static int __ieee80211_start_scan(struct
- 	if (local->scan_req)
- 		return -EBUSY;
+@@ -714,10 +726,11 @@ static int __ieee80211_start_scan(struct
+ 	    !(sdata->vif.active_links & BIT(req->tsf_report_link_id)))
+ 		return -EINVAL;
  
 -	if (!__ieee80211_can_leave_ch(sdata))
 -		return -EBUSY;
@@ -51,7 +51,7 @@
  		/* wait for the work to finish/time out */
  		rcu_assign_pointer(local->scan_req, req);
  		rcu_assign_pointer(local->scan_sdata, sdata);
-@@ -1188,8 +1201,10 @@ int ieee80211_request_ibss_scan(struct i
+@@ -1192,8 +1205,10 @@ int ieee80211_request_ibss_scan(struct i
  				struct ieee80211_channel *tmp_ch =
  				    &local->hw.wiphy->bands[band]->channels[i];
  
@@ -59,7 +59,7 @@
  				if (tmp_ch->flags & (IEEE80211_CHAN_NO_IR |
 -						     IEEE80211_CHAN_DISABLED))
 +						     IEEE80211_CHAN_DISABLED) &&
-+					(tmp_ch != local->_oper_chandef.chan))
++					(tmp_ch != local->hw.conf.chandef.chan))
  					continue;
  
  				local->int_scan_req->channels[n_ch] = tmp_ch;

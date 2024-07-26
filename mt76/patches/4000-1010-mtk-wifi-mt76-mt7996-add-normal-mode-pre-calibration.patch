@@ -51,7 +51,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF0_TX_PATH		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -990,6 +990,12 @@ static int mt7996_init_hardware(struct m
+@@ -991,6 +991,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  

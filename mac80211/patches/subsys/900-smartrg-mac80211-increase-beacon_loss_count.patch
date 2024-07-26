@@ -1,6 +1,6 @@
 --- a/net/mac80211/mlme.c
 +++ b/net/mac80211/mlme.c
-@@ -61,7 +61,7 @@ MODULE_PARM_DESC(max_probe_tries,
+@@ -66,7 +66,7 @@ MODULE_PARM_DESC(max_probe_tries,
   * probe on beacon miss before declaring the connection lost
   * default to what we want.
   */

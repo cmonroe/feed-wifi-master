@@ -9,7 +9,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -5379,6 +5379,31 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
+@@ -5369,6 +5369,31 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
  	set_bit(BRCMF_VIF_STATUS_AP_CREATED, &ifp->vif->sme_state);
  	brcmf_net_setcarrier(ifp, true);
  

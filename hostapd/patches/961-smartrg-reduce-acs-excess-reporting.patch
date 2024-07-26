@@ -1,7 +1,5 @@
-Index: hostapd-2024.03.09~695277a5/src/ap/acs.c
-===================================================================
---- hostapd-2024.03.09~695277a5.orig/src/ap/acs.c
-+++ hostapd-2024.03.09~695277a5/src/ap/acs.c
+--- a/src/ap/acs.c
++++ b/src/ap/acs.c
 @@ -871,6 +871,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  	int bw320_offset = 0, ideal_bw320_offset = 0;
  	unsigned int k;

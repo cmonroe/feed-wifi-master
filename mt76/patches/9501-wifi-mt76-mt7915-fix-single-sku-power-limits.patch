@@ -130,7 +130,7 @@
  	req.sku_enable = sku_disable ? 0 : phy->sku_path_en;
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -287,7 +287,7 @@ static void __mt7915_init_txpower(struct
+@@ -288,7 +288,7 @@ static void __mt7915_init_txpower(struct
  	struct device_node *np;
  
  	phy->sku_limit_en = true;
@@ -139,7 +139,7 @@
  	np = mt76_find_power_limits_node(phy->mt76);
  	for (i = 0; i < sband->n_channels; i++) {
  		struct ieee80211_channel *chan = &sband->channels[i];
-@@ -307,8 +307,8 @@ static void __mt7915_init_txpower(struct
+@@ -308,8 +308,8 @@ static void __mt7915_init_txpower(struct
  							  target_power);
  
  		/* MT7915N can not enable Backoff table without setting value in dts */
@@ -150,7 +150,7 @@
  
  		target_power += nss_delta;
  		target_power = DIV_ROUND_UP(target_power, 2);
-@@ -334,7 +334,9 @@ void mt7915_init_txpower(struct mt7915_p
+@@ -335,7 +335,9 @@ void mt7915_init_txpower(struct mt7915_p
  		__mt7915_init_txpower(phy, &phy->mt76->sband_5g.sband);
  	if (phy->mt76->cap.has_6ghz) {
  		__mt7915_init_txpower(phy, &phy->mt76->sband_6g.sband);
