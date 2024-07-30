@@ -1,0 +1,29 @@
+From a55c46c6542fba69b71b0918f781ed3517d935aa Mon Sep 17 00:00:00 2001
+From: TomLiu <tomml.liu@mediatek.com>
+Date: Thu, 18 Jul 2024 21:29:16 +0000
+Subject: [PATCH] [mt76]mt7996 add airtime filter for spikeds
+
+---
+ mcu.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -4014,11 +4014,15 @@ int mt7996_mcu_get_chan_mib_info(struct
+ 		goto out;
+ 
+ #define __res_u64(s) le64_to_cpu(res[s].data)
+-	state->cc_tx += __res_u64(IDX_TX_TIME) - state_ts->cc_tx;
++	if (__res_u64(IDX_TX_TIME) - state_ts->cc_tx < 150000) {
++		state->cc_tx += __res_u64(IDX_TX_TIME) - state_ts->cc_tx;
++	}
+ 	state->cc_bss_rx += __res_u64(IDX_RX_TIME) - state_ts->cc_bss_rx;
+-	state->cc_rx += __res_u64(IDX_RX_TIME) +
++	if (__res_u64(IDX_RX_TIME) + __res_u64(IDX_OBSS_AIRTIME) - state_ts->cc_rx < 150000) {
++		state->cc_rx += __res_u64(IDX_RX_TIME) +
+ 			__res_u64(IDX_OBSS_AIRTIME) -
+ 			state_ts->cc_rx;
++	}
+ 	state->cc_busy += __res_u64(IDX_TX_TIME) +
+ 			  __res_u64(IDX_RX_TIME) +
+ 			  __res_u64(IDX_OBSS_AIRTIME) +
