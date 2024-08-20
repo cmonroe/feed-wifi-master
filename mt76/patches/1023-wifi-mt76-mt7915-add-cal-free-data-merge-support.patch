@@ -221,7 +221,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	       ETH_ALEN);
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2879,6 +2879,7 @@ int mt7915_mcu_get_eeprom(struct mt7915_
+@@ -2893,6 +2893,7 @@ int mt7915_mcu_get_eeprom(struct mt7915_
  	};
  	struct mt7915_mcu_eeprom_info *res;
  	struct sk_buff *skb;
@@ -229,7 +229,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	int ret;
  	u8 *buf = read_buf;
  
-@@ -2889,9 +2890,16 @@ int mt7915_mcu_get_eeprom(struct mt7915_
+@@ -2903,9 +2904,16 @@ int mt7915_mcu_get_eeprom(struct mt7915_
  		return ret;
  
  	res = (struct mt7915_mcu_eeprom_info *)skb->data;

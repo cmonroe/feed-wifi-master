@@ -208,7 +208,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define RF_PRE_CAL				BIT(29)
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3720,13 +3720,11 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3717,13 +3717,11 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	enum nl80211_chan_width bw = chandef->width;
  	const struct ieee80211_channel *chan_list;
  	u32 cal_id, chan_list_size, base_offset = 0, offs = MT_EE_DO_PRE_CAL;
@@ -224,7 +224,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	switch (band) {
  	case NL80211_BAND_2GHZ:
-@@ -3742,27 +3740,35 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3739,27 +3737,35 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  			return 0;
  		cal_id = RF_DPD_FLAT_CAL;
  		chan_list = dpd_2g_ch_list_bw20;
@@ -266,7 +266,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			return 0;
  		break;
  	case NL80211_BAND_6GHZ:
-@@ -3770,20 +3776,27 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3767,20 +3773,27 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  		cal_id = RF_DPD_FLAT_6G_CAL;
  		chan_list = mphy->sband_6g.sband.channels;
  		chan_list_size = mphy->sband_6g.sband.n_channels;
@@ -299,7 +299,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		} else if (bw > NL80211_CHAN_WIDTH_20) {
  			/* apply (center channel - 2)'s dpd cal data for bw 40/80 channels */
  			channel -= 2;
-@@ -3803,9 +3816,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3800,9 +3813,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	if (idx == chan_list_size)
  		return -EINVAL;
  
@@ -333,7 +333,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  struct mt7996_sta {
  	struct mt76_wcid wcid; /* must be first */
  
-@@ -437,6 +450,10 @@ struct mt7996_dev {
+@@ -435,6 +448,10 @@ struct mt7996_dev {
  
  	void *cal;
  	u32 cur_prek_offset;
@@ -344,7 +344,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	struct {
  		u16 table_mask;
-@@ -557,7 +574,6 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -555,7 +572,6 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
  				   struct ieee80211_channel *chan);
  s8 mt7996_eeprom_get_power_delta(struct mt7996_dev *dev, int band);

@@ -114,7 +114,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF2_TX_PATH_BAND1		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -883,6 +883,65 @@ out:
+@@ -884,6 +884,65 @@ out:
  #endif
  }
  

@@ -10,27 +10,27 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1548,6 +1548,9 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1544,6 +1544,9 @@ void mt7915_mac_reset_work(struct work_s
  	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
  		return;
  
-+	dev_info(dev->mt76.dev,"\n%s L1 SER recovery start.",
++	dev_info(dev->mt76.dev,"==== %s L1 SER recovery start ====",
 +		 wiphy_name(dev->mt76.hw->wiphy));
 +
  	ieee80211_stop_queues(mt76_hw(dev));
  	if (ext_phy)
  		ieee80211_stop_queues(ext_phy->hw);
-@@ -1623,6 +1626,9 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1621,6 +1624,9 @@ void mt7915_mac_reset_work(struct work_s
  		ieee80211_queue_delayed_work(ext_phy->hw,
  					     &phy2->mt76->mac_work,
  					     MT7915_WATCHDOG_TIME);
 +
-+	dev_info(dev->mt76.dev,"\n%s L1 SER recovery completed.",
++	dev_info(dev->mt76.dev,"==== %s L1 SER recovery completed ====",
 +		 wiphy_name(dev->mt76.hw->wiphy));
  }
  
  /* firmware coredump */
-@@ -1738,6 +1744,9 @@ void mt7915_coredump(struct mt7915_dev *
+@@ -1736,6 +1742,9 @@ void mt7915_coredump(struct mt7915_dev *
  
  void mt7915_reset(struct mt7915_dev *dev)
  {

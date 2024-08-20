@@ -38,7 +38,7 @@
  		dev->eeprom_mode = EFUSE_MODE;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3604,7 +3604,7 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -3601,7 +3601,7 @@ int mt7996_mcu_set_chan_info(struct mt79
  				 &req, sizeof(req), true);
  }
  
@@ -47,7 +47,7 @@
  {
  #define MAX_PAGE_IDX_MASK	GENMASK(7, 5)
  #define PAGE_IDX_MASK		GENMASK(4, 2)
-@@ -3649,22 +3649,6 @@ static int mt7996_mcu_set_eeprom_flash(s
+@@ -3646,22 +3646,6 @@ static int mt7996_mcu_set_eeprom_flash(s
  	return 0;
  }
  

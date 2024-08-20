@@ -8,9 +8,9 @@ PKG_LICENSE_FILES:=
 
 PKG_SOURCE_URL:=https://github.com/openwrt/mt76
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_DATE:=2024-07-13
-PKG_SOURCE_VERSION:=3b47d9df427c4833605a172f2a8f0e0012b04c80
-PKG_MIRROR_HASH:=23c3aaa53fb2e088446eb18148a44d3edcd3a0eda1ee41cf5cbf56064ebbee58
+PKG_SOURCE_DATE:=2024-08-25
+PKG_SOURCE_VERSION:=904ef52a8d04f6808284011579fdd45418f643d9
+PKG_MIRROR_HASH:=4e285ac767336aab56006fc9f8ca1c35d639926b03de1d6d1667ffc939d81c87
 
 PKG_MAINTAINER:=Felix Fietkau <nbd@nbd.name>
 PKG_USE_NINJA:=0
@@ -625,12 +625,13 @@ define KernelPackage/mt7996-firmware/install
 		./files/firmware/mt7996/mt7996_rom_patch.bin \
 		./files/firmware/mt7996/mt7996_dsp.bin \
 		./files/firmware/mt7996/mt7996_eeprom.bin \
-		./files/firmware/mt7996/mt7996_eeprom_tm.bin \
+		./files/firmware/mt7996/mt7996_eeprom_2i5i6i.bin \
 		./files/firmware/mt7996/mt7996_wa_233.bin \
 		./files/firmware/mt7996/mt7996_wm_233.bin \
 		./files/firmware/mt7996/mt7996_wm_tm_233.bin \
 		./files/firmware/mt7996/mt7996_rom_patch_233.bin \
 		./files/firmware/mt7996/mt7996_eeprom_233.bin \
+		./files/firmware/mt7996/mt7996_eeprom_233_2i5i6i.bin \
 		$(1)/lib/firmware/mediatek/mt7996
 endef
 

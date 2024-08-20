@@ -9,7 +9,7 @@ Subject: [PATCH] [mt76]mt7996 add airtime filter for airtime spike
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4014,16 +4014,26 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -4011,16 +4011,26 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)

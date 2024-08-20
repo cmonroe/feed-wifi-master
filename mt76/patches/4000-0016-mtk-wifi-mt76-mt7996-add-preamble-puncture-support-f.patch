@@ -16,7 +16,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1292,6 +1292,7 @@ enum {
+@@ -1302,6 +1302,7 @@ enum {
  	MCU_UNI_CMD_CHANNEL_SWITCH = 0x34,
  	MCU_UNI_CMD_THERMAL = 0x35,
  	MCU_UNI_CMD_VOW = 0x37,
@@ -26,7 +26,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_OFFCH_SCAN_CTRL = 0x58,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4562,3 +4562,33 @@ int mt7996_mcu_cp_support(struct mt7996_
+@@ -4568,3 +4568,33 @@ int mt7996_mcu_cp_support(struct mt7996_
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WA_EXT_CMD(CP_SUPPORT),
  				 &cp_mode, sizeof(cp_mode), true);
  }

@@ -125,7 +125,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -296,7 +296,12 @@ static void __mt7996_init_txpower(struct
+@@ -297,7 +297,12 @@ static void __mt7996_init_txpower(struct
  	int nss_delta = mt76_tx_power_nss_delta(nss);
  	int pwr_delta = mt7996_eeprom_get_power_delta(dev, sband->band);
  	struct mt76_power_limits limits;
@@ -138,7 +138,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	for (i = 0; i < sband->n_channels; i++) {
  		struct ieee80211_channel *chan = &sband->channels[i];
  		int target_power = mt7996_eeprom_get_target_power(dev, chan);
-@@ -304,11 +309,18 @@ static void __mt7996_init_txpower(struct
+@@ -305,11 +310,18 @@ static void __mt7996_init_txpower(struct
  		target_power += pwr_delta;
  		target_power = mt76_get_rate_power_limits(phy->mt76, chan,
  							  &limits,
@@ -185,7 +185,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4494,9 +4494,31 @@ int mt7996_mcu_wed_rro_reset_sessions(st
+@@ -4500,9 +4500,31 @@ int mt7996_mcu_wed_rro_reset_sessions(st
  				 sizeof(req), true);
  }
  
@@ -217,7 +217,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_phy *mphy = phy->mt76;
  	struct ieee80211_hw *hw = mphy->hw;
-@@ -4516,13 +4538,22 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4522,13 +4544,22 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -245,7 +245,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
-@@ -4552,6 +4583,34 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4558,6 +4589,34 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* padding */
  	skb_put_zero(skb, MT7996_SKU_PATH_NUM - MT7996_SKU_RATE_NUM);
  

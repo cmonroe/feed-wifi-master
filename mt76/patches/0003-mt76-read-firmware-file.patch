@@ -139,7 +139,7 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  		return ret;
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1170,6 +1170,7 @@ void mt76_seq_puts_array(struct seq_file
+@@ -1188,6 +1188,7 @@ void mt76_seq_puts_array(struct seq_file
  
  int mt76_eeprom_init(struct mt76_dev *dev, int len);
  void mt76_eeprom_override(struct mt76_phy *phy);

@@ -1,6 +1,6 @@
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4830,13 +4830,15 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -4828,13 +4828,15 @@ int mt7996_mcu_get_per_sta_info(struct m
  				rssi[3] = to_rssi(MT_PRXV_RCPI0, rcpi[3]);
  
  				msta = container_of(wcid, struct mt7996_sta, wcid);
@@ -21,7 +21,7 @@
  			}
  		}
  		break;
-@@ -4851,8 +4853,6 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -4849,8 +4851,6 @@ int mt7996_mcu_get_per_sta_info(struct m
  				            le32_to_cpu(res->tx_cnt[i].failed);
  			} else {
  				ret = -EINVAL;

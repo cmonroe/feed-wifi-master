@@ -28,7 +28,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1042,6 +1042,7 @@ enum {
+@@ -1052,6 +1052,7 @@ enum {
  	MCU_UNI_EVENT_BSS_BEACON_LOSS = 0x0c,
  	MCU_UNI_EVENT_SCAN_DONE = 0x0e,
  	MCU_UNI_EVENT_RDD_REPORT = 0x11,

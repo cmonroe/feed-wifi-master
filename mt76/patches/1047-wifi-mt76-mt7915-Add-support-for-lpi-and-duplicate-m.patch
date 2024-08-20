@@ -94,7 +94,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -813,6 +813,9 @@ struct mt76_phy {
+@@ -830,6 +830,9 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -104,7 +104,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1651,7 +1654,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
+@@ -1674,7 +1677,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
  void mt76_set_irq_mask(struct mt76_dev *dev, u32 addr, u32 clear, u32 set);
  
  struct device_node *
@@ -115,8 +115,8 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt76_connac2_mac.h
 +++ b/mt76_connac2_mac.h
-@@ -355,4 +355,11 @@ enum tx_port_idx {
- 	MT_TX_PORT_IDX_MCU
+@@ -362,4 +362,11 @@ enum tx_frag_idx {
+ 	MT_TX_FRAG_LAST
  };
  
 +enum tx_bw_idx {
@@ -129,7 +129,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif /* __MT76_CONNAC2_MAC_H */
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -564,7 +564,8 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -572,7 +572,8 @@ void mt76_connac2_mac_write_txwi(struct
  		u16 rate = mt76_connac2_mac_tx_rate_val(mphy, vif, beacon,
  							multicast);
  		u32 val = MT_TXD6_FIXED_BW;
@@ -139,7 +139,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* hardware won't add HTC for mgmt/ctrl frame */
  		txwi[2] |= cpu_to_le32(MT_TXD2_HTC_VLD);
  
-@@ -577,7 +578,9 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -585,7 +586,9 @@ void mt76_connac2_mac_write_txwi(struct
  
  			if (!spe_idx)
  				spe_idx = 24 + phy_idx;
@@ -152,7 +152,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		txwi[7] &= ~cpu_to_le32(MT_TXD7_HW_AMSDU);
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1254,6 +1254,7 @@ enum {
+@@ -1264,6 +1264,7 @@ enum {
  	MCU_EXT_CMD_SWLNA_ACI_CTRL = 0xc0,
  	MCU_EXT_CMD_CSI_CTRL = 0xc2,
  	MCU_EXT_CMD_IPI_HIST_SCAN = 0xc5,
@@ -204,7 +204,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static void
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1434,7 +1434,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
+@@ -1440,7 +1440,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
  {
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
  	struct mt76_phy *mphy = mvif->phy->mt76;
@@ -214,7 +214,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &spe_idx,
  					      RATE_PARAM_SPE_UPDATE);
-@@ -3403,6 +3404,22 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3417,6 +3418,22 @@ mt7915_update_txpower(struct mt7915_phy
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -237,7 +237,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3434,14 +3451,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3448,14 +3465,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -277,7 +277,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb_put_data(skb, &la.mcs[0], len[SKU_HT_BW20]);
  	skb_put_data(skb, &la.mcs[1], len[SKU_HT_BW40]);
  
-@@ -3471,8 +3511,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3485,8 +3525,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
@@ -314,7 +314,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	/* HT20 and HT40 */
  	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
-@@ -3548,6 +3614,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3562,6 +3628,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	return 0;
  }
  
@@ -338,7 +338,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -730,6 +730,7 @@ int mt7915_mcu_set_csi(struct mt7915_phy
+@@ -732,6 +732,7 @@ int mt7915_mcu_set_csi(struct mt7915_phy
  void mt7915_vendor_amnt_fill_rx(struct mt7915_phy *phy, struct sk_buff *skb);
  int mt7915_vendor_amnt_sta_remove(struct mt7915_phy *phy,
  				  struct ieee80211_sta *sta);

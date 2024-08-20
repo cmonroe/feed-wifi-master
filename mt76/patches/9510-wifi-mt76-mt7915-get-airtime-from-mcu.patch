@@ -13,7 +13,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1029,6 +1029,7 @@ enum {
+@@ -1039,6 +1039,7 @@ enum {
  	MCU_EXT_EVENT_WA_TX_STAT = 0x74,
  	MCU_EXT_EVENT_BCC_NOTIFY = 0x75,
  	MCU_EXT_EVENT_MURU_CTRL = 0x9f,
@@ -21,7 +21,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  	MCU_EXT_EVENT_CSI_REPORT = 0xc2,
  };
  
-@@ -1253,6 +1254,7 @@ enum {
+@@ -1263,6 +1264,7 @@ enum {
  	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
  	/* for vendor csi and air monitor */
  	MCU_EXT_CMD_SMESH_CTRL = 0xae,
@@ -29,7 +29,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  	MCU_EXT_CMD_EDCCA = 0xba,
  	MCU_EXT_CMD_SWLNA_ACI_CTRL = 0xc0,
  	MCU_EXT_CMD_CSI_CTRL = 0xc2,
-@@ -1260,6 +1262,16 @@ enum {
+@@ -1270,6 +1272,16 @@ enum {
  	MCU_EXT_CMD_LPI_CTRL = 0xc8,
  };
  
@@ -159,7 +159,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  	if (++phy->stats_work_count == 10) {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -406,6 +406,104 @@ mt7915_mcu_rx_bcc_notify(struct mt7915_d
+@@ -401,6 +401,104 @@ mt7915_mcu_rx_bcc_notify(struct mt7915_d
  }
  
  static void
@@ -264,7 +264,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  mt7915_mcu_rx_ext_event(struct mt7915_dev *dev, struct sk_buff *skb)
  {
  	struct mt76_connac2_mcu_rxd *rxd;
-@@ -432,6 +530,9 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
+@@ -427,6 +525,9 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
  	case MCU_EXT_EVENT_BCC_NOTIFY:
  		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
@@ -274,7 +274,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  	default:
  		break;
  	}
-@@ -463,6 +564,7 @@ void mt7915_mcu_rx_event(struct mt7915_d
+@@ -458,6 +559,7 @@ void mt7915_mcu_rx_event(struct mt7915_d
  	     rxd->ext_eid == MCU_EXT_EVENT_ASSERT_DUMP ||
  	     rxd->ext_eid == MCU_EXT_EVENT_PS_SYNC ||
  	     rxd->ext_eid == MCU_EXT_EVENT_BCC_NOTIFY ||
@@ -282,7 +282,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  	     !rxd->seq) &&
  	     !(rxd->eid == MCU_CMD_EXT_CID &&
  	       rxd->ext_eid == MCU_EXT_EVENT_WA_TX_STAT))
-@@ -4804,3 +4906,16 @@ int mt7915_mcu_thermal_debug(struct mt79
+@@ -4811,3 +4913,16 @@ int mt7915_mcu_thermal_debug(struct mt79
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(THERMAL_DEBUG), &req,
  				 sizeof(req), true);
  }

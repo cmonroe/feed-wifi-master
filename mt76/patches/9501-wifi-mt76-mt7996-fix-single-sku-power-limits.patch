@@ -122,7 +122,7 @@
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1118,6 +1118,14 @@ struct mt76_power_limits {
+@@ -1126,6 +1126,14 @@ struct mt76_power_limits {
  	} path;
  };
  
@@ -137,7 +137,7 @@
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -1744,6 +1752,12 @@ static inline bool mt76_queue_is_rx(stru
+@@ -1758,6 +1766,12 @@ static inline bool mt76_queue_is_rx(stru
  	return false;
  }
  
@@ -152,7 +152,7 @@
  	return (q->flags & MT_QFLAG_WED) &&
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -943,9 +943,34 @@ enum {
+@@ -945,9 +945,34 @@ enum {
  	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
  };
  
@@ -192,7 +192,7 @@
  	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4975,7 +4975,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4973,7 +4973,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -201,7 +201,7 @@
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
-@@ -4984,7 +4984,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4982,7 +4982,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	txpower_limit = mt7996_get_power_bound(phy, hw->conf.power_level);
  
  	if (phy->sku_limit_en) {
@@ -212,7 +212,7 @@
  	} else {
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -296,23 +296,23 @@ static void __mt7996_init_txpower(struct
+@@ -297,23 +297,23 @@ static void __mt7996_init_txpower(struct
  	int nss_delta = mt76_tx_power_nss_delta(nss);
  	int pwr_delta = mt7996_eeprom_get_power_delta(dev, sband->band);
  	struct mt76_power_limits limits;

@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1297,6 +1297,7 @@ enum {
+@@ -1307,6 +1307,7 @@ enum {
  	MCU_UNI_CMD_VOW = 0x37,
  	MCU_UNI_CMD_PP = 0x38,
  	MCU_UNI_CMD_FIXED_RATE_TABLE = 0x40,
@@ -51,7 +51,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF0_TX_PATH		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -991,6 +991,12 @@ static int mt7996_init_hardware(struct m
+@@ -992,6 +992,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -66,11 +66,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -325,6 +325,12 @@ int mt7996_set_channel(struct mt7996_phy
+@@ -318,6 +318,12 @@ int mt7996_set_channel(struct mt76_phy *
+ 	struct mt7996_phy *phy = mphy->priv;
+ 	int ret;
  
- 	mt76_set_channel(phy->mt76);
- 
-+	if (dev->flash_mode) {
++	if (phy->dev->flash_mode) {
 +		ret = mt7996_mcu_apply_tx_dpd(phy);
 +		if (ret)
 +			goto out;
@@ -81,7 +81,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3627,6 +3627,172 @@ int mt7996_mcu_get_eeprom_free_block(str
+@@ -3632,6 +3632,172 @@ int mt7996_mcu_get_eeprom_free_block(str
  	return 0;
  }
  

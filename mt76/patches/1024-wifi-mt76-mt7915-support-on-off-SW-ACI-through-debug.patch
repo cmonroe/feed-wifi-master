@@ -13,7 +13,7 @@ Change-Id: I8a9c277c41d1ba76f9737d8af6f42e5e8f00ba64
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1249,6 +1249,7 @@ enum {
+@@ -1259,6 +1259,7 @@ enum {
  	/* for vendor csi and air monitor */
  	MCU_EXT_CMD_SMESH_CTRL = 0xae,
  	MCU_EXT_CMD_EDCCA = 0xba,

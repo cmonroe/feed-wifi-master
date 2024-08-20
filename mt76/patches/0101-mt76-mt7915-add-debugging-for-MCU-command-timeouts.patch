@@ -1,6 +1,6 @@
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -161,16 +161,42 @@ mt7915_mcu_parse_response(struct mt76_de
+@@ -162,8 +162,20 @@ mt7915_mcu_parse_response(struct mt76_de
  	int ret = 0;
  
  	if (!skb) {
@@ -18,8 +18,12 @@
 +			mdev->last_successful_mcu_cmd);
 +
 +		if (!mdev->first_failed_mcu_cmd)
-+			mdev->first_failed_mcu_cmd = cmd;
++			mdev->first_failed_mcu_cmd = cmd;	
 +
+ 		dev->recovery.restart = true;
+ 		set_bit(MT76_MCU_RESET, &dev->mphy.state);
+ 		wake_up(&dev->mt76.mcu.wait);
+@@ -173,11 +185,25 @@ mt7915_mcu_parse_response(struct mt76_de
  		return -ETIMEDOUT;
  	}
  
@@ -47,7 +51,7 @@
  		skb_pull(skb, sizeof(*rxd) - 4);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -910,6 +910,9 @@ struct mt76_dev {
+@@ -927,6 +927,9 @@ struct mt76_dev {
  		struct mt76_usb usb;
  		struct mt76_sdio sdio;
  	};

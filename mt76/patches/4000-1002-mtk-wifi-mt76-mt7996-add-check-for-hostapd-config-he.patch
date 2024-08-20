@@ -47,7 +47,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  
  	/* sta_rec_ra accommodates BW, NSS and only MCS range format
  	 * i.e 0-{7,8,9} for VHT.
-@@ -2206,7 +2212,7 @@ int mt7996_mcu_add_sta(struct mt7996_dev
+@@ -2211,7 +2217,7 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  		/* starec amsdu */
  		mt7996_mcu_sta_amsdu_tlv(dev, skb, vif, sta);
  		/* starec he */
