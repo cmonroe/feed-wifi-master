@@ -119,7 +119,17 @@
  	return mt76_mcu_send_msg(mdev, MCU_EXT_CMD(LPI_CTRL), &req,
  				 sizeof(req), false);
  }
-@@ -3695,7 +3703,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3685,6 +3693,9 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+ 	};
+ 	int ret, sku_disable = 0;
+ 
++	/* needed to re-apply power tables after SER */
++	ret = mt7915_mcu_set_txpower_sku(phy);
++
+ #ifdef MTK_DEBUG
+ 	sku_disable = dev->dbg.sku_disable;
+ #endif
+@@ -3695,7 +3706,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	if (ret)
  		return ret;
  

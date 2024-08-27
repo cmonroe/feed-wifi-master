@@ -244,10 +244,13 @@
  		target_power = DIV_ROUND_UP(target_power, 2);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -78,6 +78,9 @@ int mt7996_run(struct ieee80211_hw *hw)
+@@ -78,6 +78,12 @@ int mt7996_run(struct ieee80211_hw *hw)
  	phy->sr_enable = true;
  	phy->enhanced_sr_enable = true;
  
++	/* needed to re-apply power tables after SER */
++	ret = mt7996_mcu_set_txpower_sku(phy);
++
 +	dev_info(dev->mt76.dev, "%s: sku enable = %d, path enable = %d\n", __func__,
 +		dev->dbg.sku_disable ? 0 : phy->sku_limit_en, dev->dbg.sku_disable ? 0 : phy->sku_path_en);
 +

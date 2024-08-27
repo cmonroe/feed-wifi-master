@@ -15,5 +15,5 @@
 +	phy->sr_enable = false;
 +	phy->enhanced_sr_enable = false;
  
- 	dev_info(dev->mt76.dev, "%s: sku enable = %d, path enable = %d\n", __func__,
- 		dev->dbg.sku_disable ? 0 : phy->sku_limit_en, dev->dbg.sku_disable ? 0 : phy->sku_path_en);
+ 	/* needed to re-apply power tables after SER */
+ 	ret = mt7996_mcu_set_txpower_sku(phy);
