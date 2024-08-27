@@ -1,0 +1,11 @@
+--- a/mt7915/coredump.c
++++ b/mt7915/coredump.c
+@@ -351,6 +351,8 @@ static struct mt7915_coredump *mt7915_co
+ 	unsigned char *buf;
+ 	bool exception;
+ 
++	return NULL;
++
+ 	len = hdr_len;
+ 
+ 	if (coredump_memdump && crash_data->memdump_buf_len)
