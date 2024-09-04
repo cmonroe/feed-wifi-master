@@ -310,6 +310,12 @@ define KernelPackage/mt7921e
   AUTOLOAD:=$(call AutoProbe,mt7921e)
 endef
 
+define KernelPackage/mt7992-firmware
+  $(KernelPackage/mt76-default)
+  TITLE:=MediaTek MT7992 firmware
+  DEPENDS+=+kmod-mt7996e
+endef
+
 define KernelPackage/mt7996-firmware
   $(KernelPackage/mt76-default)
   TITLE:=MediaTek MT7996 firmware
@@ -616,6 +622,20 @@ define KernelPackage/mt7921-firmware/install
 		$(1)/lib/firmware/mediatek
 endef
 
+define KernelPackage/mt7992-firmware/install
+	$(INSTALL_DIR) $(1)/lib/firmware/mediatek/mt7996
+	cp \
+		./files/firmware/mt7996/mt7992_wa.bin \
+		./files/firmware/mt7996/mt7992_wm.bin \
+		./files/firmware/mt7996/mt7992_wm_tm.bin \
+		./files/firmware/mt7996/mt7992_rom_patch.bin \
+		./files/firmware/mt7996/mt7992_dsp.bin \
+		./files/firmware/mt7996/mt7992_eeprom_2i5i.bin \
+		./files/firmware/mt7996/mt7992_eeprom_2i5e.bin \
+		./files/firmware/mt7996/mt7992_eeprom_2e5e.bin \
+		$(1)/lib/firmware/mediatek/mt7996
+endef
+
 define KernelPackage/mt7996-firmware/install
 	$(INSTALL_DIR) $(1)/lib/firmware/mediatek/mt7996
 	cp \
@@ -678,6 +698,7 @@ $(eval $(call KernelPackage,mt7921s))
 $(eval $(call KernelPackage,mt7921e))
 $(eval $(call KernelPackage,mt7925u))
 $(eval $(call KernelPackage,mt7925e))
+$(eval $(call KernelPackage,mt7992-firmware))
 $(eval $(call KernelPackage,mt7996-firmware))
 $(eval $(call KernelPackage,mt7996e))
 $(eval $(call KernelPackage,mt76))
