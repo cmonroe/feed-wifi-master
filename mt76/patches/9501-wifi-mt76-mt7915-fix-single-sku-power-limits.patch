@@ -1,6 +1,6 @@
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -295,7 +295,6 @@ mt76_find_power_limits_node(struct mt76_
+@@ -310,7 +310,6 @@ mt76_find_power_limits_node(struct mt76_
  	};
  	struct device_node *cur, *fallback = NULL;
  	const char *region_name = NULL;
@@ -8,7 +8,7 @@
  
  	if (dev->region < ARRAY_SIZE(region_names))
  		region_name = region_names[dev->region];
-@@ -304,20 +303,17 @@ mt76_find_power_limits_node(struct mt76_
+@@ -319,20 +318,17 @@ mt76_find_power_limits_node(struct mt76_
  	if (!np)
  		return NULL;
  
@@ -31,7 +31,7 @@
  			of_node_put(np);
  			return cur;
  		}
-@@ -400,10 +396,9 @@ mt76_apply_array_limit(s8 *pwr, size_t p
+@@ -415,10 +411,9 @@ mt76_apply_array_limit(s8 *pwr, size_t p
  static void
  mt76_apply_multi_array_limit(s8 *pwr, size_t pwr_len, s8 pwr_num,
  			     const __be32 *data, size_t len, s8 target_power,
@@ -43,7 +43,7 @@
  
  	if (!data)
  		return;
-@@ -415,7 +410,7 @@ mt76_apply_multi_array_limit(s8 *pwr, si
+@@ -430,7 +425,7 @@ mt76_apply_multi_array_limit(s8 *pwr, si
  			break;
  
  		mt76_apply_array_limit(pwr + pwr_len * i, pwr_len, data + 1,
@@ -52,7 +52,7 @@
  		if (--cur > 0)
  			continue;
  
-@@ -497,12 +492,12 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -512,12 +507,12 @@ s8 mt76_get_rate_power_limits(struct mt7
  	val = mt76_get_of_array(np, "rates-mcs", &len, mcs_rates + 1);
  	mt76_apply_multi_array_limit(dest->mcs[0], ARRAY_SIZE(dest->mcs[0]),
  				     ARRAY_SIZE(dest->mcs), val, len,
@@ -67,7 +67,7 @@
  
  	max_power_backoff = max_power;
  	val = mt76_get_of_array(np, "paths-cck", &len, ARRAY_SIZE(dest->path.cck));
-@@ -520,12 +515,12 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -535,12 +530,12 @@ s8 mt76_get_rate_power_limits(struct mt7
  	val = mt76_get_of_array(np, "paths-ru", &len, ARRAY_SIZE(dest->path.ru[0]) + 1);
  	mt76_apply_multi_array_limit(dest->path.ru[0], ARRAY_SIZE(dest->path.ru[0]),
  				     ARRAY_SIZE(dest->path.ru), val, len,
@@ -84,7 +84,7 @@
  }
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3480,7 +3480,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3481,7 +3481,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &la.cck, len[SKU_CCK]);
  
  	if (phy->mt76->cap.has_6ghz && mphy->beacon_dup &&
@@ -93,7 +93,7 @@
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la.mcs[0], len[SKU_OFDM]);
-@@ -3498,6 +3498,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3499,6 +3499,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
  			skb_put_data(skb, &la.ofdm, len[SKU_OFDM]);
  			break;
  		}
@@ -104,7 +104,7 @@
  	} else {
  		skb_put_data(skb, &la.ofdm, len[SKU_OFDM]);
  	}
-@@ -3642,9 +3646,13 @@ int mt7915_mcu_set_lpi(struct mt7915_phy
+@@ -3643,9 +3647,13 @@ int mt7915_mcu_set_lpi(struct mt7915_phy
  		u8 psd_limit;
  		u8 _rsv[2];
  	} __packed req = {
@@ -119,7 +119,7 @@
  	return mt76_mcu_send_msg(mdev, MCU_EXT_CMD(LPI_CTRL), &req,
  				 sizeof(req), false);
  }
-@@ -3685,6 +3693,9 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3686,6 +3694,9 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	};
  	int ret, sku_disable = 0;
  
@@ -129,7 +129,7 @@
  #ifdef MTK_DEBUG
  	sku_disable = dev->dbg.sku_disable;
  #endif
-@@ -3695,7 +3706,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3696,7 +3707,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	if (ret)
  		return ret;
  

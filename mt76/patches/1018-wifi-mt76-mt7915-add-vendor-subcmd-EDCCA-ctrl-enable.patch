@@ -40,7 +40,7 @@ Change-Id: I06a3f94d5e444be894200e2b6588d76ed38d09d0
  			return ret;
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4395,3 +4395,76 @@ int mt7915_mcu_ipi_hist_scan(struct mt79
+@@ -4396,3 +4396,76 @@ int mt7915_mcu_ipi_hist_scan(struct mt79
  
  	return 0;
  }

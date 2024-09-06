@@ -32,7 +32,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -283,8 +283,9 @@ static bool mt76_string_prop_find(struct
+@@ -298,8 +298,9 @@ static bool mt76_string_prop_find(struct
  }
  
  struct device_node *
@@ -43,7 +43,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct device_node *np = dev->dev->of_node;
  	const char *const region_names[] = {
  		[NL80211_DFS_UNSET] = "ww",
-@@ -294,6 +295,7 @@ mt76_find_power_limits_node(struct mt76_
+@@ -309,6 +310,7 @@ mt76_find_power_limits_node(struct mt76_
  	};
  	struct device_node *cur, *fallback = NULL;
  	const char *region_name = NULL;
@@ -51,7 +51,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	if (dev->region < ARRAY_SIZE(region_names))
  		region_name = region_names[dev->region];
-@@ -302,17 +304,20 @@ mt76_find_power_limits_node(struct mt76_
+@@ -317,17 +319,20 @@ mt76_find_power_limits_node(struct mt76_
  	if (!np)
  		return NULL;
  
@@ -74,7 +74,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  			of_node_put(np);
  			return cur;
  		}
-@@ -387,7 +392,7 @@ mt76_apply_array_limit(s8 *pwr, size_t p
+@@ -402,7 +407,7 @@ mt76_apply_array_limit(s8 *pwr, size_t p
  
  	for (i = 0; i < pwr_len; i++) {
  		pwr[i] = min_t(s8, target_power,
@@ -83,7 +83,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		*max_power = max(*max_power, pwr[i]);
  	}
  }
-@@ -451,7 +456,7 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -466,7 +471,7 @@ s8 mt76_get_rate_power_limits(struct mt7
  	if (!IS_ENABLED(CONFIG_OF))
  		return target_power;
  
@@ -204,7 +204,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static void
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1440,7 +1440,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
+@@ -1441,7 +1441,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
  {
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
  	struct mt76_phy *mphy = mvif->phy->mt76;
@@ -214,7 +214,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &spe_idx,
  					      RATE_PARAM_SPE_UPDATE);
-@@ -3417,6 +3418,22 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3418,6 +3419,22 @@ mt7915_update_txpower(struct mt7915_phy
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -237,7 +237,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3448,14 +3465,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3449,14 +3466,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -277,7 +277,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb_put_data(skb, &la.mcs[0], len[SKU_HT_BW20]);
  	skb_put_data(skb, &la.mcs[1], len[SKU_HT_BW40]);
  
-@@ -3485,8 +3525,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3486,8 +3526,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
@@ -314,7 +314,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	/* HT20 and HT40 */
  	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
-@@ -3562,6 +3628,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3563,6 +3629,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	return 0;
  }
  

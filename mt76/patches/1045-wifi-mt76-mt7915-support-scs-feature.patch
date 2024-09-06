@@ -150,7 +150,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  const struct ieee80211_ops mt7915_ops = {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4583,3 +4583,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
+@@ -4584,3 +4584,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
  
  	return 0;
  }

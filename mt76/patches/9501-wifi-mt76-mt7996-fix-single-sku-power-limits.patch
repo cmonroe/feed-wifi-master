@@ -1,6 +1,6 @@
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -526,6 +526,119 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -541,6 +541,119 @@ s8 mt76_get_rate_power_limits(struct mt7
  }
  EXPORT_SYMBOL_GPL(mt76_get_rate_power_limits);
  
