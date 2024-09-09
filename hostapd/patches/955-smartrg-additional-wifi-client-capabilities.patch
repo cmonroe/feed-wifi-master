@@ -136,7 +136,7 @@
  {
  	void *supported_mcs;
  	void *map;
-@@ -194,31 +214,554 @@ hostapd_parse_vht_capab_blobmsg(struct i
+@@ -194,31 +214,565 @@ hostapd_parse_vht_capab_blobmsg(struct i
  		const char *name;
  		uint32_t flag;
  	} vht_capas[] = {
@@ -442,7 +442,7 @@
 +}
 +
 +static void
-+hostapd_parse_eht_capab_blobmsg(struct ieee80211_eht_capabilities *ehtc, struct ieee80211_he_capabilities *hec, bool filter_false)
++hostapd_parse_eht_capab_blobmsg(struct ieee80211_eht_capabilities *ehtc, struct ieee80211_he_capabilities *hec, int freq, bool filter_false)
 +{
 +	void *new_table;
 +	u8 *ptr;
@@ -524,31 +524,42 @@
 +	ptr = ehtc->optional;
 +	strcpy(str, "0x");
 +	new_table = blobmsg_open_table(&b, "supported_mcs_set");
-+	if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 0, 1) != 0)  { // HE PHY "channel_width_set" 20 MHz
-+		wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 4);
-+		blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
-+		ptr += 4;
++	// he_phy_capab_info[0]: bit0 -reserved, bits1-7 - channel_width_set
++	if (freq < 4000 ) { // 2.4 Ghz
++		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 1, 1) == 0)  { // HE PHY "channel_width_set" B0=0 means 20 MHz only
++			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 4);
++			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
++			ptr += 4;
++		}
++		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 1, 1) != 0)  { // HE PHY "channel_width_set" B0=1 means <=80 MHz
++			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 3);
++			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
++			ptr += 3;
++		}
++	} else { // 5 or 6 Ghz
++		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 1, 3) == 0)  { // HE PHY "channel_width_set" B0+B1+B2=0 means 20 MHz only
++			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 4);
++			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
++			ptr += 4;
++		}
++		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 2, 1) != 0)  { // HE PHY "channel_width_set" B1=1 means <=80 MHz
++			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 3);
++			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
++			ptr += 3;
++		}
++		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 3, 1) != 0)  { // HE PHY "channel_width_set" B2=1 means 160 MHz
++			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 3);
++			blobmsg_add_string(&b, "eht-mcs_map_160mhz", str);
++			ptr += 3;
++		}
 +	}
-+
-+	if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 1, 1) != 0)  { // HE PHY "channel_width_set" 80 MHz
-+		wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 3);
-+		blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
-+		ptr += 3;
-+	}
-+
-+	if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 2, 1) != 0)  { // HE PHY "channel_width_set" 160 MHz
-+		wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 3);
-+		blobmsg_add_string(&b, "eht-mcs_map_160mhz", str);
-+		ptr += 3;
-+	}
-+
 +	if (get_value_from_bitfield(&ehtc->phy_cap[0], 1, 1) != 0)  { // EHT PHY { "320mhz_in_6ghz", 1, 1 },
 +		wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 3);
 +		blobmsg_add_string(&b, "eht-mcs_map_320mhz", str);
 +		ptr += 3;
 +	}
-+
 +	blobmsg_close_table(&b, new_table);
++
 +	// add EHT PPE thresholds
 +	wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, EHT_PPE_THRESH_CAPAB_LEN);
 +	blobmsg_add_string(&b, "eht_ppe_thresholds", str);
@@ -692,26 +703,26 @@
  
  static void
 -hostapd_parse_capab_blobmsg(struct sta_info *sta)
-+hostapd_parse_capab_blobmsg(struct sta_info *sta, bool filter_false)
++hostapd_parse_capab_blobmsg(struct sta_info *sta, int freq, bool filter_false)
  {
  	void *r, *v;
  
-@@ -226,19 +769,74 @@ hostapd_parse_capab_blobmsg(struct sta_i
+@@ -226,19 +780,74 @@ hostapd_parse_capab_blobmsg(struct sta_i
  
  	if (sta->vht_capabilities) {
  		r = blobmsg_open_table(&b, "vht");
 -		hostapd_parse_vht_capab_blobmsg(sta->vht_capabilities);
 +		hostapd_parse_vht_capab_blobmsg(sta->vht_capabilities, filter_false);
-+		blobmsg_close_table(&b, r);
-+	}
-+
-+	if (sta->he_capab) {
-+		r = blobmsg_open_table(&b, "he");
-+		hostapd_parse_he_capab_blobmsg(sta->he_capab, filter_false);
  		blobmsg_close_table(&b, r);
  	}
  
 -	/* ToDo: Add HT / HE capability parsing */
++	if (sta->he_capab) {
++		r = blobmsg_open_table(&b, "he");
++		hostapd_parse_he_capab_blobmsg(sta->he_capab, filter_false);
++		blobmsg_close_table(&b, r);
++	}
++
 +	if (sta->ht_capabilities) {
 +		r = blobmsg_open_table(&b, "ht");
 +		hostapd_parse_ht_capab_blobmsg(sta->ht_capabilities, filter_false);
@@ -720,7 +731,7 @@
 +
 +	if (sta->eht_capab) {
 +		r = blobmsg_open_table(&b, "eht");
-+		hostapd_parse_eht_capab_blobmsg(sta->eht_capab, sta->he_capab, filter_false);
++		hostapd_parse_eht_capab_blobmsg(sta->eht_capab, sta->he_capab, freq, filter_false);
 +		blobmsg_close_table(&b, r);
 +	}
  
@@ -775,7 +786,7 @@
  {
  	struct hostapd_data *hapd = container_of(obj, struct hostapd_data, ubus.obj);
  	struct hostap_sta_driver_data sta_driver_data;
-@@ -258,12 +856,16 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -258,12 +867,16 @@ hostapd_bss_get_clients(struct ubus_cont
  		{ "ht", WLAN_STA_HT },
  		{ "vht", WLAN_STA_VHT },
  		{ "he", WLAN_STA_HE },
@@ -793,7 +804,7 @@
  	list = blobmsg_open_table(&b, "clients");
  	for (sta = hapd->sta_list; sta; sta = sta->next) {
  		void *r;
-@@ -275,13 +877,50 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -275,13 +888,50 @@ hostapd_bss_get_clients(struct ubus_cont
  			blobmsg_add_u8(&b, sta_flags[i].name,
  				       !!(sta->flags & sta_flags[i].flag));
  
@@ -845,7 +856,7 @@
  		blobmsg_close_array(&b, r);
  
  		r = blobmsg_open_array(&b, "extended_capabilities");
-@@ -301,7 +940,8 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -301,7 +951,8 @@ hostapd_bss_get_clients(struct ubus_cont
  #endif
  
  		/* Driver information */
@@ -855,17 +866,17 @@
  			r = blobmsg_open_table(&b, "bytes");
  			blobmsg_add_u64(&b, "rx", sta_driver_data.rx_bytes);
  			blobmsg_add_u64(&b, "tx", sta_driver_data.tx_bytes);
-@@ -322,7 +962,8 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -322,7 +973,8 @@ hostapd_bss_get_clients(struct ubus_cont
  			blobmsg_add_u32(&b, "signal", sta_driver_data.signal);
  		}
  
 -		hostapd_parse_capab_blobmsg(sta);
-+		hostapd_parse_capab_blobmsg(sta, filter_false);
++		hostapd_parse_capab_blobmsg(sta, hapd->iface->freq, filter_false);
 +		hostapd_parse_vendors(sta);
  
  		blobmsg_close_table(&b, c);
  	}
-@@ -333,6 +974,22 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -333,6 +985,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -888,7 +899,7 @@
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -362,7 +1019,7 @@ hostapd_bss_get_status(struct ubus_conte
+@@ -362,7 +1030,7 @@ hostapd_bss_get_status(struct ubus_conte
  
  	if (hapd->conf->ssid.ssid_len < SSID_MAX_LEN)
  		ssid_len = hapd->conf->ssid.ssid_len;
@@ -897,7 +908,7 @@
  	ieee80211_freq_to_channel_ext(hapd->iface->freq,
  				      hapd->iconf->secondary_channel,
  				      hostapd_get_oper_chwidth(hapd->iconf),
-@@ -1617,6 +2274,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1617,6 +2285,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),
@@ -905,7 +916,7 @@
  #ifdef CONFIG_TAXONOMY
  	UBUS_METHOD("get_sta_ies", hostapd_bss_get_sta_ies, addr_policy),
  #endif
-@@ -1962,7 +2620,7 @@ void hostapd_ubus_notify_bss_transition_
+@@ -1962,7 +2631,7 @@ void hostapd_ubus_notify_bss_transition_
  	blobmsg_add_u8(&b, "bss-termination-delay", bss_termination_delay);
  	if (target_bssid)
  		blobmsg_add_macaddr(&b, "target-bssid", target_bssid);
@@ -914,7 +925,7 @@
  	hostapd_ubus_notify_bss_transition_add_candidate_list(candidate_list, candidate_list_len);
  
  	ubus_notify(ctx, &hapd->ubus.obj, "bss-transition-response", b.head, -1);
-@@ -2004,3 +2662,4 @@ int hostapd_ubus_notify_bss_transition_q
+@@ -2004,3 +2673,4 @@ int hostapd_ubus_notify_bss_transition_q
  	return ureq.resp;
  #endif
  }
