@@ -88,17 +88,26 @@ function wiphy_detect() {
 			if (band.vht_capa > 0)
 				band_info.vht = true;
 			let he_phy_cap = 0;
+			let eht_phy_cap = 0;
 
+			/**
+			 * for now just check if eht_cap_phy is present and if
+			 * so, use he_phy_cap to calculate supported widths.
+			 */
 			for (let ift in band.iftype_data) {
-				if (!ift.he_cap_phy)
-					continue;
-
-				band_info.he = true;
-				he_phy_cap |= ift.he_cap_phy[0];
-				/* TODO: EHT */
+				if (ift.eht_cap_phy) {
+					band_info.eht = true;
+					eht_phy_cap |= ift.eht_cap_phy[0];
+				}
+				if (ift.he_cap_phy) {
+					band_info.he = true;
+					he_phy_cap |= ift.he_cap_phy[0];
+				}
 			}
 
-			if (band_name != "2G" &&
+			if (band_name == "6G" && (eht_phy_cap & 0x2))
+				band_info.max_width = 320;
+			else if (band_name != "2G" &&
 			    (he_phy_cap & 0x18) || ((band.vht_capa >> 2) & 0x3))
 				band_info.max_width = 160;
 			else if (band_name != "2G" &&
@@ -116,24 +125,39 @@ function wiphy_detect() {
 				push(modes, "VHT20");
 			if (band_info.he)
 				push(modes, "HE20");
+			if (band_info.eht)
+				push(modes, "EHT20");
 			if (band.ht_capa & 0x2) {
 				push(modes, "HT40");
 				if (band_info.vht)
 					push(modes, "VHT40")
 			}
-			if (he_phy_cap & 0x2)
+			if (he_phy_cap & 0x6) {
 				push(modes, "HE40");
+				if (band_info.eht)
+					push(modes, "EHT40");
+			}
 
 			if (band_name == "2G")
 				continue;
 			if (band_info.vht)
 				push(modes, "VHT80");
-			if (he_phy_cap & 4)
+			if (he_phy_cap & 0x4) {
 				push(modes, "HE80");
+				if (band_info.eht)
+					push(modes, "EHT80");
+			}
 			if ((band.vht_capa >> 2) & 0x3)
 				push(modes, "VHT160");
-			if (he_phy_cap & 0x18)
+			if (he_phy_cap & 0x18) {
 				push(modes, "HE160");
+				if (band_info.eht)
+					push(modes, "EHT160");
+			}
+
+			if (band_name == "6G" && band_info.eht)
+				push(modes, "EHT320");
+
 		}
 
 		let entry = wiphy_get_entry(name, path);
