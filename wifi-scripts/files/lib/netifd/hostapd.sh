@@ -123,6 +123,8 @@ hostapd_common_add_device_config() {
 	config_add_int maxassoc
 	config_add_int acs_num_scans
 	config_add_boolean acs_exclude_6ghz_non_psc
+	config_add_boolean lpi_psd
+	config_add_boolean lpi_bcn_enhance
 
 	config_add_string acs_chan_bias
 	config_add_array hostapd_options
@@ -142,7 +144,7 @@ hostapd_prepare_device_config() {
 	json_get_vars country country3 country_ie beacon_int:100 doth require_mode legacy_rates \
 		acs_chan_bias local_pwr_constraint spectrum_mgmt_required airtime_mode cell_density \
 		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_ignore_probe_request maxassoc \
-		acs_num_scans acs_exclude_6ghz_non_psc mbssid:0
+		acs_num_scans acs_exclude_6ghz_non_psc lpi_psd lpi_bcn_enhance mbssid:0
 
 	hostapd_set_log_options base_cfg
 
@@ -168,6 +170,9 @@ hostapd_prepare_device_config() {
 	[ -n "$acs_chan_bias" ] && append base_cfg "acs_chan_bias=$acs_chan_bias" "$N"
 	[ -n "$acs_num_scans" ] && append base_cfg "acs_num_scans=$acs_num_scans" "$N"
 	[ "$acs_exclude_6ghz_non_psc" -eq "1" ] && append base_cfg "acs_exclude_6ghz_non_psc=1" "$N"
+
+	[ "$lpi_psd" -eq "1" ] && append base_cfg "lpi_psd=1" "$N"
+	[ "$lpi_bcn_enhance" -eq "1" ] && append base_cfg "lpi_bcn_enhance=1" "$N"
 
 	local brlist= br
 	json_get_values basic_rate_list basic_rate
