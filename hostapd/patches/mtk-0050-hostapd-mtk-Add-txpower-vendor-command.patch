@@ -1,71 +1,72 @@
-From 90af5fc57f409068ab5c0bf1dab313eb89736054 Mon Sep 17 00:00:00 2001
+From 4c0dd29eb15b2cef5cf5256459a19d59e5c98adc Mon Sep 17 00:00:00 2001
 From: Allen Ye <allen.ye@mediatek.com>
 Date: Fri, 22 Dec 2023 18:09:20 +0800
-Subject: [PATCH] hostapd: mtk: Add txpower vendor command
+Subject: [PATCH 120/126] mtk: hostapd: Add txpower vendor command
 
-Add txpower vendor command including lpi, sku index and duplicate mode
-control.
+Porting and refactor from wifi6 power vendor cmd. Add lpi psd control,
+sku index and duplicate mode enhancement.
+
+Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 ---
- hostapd/config_file.c             | 10 ++++++
- src/ap/ap_config.c                |  3 ++
+ hostapd/config_file.c             |  8 +++++
+ src/ap/ap_config.c                |  4 +++
  src/ap/ap_config.h                |  3 ++
- src/ap/ap_drv_ops.c               |  8 +++++
+ src/ap/ap_drv_ops.c               | 16 +++++++++
  src/ap/ap_drv_ops.h               |  1 +
  src/ap/hostapd.c                  |  2 ++
  src/ap/ieee802_11_he.c            |  3 ++
- src/common/mtk_vendor.h           | 14 +++++++++
- src/drivers/driver.h              |  9 ++++++
- src/drivers/driver_nl80211.c      | 51 +++++++++++++++++++++++++++++++
+ src/common/mtk_vendor.h           | 15 +++++++++
+ src/drivers/driver.h              | 10 ++++++
+ src/drivers/driver_nl80211.c      | 55 +++++++++++++++++++++++++++++++
  src/drivers/driver_nl80211.h      |  1 +
  src/drivers/driver_nl80211_capa.c |  3 ++
- 12 files changed, 108 insertions(+)
+ 12 files changed, 121 insertions(+)
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5112,6 +5112,16 @@ static int hostapd_config_fill(struct ho
+@@ -5112,6 +5112,14 @@ static int hostapd_config_fill(struct ho
  		u8 en = strtol(pos, NULL, 10);
  
  		conf->dfs_detect_mode = en;
-+	} else if (os_strcmp(buf, "lpi_enable") == 0) {
++	} else if (os_strcmp(buf, "lpi_psd") == 0) {
 +		u8 en = strtol(pos, NULL, 10);
-+
-+		conf->lpi_enable = !!en;
++		conf->lpi_psd = !!en;
 +	} else if (os_strcmp(buf, "sku_idx") == 0) {
 +		conf->sku_idx = strtol(pos, NULL, 10);
-+	} else if (os_strcmp(buf, "beacon_dup") == 0) {
++	} else if (os_strcmp(buf, "lpi_bcn_enhance") == 0) {
 +		u8 en = strtol(pos, NULL, 10);
-+
-+		conf->beacon_dup = !!en;
++		conf->lpi_bcn_enhance = !!en;
  	} else {
  		wpa_printf(MSG_ERROR,
  			   "Line %d: unknown configuration item '%s'",
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -307,6 +307,9 @@ struct hostapd_config * hostapd_config_d
- 	conf->edcca_compensation = EDCCA_DEFAULT_COMPENSATION;
- 	conf->three_wire_enable = THREE_WIRE_MODE_DISABLE;
- 	conf->ibf_enable = IBF_DEFAULT_ENABLE;
-+	conf->lpi_enable = 1;
-+	conf->sku_idx = 0;
-+	conf->beacon_dup = 1;
+@@ -301,6 +301,10 @@ struct hostapd_config * hostapd_config_d
+ 	conf->airtime_update_interval = AIRTIME_DEFAULT_UPDATE_INTERVAL;
+ #endif /* CONFIG_AIRTIME_POLICY */
  
- 	return conf;
- }
++	conf->lpi_psd = 0;
++	conf->sku_idx = 0;
++	conf->lpi_bcn_enhance = 0;
++
+ 	hostapd_set_and_check_bw320_offset(conf, 0);
+ 
+ 	conf->edcca_enable = EDCCA_MODE_AUTO;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
 @@ -1235,6 +1235,9 @@ struct hostapd_config {
  	u8 three_wire_enable;
  	u8 ibf_enable;
  	u8 dfs_detect_mode;
-+	u8 lpi_enable;
++	u8 lpi_psd;
 +	u8 sku_idx;
-+	u8 beacon_dup;
++	u8 lpi_bcn_enhance;
  };
  
  enum three_wire_mode {
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1276,4 +1276,12 @@ int hostapd_drv_ibf_dump(struct hostapd_
+@@ -1276,4 +1276,20 @@ int hostapd_drv_ibf_dump(struct hostapd_
  	if (!hapd->driver || !hapd->driver->ibf_dump)
  		return 0;
  	return hapd->driver->ibf_dump(hapd->drv_priv, ibf_enable);
@@ -75,10 +76,18 @@ control.
 +
 +int hostapd_drv_txpower_ctrl(struct hostapd_data *hapd)
 +{
++	s8 link_id = -1;
++
 +	if (!hapd->driver || !hapd->driver->txpower_ctrl)
 +		return 0;
-+	return hapd->driver->txpower_ctrl(hapd->drv_priv, hapd->iconf->lpi_enable,
-+					  hapd->iconf->sku_idx, hapd->iconf->beacon_dup);
++
++	if (hapd->conf->mld_ap)
++		link_id = hapd->mld_link_id;
++
++	return hapd->driver->txpower_ctrl(hapd->drv_priv, hapd->iconf->lpi_psd,
++					  hapd->iconf->sku_idx,
++					  hapd->iconf->lpi_bcn_enhance,
++					  link_id);
 +}
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
@@ -103,15 +112,16 @@ control.
  		   iface->bss[0]->conf->iface);
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
-@@ -256,6 +256,8 @@ u8 * hostapd_eid_he_operation(struct hos
- 			control = 3;
+@@ -257,6 +257,9 @@ u8 * hostapd_eid_he_operation(struct hos
  		else
  			control = center_idx_to_bw_6ghz(seg0);
-+		if (hapd->iconf->beacon_dup)
-+			control |= HE_6GHZ_OPER_INFO_CTRL_DUP_BEACON;
  
++		if (hapd->iconf->lpi_bcn_enhance)
++			control |= HE_6GHZ_OPER_INFO_CTRL_DUP_BEACON;
++
  		control |= hapd->iconf->he_6ghz_reg_pwr_type <<
  			HE_6GHZ_OPER_INFO_CTRL_REG_INFO_SHIFT;
+ 
 --- a/src/common/mtk_vendor.h
 +++ b/src/common/mtk_vendor.h
 @@ -15,6 +15,7 @@ enum mtk_nl80211_vendor_subcmds {
@@ -122,29 +132,29 @@ control.
  };
  
  enum mtk_vendor_attr_edcca_ctrl {
-@@ -241,6 +242,19 @@ ibf_dump_policy[NUM_MTK_VENDOR_ATTRS_IBF
+@@ -240,6 +241,19 @@ ibf_dump_policy[NUM_MTK_VENDOR_ATTRS_IBF
+ 	[MTK_VENDOR_ATTR_IBF_DUMP_ENABLE] = { .type = NLA_U8 },
  };
- 
  
 +enum mtk_vendor_attr_txpower_ctrl {
 +	MTK_VENDOR_ATTR_TXPOWER_CTRL_UNSPEC,
 +
-+	MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_ENABLE,
++	MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD,
 +	MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX,
-+	MTK_VENDOR_ATTR_TXPOWER_CTRL_BCN_DUP,
++	MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE,
++	MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID,
 +
 +	/* keep last */
 +	NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL,
 +	MTK_VENDOR_ATTR_TXPOWER_CTRL_MAX =
 +		NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL - 1
 +};
-+
+ 
  #define CSI_MAX_COUNT 256
  #define ETH_ALEN 6
- 
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5216,6 +5216,15 @@ struct wpa_driver_ops {
+@@ -5216,6 +5216,17 @@ struct wpa_driver_ops {
  	 *
  	 */
  	int (*ibf_dump)(void *priv, u8 *ibf_enable);
@@ -152,35 +162,39 @@ control.
 +	/**
 +	* txpower_ctrl - ctrl txpower operation
 +	* @priv: Private driver interface data
-+	* @lpi_enable: 1 to enable lpi, 0 to disable lpi
-+	* @beacon_dup: 1 to enable beacon duplicate, 0 to disable duplicate
++	* @lpi_psd: 1 to enable lpi psd compensate, 0 to disable
++	* @lpi_bcn_enhance: 1 to enable beacon duplicate enhancement in 6G lpi mode, 0 to disable enhancement
 +	* @sku_idx: index used to indicate which sku table should be used
++	* @link_id: MLD link id. -1 if this is an non-MLD AP
 +	*/
-+	int (*txpower_ctrl)(void *priv, u8 lpi_enable, u8 sku_idx, u8 beacon_dup);
++	int (*txpower_ctrl)(void *priv, u8 lpi_psd, u8 sku_idx, u8 lpi_bcn_enhance,
++			    u8 link_id);
  };
  
  /**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -88,6 +88,13 @@ static void handle_nl_debug_hook(struct
+@@ -88,6 +88,14 @@ static void handle_nl_debug_hook(struct
  	wpa_netlink_hook(tx, nlh, nlh->nlmsg_len);
  }
  
 +static struct nla_policy
 +txpower_ctrl_policy[NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL] = {
-+	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_ENABLE] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD] = { .type = NLA_U8 },
 +	[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX] = { .type = NLA_U8 },
-+	[MTK_VENDOR_ATTR_TXPOWER_CTRL_BCN_DUP] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID] = { .type = NLA_U8 },
 +};
 +
  static struct nl_sock * nl_create_handle(struct nl_cb *cb, const char *dbg)
  {
  	struct nl_sock *handle;
-@@ -14375,6 +14382,49 @@ fail:
+@@ -14375,6 +14383,52 @@ fail:
  	return -ENOBUFS;
  }
  
-+static int nl80211_txpower_ctrl(void *priv, u8 lpi_enable, u8 sku_idx, u8 beacon_dup)
++static int nl80211_txpower_ctrl(void *priv, u8 lpi_psd, u8 sku_idx, u8 lpi_bcn_enhance,
++				u8 link_id)
 +{
 +	struct i802_bss *bss = priv;
 +	struct wpa_driver_nl80211_data *drv = bss->drv;
@@ -190,7 +204,7 @@ control.
 +
 +	if (!drv->mtk_txpower_vendor_cmd_avail) {
 +		wpa_printf(MSG_INFO,
-+			   "nl80211: Driver does not support setting lpi control");
++			   "nl80211: Driver does not support setting txpower control");
 +		return 0;
 +	}
 +
@@ -207,14 +221,16 @@ control.
 +	if (!data)
 +		goto fail;
 +
-+	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_ENABLE, lpi_enable);
++	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD, lpi_psd);
 +	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX, sku_idx);
-+	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_BCN_DUP, beacon_dup);
++	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE, lpi_bcn_enhance);
++	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID, link_id);
 +
 +	nla_nest_end(msg, data);
-+	ret = send_and_recv(bss->drv->global, bss->drv->global->nl, msg, NULL, NULL, NULL, NULL, NULL);
++	ret = send_and_recv_cmd(drv, msg);
 +	if (ret)
-+		wpa_printf(MSG_ERROR, "Failed to set lpi_enable. ret=%d (%s)", ret, strerror(-ret));
++		wpa_printf(MSG_ERROR, "Failed to set power. ret=%d (%s)",
++			   ret, strerror(-ret));
 +
 +	return ret;
 +
@@ -226,7 +242,7 @@ control.
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -14541,4 +14591,5 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -14541,4 +14595,5 @@ const struct wpa_driver_ops wpa_driver_n
  	.three_wire_ctrl = nl80211_enable_three_wire,
  	.ibf_ctrl = nl80211_ibf_enable,
  	.ibf_dump = nl80211_ibf_dump,
