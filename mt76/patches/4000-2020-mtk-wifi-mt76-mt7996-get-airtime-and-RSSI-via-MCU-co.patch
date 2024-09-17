@@ -41,7 +41,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  };
  
  enum mt76_wcid_flags {
-@@ -1353,6 +1357,22 @@ static inline int mt76_decr(int val, int
+@@ -1355,6 +1359,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -207,7 +207,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7996_mac_enable_rtscts(struct mt7996_dev *dev,
  			      struct ieee80211_vif *vif, bool enable)
  {
-@@ -1190,8 +1090,6 @@ mt7996_mac_tx_free(struct mt7996_dev *de
+@@ -1194,8 +1094,6 @@ mt7996_mac_tx_free(struct mt7996_dev *de
  		}
  	}
  
@@ -216,7 +216,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -2333,31 +2231,42 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2337,31 +2235,42 @@ void mt7996_mac_sta_rc_work(struct work_
  
  void mt7996_mac_work(struct work_struct *work)
  {
@@ -716,9 +716,9 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -3016,6 +3079,14 @@ int mt7996_mtk_init_debugfs(struct mt799
- 	debugfs_create_file("sr_stats", 0400, dir, phy, &mt7996_sr_stats_fops);
- 	debugfs_create_file("sr_scene_cond", 0400, dir, phy, &mt7996_sr_scene_cond_fops);
+@@ -3018,6 +3081,14 @@ int mt7996_mtk_init_debugfs(struct mt799
+ 
+ 	debugfs_create_bool("mgmt_pwr_enhance", 0600, dir, &dev->mt76.mgmt_pwr_enhance);
  
 +	if (dev->has_rro) {
 +		debugfs_create_u32("rro_sid", 0600, dir, &dev->dbg.sid);

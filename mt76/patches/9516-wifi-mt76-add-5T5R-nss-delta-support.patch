@@ -1,6 +1,6 @@
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1454,7 +1454,7 @@ static inline bool mt76_is_skb_pktid(u8
+@@ -1455,7 +1455,7 @@ static inline bool mt76_is_skb_pktid(u8
  
  static inline u8 mt76_tx_power_nss_delta(u8 nss)
  {

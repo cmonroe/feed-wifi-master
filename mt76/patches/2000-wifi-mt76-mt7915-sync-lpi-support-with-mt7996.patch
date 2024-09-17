@@ -1,0 +1,183 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 17 Sep 2024 04:39:33 -0700
+Subject: [PATCH] mt76: mt7915: sync LPI support with MT7996 
+
+Sync LPI related functionality and feature names with MT7996 so
+we can use the same nl80211 vendor commands with both radios.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt76.h               |    6 ++++--
+ mt76_connac_mac.c    |    6 ++++--
+ mt7915/init.c        |    4 +---
+ mt7915/mcu.c         |    6 +++---
+ mt7915/mtk_debugfs.c |    2 +-
+ mt7915/vendor.c      |   27 ++++++++++++++-------------
+ mt7915/vendor.h      |    5 +++--
+ 7 files changed, 30 insertions(+), 26 deletions(-)
+
+--- a/mt76.h
++++ b/mt76.h
+@@ -830,8 +830,6 @@ struct mt76_phy {
+ 	u8 macaddr[ETH_ALEN];
+ 
+ 	int txpower_cur;
+-	u8 beacon_dup;
+-	u8 mgmt_pwr_enhance;
+ 	u8 sku_idx;
+ 	u8 antenna_mask;
+ 	u16 chainmask;
+@@ -949,6 +947,10 @@ struct mt76_dev {
+ 
+ 	u32 rxfilter;
+ 
++	bool lpi_psd;
++	bool lpi_bcn_enhance;
++	bool mgmt_pwr_enhance;
++
+ #ifdef CONFIG_NL80211_TESTMODE
+ 	const struct mt76_testmode_ops *test_ops;
+ 	struct {
+--- a/mt76_connac_mac.c
++++ b/mt76_connac_mac.c
+@@ -572,7 +572,9 @@ void mt76_connac2_mac_write_txwi(struct
+ 		u16 rate = mt76_connac2_mac_tx_rate_val(mphy, vif, beacon,
+ 							multicast);
+ 		u32 val = MT_TXD6_FIXED_BW;
+-		if (dev->phys[band_idx]->beacon_dup)
++		if (dev->phys[band_idx]->cap.has_6ghz &&
++			dev->lpi_bcn_enhance &&
++			ieee80211_is_mgmt(hdr->frame_control))
+ 			val |= MT_TX_BW_IDX_80;
+ 		/* hardware won't add HTC for mgmt/ctrl frame */
+ 		txwi[2] |= cpu_to_le32(MT_TXD2_HTC_VLD);
+@@ -587,7 +589,7 @@ void mt76_connac2_mac_write_txwi(struct
+ 			if (!spe_idx)
+ 				spe_idx = 24 + phy_idx;
+ 			txwi[7] |= cpu_to_le32(FIELD_PREP(MT_TXD7_SPE_IDX,
+-							  dev->phys[band_idx]->mgmt_pwr_enhance ?
++							  dev->mgmt_pwr_enhance ?
+ 							  0 : spe_idx));
+ 		}
+ 
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -333,10 +333,8 @@ void mt7915_init_txpower(struct mt7915_p
+ 		__mt7915_init_txpower(phy, &phy->mt76->sband_2g.sband);
+ 	if (phy->mt76->cap.has_5ghz)
+ 		__mt7915_init_txpower(phy, &phy->mt76->sband_5g.sband);
+-	if (phy->mt76->cap.has_6ghz) {
++	if (phy->mt76->cap.has_6ghz)
+ 		__mt7915_init_txpower(phy, &phy->mt76->sband_6g.sband);
+-		phy->mt76->beacon_dup = 1;
+-	}
+ }
+ 
+ static void
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -1444,7 +1444,7 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
+ {
+ 	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
+ 	struct mt76_phy *mphy = mvif->phy->mt76;
+-	u8 spe_idx = mphy->mgmt_pwr_enhance ?
++	u8 spe_idx = dev->mt76.mgmt_pwr_enhance ?
+ 		     0 : mt76_connac_spe_idx(mphy->antenna_mask);
+ 
+ 	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &spe_idx,
+@@ -3477,7 +3477,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 	skb_put_data(skb, &hdr, sizeof(hdr));
+ 	skb_put_data(skb, &la.cck, len[SKU_CCK]);
+ 
+-	if (phy->mt76->cap.has_6ghz && mphy->beacon_dup &&
++	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
+ 	    !mt7915_get_psd_country(dev->mt76.alpha2)) {
+ 		switch (mphy->chandef.width) {
+ 		case NL80211_CHAN_WIDTH_20:
+@@ -3530,7 +3530,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 	skb_put_data(skb, &hdr, sizeof(hdr));
+ 	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
+ 
+-	if (phy->mt76->cap.has_6ghz && mphy->beacon_dup) {
++	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd) {
+ 		switch (mphy->chandef.width) {
+ 		case NL80211_CHAN_WIDTH_20:
+ 			skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ofdm));
+--- a/mt7915/vendor.c
++++ b/mt7915/vendor.c
+@@ -47,9 +47,10 @@ bss_color_ctrl_policy[NUM_MTK_VENDOR_ATT
+ 
+ static struct nla_policy
+ txpower_ctrl_policy[NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL] = {
+-	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_ENABLE] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD] = { .type = NLA_U8 },
+ 	[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX] = { .type = NLA_U8 },
+-	[MTK_VENDOR_ATTR_TXPOWER_CTRL_BCN_DUP] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID] = { .type = NLA_U8 },
+ };
+ 
+ struct csi_null_tone {
+@@ -951,14 +952,14 @@ static int mt7915_vendor_txpower_ctrl(st
+ 	if (err)
+ 		return err;
+ 
+-	if (tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_ENABLE]) {
+-		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_ENABLE]);
++	if (mphy->cap.has_6ghz &&
++	    tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD]) {
++		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD]);
++		mphy->dev->lpi_psd = val;
+ 
+-		if (mphy->cap.has_6ghz) {
+-			err = mt7915_mcu_set_lpi(phy, val);
+-			if (err)
+-				return err;
+-		}
++		err = mt7915_mcu_set_lpi(phy, val);
++		if (err)
++			return err;
+ 	}
+ 
+ 	if (tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX]) {
+@@ -977,10 +978,10 @@ static int mt7915_vendor_txpower_ctrl(st
+ 			return err;
+ 	}
+ 
+-	if (tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_BCN_DUP]) {
+-		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_BCN_DUP]);
+-		if (mphy->cap.has_6ghz)
+-			mphy->beacon_dup = val;
++	if (mphy->cap.has_6ghz &&
++	    tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE]) {
++		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE]);
++		mphy->dev->lpi_bcn_enhance = val;
+ 	}
+ 
+ 	err = mt7915_mcu_set_txpower_sku(phy);
+--- a/mt7915/vendor.h
++++ b/mt7915/vendor.h
+@@ -143,9 +143,10 @@ enum mtk_vendor_attr_bss_color_ctrl {
+ enum mtk_vendor_attr_txpower_ctrl {
+ 	MTK_VENDOR_ATTR_TXPOWER_CTRL_UNSPEC,
+ 
+-	MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_ENABLE,
++	MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD,
+ 	MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX,
+-	MTK_VENDOR_ATTR_TXPOWER_CTRL_BCN_DUP,
++	MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE,
++	MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID,
+ 
+ 	/* keep last */
+ 	NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL,
+--- a/mt7915/mtk_debugfs.c
++++ b/mt7915/mtk_debugfs.c
+@@ -3853,7 +3853,7 @@ int mt7915_mtk_init_debugfs(struct mt791
+ 			    &fops_txpower_level);
+ 
+ 	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
+-	debugfs_create_u8("mgmt_pwr_enhance", 0600, dir, &phy->mt76->mgmt_pwr_enhance);
++	debugfs_create_bool("mgmt_pwr_enhance", 0600, dir, &dev->mt76.mgmt_pwr_enhance);
+ 
+ 	debugfs_create_devm_seqfile(dev->mt76.dev, "eeprom_mode", dir,
+ 				    mt7915_show_eeprom_mode);
