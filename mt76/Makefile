@@ -630,9 +630,9 @@ define KernelPackage/mt7992-firmware/install
 		./files/firmware/mt7996/mt7992_wm_tm.bin \
 		./files/firmware/mt7996/mt7992_rom_patch.bin \
 		./files/firmware/mt7996/mt7992_dsp.bin \
-		./files/firmware/mt7996/mt7992_eeprom.bin \
 		./files/firmware/mt7996/mt7992_eeprom_2i5i.bin \
 		./files/firmware/mt7996/mt7992_eeprom_2i5e.bin \
+		./files/firmware/mt7996/mt7992_eeprom_2e5e.bin \
 		$(1)/lib/firmware/mediatek/mt7996
 endef
 
@@ -653,11 +653,6 @@ define KernelPackage/mt7996-firmware/install
 		./files/firmware/mt7996/mt7996_eeprom_233.bin \
 		./files/firmware/mt7996/mt7996_eeprom_233_2i5i6i.bin \
 		$(1)/lib/firmware/mediatek/mt7996
-	cp \
-		./files/firmware/mt7988_wo_0.bin \
-		./files/firmware/mt7988_wo_1.bin \
-		./files/firmware/mt7988_wo_2.bin \
-		$(1)/lib/firmware/mediatek
 endef
 
 define Package/mt76-test/install
