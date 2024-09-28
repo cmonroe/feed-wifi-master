@@ -1,14 +1,14 @@
 --- a/src/ap/acs.c
 +++ b/src/ap/acs.c
-@@ -871,6 +871,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -875,6 +875,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  	int bw320_offset = 0, ideal_bw320_offset = 0;
  	unsigned int k;
  	int secondary_channel = 1, freq_offset;
 +	short last_chan = 0;
- 
- 	if (is_24ghz_mode(mode->mode))
- 		secondary_channel = iface->conf->secondary_channel;
-@@ -1104,15 +1105,19 @@ acs_find_ideal_chan_mode(struct hostapd_
+ #ifdef CONFIG_IEEE80211BE
+ 	int index_primary = 0;
+ #endif /* CONFIG_IEEE80211BE */
+@@ -1114,15 +1115,19 @@ acs_find_ideal_chan_mode(struct hostapd_
  			bias = &tmp_bias;
  		}
  

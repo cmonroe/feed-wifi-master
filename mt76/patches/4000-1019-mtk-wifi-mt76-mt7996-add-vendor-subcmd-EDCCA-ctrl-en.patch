@@ -26,7 +26,7 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -756,6 +756,17 @@ int mt7996_vendor_amnt_sta_remove(struct
+@@ -754,6 +754,17 @@ int mt7996_vendor_amnt_sta_remove(struct
  				  struct ieee80211_sta *sta);
  #endif
  

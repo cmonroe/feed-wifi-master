@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1413,6 +1413,61 @@ mt7996_twt_teardown_request(struct ieee8
+@@ -1405,6 +1405,61 @@ mt7996_twt_teardown_request(struct ieee8
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -79,7 +79,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int
  mt7996_set_radar_background(struct ieee80211_hw *hw,
  			    struct cfg80211_chan_def *chandef)
-@@ -1421,6 +1476,7 @@ mt7996_set_radar_background(struct ieee8
+@@ -1413,6 +1468,7 @@ mt7996_set_radar_background(struct ieee8
  	struct mt7996_dev *dev = phy->dev;
  	int ret = -EINVAL;
  	bool running;
@@ -87,7 +87,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -1433,13 +1489,14 @@ mt7996_set_radar_background(struct ieee8
+@@ -1425,13 +1481,14 @@ mt7996_set_radar_background(struct ieee8
  		goto out;
  	}
  
@@ -104,7 +104,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		ret = mt7996_mcu_rdd_background_enable(phy, NULL);
  		if (ret)
  			goto out;
-@@ -1448,7 +1505,9 @@ mt7996_set_radar_background(struct ieee8
+@@ -1440,7 +1497,9 @@ mt7996_set_radar_background(struct ieee8
  			goto update_phy;
  	}
  
@@ -136,7 +136,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -422,6 +422,8 @@ struct mt7996_dev {
+@@ -420,6 +420,8 @@ struct mt7996_dev {
  	bool bin_file_mode;
  	u8 eeprom_mode;
  

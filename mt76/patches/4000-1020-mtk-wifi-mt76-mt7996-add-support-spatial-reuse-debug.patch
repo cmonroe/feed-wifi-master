@@ -28,7 +28,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1052,6 +1052,7 @@ enum {
+@@ -1057,6 +1057,7 @@ enum {
  	MCU_UNI_EVENT_BSS_BEACON_LOSS = 0x0c,
  	MCU_UNI_EVENT_SCAN_DONE = 0x0e,
  	MCU_UNI_EVENT_RDD_REPORT = 0x11,
@@ -74,7 +74,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -333,6 +333,9 @@ struct mt7996_phy {
+@@ -331,6 +331,9 @@ struct mt7996_phy {
  #ifdef CONFIG_MTK_VENDOR
  	spinlock_t amnt_lock;
  	struct mt7996_air_monitor_ctrl amnt_ctrl;
@@ -84,7 +84,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  #endif
  };
  
-@@ -769,6 +772,8 @@ enum edcca_bw_id {
+@@ -767,6 +770,8 @@ enum edcca_bw_id {
  
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);

@@ -21,7 +21,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1293,6 +1293,7 @@ enum {
+@@ -1298,6 +1298,7 @@ enum {
  	MCU_UNI_CMD_GET_STAT_INFO = 0x23,
  	MCU_UNI_CMD_SNIFFER = 0x24,
  	MCU_UNI_CMD_SR = 0x25,
@@ -230,7 +230,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  struct mt7996_wed_rro_addr {
  	u32 head_low;
  	u32 head_high : 4;
-@@ -274,6 +284,8 @@ struct mt7996_phy {
+@@ -272,6 +282,8 @@ struct mt7996_phy {
  	struct mt76_channel_state state_ts;
  
  	bool has_aux_rx;
@@ -239,7 +239,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -306,6 +318,7 @@ struct mt7996_dev {
+@@ -304,6 +316,7 @@ struct mt7996_dev {
  	struct work_struct rc_work;
  	struct work_struct dump_work;
  	struct work_struct reset_work;
@@ -247,7 +247,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -684,6 +697,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -682,6 +695,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
  #endif

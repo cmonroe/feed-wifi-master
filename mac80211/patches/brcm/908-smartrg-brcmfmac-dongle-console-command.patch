@@ -165,7 +165,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  #define BRCMF_PCIE_MBDATA_TIMEOUT		msecs_to_jiffies(2000)
  
-@@ -504,6 +510,14 @@ brcmf_pcie_read_tcm8(struct brcmf_pciede
+@@ -499,6 +505,14 @@ brcmf_pcie_read_tcm8(struct brcmf_pciede
  	return (ioread8(address));
  }
  
@@ -180,7 +180,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  
  static u16
  brcmf_pcie_read_tcm16(struct brcmf_pciedev_info *devinfo, u32 mem_offset)
-@@ -904,6 +918,29 @@ static void brcmf_pcie_bus_console_read(
+@@ -899,6 +913,29 @@ static void brcmf_pcie_bus_console_read(
  	}
  }
  

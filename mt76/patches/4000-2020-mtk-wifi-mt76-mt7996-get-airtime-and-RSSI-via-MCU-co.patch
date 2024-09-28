@@ -24,7 +24,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -345,12 +345,16 @@ struct mt76_sta_stats {
+@@ -346,12 +346,16 @@ struct mt76_sta_stats {
  	u32 tx_packets;		/* unit: MSDU */
  	u32 tx_retries;
  	u32 tx_failed;
@@ -41,7 +41,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  };
  
  enum mt76_wcid_flags {
-@@ -1355,6 +1359,22 @@ static inline int mt76_decr(int val, int
+@@ -1354,6 +1358,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -66,7 +66,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1396,11 +1396,23 @@ enum {
+@@ -1401,11 +1401,23 @@ enum {
  	UNI_OFFLOAD_OFFLOAD_BMC_RPY_DETECT,
  };
  
@@ -624,7 +624,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct mt7996_phy {
  	struct mt76_phy *mt76;
  	struct mt7996_dev *dev;
-@@ -477,6 +493,7 @@ struct mt7996_dev {
+@@ -475,6 +491,7 @@ struct mt7996_dev {
  		u32 fw_dbg_module;
  		u8 fw_dbg_lv;
  		u32 bcn_total_cnt[__MT_MAX_BAND];
@@ -632,7 +632,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	} dbg;
  	const struct mt7996_dbg_reg_desc *dbg_reg;
  #endif
-@@ -682,7 +699,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -680,7 +697,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);

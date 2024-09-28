@@ -128,7 +128,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	}
 --- a/mt76.h
 +++ b/mt76.h
-@@ -453,6 +453,7 @@ struct mt76_rx_tid {
+@@ -454,6 +454,7 @@ struct mt76_rx_tid {
  	struct rcu_head rcu_head;
  
  	struct mt76_dev *dev;
@@ -136,7 +136,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	spinlock_t lock;
  	struct delayed_work reorder_work;
-@@ -878,6 +879,19 @@ struct mt76_phy {
+@@ -879,6 +880,19 @@ struct mt76_phy {
  		bool al;
  		u8 pin;
  	} leds;
@@ -156,7 +156,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  };
  
  struct mt76_dev {
-@@ -994,6 +1008,8 @@ struct mt76_dev {
+@@ -995,6 +1009,8 @@ struct mt76_dev {
  
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;

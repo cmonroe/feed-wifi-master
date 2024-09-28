@@ -18,7 +18,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -285,12 +285,16 @@ struct mt76_queue_ops {
+@@ -286,12 +286,16 @@ struct mt76_queue_ops {
  	void (*reset_q)(struct mt76_dev *dev, struct mt76_queue *q);
  };
  
@@ -37,7 +37,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	MT_PHY_TYPE_HE_TB,
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -676,6 +676,8 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -678,6 +678,8 @@ mt7915_register_ext_phy(struct mt7915_de
  	struct mt76_phy *mphy = phy->mt76;
  	int ret;
  
@@ -46,7 +46,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	INIT_DELAYED_WORK(&mphy->mac_work, mt7915_mac_work);
  
  	mt7915_eeprom_parse_hw_cap(dev, phy);
-@@ -1211,6 +1213,8 @@ int mt7915_register_device(struct mt7915
+@@ -1213,6 +1215,8 @@ int mt7915_register_device(struct mt7915
  	dev->phy.dev = dev;
  	dev->phy.mt76 = &dev->mt76.phy;
  	dev->mt76.phy.priv = &dev->phy;
@@ -484,7 +484,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  int mt7915_mcu_rdd_background_enable(struct mt7915_phy *phy,
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1213,6 +1213,7 @@ enum {
+@@ -1218,6 +1218,7 @@ enum {
  	MCU_EXT_CMD_EDCA_UPDATE = 0x27,
  	MCU_EXT_CMD_DEV_INFO_UPDATE = 0x2A,
  	MCU_EXT_CMD_THERMAL_CTRL = 0x2c,

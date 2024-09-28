@@ -43,7 +43,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -563,6 +563,26 @@ mt7996_band_valid(struct mt7996_dev *dev
+@@ -561,6 +561,26 @@ mt7996_band_valid(struct mt7996_dev *dev
  	return band == MT_BAND0 || band == MT_BAND2;
  }
  

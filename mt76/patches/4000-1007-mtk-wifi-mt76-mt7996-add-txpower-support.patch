@@ -282,7 +282,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  }
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -286,6 +286,9 @@ struct mt7996_phy {
+@@ -284,6 +284,9 @@ struct mt7996_phy {
  	bool has_aux_rx;
  
  	struct mt7996_scs_ctrl scs_ctrl;
@@ -292,7 +292,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -697,6 +700,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -695,6 +698,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
  #endif

@@ -541,7 +541,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  };
  
  enum mt7996_txq_id {
-@@ -317,9 +320,11 @@ struct mt7996_dev {
+@@ -315,9 +318,11 @@ struct mt7996_dev {
  	struct mutex dump_mutex;
  #ifdef CONFIG_DEV_COREDUMP
  	struct {

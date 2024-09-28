@@ -16,7 +16,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1302,6 +1302,7 @@ enum {
+@@ -1307,6 +1307,7 @@ enum {
  	MCU_UNI_CMD_CHANNEL_SWITCH = 0x34,
  	MCU_UNI_CMD_THERMAL = 0x35,
  	MCU_UNI_CMD_VOW = 0x37,
@@ -75,7 +75,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -656,6 +656,8 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
+@@ -654,6 +654,8 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
  				     struct ieee80211_vif *vif,
  				     struct ieee80211_sta *sta);
  int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode);

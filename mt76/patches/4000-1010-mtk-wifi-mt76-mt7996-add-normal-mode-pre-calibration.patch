@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1307,6 +1307,7 @@ enum {
+@@ -1312,6 +1312,7 @@ enum {
  	MCU_UNI_CMD_VOW = 0x37,
  	MCU_UNI_CMD_PP = 0x38,
  	MCU_UNI_CMD_FIXED_RATE_TABLE = 0x40,
@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -318,6 +318,12 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -310,6 +310,12 @@ int mt7996_set_channel(struct mt76_phy *
  	struct mt7996_phy *phy = mphy->priv;
  	int ret;
  
@@ -256,7 +256,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define NIC_CAP	3
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -707,6 +707,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -705,6 +705,8 @@ int mt7996_mtk_init_debugfs(struct mt799
  #endif
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);

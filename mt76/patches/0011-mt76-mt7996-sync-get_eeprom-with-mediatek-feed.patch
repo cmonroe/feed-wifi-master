@@ -71,7 +71,7 @@
  	u8 rate;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -476,7 +476,7 @@ int mt7996_mcu_set_fixed_rate_ctrl(struc
+@@ -474,7 +474,7 @@ int mt7996_mcu_set_fixed_rate_ctrl(struc
  int mt7996_mcu_set_fixed_field(struct mt7996_dev *dev, struct ieee80211_vif *vif,
  			       struct ieee80211_sta *sta, void *data, u32 field);
  int mt7996_mcu_set_eeprom(struct mt7996_dev *dev);

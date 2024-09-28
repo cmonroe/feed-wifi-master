@@ -12,7 +12,7 @@ Fix max_bssid_indicator get empty value due to wrong pointer.
 
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -1167,9 +1167,11 @@ ieee80211_assign_beacon(struct ieee80211
+@@ -1164,9 +1164,11 @@ ieee80211_assign_beacon(struct ieee80211
  	/* copy in optional mbssid_ies */
  	if (mbssid) {
  		u8 *pos = new->tail + new->tail_len;
@@ -24,7 +24,7 @@ Fix max_bssid_indicator get empty value due to wrong pointer.
  		pos += ieee80211_copy_mbssid_beacon(pos, new->mbssid_ies,
  						    mbssid);
  		if (rnr) {
-@@ -1178,8 +1180,7 @@ ieee80211_assign_beacon(struct ieee80211
+@@ -1175,8 +1177,7 @@ ieee80211_assign_beacon(struct ieee80211
  			ieee80211_copy_rnr_beacon(pos, new->rnr_ies, rnr);
  		}
  		/* update bssid_indicator */

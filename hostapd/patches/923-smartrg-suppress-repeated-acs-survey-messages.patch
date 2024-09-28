@@ -1,6 +1,6 @@
 --- a/src/ap/acs.c
 +++ b/src/ap/acs.c
-@@ -21,6 +21,7 @@
+@@ -22,6 +22,7 @@
  #include "ap_config.h"
  #include "hw_features.h"
  #include "acs.h"
@@ -8,7 +8,7 @@
  
  /*
   * Automatic Channel Selection
-@@ -466,11 +467,19 @@ static int acs_get_bw_center_chan(int fr
+@@ -470,11 +471,19 @@ static int acs_get_bw_center_chan(int fr
  
  static int acs_survey_is_sufficient(struct freq_survey *survey)
  {

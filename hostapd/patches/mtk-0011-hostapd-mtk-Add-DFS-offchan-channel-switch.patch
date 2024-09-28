@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4173,6 +4173,76 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
+@@ -4270,6 +4270,76 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
  }
  
  
@@ -94,7 +94,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4792,6 +4862,8 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4894,6 +4964,8 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "DFS_DETECT_MODE ", 16) == 0) {
  		reply_len = hostapd_ctrl_iface_set_dfs_detect_mode(hapd, buf + 16,
  								   reply, reply_size);
@@ -105,7 +105,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		reply_len = 16;
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -19,13 +19,6 @@
+@@ -20,13 +20,6 @@
  #include "dfs.h"
  #include "crypto/crypto.h"
  
@@ -119,7 +119,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static struct hostapd_channel_data *
  dfs_downgrade_bandwidth(struct hostapd_iface *iface, int *secondary_channel,
  			u8 *oper_centr_freq_seg0_idx,
-@@ -238,9 +231,9 @@ static int is_in_chanlist(struct hostapd
+@@ -239,9 +232,9 @@ static int is_in_chanlist(struct hostapd
   *  - hapd->vht/he_oper_centr_freq_seg0_idx
   *  - hapd->vht/he_oper_centr_freq_seg1_idx
   */
@@ -132,7 +132,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  {
  	struct hostapd_hw_modes *mode;
  	struct hostapd_channel_data *chan;
-@@ -300,12 +293,12 @@ static int dfs_find_channel(struct hosta
+@@ -308,12 +301,12 @@ static int dfs_find_channel(struct hosta
  }
  
  

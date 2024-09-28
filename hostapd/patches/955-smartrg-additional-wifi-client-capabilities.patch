@@ -1,7 +1,7 @@
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4306,6 +4306,12 @@ static int __check_assoc_ies(struct host
- 		sta->power_capab = 0;
+@@ -4457,6 +4457,12 @@ static int __check_assoc_ies(struct host
+ 				hapd->conf->max_acceptable_idle_period;
  	}
  
 +	wpabuf_free(sta->vendors_ie);
@@ -15,7 +15,7 @@
  
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -378,6 +378,7 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -422,6 +422,7 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->t_c_url);
  	wpabuf_free(sta->hs20_deauth_req);
  	os_free(sta->hs20_session_info_url);
@@ -25,17 +25,18 @@
  	sae_clear_data(sta->sae);
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -331,6 +331,7 @@ struct sta_info {
- 	struct mld_info mld_info;
+@@ -317,6 +317,8 @@ struct sta_info {
  	u8 mld_assoc_link_id;
  #endif /* CONFIG_IEEE80211BE */
+ 
 +	struct wpabuf *vendors_ie;
++
+ 	u16 max_idle_period; /* if nonzero, the granted BSS max idle period in
+ 			      * units of 1000 TUs */
  };
- 
- 
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -1150,6 +1150,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
+@@ -1182,6 +1182,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
  }
  
  
@@ -71,7 +72,7 @@
  	u16 fc, type, stype;
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -199,6 +199,7 @@ ParseRes ieee802_11_parse_link_assoc_req
+@@ -217,6 +217,7 @@ ParseRes ieee802_11_parse_link_assoc_req
  int ieee802_11_ie_count(const u8 *ies, size_t ies_len);
  struct wpabuf * ieee802_11_vendor_ie_concat(const u8 *ies, size_t ies_len,
  					    u32 oui_type);
@@ -186,22 +187,24 @@
 +		uint16_t value = (vhtc->vht_capabilities_info & vht_capas_value[i].mask) >> vht_capas_value[i].shift;
 +		blobmsg_add_u32(&b, vht_capas_value[i].name, value);
 +	}
-+
-+	supported_mcs = blobmsg_open_table(&b, "mcs_map");
-+
-+	/* RX map */
-+	map = blobmsg_open_table(&b, "rx");
+ 
+ 	supported_mcs = blobmsg_open_table(&b, "mcs_map");
+ 
+ 	/* RX map */
+ 	map = blobmsg_open_table(&b, "rx");
+-	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map));
 +	hostapd_parse_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map), WLAN_STA_VHT);
-+	blobmsg_close_table(&b, map);
-+
-+	/* TX map */
-+	map = blobmsg_open_table(&b, "tx");
+ 	blobmsg_close_table(&b, map);
+ 
+ 	/* TX map */
+ 	map = blobmsg_open_table(&b, "tx");
+-	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map));
 +	hostapd_parse_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map), WLAN_STA_VHT);
-+	blobmsg_close_table(&b, map);
-+
-+	blobmsg_close_table(&b, supported_mcs);
-+}
-+
+ 	blobmsg_close_table(&b, map);
+ 
+ 	blobmsg_close_table(&b, supported_mcs);
+ }
+ 
 +static uint16_t get_value_from_bitfield(uint8_t *databuf, uint8_t bitstart, uint8_t bitcount)
 +{
 +	uint16_t value=0;
@@ -565,7 +568,8 @@
 +	blobmsg_add_string(&b, "eht_ppe_thresholds", str);
 +}
 +
-+static void
+ static void
+-hostapd_parse_capab_blobmsg(struct sta_info *sta)
 +hostapd_parse_he_capab_blobmsg(struct ieee80211_he_capabilities *hec, bool filter_false)
 +{
 +	void *supported_mcs;
@@ -683,26 +687,23 @@
 +
 +	hostapd_add_capab_table("mac_capabilities", mac_capas, ARRAY_SIZE(mac_capas), (uint8_t *) &hec->he_mac_capab_info, filter_false);
 +	hostapd_add_capab_table("phy_capabilities", phy_capas, ARRAY_SIZE(phy_capas), (uint8_t *) &hec->he_phy_capab_info, filter_false);
- 
- 	supported_mcs = blobmsg_open_table(&b, "mcs_map");
- 
- 	/* RX map */
- 	map = blobmsg_open_table(&b, "rx");
--	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map));
++
++	supported_mcs = blobmsg_open_table(&b, "mcs_map");
++
++	/* RX map */
++	map = blobmsg_open_table(&b, "rx");
 +	hostapd_parse_map_blobmsg(le_to_host16(*((le16 *)&hec->optional[0])), WLAN_STA_HE);
- 	blobmsg_close_table(&b, map);
- 
- 	/* TX map */
- 	map = blobmsg_open_table(&b, "tx");
--	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map));
++	blobmsg_close_table(&b, map);
++
++	/* TX map */
++	map = blobmsg_open_table(&b, "tx");
 +	hostapd_parse_map_blobmsg(le_to_host16(*((le16 *)&hec->optional[2])), WLAN_STA_HE);
- 	blobmsg_close_table(&b, map);
- 
- 	blobmsg_close_table(&b, supported_mcs);
- }
- 
- static void
--hostapd_parse_capab_blobmsg(struct sta_info *sta)
++	blobmsg_close_table(&b, map);
++
++	blobmsg_close_table(&b, supported_mcs);
++}
++
++static void
 +hostapd_parse_capab_blobmsg(struct sta_info *sta, int freq, bool filter_false)
  {
  	void *r, *v;
@@ -916,17 +917,3 @@
  #ifdef CONFIG_TAXONOMY
  	UBUS_METHOD("get_sta_ies", hostapd_bss_get_sta_ies, addr_policy),
  #endif
-@@ -1962,7 +2631,7 @@ void hostapd_ubus_notify_bss_transition_
- 	blobmsg_add_u8(&b, "bss-termination-delay", bss_termination_delay);
- 	if (target_bssid)
- 		blobmsg_add_macaddr(&b, "target-bssid", target_bssid);
--	
-+
- 	hostapd_ubus_notify_bss_transition_add_candidate_list(candidate_list, candidate_list_len);
- 
- 	ubus_notify(ctx, &hapd->ubus.obj, "bss-transition-response", b.head, -1);
-@@ -2004,3 +2673,4 @@ int hostapd_ubus_notify_bss_transition_q
- 	return ureq.resp;
- #endif
- }
-+

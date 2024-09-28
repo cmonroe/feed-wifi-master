@@ -22,7 +22,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  void mt7996_wfsys_reset(struct mt7996_dev *dev)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -776,6 +776,7 @@ enum edcca_bw_id {
+@@ -774,6 +774,7 @@ enum edcca_bw_id {
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
  int mt7996_mcu_set_sr_enable(struct mt7996_phy *phy, u8 action, u64 val, bool set);
  void mt7996_mcu_rx_sr_event(struct mt7996_dev *dev, struct sk_buff *skb);

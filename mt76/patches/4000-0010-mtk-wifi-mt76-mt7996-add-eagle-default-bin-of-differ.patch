@@ -57,7 +57,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  enum mt7996_ram_type {
  	MT7996_RAM_TYPE_WM,
  	MT7996_RAM_TYPE_WA,
-@@ -258,6 +264,8 @@ struct mt7996_dev {
+@@ -256,6 +262,8 @@ struct mt7996_dev {
  	struct cfg80211_chan_def rdd2_chandef;
  	struct mt7996_phy *rdd2_phy;
  
@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	u16 chainmask;
  	u8 chainshift[__MT_MAX_BAND];
  	u32 hif_idx;
-@@ -399,6 +407,23 @@ mt7996_phy3(struct mt7996_dev *dev)
+@@ -397,6 +405,23 @@ mt7996_phy3(struct mt7996_dev *dev)
  	return __mt7996_phy(dev, MT_BAND2);
  }
  
@@ -90,7 +90,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static inline bool
  mt7996_band_valid(struct mt7996_dev *dev, u8 band)
  {
-@@ -406,8 +431,7 @@ mt7996_band_valid(struct mt7996_dev *dev
+@@ -404,8 +429,7 @@ mt7996_band_valid(struct mt7996_dev *dev
  		return band <= MT_BAND1;
  
  	/* tri-band support */

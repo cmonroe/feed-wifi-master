@@ -21,7 +21,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -4945,6 +4945,7 @@ struct cfg80211_ops {
+@@ -4950,6 +4950,7 @@ struct cfg80211_ops {
  	int	(*set_ttlm)(struct wiphy *wiphy, struct net_device *dev,
  			    struct cfg80211_ttlm_params *params);
  	u32	(*get_radio_mask)(struct wiphy *wiphy, struct net_device *dev);
@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /*
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -5053,6 +5053,30 @@ ieee80211_set_ttlm(struct wiphy *wiphy,
+@@ -5094,6 +5094,30 @@ ieee80211_set_ttlm(struct wiphy *wiphy,
  	return ieee80211_req_neg_ttlm(sdata, params);
  }
  
@@ -48,7 +48,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		return;
 +
 +	wiphy_delayed_work_cancel(sdata->local->hw.wiphy,
-+				  &link->dfs_cac_timer_work);
++				  &sdata->dfs_cac_timer_work);
 +	if (wdev->cac_started) {
 +		ieee80211_link_release_channel(link);
 +		cac_time_ms = wdev->cac_time_ms;
@@ -62,7 +62,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  const struct cfg80211_ops mac80211_config_ops = {
  	.add_virtual_intf = ieee80211_add_iface,
  	.del_virtual_intf = ieee80211_del_iface,
-@@ -5167,4 +5191,5 @@ const struct cfg80211_ops mac80211_confi
+@@ -5208,4 +5232,5 @@ const struct cfg80211_ops mac80211_confi
  	.set_hw_timestamp = ieee80211_set_hw_timestamp,
  	.set_ttlm = ieee80211_set_ttlm,
  	.get_radio_mask = ieee80211_get_radio_mask,
@@ -476,7 +476,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  					NL80211_RADAR_CAC_STARTED);
 --- a/net/wireless/rdev-ops.h
 +++ b/net/wireless/rdev-ops.h
-@@ -1554,4 +1554,18 @@ rdev_get_radio_mask(struct cfg80211_regi
+@@ -1544,4 +1544,18 @@ rdev_get_radio_mask(struct cfg80211_regi
  
  	return rdev->ops->get_radio_mask(wiphy, dev);
  }
@@ -497,8 +497,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif /* __CFG80211_RDEV_OPS */
 --- a/net/wireless/trace.h
 +++ b/net/wireless/trace.h
-@@ -4005,6 +4005,19 @@ TRACE_EVENT(rdev_set_ttlm,
- 		  WIPHY_PR_ARG, NETDEV_PR_ARG)
+@@ -4084,6 +4084,19 @@ TRACE_EVENT(cfg80211_links_removed,
+ 		  __entry->link_mask)
  );
  
 +TRACE_EVENT(rdev_skip_cac,

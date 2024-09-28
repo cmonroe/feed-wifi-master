@@ -10,7 +10,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -5713,6 +5713,8 @@ static int brcmf_cfg80211_get_channel(st
+@@ -5720,6 +5720,8 @@ static int brcmf_cfg80211_get_channel(st
  	u32 chanspec;
  	int freq, err;
  
@@ -19,7 +19,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  	if (!ndev || drvr->bus_if->state != BRCMF_BUS_UP)
  		return -ENODEV;
  
-@@ -5947,6 +5949,35 @@ static int brcmf_cfg80211_del_pmk(struct
+@@ -5954,6 +5956,35 @@ static int brcmf_cfg80211_del_pmk(struct
  	return brcmf_set_pmk(ifp, NULL, 0);
  }
  
@@ -55,7 +55,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  static struct cfg80211_ops brcmf_cfg80211_ops = {
  	.add_virtual_intf = brcmf_cfg80211_add_iface,
  	.del_virtual_intf = brcmf_cfg80211_del_iface,
-@@ -5994,6 +6025,7 @@ static struct cfg80211_ops brcmf_cfg8021
+@@ -6001,6 +6032,7 @@ static struct cfg80211_ops brcmf_cfg8021
  	.update_connect_params = brcmf_cfg80211_update_conn_params,
  	.set_pmk = brcmf_cfg80211_set_pmk,
  	.del_pmk = brcmf_cfg80211_del_pmk,
@@ -63,7 +63,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  };
  
  struct cfg80211_ops *brcmf_cfg80211_get_ops(struct brcmf_mp_device *settings)
-@@ -6731,6 +6763,24 @@ static s32 brcmf_notify_vif_event(struct
+@@ -6738,6 +6770,24 @@ static s32 brcmf_notify_vif_event(struct
  	return -EINVAL;
  }
  
@@ -88,7 +88,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  static void brcmf_init_conf(struct brcmf_cfg80211_conf *conf)
  {
  	conf->frag_threshold = (u32)-1;
-@@ -6776,6 +6826,14 @@ static void brcmf_register_event_handler
+@@ -6783,6 +6833,14 @@ static void brcmf_register_event_handler
  	brcmf_fweh_register(cfg->pub, BRCMF_E_PSK_SUP,
  			    brcmf_notify_connect_status);
  	brcmf_fweh_register(cfg->pub, BRCMF_E_RSSI, brcmf_notify_rssi);
@@ -103,7 +103,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
  }
  
  static void brcmf_deinit_priv_mem(struct brcmf_cfg80211_info *cfg)
-@@ -8420,6 +8478,9 @@ struct brcmf_cfg80211_info *brcmf_cfg802
+@@ -8427,6 +8485,9 @@ struct brcmf_cfg80211_info *brcmf_cfg802
  		}
  	}
  

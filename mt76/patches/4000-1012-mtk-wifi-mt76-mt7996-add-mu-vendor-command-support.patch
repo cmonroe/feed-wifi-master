@@ -153,7 +153,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	BF_HW_EN_UPDATE = 17,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -290,6 +290,8 @@ struct mt7996_phy {
+@@ -288,6 +288,8 @@ struct mt7996_phy {
  
  	bool sku_limit_en;
  	bool sku_path_en;
@@ -162,7 +162,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -702,6 +704,11 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -700,6 +702,11 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  

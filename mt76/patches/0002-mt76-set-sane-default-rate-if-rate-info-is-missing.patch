@@ -13,20 +13,19 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
  mac80211.c | 9 ++++++++-
  1 file changed, 8 insertions(+), 1 deletion(-)
 
---- a/mac80211.c
-+++ b/mac80211.c
-@@ -1809,9 +1809,18 @@ u16 mt76_calculate_default_rate(struct m
- 					    &phy->chandef;
- 	int offset = 0;
+--- a/mt76_connac_mac.c
++++ b/mt76_connac_mac.c
+@@ -334,6 +334,18 @@ legacy:
+ 	if (band != NL80211_BAND_2GHZ)
+ 		offset = 4;
  
--	if (chandef->chan->band != NL80211_BAND_2GHZ)
-+	if (chandef->chan->band == NL80211_BAND_2GHZ) {
++	if (band == NL80211_BAND_2GHZ) {
 +		if (rateidx < 0)
 +			rateidx = 3; /* 11Mbps */
 +	} else {
- 		offset = 4;
- 
-+		if (chandef->chan->band == NL80211_BAND_5GHZ) {
++		offset = 4;
++
++		if (band == NL80211_BAND_5GHZ) {
 +			if (rateidx < 0)
 +				rateidx = 4; /* 24Mbps */
 +		}

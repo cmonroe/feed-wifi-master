@@ -54,7 +54,7 @@
  
  static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
  				      struct sta_info *sta,
-@@ -464,6 +511,16 @@ static int hostapd_ctrl_iface_sta_mib(st
+@@ -460,6 +507,16 @@ static int hostapd_ctrl_iface_sta_mib(st
  		if (!os_snprintf_error(buflen - len, ret))
  			len += ret;
  	}
@@ -69,5 +69,5 @@
 +	}
 +#endif
  
- 	return len;
- }
+ 	dpp_pkhash = ap_sta_wpa_get_dpp_pkhash(hapd, sta);
+ 	if (dpp_pkhash) {

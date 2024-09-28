@@ -26,7 +26,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -445,6 +445,8 @@ struct mt76_txwi_cache {
+@@ -446,6 +446,8 @@ struct mt76_txwi_cache {
  		struct sk_buff *skb;
  		void *ptr;
  	};
@@ -216,7 +216,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT7996_EEPROM_SIZE		7680
  #define MT7996_EEPROM_BLOCK_SIZE	16
  #define MT7996_TOKEN_SIZE		16384
-@@ -370,6 +371,9 @@ struct mt7996_dev {
+@@ -368,6 +369,9 @@ struct mt7996_dev {
  		spinlock_t lock;
  	} wed_rro;
  
@@ -226,7 +226,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	bool ibf;
  	u8 fw_debug_wm;
  	u8 fw_debug_wa;
-@@ -495,6 +499,7 @@ irqreturn_t mt7996_irq_handler(int irq,
+@@ -493,6 +497,7 @@ irqreturn_t mt7996_irq_handler(int irq,
  u64 __mt7996_get_tsf(struct ieee80211_hw *hw, struct mt7996_vif *mvif);
  int mt7996_register_device(struct mt7996_dev *dev);
  void mt7996_unregister_device(struct mt7996_dev *dev);
