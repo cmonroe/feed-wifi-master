@@ -3,7 +3,7 @@ import { readfile } from "fs";
 import * as uci from 'uci';
 
 const bands_order = [ "6G", "5G", "2G" ];
-const htmode_order = [ "HE", "VHT", "HT" ];
+const htmode_order = [ "EHT", "HE", "VHT", "HT" ];
 
 let board = json(readfile("/etc/board.json"));
 if (!board.wlan)
@@ -51,8 +51,12 @@ for (let phy_name, phy in board.wlan) {
 	let width = band.max_width;
 	if (band_name == "2G")
 		width = 20;
-	else if (width > 80)
-		width = 80;
+	else if (width > 80) {
+		if (band_name == "6G")
+			width = 160;
+		else
+			width = 80;
+	}
 
 	let htmode = filter(htmode_order, (m) => band[lc(m)])[0];
 	if (htmode)
