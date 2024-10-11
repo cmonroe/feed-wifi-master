@@ -18,7 +18,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1055,9 +1055,16 @@ static void mt7996_sta_rc_update(struct
+@@ -1054,9 +1054,16 @@ static void mt7996_sta_rc_update(struct
  				 struct ieee80211_sta *sta,
  				 u32 changed)
  {

@@ -31,7 +31,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TXPOWER = 0x2b,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1403,6 +1403,7 @@ int mt7996_register_device(struct mt7996
+@@ -1416,6 +1416,7 @@ int mt7996_register_device(struct mt7996
  	dev->mt76.phy.priv = &dev->phy;
  	INIT_WORK(&dev->rc_work, mt7996_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7996_mac_work);
@@ -41,7 +41,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1803,6 +1803,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -1814,6 +1814,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  		cancel_delayed_work_sync(&phy2->mt76->mac_work);
  	if (phy3)
  		cancel_delayed_work_sync(&phy3->mt76->mac_work);
@@ -49,7 +49,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  	for (i = 0; i < 10; i++) {
-@@ -1838,6 +1839,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -1849,6 +1850,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  		ieee80211_queue_delayed_work(phy3->mt76->hw,
  					     &phy3->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -87,7 +87,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4604,3 +4604,108 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -4625,3 +4625,108 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
@@ -198,7 +198,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -937,6 +937,12 @@ enum {
+@@ -927,6 +927,12 @@ enum {
  	UNI_CMD_PP_EN_CTRL,
  };
  
@@ -213,7 +213,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -228,6 +228,16 @@ struct mt7996_hif {
+@@ -238,6 +238,16 @@ struct mt7996_hif {
  	int irq;
  };
  
@@ -230,7 +230,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  struct mt7996_wed_rro_addr {
  	u32 head_low;
  	u32 head_high : 4;
-@@ -272,6 +282,8 @@ struct mt7996_phy {
+@@ -282,6 +292,8 @@ struct mt7996_phy {
  	struct mt76_channel_state state_ts;
  
  	bool has_aux_rx;
@@ -239,7 +239,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -304,6 +316,7 @@ struct mt7996_dev {
+@@ -311,6 +323,7 @@ struct mt7996_dev {
  	struct work_struct rc_work;
  	struct work_struct dump_work;
  	struct work_struct reset_work;
@@ -247,9 +247,9 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -682,6 +695,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
- #ifdef CONFIG_MTK_DEBUG
+@@ -713,6 +726,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
+ int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
 +int mt7996_mcu_set_scs(struct mt7996_phy *phy, u8 enable);
 +void mt7996_mcu_scs_sta_poll(struct work_struct *work);
@@ -258,7 +258,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  int mt7996_dma_rro_init(struct mt7996_dev *dev);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2407,6 +2407,16 @@ static int mt7996_token_read(struct seq_
+@@ -2429,6 +2429,16 @@ static int mt7996_token_read(struct seq_
  	return 0;
  }
  
@@ -275,7 +275,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2477,6 +2487,7 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2499,6 +2509,7 @@ int mt7996_mtk_init_debugfs(struct mt799
  	debugfs_create_devm_seqfile(dev->mt76.dev, "token", dir, mt7996_token_read);
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);

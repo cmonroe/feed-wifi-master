@@ -18,7 +18,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2612,8 +2612,7 @@ int mt7996_mcu_beacon_inband_discov(stru
+@@ -2622,8 +2622,7 @@ int mt7996_mcu_beacon_inband_discov(stru
  	if (IS_ERR(rskb))
  		return PTR_ERR(rskb);
  
@@ -28,7 +28,7 @@ Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
  		interval = vif->bss_conf.fils_discovery.max_interval;
  		skb = ieee80211_get_fils_discovery_tmpl(hw, vif);
  	} else if (changed & BSS_CHANGED_UNSOL_BCAST_PROBE_RESP &&
-@@ -2648,7 +2647,7 @@ int mt7996_mcu_beacon_inband_discov(stru
+@@ -2658,7 +2657,7 @@ int mt7996_mcu_beacon_inband_discov(stru
  	discov->tx_type = !!(changed & BSS_CHANGED_FILS_DISCOVERY);
  	discov->tx_interval = interval;
  	discov->prob_rsp_len = cpu_to_le16(MT_TXD_SIZE + skb->len);

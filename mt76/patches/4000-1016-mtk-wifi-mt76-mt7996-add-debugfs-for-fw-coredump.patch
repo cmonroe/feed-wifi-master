@@ -64,7 +64,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  			  "\nlet's dump firmware SER statistics...\n");
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2088,15 +2088,36 @@ void mt7996_mac_dump_work(struct work_st
+@@ -2099,15 +2099,36 @@ void mt7996_mac_dump_work(struct work_st
  	struct mt7996_dev *dev;
  
  	dev = container_of(work, struct mt7996_dev, dump_work);
@@ -104,7 +104,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  void mt7996_reset(struct mt7996_dev *dev)
  {
  	if (!dev->recovery.hw_init_done)
-@@ -2114,6 +2135,7 @@ void mt7996_reset(struct mt7996_dev *dev
+@@ -2125,6 +2146,7 @@ void mt7996_reset(struct mt7996_dev *dev
  
  		mt7996_irq_disable(dev, MT_INT_MCU_CMD);
  		queue_work(dev->mt76.wq, &dev->dump_work);
@@ -114,7 +114,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -931,7 +931,11 @@ enum {
+@@ -921,7 +921,11 @@ enum {
  	UNI_CMD_SER_SET_RECOVER_L3_BF,
  	UNI_CMD_SER_SET_RECOVER_L4_MDP,
  	UNI_CMD_SER_SET_RECOVER_FULL,
@@ -128,8 +128,8 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	UNI_CMD_SER_SET,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -133,6 +133,14 @@ enum mt7996_ram_type {
- 	__MT7996_RAM_TYPE_MAX,
+@@ -142,6 +142,14 @@ enum mt7996_fem_type {
+ 	MT7996_FEM_MIX,
  };
  
 +enum mt7996_coredump_state {
@@ -143,7 +143,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  enum mt7996_txq_id {
  	MT7996_TXQ_FWDL = 16,
  	MT7996_TXQ_MCU_WM,
-@@ -368,6 +376,7 @@ struct mt7996_dev {
+@@ -374,6 +382,7 @@ struct mt7996_dev {
  
  	/* protects coredump data */
  	struct mutex dump_mutex;
@@ -151,7 +151,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  #ifdef CONFIG_DEV_COREDUMP
  	struct {
  		struct mt7996_crash_data *crash_data[__MT7996_RAM_TYPE_MAX];
-@@ -550,6 +559,7 @@ void mt7996_init_txpower(struct mt7996_p
+@@ -579,6 +588,7 @@ void mt7996_init_txpower(struct mt7996_p
  int mt7996_txbf_init(struct mt7996_dev *dev);
  int mt7996_get_chip_sku(struct mt7996_dev *dev);
  void mt7996_reset(struct mt7996_dev *dev);

@@ -1,18 +1,12 @@
-From 1f2ab08e04fe3c68b0791da1de2b4e891dff1cb2 Mon Sep 17 00:00:00 2001
+From 1e463d48da75799dd89a9ba28eb37e1e18c4a40b Mon Sep 17 00:00:00 2001
 From: Shayne Chen <shayne.chen@mediatek.com>
 Date: Fri, 24 Mar 2023 14:02:32 +0800
-Subject: [PATCH 1000/1044] mtk: wifi: mt76: mt7996: add debug tool
-
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Subject: [PATCH 013/223] mtk: mt76: mt7996: add debug tool
 
 Add PSM bit in sta_info
 
-Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
-
 Remove the duplicate function in mtk_debugfs.c & mtk_debug_i.c
 Only enable mt7996_mcu_fw_log_2_host function in mcu.c
-
-Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
 
 Support more ids category NDPA/NDP TXD/FBK and debug log recommended by
 CTD members.
@@ -23,29 +17,65 @@ command:
 2. iwpriv ra0 set fw_dbg=2:84
 3. iwpriv ra0 set fw_dbg=1:101
 
-Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
-
 mtk: wifi: mt76: mt7996: add wtbl_info support for mt7992
-
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 mtk: wifi: mt76: mt7996: add mt7992 & mt7996 CR debug offset revision
 
+mtk: wifi: mt76: mt7992: refactor code for FW log
+
+Refactor code for FW log.
+
+mtk: wifi: mt76: mt7996: support disable muru debug info when recording fwlog
+
+When we record fwlog, we will also enable recording muru debug info log by
+default. However, in certain test scenarios, this can result in
+recording too many logs, causing inconvenience during issue analysis.
+Therefore, this commit adds an debug option, fw_debug_muru_disable, in
+debugfs. User can modify this option to enable/disable recording muru
+debug info log.
+
+[Usage]
+Set:
+$ echo val > debugfs/fw_debug_muru_disable
+Get:
+$ cat debugfs/fw_debug_muru_disable
+
+val can be the following values:
+0 = enable recording muru debug info (Default value)
+1 = disable recording muru debug info
+
+mtk: wifi: mt76: mt7996: add adie id & ver dump
+
+Do not show fw version in fw_wm_info.
+The fw_wm_info is used to dump fw status when wm crash. When wm crash,
+we are not able to use any mcu command.
+
+Change-Id: Ie10390b01f17db893dbfbf3221bf63a4bd1fe38f
+Change-Id: I4483f9f506ecbdbb49c2ceb99ec76c32b930c67e
+Change-Id: I00c760b31009142848e32b1249d305800585e7fd
+Change-Id: Ifddd4db86982d39f2d39d198b8f5d3e7028983c2
+Change-Id: I591b558a9eec2fbd46d166c9bb1580a94e22072c
+Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
+Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
+Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
+Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 ---
  mt76.h               |    2 +
  mt7996/Makefile      |    4 +
  mt7996/coredump.c    |   10 +-
  mt7996/coredump.h    |    7 +
- mt7996/debugfs.c     |   66 +-
+ mt7996/debugfs.c     |  128 ++-
  mt7996/mac.c         |    3 +
- mt7996/mt7996.h      |   11 +
+ mt7996/mt7996.h      |   13 +
  mt7996/mtk_debug.h   | 2286 ++++++++++++++++++++++++++++++++++++++
- mt7996/mtk_debugfs.c | 2484 ++++++++++++++++++++++++++++++++++++++++++
- mt7996/mtk_mcu.c     |   18 +
- mt7996/mtk_mcu.h     |   16 +
+ mt7996/mtk_debugfs.c | 2506 ++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mtk_mcu.c     |   39 +
+ mt7996/mtk_mcu.h     |   19 +
+ tools/CMakeLists.txt |    7 +
  tools/fwlog.c        |   25 +-
- 12 files changed, 4907 insertions(+), 25 deletions(-)
+ 13 files changed, 5024 insertions(+), 25 deletions(-)
  create mode 100644 mt7996/mtk_debug.h
  create mode 100644 mt7996/mtk_debugfs.c
  create mode 100644 mt7996/mtk_mcu.c
@@ -207,9 +237,51 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	return 0;
-@@ -406,11 +437,12 @@ mt7996_fw_debug_bin_set(void *data, u64
+@@ -398,6 +429,39 @@ remove_buf_file_cb(struct dentry *f)
+ }
+ 
+ static int
++mt7996_fw_debug_muru_set(void *data)
++{
++	struct mt7996_dev *dev = data;
++	enum {
++		DEBUG_BSRP_STATUS = 256,
++		DEBUG_TX_DATA_BYTE_CONUT,
++		DEBUG_RX_DATA_BYTE_CONUT,
++		DEBUG_RX_TOTAL_BYTE_CONUT,
++		DEBUG_INVALID_TID_BSR,
++		DEBUG_UL_LONG_TERM_PPDU_TYPE,
++		DEBUG_DL_LONG_TERM_PPDU_TYPE,
++		DEBUG_PPDU_CLASS_TRIG_ONOFF,
++		DEBUG_AIRTIME_BUSY_STATUS,
++		DEBUG_UL_OFDMA_MIMO_STATUS,
++		DEBUG_RU_CANDIDATE,
++		DEBUG_MEC_UPDATE_AMSDU,
++	} debug;
++	int ret;
++
++	if (dev->fw_debug_muru_disable)
++		return 0;
++
++	for (debug = DEBUG_BSRP_STATUS; debug <= DEBUG_MEC_UPDATE_AMSDU; debug++) {
++		ret = mt7996_mcu_muru_dbg_info(dev, debug,
++					       dev->fw_debug_bin & BIT(0));
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++
++static int
+ mt7996_fw_debug_bin_set(void *data, u64 val)
+ {
+ 	static struct rchan_callbacks relay_cb = {
+@@ -405,17 +469,23 @@ mt7996_fw_debug_bin_set(void *data, u64
+ 		.remove_buf_file = remove_buf_file_cb,
  	};
  	struct mt7996_dev *dev = data;
++	int ret;
  
 -	if (!dev->relay_fwlog)
 +	if (!dev->relay_fwlog) {
@@ -223,7 +295,53 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	dev->fw_debug_bin = val;
  
-@@ -824,6 +856,11 @@ int mt7996_init_debugfs(struct mt7996_ph
+ 	relay_reset(dev->relay_fwlog);
+ 
++	ret = mt7996_fw_debug_muru_set(dev);
++	if (ret)
++		return ret;
++
+ 	return mt7996_fw_debug_wm_set(dev, dev->fw_debug_wm);
+ }
+ 
+@@ -785,6 +855,30 @@ mt7996_rf_regval_set(void *data, u64 val
+ DEFINE_DEBUGFS_ATTRIBUTE(fops_rf_regval, mt7996_rf_regval_get,
+ 			 mt7996_rf_regval_set, "0x%08llx\n");
+ 
++static int
++mt7996_fw_debug_muru_disable_set(void *data, u64 val)
++{
++	struct mt7996_dev *dev = data;
++
++	dev->fw_debug_muru_disable = !!val;
++
++	return 0;
++}
++
++static int
++mt7996_fw_debug_muru_disable_get(void *data, u64 *val)
++{
++	struct mt7996_dev *dev = data;
++
++	*val = dev->fw_debug_muru_disable;
++
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(fops_fw_debug_muru_disable,
++			 mt7996_fw_debug_muru_disable_get,
++			 mt7996_fw_debug_muru_disable_set, "%lld\n");
++
+ int mt7996_init_debugfs(struct mt7996_phy *phy)
+ {
+ 	struct mt7996_dev *dev = phy->dev;
+@@ -820,10 +914,17 @@ int mt7996_init_debugfs(struct mt7996_ph
+ 		debugfs_create_devm_seqfile(dev->mt76.dev, "rdd_monitor", dir,
+ 					    mt7996_rdd_monitor);
+ 	}
++	debugfs_create_file("fw_debug_muru_disable", 0600, dir, dev,
++			    &fops_fw_debug_muru_disable);
+ 
  	if (phy == &dev->phy)
  		dev->debugfs_dir = dir;
  
@@ -235,20 +353,19 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	return 0;
  }
  
-@@ -836,6 +873,12 @@ mt7996_debugfs_write_fwlog(struct mt7996
+@@ -835,7 +936,11 @@ mt7996_debugfs_write_fwlog(struct mt7996
+ 	unsigned long flags;
  	void *dest;
  
- 	spin_lock_irqsave(&lock, flags);
-+
-+	if (!dev->relay_fwlog) {
-+		spin_unlock_irqrestore(&lock, flags);
++	if (!dev->relay_fwlog)
 +		return;
-+	}
++
+ 	spin_lock_irqsave(&lock, flags);
 +
  	dest = relay_reserve(dev->relay_fwlog, hdrlen + len + 4);
  	if (dest) {
  		*(u32 *)dest = hdrlen + len;
-@@ -868,9 +911,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
+@@ -868,9 +973,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -260,7 +377,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -945,6 +945,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -956,6 +956,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
  	id = mt76_token_consume(mdev, &t);
  	if (id < 0)
  		return id;
@@ -272,10 +389,18 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	memset(txwi_ptr, 0, MT_TXD_SIZE);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -369,6 +369,17 @@ struct mt7996_dev {
- 	spinlock_t reg_lock;
+@@ -364,6 +364,7 @@ struct mt7996_dev {
+ 	u8 fw_debug_wa;
+ 	u8 fw_debug_bin;
+ 	u16 fw_debug_seq;
++	bool fw_debug_muru_disable;
  
- 	u8 wtbl_size_group;
+ 	struct dentry *debugfs_dir;
+ 	struct rchan *relay_fwlog;
+@@ -380,6 +381,17 @@ struct mt7996_dev {
+ 		u8 type:4;
+ 		u8 fem:4;
+ 	} var;
 +
 +#ifdef CONFIG_MTK_DEBUG
 +	u16 wlan_idx;
@@ -290,6 +415,14 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
  
  enum {
+@@ -695,6 +707,7 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+ 
+ #ifdef CONFIG_MTK_DEBUG
+ int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
++int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
+ #endif
+ 
+ #ifdef CONFIG_NET_MEDIATEK_SOC_WED
 --- /dev/null
 +++ b/mt7996/mtk_debug.h
 @@ -0,0 +1,2286 @@
@@ -2581,7 +2714,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +#endif
 --- /dev/null
 +++ b/mt7996/mtk_debugfs.c
-@@ -0,0 +1,2484 @@
+@@ -0,0 +1,2506 @@
 +// SPDX-License-Identifier: ISC
 +/*
 + * Copyright (C) 2023 MediaTek Inc.
@@ -2918,20 +3051,43 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
 +static int mt7996_dump_version(struct seq_file *s, void *data)
 +{
++#define MAX_ADIE_NUM	3
 +	struct mt7996_dev *dev = dev_get_drvdata(s->private);
-+	seq_printf(s, "Version: 3.3.15.0\n");
++	u32 regval;
++	u16 adie_chip_id, adie_chip_ver;
++	int adie_idx;
++	static const char * const fem_type[] = {
++		[MT7996_FEM_UNSET] = "N/A",
++		[MT7996_FEM_EXT] = "eFEM",
++		[MT7996_FEM_INT] = "iFEM",
++		[MT7996_FEM_MIX] = "mixed FEM",
++	};
++
++	seq_printf(s, "Version: 4.3.24.8\n");
 +
 +	if (!test_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state))
 +		return 0;
 +
 +	seq_printf(s, "Rom Patch Build Time: %.16s\n", dev->patch_build_date);
 +	seq_printf(s, "WM Patch Build Time: %.15s, Mode: %s\n",
-+		   dev->ram_build_date[MT7996_RAM_TYPE_WM], "Normal mode");
-+		   //dev->testmode_enable ? "Testmode" : "Normal mode");
++		   dev->ram_build_date[MT7996_RAM_TYPE_WM],
++		   "Normal mode");
 +	seq_printf(s, "WA Patch Build Time: %.15s\n",
 +		   dev->ram_build_date[MT7996_RAM_TYPE_WA]);
 +	seq_printf(s, "DSP Patch Build Time: %.15s\n",
 +		   dev->ram_build_date[MT7996_RAM_TYPE_DSP]);
++	for (adie_idx = 0; adie_idx < MAX_ADIE_NUM; adie_idx++) {
++		mt7996_mcu_rf_regval(dev, MT_ADIE_CHIP_ID(adie_idx), &regval, false);
++		adie_chip_id = FIELD_GET(MT_ADIE_CHIP_ID_MASK, regval);
++		adie_chip_ver = FIELD_GET(MT_ADIE_VERSION_MASK, regval);
++		if (adie_chip_id)
++			seq_printf(s, "Adie %d: ID = 0x%04x, Ver = 0x%04x\n",
++				   adie_idx, adie_chip_id, adie_chip_ver);
++		else
++			seq_printf(s, "Adie %d: ID = N/A, Ver = N/A\n", adie_idx);
++	}
++	seq_printf(s, "FEM type: %s\n", fem_type[dev->var.fem]);
++
 +	return 0;
 +}
 +
@@ -2963,7 +3119,6 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
 +	seq_printf(s, "\x1b[32m%s log output\x1b[0m\n", dump->fw_type);
 +	seq_printf(s, "\x1b[32mfw status: %s\n", dump->fw_state);
-+	mt7996_dump_version(s, NULL);
 +	/* PC log */
 +	now = jiffies;
 +	for (i = 0; i < 10; i++)
@@ -5068,7 +5223,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +#endif
 --- /dev/null
 +++ b/mt7996/mtk_mcu.c
-@@ -0,0 +1,18 @@
+@@ -0,0 +1,39 @@
 +// SPDX-License-Identifier: ISC
 +/*
 + * Copyright (C) 2023 MediaTek Inc.
@@ -5086,10 +5241,31 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
 +
 +
++int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val)
++{
++	struct {
++		u8 __rsv1[4];
++
++		__le16 tag;
++		__le16 len;
++
++		__le16 item;
++		u8 __rsv2[2];
++		__le32 value;
++	} __packed req = {
++		.tag = cpu_to_le16(UNI_CMD_MURU_DBG_INFO),
++		.len = cpu_to_le16(sizeof(req) - 4),
++		.item = cpu_to_le16(item),
++		.value = cpu_to_le32(val),
++	};
++
++	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(MURU), &req,
++				 sizeof(req), true);
++}
 +#endif
 --- /dev/null
 +++ b/mt7996/mtk_mcu.h
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,19 @@
 +/* SPDX-License-Identifier: ISC */
 +/*
 + * Copyright (C) 2023 MediaTek Inc.
@@ -5102,6 +5278,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
 +#ifdef CONFIG_MTK_DEBUG
 +
++enum {
++	UNI_CMD_MURU_DBG_INFO = 0x18,
++};
 +
 +#endif
 +

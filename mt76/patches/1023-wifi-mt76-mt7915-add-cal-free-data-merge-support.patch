@@ -16,7 +16,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
-@@ -340,6 +340,190 @@ void mt7915_eeprom_parse_hw_cap(struct m
+@@ -357,6 +357,190 @@ void mt7915_eeprom_parse_hw_cap(struct m
  	dev->chainshift = hweight8(dev->mphy.chainmask);
  }
  
@@ -207,7 +207,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7915_eeprom_init(struct mt7915_dev *dev)
  {
  	int ret;
-@@ -377,6 +561,11 @@ int mt7915_eeprom_init(struct mt7915_dev
+@@ -394,6 +578,11 @@ int mt7915_eeprom_init(struct mt7915_dev
  	}
  
  	mt7915_eeprom_load_precal(dev);
@@ -221,7 +221,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	       ETH_ALEN);
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2894,6 +2894,7 @@ int mt7915_mcu_get_eeprom(struct mt7915_
+@@ -2915,6 +2915,7 @@ int mt7915_mcu_get_eeprom(struct mt7915_
  	};
  	struct mt7915_mcu_eeprom_info *res;
  	struct sk_buff *skb;
@@ -229,7 +229,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	int ret;
  	u8 *buf = read_buf;
  
-@@ -2904,9 +2905,16 @@ int mt7915_mcu_get_eeprom(struct mt7915_
+@@ -2925,9 +2926,16 @@ int mt7915_mcu_get_eeprom(struct mt7915_
  		return ret;
  
  	res = (struct mt7915_mcu_eeprom_info *)skb->data;
@@ -251,7 +251,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	return 0;
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -509,6 +509,7 @@ u32 mt7915_wed_init_buf(void *ptr, dma_a
+@@ -510,6 +510,7 @@ u32 mt7915_wed_init_buf(void *ptr, dma_a
  
  int mt7915_register_device(struct mt7915_dev *dev);
  void mt7915_unregister_device(struct mt7915_dev *dev);

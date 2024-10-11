@@ -17,7 +17,7 @@
  	CHAN5G(104, 5520),
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -384,7 +384,7 @@ out:
+@@ -414,7 +414,7 @@ out:
  
  static void mt7996_eeprom_init_precal(struct mt7996_dev *dev)
  {

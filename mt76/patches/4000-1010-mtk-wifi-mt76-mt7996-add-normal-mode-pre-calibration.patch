@@ -27,9 +27,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	MCU_UNI_CMD_PER_STA_INFO = 0x6d,
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -427,6 +427,10 @@ int mt7996_eeprom_init(struct mt7996_dev
- 			return ret;
- 	}
+@@ -472,6 +472,10 @@ int mt7996_eeprom_init(struct mt7996_dev
+ 
+ 	mt7996_eeprom_load_precal(dev);
  
 +	ret = mt7996_eeprom_load_precal(dev);
 +	if (ret)
@@ -51,7 +51,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF0_TX_PATH		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -992,6 +992,12 @@ static int mt7996_init_hardware(struct m
+@@ -1005,6 +1005,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -81,7 +81,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3632,6 +3632,172 @@ int mt7996_mcu_get_eeprom_free_block(str
+@@ -3653,6 +3653,172 @@ int mt7996_mcu_get_eeprom_free_block(str
  	return 0;
  }
  
@@ -256,7 +256,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define NIC_CAP	3
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -705,6 +705,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -735,6 +735,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
  #endif
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);

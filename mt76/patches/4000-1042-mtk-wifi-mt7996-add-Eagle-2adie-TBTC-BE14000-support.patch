@@ -1,61 +1,48 @@
-From 88b241297d303eab8b0c1e75ace2836d36662a65 Mon Sep 17 00:00:00 2001
+From 9c8447672f6bb36113eccf7064f91b11ea980825 Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Tue, 5 Dec 2023 16:48:33 +0800
-Subject: [PATCH 1042/1044] mtk: wifi: mt7996: add Eagle 2adie TBTC (BE14000)
+Subject: [PATCH 045/223] mtk: mt76: mt7996: add Eagle 2adie TBTC (BE14000)
  support
 
 Add fwdl/default eeprom load support for Eagle 2 adie TBTC
-
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 Add Eagle 2adie TBTC efuse merge
 Add Eagle 2adie TBTC group prek size
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Change-Id: I53479ad22aec81ba3f3028aa0aada86b175379f8
 ---
- mt7996/eeprom.c |  8 ++++++--
+ mt7996/eeprom.c |  6 ++++--
  mt7996/eeprom.h | 12 ++++++++++++
- mt7996/init.c   |  6 ++++++
- mt7996/mcu.c    |  5 +++++
- mt7996/mt7996.h |  8 ++++++++
- mt7996/regs.h   |  1 +
- 6 files changed, 38 insertions(+), 2 deletions(-)
+ mt7996/mt7996.h |  1 +
+ 3 files changed, 17 insertions(+), 2 deletions(-)
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -126,6 +126,8 @@ const char *mt7996_eeprom_name(struct mt
- 	case 0x7990:
- 		if (dev->chip_sku == MT7996_SKU_404)
- 			return MT7996_EEPROM_DEFAULT_404;
-+		else if (dev->chip_sku == MT7996_SKU_233)
-+			return MT7996_EEPROM_DEFAULT_233;
- 		return MT7996_EEPROM_DEFAULT;
- 	case 0x7992:
- 		if (dev->chip_sku == MT7992_SKU_23) {
-@@ -396,6 +398,8 @@ static void mt7996_eeprom_init_precal(st
+@@ -428,6 +428,8 @@ static void mt7996_eeprom_init_precal(st
  	switch (mt76_chip(&dev->mt76)) {
  	case 0x7990:
  		dev->prek.rev = mt7996_prek_rev;
-+		if (dev->chip_sku == MT7996_SKU_233)
++		if (dev->var.type == MT7996_VAR_TYPE_233)
 +			dev->prek.rev = mt7996_prek_rev_233;
  		/* 5g & 6g bw 80 dpd channel list is not used */
  		dev->prek.dpd_ch_num[DPD_CH_NUM_BW320_6G] = ARRAY_SIZE(dpd_6g_ch_list_bw320);
  		break;
-@@ -503,7 +507,7 @@ static int mt7996_apply_cal_free_data(st
+@@ -531,7 +533,7 @@ static int mt7996_apply_cal_free_data(st
  	case 0x7990:
  		adie_base = adie_base_7996;
  		/* adie 0 */
--		if (dev->fem_type == MT7996_FEM_INT)
-+		if (dev->fem_type == MT7996_FEM_INT && dev->chip_sku != MT7996_SKU_233)
+-		if (dev->var.fem == MT7996_FEM_INT)
++		if (dev->var.fem == MT7996_FEM_INT && dev->var.type != MT7996_VAR_TYPE_233)
  			adie_id = ADIE_7975;
  		else
  			adie_id = ADIE_7976;
-@@ -511,7 +515,7 @@ static int mt7996_apply_cal_free_data(st
+@@ -539,7 +541,7 @@ static int mt7996_apply_cal_free_data(st
  		eep_offs[0] = eep_offs_list[adie_id];
  
  		/* adie 1 */
--		if (dev->chip_sku != MT7996_SKU_404) {
-+		if (dev->chip_sku == MT7996_SKU_444) {
+-		if (dev->var.type != MT7996_VAR_TYPE_404) {
++		if (dev->var.type == MT7996_VAR_TYPE_444) {
  			adie_offs[1] = adie_offs_list[ADIE_7977];
  			eep_offs[1] = eep_offs_list[ADIE_7977];
  		}
@@ -80,73 +67,13 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /* kite 2/5g config */
  static const u32 mt7992_prek_rev[] = {
  	[GROUP_SIZE_2G] =			4 * MT_EE_CAL_UNIT,
---- a/mt7996/init.c
-+++ b/mt7996/init.c
-@@ -917,6 +917,12 @@ int mt7996_get_chip_sku(struct mt7996_de
- 
- 	switch (mt76_chip(&dev->mt76)) {
- 	case 0x7990:
-+		if (FIELD_GET(MT_PAD_GPIO_2ADIE_TBTC, val)) {
-+			dev->chip_sku = MT7996_SKU_233;
-+			dev->fem_type = MT7996_FEM_INT;
-+			return 0;
-+		}
-+
- 		adie_comb = FIELD_GET(MT_PAD_GPIO_ADIE_COMB, val);
- 		if (adie_comb <= 1)
- 			dev->chip_sku = MT7996_SKU_444;
---- a/mt7996/mcu.c
-+++ b/mt7996/mcu.c
-@@ -22,6 +22,11 @@
- 			_fw = MT7992_##name;			\
- 		break;						\
- 	case 0x7990:						\
-+		if ((_dev)->chip_sku == MT7996_SKU_233)		\
-+			_fw = MT7996_##name##_233;		\
-+		else						\
-+			_fw = MT7996_##name;			\
-+		break;						\
- 	default:						\
- 		_fw = MT7996_##name;				\
- 		break;						\
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -34,6 +34,12 @@
- #define MT7996_FIRMWARE_DSP		"mediatek/mt7996/mt7996_dsp.bin"
- #define MT7996_ROM_PATCH		"mediatek/mt7996/mt7996_rom_patch.bin"
- 
-+#define MT7996_FIRMWARE_WA_233		"mediatek/mt7996/mt7996_wa_233.bin"
-+#define MT7996_FIRMWARE_WM_233		"mediatek/mt7996/mt7996_wm_233.bin"
-+#define MT7996_FIRMWARE_DSP_233		MT7996_FIRMWARE_DSP
+@@ -37,6 +37,7 @@
+ #define MT7996_FIRMWARE_WA_233		"mediatek/mt7996/mt7996_wa_233.bin"
+ #define MT7996_FIRMWARE_WM_233		"mediatek/mt7996/mt7996_wm_233.bin"
+ #define MT7996_FIRMWARE_DSP_233		MT7996_FIRMWARE_DSP
 +#define MT7996_FIRMWARE_WM_TM_233	"mediatek/mt7996/mt7996_wm_tm_233.bin"
-+#define MT7996_ROM_PATCH_233		"mediatek/mt7996/mt7996_rom_patch_233.bin"
-+
+ #define MT7996_ROM_PATCH_233		"mediatek/mt7996/mt7996_rom_patch_233.bin"
+ 
  #define MT7992_FIRMWARE_WA		"mediatek/mt7996/mt7992_wa.bin"
- #define MT7992_FIRMWARE_WM		"mediatek/mt7996/mt7992_wm.bin"
- #define MT7992_FIRMWARE_DSP		"mediatek/mt7996/mt7992_dsp.bin"
-@@ -50,6 +56,7 @@
- #define MT7992_ROM_PATCH_23		"mediatek/mt7996/mt7992_rom_patch_23.bin"
- 
- #define MT7996_EEPROM_DEFAULT		"mediatek/mt7996/mt7996_eeprom.bin"
-+#define MT7996_EEPROM_DEFAULT_233	"mediatek/mt7996/mt7996_eeprom_233.bin"
- #define MT7996_EEPROM_DEFAULT_404	"mediatek/mt7996/mt7996_eeprom_dual_404.bin"
- #define MT7992_EEPROM_DEFAULT		"mediatek/mt7996/mt7992_eeprom_2i5i.bin"
- #define MT7992_EEPROM_DEFAULT_EXT	"mediatek/mt7996/mt7992_eeprom_2e5e.bin"
-@@ -118,6 +125,7 @@ enum mt7996_fem_type {
- enum mt7996_sku_type {
- 	MT7996_SKU_404,
- 	MT7996_SKU_444,
-+	MT7996_SKU_233,
- };
- 
- enum mt7992_sku_type {
---- a/mt7996/regs.h
-+++ b/mt7996/regs.h
-@@ -663,6 +663,7 @@ enum offs_rev {
- 
- #define MT_PAD_GPIO				0x700056f0
- #define MT_PAD_GPIO_ADIE_COMB			GENMASK(16, 15)
-+#define MT_PAD_GPIO_2ADIE_TBTC			BIT(19)
- #define MT_PAD_GPIO_ADIE_COMB_7992		GENMASK(17, 16)
- #define MT_PAD_GPIO_ADIE_NUM_7992		BIT(15)
- 

@@ -1,6 +1,6 @@
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
-@@ -144,7 +144,7 @@ static int mt7915_efuse_load(struct mt79
+@@ -149,7 +149,7 @@ static int mt7915_efuse_load(struct mt79
  	block_num = DIV_ROUND_UP(eeprom_size, MT7915_EEPROM_BLOCK_SIZE);
  
  	for (i = 0; i < block_num; i++)
@@ -9,7 +9,7 @@
  
  	dev_info(dev->mt76.dev, "read efuse data size=%lu, caching to OTP\n",
  			dev->mt76.eeprom.size);
-@@ -199,7 +199,7 @@ static int mt7915_eeprom_load(struct mt7
+@@ -204,7 +204,7 @@ static int mt7915_eeprom_load(struct mt7
  		/* read eeprom data from efuse */
  		block_num = DIV_ROUND_UP(eeprom_size, eeprom_blk_size);
  		for (i = 0; i < block_num; i++) {
@@ -20,7 +20,7 @@
  		}
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2844,7 +2844,7 @@ int mt7915_mcu_set_eeprom(struct mt7915_
+@@ -2865,7 +2865,7 @@ int mt7915_mcu_set_eeprom(struct mt7915_
  				 &req, sizeof(req), true);
  }
  
@@ -29,7 +29,7 @@
  {
  	struct mt7915_mcu_eeprom_info req = {
  		.addr = cpu_to_le32(round_down(offset,
-@@ -2853,7 +2853,7 @@ int mt7915_mcu_get_eeprom(struct mt7915_
+@@ -2874,7 +2874,7 @@ int mt7915_mcu_get_eeprom(struct mt7915_
  	struct mt7915_mcu_eeprom_info *res;
  	struct sk_buff *skb;
  	int ret;
@@ -38,7 +38,7 @@
  
  	ret = mt76_mcu_send_and_get_msg(&dev->mt76,
  					MCU_EXT_QUERY(EFUSE_ACCESS),
-@@ -2862,7 +2862,8 @@ int mt7915_mcu_get_eeprom(struct mt7915_
+@@ -2883,7 +2883,8 @@ int mt7915_mcu_get_eeprom(struct mt7915_
  		return ret;
  
  	res = (struct mt7915_mcu_eeprom_info *)skb->data;
@@ -50,7 +50,7 @@
  
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -472,7 +472,7 @@ int mt7915_mcu_set_fixed_rate_ctrl(struc
+@@ -473,7 +473,7 @@ int mt7915_mcu_set_fixed_rate_ctrl(struc
  				   struct ieee80211_sta *sta,
  				   void *data, u32 field);
  int mt7915_mcu_set_eeprom(struct mt7915_dev *dev);

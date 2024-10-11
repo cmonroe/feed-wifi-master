@@ -51,7 +51,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #define MT_CT_INFO_MGMT_FRAME		BIT(2)
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -922,6 +922,10 @@ void mt7996_mac_write_txwi(struct mt7996
+@@ -933,6 +933,10 @@ void mt7996_mac_write_txwi(struct mt7996
  		}
  
  		val = FIELD_PREP(MT_TXD6_TX_RATE, idx) | MT_TXD6_FIXED_BW;
@@ -64,7 +64,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	}
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -563,6 +563,7 @@ static u8
+@@ -562,6 +562,7 @@ static u8
  mt7996_get_rates_table(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  		       bool beacon, bool mcast)
  {
@@ -72,7 +72,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct mt76_vif *mvif = (struct mt76_vif *)vif->drv_priv;
  	struct mt76_phy *mphy = hw->priv;
  	u16 rate;
-@@ -573,6 +574,9 @@ mt7996_get_rates_table(struct ieee80211_
+@@ -572,6 +573,9 @@ mt7996_get_rates_table(struct ieee80211_
  	if (beacon) {
  		struct mt7996_phy *phy = mphy->priv;
  
@@ -82,7 +82,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* odd index for driver, even index for firmware */
  		idx = MT7996_BEACON_RATES_TBL + 2 * phy->mt76->band_idx;
  		if (phy->beacon_rate != rate)
-@@ -885,6 +889,7 @@ mt7996_get_stats(struct ieee80211_hw *hw
+@@ -884,6 +888,7 @@ mt7996_get_stats(struct ieee80211_hw *hw
  
  u64 __mt7996_get_tsf(struct ieee80211_hw *hw, struct mt7996_vif *mvif)
  {
@@ -92,7 +92,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	union {
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4550,7 +4550,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -4564,7 +4564,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -101,7 +101,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -4725,6 +4725,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -4739,6 +4739,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -124,7 +124,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -4773,7 +4789,36 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4787,7 +4803,36 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &req, sizeof(req));
  	/* cck and ofdm */
  	skb_put_data(skb, &la.cck, sizeof(la.cck));
@@ -162,7 +162,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	/* ht20 */
  	skb_put_data(skb, &la.mcs[0], 8);
  	/* ht40 */
-@@ -4810,8 +4855,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4824,8 +4869,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la_path.cck, sizeof(la_path.cck));
@@ -206,7 +206,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -4825,6 +4903,31 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4839,6 +4917,31 @@ int mt7996_mcu_set_txpower_sku(struct mt
  				     MCU_WM_UNI_CMD(TXPOWER), true);
  }
  
@@ -240,7 +240,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	__le32 cp_mode;
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -848,6 +848,7 @@ enum {
+@@ -838,6 +838,7 @@ enum {
  	UNI_BAND_CONFIG_EDCCA_ENABLE = 0x05,
  	UNI_BAND_CONFIG_EDCCA_THRESHOLD = 0x06,
  	UNI_BAND_CONFIG_RTS_THRESHOLD = 0x08,
@@ -250,7 +250,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  enum {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -801,6 +801,7 @@ void mt7996_vendor_register(struct mt799
+@@ -803,6 +803,7 @@ void mt7996_vendor_register(struct mt799
  void mt7996_vendor_amnt_fill_rx(struct mt7996_phy *phy, struct sk_buff *skb);
  int mt7996_vendor_amnt_sta_remove(struct mt7996_phy *phy,
  				  struct ieee80211_sta *sta);
@@ -260,7 +260,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mcu_edcca_enable(struct mt7996_phy *phy, bool enable);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -3016,6 +3016,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -3037,6 +3037,8 @@ int mt7996_mtk_init_debugfs(struct mt799
  	debugfs_create_file("sr_stats", 0400, dir, phy, &mt7996_sr_stats_fops);
  	debugfs_create_file("sr_scene_cond", 0400, dir, phy, &mt7996_sr_scene_cond_fops);
  

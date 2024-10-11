@@ -1,0 +1,135 @@
+From f23ac5fb50b0764391e2aebeab3c748eb46a5dbf Mon Sep 17 00:00:00 2001
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Mon, 11 Mar 2024 10:43:03 +0800
+Subject: [PATCH 023/223] mtk: mt76: mt7996: refactor eeprom loading flow for
+ sku checking
+
+Add eeprom sku checking mechanism to avoid using the
+wrong eeprom in flash/binfile mode
+The fields listed below will be checked by comparing the loaded eeprom to the default bin
+1. FEM type
+2. MAC address (warning for using default MAC address)
+3. RF path & streams
+   (to distinguish cases such as BE7200 4i5i, BE6500 3i5i, and BE5040 2i3i)
+
+1. Reset eeprom content before loading efuse
+   eeprom array might contain incomplete data read from flash or
+   binfile, which is not overwritten since this block is invalid
+   in efuse.
+2. Remove testmode default bin since it is unnecessary
+   Not used in logan. Directly load normal mode default bin is fine.
+   Also, this way is better since we don't need to put testmode default
+   eeprom for each sku (especially kite's sku) in our SDK.
+3. Set testmode_en field for default bin mode for consistency sake
+
+1.
+Fix efuse mode txpower = 0 issue
+This fix might be changed if fw supports efuse merge for buffer mode = EE_MODE_EFUSE
+2.
+Add Eagle BE19000 ifem default bin, add Eagle default bin bootstrip
+
+Change-Id: If1905086f2a876a593d07f23a5facad35067f94a
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+---
+ mt7996/eeprom.c      | 37 +++----------------------------------
+ mt7996/mcu.c         |  2 +-
+ mt7996/mtk_debugfs.c |  3 +--
+ 3 files changed, 5 insertions(+), 37 deletions(-)
+
+--- a/mt7996/eeprom.c
++++ b/mt7996/eeprom.c
+@@ -45,33 +45,14 @@ const u32 dpd_6g_bw320_ch_num = ARRAY_SI
+ 
+ static int mt7996_check_eeprom(struct mt7996_dev *dev)
+ {
+-#define FEM_INT				0
+-#define FEM_EXT				3
+ 	u8 *eeprom = dev->mt76.eeprom.data;
+-	u8 i, fem[__MT_MAX_BAND], fem_type;
+ 	u16 val = get_unaligned_le16(eeprom);
+ 
+-	for (i = 0; i < __MT_MAX_BAND; i++)
+-		fem[i] = eeprom[MT_EE_WIFI_CONF + 6 + i] & MT_EE_WIFI_PA_LNA_CONFIG;
+-
+ 	switch (val) {
+ 	case 0x7990:
+ 		return is_mt7996(&dev->mt76) ? 0 : -EINVAL;
+ 	case 0x7992:
+-		if (dev->fem_type == MT7996_FEM_UNSET)
+-			return is_mt7992(&dev->mt76) ? 0 : -EINVAL;
+-
+-		if (fem[0] == FEM_EXT && fem[1] == FEM_EXT)
+-			fem_type = MT7996_FEM_EXT;
+-		else if (fem[0] == FEM_INT && fem[1] == FEM_INT)
+-			fem_type = MT7996_FEM_INT;
+-		else if (fem[0] == FEM_INT && fem[1] == FEM_EXT)
+-			fem_type = MT7996_FEM_MIX;
+-		else
+-			return -EINVAL;
+-
+-		return (is_mt7992(&dev->mt76) ? 0 : -EINVAL) |
+-		       (dev->var.fem == fem_type ? 0 : -EINVAL);
++		return is_mt7992(&dev->mt76) ? 0 : -EINVAL;
+ 	default:
+ 		return -EINVAL;
+ 	}
+@@ -79,9 +60,6 @@ static int mt7996_check_eeprom(struct mt
+ 
+ const char *mt7996_eeprom_name(struct mt7996_dev *dev)
+ {
+-	if (dev->bin_file_mode)
+-		return dev->mt76.bin_file_name;
+-
+ 	switch (mt76_chip(&dev->mt76)) {
+ 	case 0x7992:
+ 		switch (dev->var.type) {
+@@ -229,10 +207,7 @@ mt7996_eeprom_check_or_use_default(struc
+ 		return ret;
+ 
+ 	if (!fw || !fw->data) {
+-		if (dev->bin_file_mode)
+-			dev_err(dev->mt76.dev, "Invalid bin (bin file mode)\n");
+-		else
+-			dev_err(dev->mt76.dev, "Invalid default bin\n");
++		dev_err(dev->mt76.dev, "Invalid default bin\n");
+ 		ret = -EINVAL;
+ 		goto out;
+ 	}
+@@ -242,6 +217,7 @@ mt7996_eeprom_check_or_use_default(struc
+ 
+ 	dev_warn(dev->mt76.dev, "eeprom load fail, use default bin\n");
+ 	memcpy(eeprom, fw->data, MT7996_EEPROM_SIZE);
++	dev->bin_file_mode = false;
+ 	dev->flash_mode = true;
+ 
+ out:
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -3527,7 +3527,7 @@ int mt7996_mcu_set_chan_info(struct mt79
+ 				 &req, sizeof(req), true);
+ }
+ 
+-static int mt7996_mcu_set_eeprom_flash(struct mt7996_dev *dev)
++int mt7996_mcu_set_eeprom_flash(struct mt7996_dev *dev)
+ {
+ #define MAX_PAGE_IDX_MASK	GENMASK(7, 5)
+ #define PAGE_IDX_MASK		GENMASK(4, 2)
+--- a/mt7996/mtk_debugfs.c
++++ b/mt7996/mtk_debugfs.c
+@@ -340,7 +340,6 @@ static int mt7996_dump_version(struct se
+ 	u16 adie_chip_id, adie_chip_ver;
+ 	int adie_idx;
+ 	static const char * const fem_type[] = {
+-		[MT7996_FEM_UNSET] = "N/A",
+ 		[MT7996_FEM_EXT] = "eFEM",
+ 		[MT7996_FEM_INT] = "iFEM",
+ 		[MT7996_FEM_MIX] = "mixed FEM",
+@@ -2826,7 +2825,7 @@ static int mt7996_show_eeprom_mode(struc
+ 			seq_printf(s, "   flash mode\n");
+ 		break;
+ 	case BIN_FILE_MODE:
+-		seq_printf(s, "   bin file mode\n   filename = %s\n", mt7996_eeprom_name(dev));
++		seq_printf(s, "   bin file mode\n   filename = %s\n", dev->mt76.bin_file_name);
+ 		break;
+ 	default:
+ 		break;

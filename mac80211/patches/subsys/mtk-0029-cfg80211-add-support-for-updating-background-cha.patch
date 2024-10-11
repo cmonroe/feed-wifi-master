@@ -13,7 +13,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -8769,6 +8769,20 @@ void cfg80211_sta_update_dfs_state(struc
+@@ -8773,6 +8773,20 @@ void cfg80211_sta_update_dfs_state(struc
  				   bool associated);
  
  /**
@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1281,6 +1281,18 @@ cfg80211_start_background_radar_detectio
+@@ -1283,6 +1283,18 @@ cfg80211_start_background_radar_detectio
  	return 0;
  }
  

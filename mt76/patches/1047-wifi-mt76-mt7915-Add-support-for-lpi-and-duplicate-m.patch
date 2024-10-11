@@ -94,7 +94,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -831,6 +831,9 @@ struct mt76_phy {
+@@ -832,6 +832,9 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -104,7 +104,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1674,7 +1677,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
+@@ -1675,7 +1678,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
  void mt76_set_irq_mask(struct mt76_dev *dev, u32 addr, u32 clear, u32 set);
  
  struct device_node *
@@ -204,7 +204,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static void
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1441,7 +1441,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
+@@ -1462,7 +1462,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
  {
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
  	struct mt76_phy *mphy = mvif->phy->mt76;
@@ -214,7 +214,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &spe_idx,
  					      RATE_PARAM_SPE_UPDATE);
-@@ -3418,6 +3419,22 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3439,6 +3440,22 @@ mt7915_update_txpower(struct mt7915_phy
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -237,7 +237,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3449,14 +3466,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3470,14 +3487,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -277,7 +277,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb_put_data(skb, &la.mcs[0], len[SKU_HT_BW20]);
  	skb_put_data(skb, &la.mcs[1], len[SKU_HT_BW40]);
  
-@@ -3486,8 +3526,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3507,8 +3547,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
@@ -314,7 +314,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	/* HT20 and HT40 */
  	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
-@@ -3563,6 +3629,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3584,6 +3650,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	return 0;
  }
  
@@ -338,7 +338,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -732,6 +732,7 @@ int mt7915_mcu_set_csi(struct mt7915_phy
+@@ -733,6 +733,7 @@ int mt7915_mcu_set_csi(struct mt7915_phy
  void mt7915_vendor_amnt_fill_rx(struct mt7915_phy *phy, struct sk_buff *skb);
  int mt7915_vendor_amnt_sta_remove(struct mt7915_phy *phy,
  				  struct ieee80211_sta *sta);

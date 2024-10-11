@@ -28,7 +28,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  		break;
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -651,7 +651,7 @@ static void mt7915_bss_info_changed(stru
+@@ -658,7 +658,7 @@ static void mt7915_bss_info_changed(stru
  
  	if (changed & (BSS_CHANGED_BEACON |
  		       BSS_CHANGED_BEACON_ENABLED))
@@ -37,7 +37,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  
  	if (changed & (BSS_CHANGED_UNSOL_BCAST_PROBE_RESP |
  		       BSS_CHANGED_FILS_DISCOVERY))
-@@ -724,7 +724,7 @@ mt7915_channel_switch_beacon(struct ieee
+@@ -731,7 +731,7 @@ mt7915_channel_switch_beacon(struct ieee
  	struct mt7915_dev *dev = mt7915_hw_dev(hw);
  
  	mutex_lock(&dev->mt76.mutex);
@@ -48,7 +48,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2013,8 +2013,7 @@ mt7915_mcu_add_inband_discov(struct mt79
+@@ -2034,8 +2034,7 @@ mt7915_mcu_add_inband_discov(struct mt79
  				     MCU_EXT_CMD(BSS_INFO_UPDATE), true);
  }
  
@@ -60,7 +60,7 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
  	struct mt7915_phy *phy = mt7915_hw_phy(hw);
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -462,7 +462,7 @@ int mt7915_mcu_update_bss_color(struct m
+@@ -463,7 +463,7 @@ int mt7915_mcu_update_bss_color(struct m
  int mt7915_mcu_add_inband_discov(struct mt7915_dev *dev, struct ieee80211_vif *vif,
  				 u32 changed);
  int mt7915_mcu_add_beacon(struct ieee80211_hw *hw, struct ieee80211_vif *vif,

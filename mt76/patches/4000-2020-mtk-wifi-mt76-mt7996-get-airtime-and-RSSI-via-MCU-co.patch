@@ -41,7 +41,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  };
  
  enum mt76_wcid_flags {
-@@ -1354,6 +1358,22 @@ static inline int mt76_decr(int val, int
+@@ -1353,6 +1357,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -207,7 +207,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7996_mac_enable_rtscts(struct mt7996_dev *dev,
  			      struct ieee80211_vif *vif, bool enable)
  {
-@@ -1194,8 +1094,6 @@ mt7996_mac_tx_free(struct mt7996_dev *de
+@@ -1205,8 +1105,6 @@ mt7996_mac_tx_free(struct mt7996_dev *de
  		}
  	}
  
@@ -216,7 +216,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -2337,31 +2235,42 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2348,31 +2246,42 @@ void mt7996_mac_sta_rc_work(struct work_
  
  void mt7996_mac_work(struct work_struct *work)
  {
@@ -274,7 +274,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -534,7 +534,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -539,7 +539,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
  	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
  		u8 ac;
  		u16 wlan_idx;
@@ -285,7 +285,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -573,6 +576,82 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -578,6 +581,82 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			wcid->stats.rx_packets +=
  				le32_to_cpu(res->msdu_cnt[i].rx_msdu_cnt);
  			break;
@@ -368,7 +368,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -4668,9 +4747,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -4682,9 +4761,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -526,7 +526,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -4681,7 +4906,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -4695,7 +4920,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  
@@ -537,7 +537,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -185,6 +185,31 @@ struct mt7996_mcu_mib {
+@@ -175,6 +175,31 @@ struct mt7996_mcu_mib {
  	__le64 data;
  } __packed;
  
@@ -569,7 +569,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct all_sta_trx_rate {
  	__le16 wlan_idx;
  	u8 __rsv1[2];
-@@ -230,6 +255,13 @@ struct mt7996_mcu_all_sta_info_event {
+@@ -220,6 +245,13 @@ struct mt7996_mcu_all_sta_info_event {
  			__le32 tx_msdu_cnt;
  			__le32 rx_msdu_cnt;
  		} __packed, msdu_cnt);
@@ -585,7 +585,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -110,6 +110,8 @@
+@@ -113,6 +113,8 @@
  #define MT7996_RX_MSDU_PAGE_SIZE	(128 + \
  					 SKB_DATA_ALIGN(sizeof(struct skb_shared_info)))
  
@@ -594,7 +594,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct mt7996_vif;
  struct mt7996_sta;
  struct mt7996_dfs_pulse;
-@@ -216,7 +218,6 @@ struct mt7996_sta {
+@@ -218,7 +220,6 @@ struct mt7996_sta {
  	struct mt7996_vif *vif;
  
  	struct list_head rc_list;
@@ -602,7 +602,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  	int ack_signal;
  	struct ewma_avg_signal avg_ack_signal;
-@@ -311,6 +312,21 @@ struct mt7996_air_monitor_ctrl {
+@@ -313,6 +314,21 @@ struct mt7996_air_monitor_ctrl {
  };
  #endif
  
@@ -624,7 +624,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct mt7996_phy {
  	struct mt76_phy *mt76;
  	struct mt7996_dev *dev;
-@@ -475,6 +491,7 @@ struct mt7996_dev {
+@@ -479,6 +495,7 @@ struct mt7996_dev {
  		u32 fw_dbg_module;
  		u8 fw_dbg_lv;
  		u32 bcn_total_cnt[__MT_MAX_BAND];
@@ -632,7 +632,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	} dbg;
  	const struct mt7996_dbg_reg_desc *dbg_reg;
  #endif
-@@ -680,7 +697,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -682,7 +699,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);
@@ -646,7 +646,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static inline u8 mt7996_max_interface_num(struct mt7996_dev *dev)
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2930,6 +2930,69 @@ static int mt7996_rx_counters(struct seq
+@@ -2951,6 +2951,69 @@ static int mt7996_rx_counters(struct seq
  	return 0;
  }
  
@@ -716,7 +716,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -3018,6 +3081,14 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -3039,6 +3102,14 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_bool("mgmt_pwr_enhance", 0600, dir, &dev->mt76.mgmt_pwr_enhance);
  

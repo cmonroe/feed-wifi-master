@@ -9,7 +9,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -327,6 +327,8 @@ struct mt7915_dev {
+@@ -328,6 +328,8 @@ struct mt7915_dev {
  	struct reset_control *rstc;
  	void __iomem *dcm;
  	void __iomem *sku;

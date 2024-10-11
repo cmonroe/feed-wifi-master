@@ -60,7 +60,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -720,6 +720,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -730,6 +730,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_WED_RRO:
  		mt7996_mcu_wed_rro_event(dev, skb);
  		break;
@@ -74,7 +74,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -331,6 +331,9 @@ struct mt7996_phy {
+@@ -340,6 +340,9 @@ struct mt7996_phy {
  #ifdef CONFIG_MTK_VENDOR
  	spinlock_t amnt_lock;
  	struct mt7996_air_monitor_ctrl amnt_ctrl;
@@ -84,10 +84,10 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  #endif
  };
  
-@@ -767,6 +770,8 @@ enum edcca_bw_id {
- 
+@@ -797,6 +800,8 @@ enum edcca_bw_id {
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
+ int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
 +int mt7996_mcu_set_sr_enable(struct mt7996_phy *phy, u8 action, u64 val, bool set);
 +void mt7996_mcu_rx_sr_event(struct mt7996_dev *dev, struct sk_buff *skb);
  #endif
@@ -95,7 +95,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2813,6 +2813,83 @@ static int mt7996_show_eeprom_mode(struc
+@@ -2835,6 +2835,83 @@ static int mt7996_show_eeprom_mode(struc
  	return 0;
  }
  
@@ -179,7 +179,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2892,6 +2969,11 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2914,6 +2991,11 @@ int mt7996_mtk_init_debugfs(struct mt799
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  	debugfs_create_file("scs_enable", 0200, dir, phy, &fops_scs_enable);
  
@@ -193,10 +193,11 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  
 --- a/mt7996/mtk_mcu.c
 +++ b/mt7996/mtk_mcu.c
-@@ -124,4 +124,115 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
+@@ -145,4 +145,116 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
+ 
  	return 0;
  }
- 
++
 +int mt7996_mcu_set_sr_enable(struct mt7996_phy *phy, u8 action, u64 val, bool set)
 +{
 +	struct {
@@ -311,7 +312,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  #endif
 --- a/mt7996/mtk_mcu.h
 +++ b/mt7996/mtk_mcu.h
-@@ -120,4 +120,60 @@ enum {
+@@ -123,4 +123,60 @@ enum {
  	EDCCA_JAPAN = 3
  };
  

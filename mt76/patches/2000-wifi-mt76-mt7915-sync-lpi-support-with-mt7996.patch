@@ -18,7 +18,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -831,8 +831,6 @@ struct mt76_phy {
+@@ -832,8 +832,6 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -27,7 +27,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 sku_idx;
  	u8 antenna_mask;
  	u16 chainmask;
-@@ -950,6 +948,10 @@ struct mt76_dev {
+@@ -951,6 +949,10 @@ struct mt76_dev {
  
  	u32 rxfilter;
  
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1444,7 +1444,7 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
+@@ -1465,7 +1465,7 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
  {
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
  	struct mt76_phy *mphy = mvif->phy->mt76;
@@ -85,7 +85,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		     0 : mt76_connac_spe_idx(mphy->antenna_mask);
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &spe_idx,
-@@ -3477,7 +3477,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3498,7 +3498,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.cck, len[SKU_CCK]);
  
@@ -94,7 +94,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	    !mt7915_get_psd_country(dev->mt76.alpha2)) {
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
-@@ -3530,7 +3530,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3551,7 +3551,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
  

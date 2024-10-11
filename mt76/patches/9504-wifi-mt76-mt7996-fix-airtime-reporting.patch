@@ -6,7 +6,7 @@ When porting channel state reporting from Wi-Fi 6 to Wi-Fi 7 codebase, indexing 
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3963,6 +3963,13 @@ int mt7996_mcu_get_chip_config(struct mt
+@@ -3977,6 +3977,13 @@ int mt7996_mcu_get_chip_config(struct mt
  
  int mt7996_mcu_get_chan_mib_info(struct mt7996_phy *phy, bool chan_switch)
  {
@@ -20,7 +20,7 @@ When porting channel state reporting from Wi-Fi 6 to Wi-Fi 7 codebase, indexing 
  	struct {
  		struct {
  			u8 band;
-@@ -3972,16 +3979,15 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -3986,16 +3993,15 @@ int mt7996_mcu_get_chan_mib_info(struct
  			__le16 tag;
  			__le16 len;
  			__le32 offs;
@@ -42,7 +42,7 @@ When porting channel state reporting from Wi-Fi 6 to Wi-Fi 7 codebase, indexing 
  	};
  	struct mt76_channel_state *state = phy->mt76->chan_state;
  	struct mt76_channel_state *state_ts = &phy->state_ts;
-@@ -3990,7 +3996,7 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -4004,7 +4010,7 @@ int mt7996_mcu_get_chan_mib_info(struct
  	struct sk_buff *skb;
  	int i, ret;
  
@@ -51,7 +51,7 @@ When porting channel state reporting from Wi-Fi 6 to Wi-Fi 7 codebase, indexing 
  		req.data[i].tag = cpu_to_le16(UNI_CMD_MIB_DATA);
  		req.data[i].len = cpu_to_le16(sizeof(req.data[i]));
  		req.data[i].offs = cpu_to_le32(offs[i]);
-@@ -4009,17 +4015,24 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -4023,17 +4029,24 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)

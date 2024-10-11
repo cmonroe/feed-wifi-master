@@ -1,6 +1,6 @@
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -429,7 +429,13 @@ static int mt7996_eeprom_load_precal(str
+@@ -458,7 +458,13 @@ static int mt7996_eeprom_load_precal(str
  
  	mt7996_eeprom_init_precal(dev);
  

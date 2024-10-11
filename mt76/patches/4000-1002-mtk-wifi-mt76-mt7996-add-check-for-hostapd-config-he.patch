@@ -16,7 +16,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1193,7 +1193,8 @@ int mt7996_mcu_add_rx_ba(struct mt7996_d
+@@ -1203,7 +1203,8 @@ int mt7996_mcu_add_rx_ba(struct mt7996_d
  }
  
  static void
@@ -26,7 +26,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  {
  	struct ieee80211_he_cap_elem *elem = &sta->deflink.he_cap.he_cap_elem;
  	struct ieee80211_he_mcs_nss_supp mcs_map;
-@@ -1213,6 +1214,11 @@ mt7996_mcu_sta_he_tlv(struct sk_buff *sk
+@@ -1223,6 +1224,11 @@ mt7996_mcu_sta_he_tlv(struct sk_buff *sk
  		he->he_phy_cap[i] = elem->phy_cap_info[i];
  	}
  
@@ -38,7 +38,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  	mcs_map = sta->deflink.he_cap.he_mcs_nss_supp;
  	switch (sta->deflink.bandwidth) {
  	case IEEE80211_STA_RX_BW_160:
-@@ -2118,7 +2124,7 @@ int mt7996_mcu_add_rate_ctrl(struct mt79
+@@ -2128,7 +2134,7 @@ int mt7996_mcu_add_rate_ctrl(struct mt79
  	 * update sta_rec_he here.
  	 */
  	if (changed)
@@ -47,7 +47,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  
  	/* sta_rec_ra accommodates BW, NSS and only MCS range format
  	 * i.e 0-{7,8,9} for VHT.
-@@ -2211,7 +2217,7 @@ int mt7996_mcu_add_sta(struct mt7996_dev
+@@ -2221,7 +2227,7 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  		/* starec amsdu */
  		mt7996_mcu_sta_amsdu_tlv(dev, skb, vif, sta);
  		/* starec he */

@@ -128,7 +128,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	}
 --- a/mt76.h
 +++ b/mt76.h
-@@ -454,6 +454,7 @@ struct mt76_rx_tid {
+@@ -452,6 +452,7 @@ struct mt76_rx_tid {
  	struct rcu_head rcu_head;
  
  	struct mt76_dev *dev;
@@ -136,7 +136,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	spinlock_t lock;
  	struct delayed_work reorder_work;
-@@ -879,6 +880,19 @@ struct mt76_phy {
+@@ -878,6 +879,19 @@ struct mt76_phy {
  		bool al;
  		u8 pin;
  	} leds;
@@ -156,7 +156,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  };
  
  struct mt76_dev {
-@@ -995,6 +1009,8 @@ struct mt76_dev {
+@@ -994,6 +1008,8 @@ struct mt76_dev {
  
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
@@ -197,7 +197,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	if (FIELD_GET(MT_RXD2_NORMAL_SEC_MODE, rxd2) != 0 &&
  	    !(rxd1 & (MT_RXD1_NORMAL_CLM | MT_RXD1_NORMAL_CM))) {
-@@ -1423,8 +1429,10 @@ void mt7996_queue_rx_skb(struct mt76_dev
+@@ -1434,8 +1440,10 @@ void mt7996_queue_rx_skb(struct mt76_dev
  			 struct sk_buff *skb, u32 *info)
  {
  	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
@@ -208,7 +208,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	enum rx_pkt_type type;
  
  	type = le32_get_bits(rxd[0], MT_RXD0_PKT_TYPE);
-@@ -1466,6 +1474,10 @@ void mt7996_queue_rx_skb(struct mt76_dev
+@@ -1477,6 +1485,10 @@ void mt7996_queue_rx_skb(struct mt76_dev
  		}
  		fallthrough;
  	default:
@@ -221,7 +221,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	}
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2890,6 +2890,46 @@ mt7996_sr_scene_cond_show(struct seq_fil
+@@ -2911,6 +2911,46 @@ mt7996_sr_scene_cond_show(struct seq_fil
  }
  DEFINE_SHOW_ATTRIBUTE(mt7996_sr_scene_cond);
  
@@ -268,7 +268,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2953,6 +2993,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2974,6 +3014,8 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_devm_seqfile(dev->mt76.dev, "tr_info", dir,
  				    mt7996_trinfo_read);

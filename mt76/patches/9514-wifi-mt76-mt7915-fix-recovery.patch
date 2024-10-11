@@ -1,20 +1,18 @@
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1356,10 +1356,10 @@ out:
- static void
+@@ -1359,9 +1359,10 @@ static void
  mt7915_mac_full_reset(struct mt7915_dev *dev)
  {
--	struct mt76_phy *ext_phy;
+ 	struct mt76_phy *ext_phy;
+-	struct mt7915_phy *phy2;
++	struct mt7915_phy *phy, *phy2;
  	int i;
--
--	ext_phy = dev->mt76.phys[MT_BAND1];
-+	struct mt76_phy *ext_phy = dev->mt76.phys[MT_BAND1];
-+	struct mt7915_phy *phy = &dev->phy;
-+	struct mt7915_phy *phy2 = ext_phy ? ext_phy->priv : NULL;
  
- 	dev->recovery.hw_full_reset = true;
++	phy = &dev->phy;
+ 	ext_phy = dev->mt76.phys[MT_BAND1];
+ 	phy2 = ext_phy ? ext_phy->priv : NULL;
  
-@@ -1389,6 +1389,18 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1393,6 +1394,18 @@ mt7915_mac_full_reset(struct mt7915_dev
  		list_del_init(dev->mt76.sta_poll_list.next);
  	spin_unlock_bh(&dev->mt76.sta_poll_lock);
  
@@ -32,4 +30,4 @@
 +
  	memset(dev->mt76.wcid_mask, 0, sizeof(dev->mt76.wcid_mask));
  	dev->mt76.vif_mask = 0;
- 
+ 	dev->phy.omac_mask = 0;

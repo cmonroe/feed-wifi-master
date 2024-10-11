@@ -36,7 +36,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -380,3 +380,37 @@ s8 mt7996_eeprom_get_power_delta(struct
+@@ -462,3 +462,37 @@ s8 mt7996_eeprom_get_power_delta(struct
  
  	return val & MT_EE_RATE_DELTA_SIGN ? delta : -delta;
  }
@@ -76,7 +76,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 +};
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
-@@ -122,4 +122,46 @@ mt7996_get_channel_group_6g(int channel)
+@@ -124,4 +124,46 @@ mt7996_get_channel_group_6g(int channel)
  	return DIV_ROUND_UP(channel - 29, 32);
  }
  
@@ -125,7 +125,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -297,7 +297,12 @@ static void __mt7996_init_txpower(struct
+@@ -294,7 +294,12 @@ static void __mt7996_init_txpower(struct
  	int nss_delta = mt76_tx_power_nss_delta(nss);
  	int pwr_delta = mt7996_eeprom_get_power_delta(dev, sband->band);
  	struct mt76_power_limits limits;
@@ -138,7 +138,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	for (i = 0; i < sband->n_channels; i++) {
  		struct ieee80211_channel *chan = &sband->channels[i];
  		int target_power = mt7996_eeprom_get_target_power(dev, chan);
-@@ -305,11 +310,18 @@ static void __mt7996_init_txpower(struct
+@@ -302,11 +307,18 @@ static void __mt7996_init_txpower(struct
  		target_power += pwr_delta;
  		target_power = mt76_get_rate_power_limits(phy->mt76, chan,
  							  &limits,
@@ -185,7 +185,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4500,9 +4500,31 @@ int mt7996_mcu_wed_rro_reset_sessions(st
+@@ -4521,9 +4521,31 @@ int mt7996_mcu_wed_rro_reset_sessions(st
  				 sizeof(req), true);
  }
  
@@ -217,7 +217,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_phy *mphy = phy->mt76;
  	struct ieee80211_hw *hw = mphy->hw;
-@@ -4522,13 +4544,22 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4543,13 +4565,22 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -245,7 +245,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
-@@ -4558,6 +4589,34 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4579,6 +4610,34 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* padding */
  	skb_put_zero(skb, MT7996_SKU_PATH_NUM - MT7996_SKU_RATE_NUM);
  
@@ -282,7 +282,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  }
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -284,6 +284,9 @@ struct mt7996_phy {
+@@ -294,6 +294,9 @@ struct mt7996_phy {
  	bool has_aux_rx;
  
  	struct mt7996_scs_ctrl scs_ctrl;
@@ -292,9 +292,9 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -695,6 +698,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
- #ifdef CONFIG_MTK_DEBUG
+@@ -726,6 +729,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
+ int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
 +int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
 +int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
@@ -303,7 +303,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2417,6 +2417,364 @@ mt7996_scs_enable_set(void *data, u64 va
+@@ -2439,6 +2439,364 @@ mt7996_scs_enable_set(void *data, u64 va
  DEFINE_DEBUGFS_ATTRIBUTE(fops_scs_enable, NULL,
  			 mt7996_scs_enable_set, "%lld\n");
  
@@ -668,7 +668,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2480,6 +2838,10 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2502,6 +2860,10 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_devm_seqfile(dev->mt76.dev, "tr_info", dir,
  				    mt7996_trinfo_read);
@@ -681,7 +681,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  				    mt7996_wtbl_read);
 --- a/mt7996/mtk_mcu.c
 +++ b/mt7996/mtk_mcu.c
-@@ -12,7 +12,30 @@
+@@ -12,8 +12,31 @@
  
  #ifdef CONFIG_MTK_DEBUG
  
@@ -697,24 +697,25 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 +	};
 +	struct sk_buff *skb;
 +	int ret;
- 
++
 +	ret = mt76_mcu_send_and_get_msg(&dev->mt76,
 +					MCU_WM_UNI_CMD_QUERY(TXPOWER),
 +					&req, sizeof(req), true, &skb);
 +	if (ret)
 +		return ret;
- 
++
 +	memcpy(event, skb->data, sizeof(struct mt7996_mcu_txpower_event));
-+
+ 
 +	dev_kfree_skb(skb);
-+
+ 
 +	return 0;
 +}
  
- #endif
+ int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val)
+ {
 --- a/mt7996/mtk_mcu.h
 +++ b/mt7996/mtk_mcu.h
-@@ -13,4 +13,96 @@
+@@ -16,4 +16,96 @@ enum {
  
  #endif
  
@@ -813,7 +814,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
-@@ -693,24 +693,29 @@ enum offs_rev {
+@@ -695,24 +695,29 @@ enum offs_rev {
  						 ((_wf) << 16) + (ofs))
  #define MT_WF_PHYRX_CSD_IRPI(_band, _wf)	MT_WF_PHYRX_CSD(_band, _wf, 0x1000)
  

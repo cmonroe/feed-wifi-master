@@ -15,7 +15,7 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -845,6 +845,8 @@ mt7996_get_power_bound(struct mt7996_phy
+@@ -835,6 +835,8 @@ mt7996_get_power_bound(struct mt7996_phy
  
  enum {
  	UNI_BAND_CONFIG_RADIO_ENABLE,
@@ -26,7 +26,7 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -754,6 +754,17 @@ int mt7996_vendor_amnt_sta_remove(struct
+@@ -783,6 +783,17 @@ int mt7996_vendor_amnt_sta_remove(struct
  				  struct ieee80211_sta *sta);
  #endif
  
@@ -43,13 +43,14 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
- #endif
+ int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
 --- a/mt7996/mtk_mcu.c
 +++ b/mt7996/mtk_mcu.c
-@@ -38,4 +38,90 @@ int mt7996_mcu_get_tx_power_info(struct
- 	return 0;
+@@ -59,4 +59,90 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+ 	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(MURU), &req,
+ 				 sizeof(req), true);
  }
- 
++
 +int mt7996_mcu_edcca_enable(struct mt7996_phy *phy, bool enable)
 +{
 +	struct mt7996_dev *dev = phy->dev;
@@ -135,11 +136,10 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +
 +	return 0;
 +}
-+
  #endif
 --- a/mt7996/mtk_mcu.h
 +++ b/mt7996/mtk_mcu.h
-@@ -105,4 +105,19 @@ enum txpower_event {
+@@ -108,4 +108,19 @@ enum txpower_event {
  	UNI_TXPOWER_PHY_RATE_INFO = 5,
  };
  

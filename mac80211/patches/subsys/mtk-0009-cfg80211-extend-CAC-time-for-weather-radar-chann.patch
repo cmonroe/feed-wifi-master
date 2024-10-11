@@ -40,13 +40,13 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -10141,6 +10141,9 @@ static int nl80211_start_radar_detection
+@@ -10156,6 +10156,9 @@ static int nl80211_start_radar_detection
  	if (WARN_ON(!cac_time_ms))
  		cac_time_ms = IEEE80211_DFS_MIN_CAC_TIME_MS;
  
 +	pr_info("%s: region = %u, center freq1 = %u, center freq2 = %u, cac time ms = %u\n",
 +		__func__, dfs_region, chandef.center_freq1, chandef.center_freq2, cac_time_ms);
 +
- 	err = rdev_start_radar_detection(rdev, dev, &chandef, cac_time_ms);
+ 	err = rdev_start_radar_detection(rdev, dev, &chandef, cac_time_ms,
+ 					 link_id);
  	if (!err) {
- 		wdev->links[0].ap.chandef = chandef;

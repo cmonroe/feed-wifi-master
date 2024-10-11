@@ -146,7 +146,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -224,6 +224,7 @@ struct mt7996_vif {
+@@ -233,6 +233,7 @@ struct mt7996_vif {
  struct mt7996_crash_data {
  	guid_t guid;
  	struct timespec64 timestamp;

@@ -1,19 +1,8 @@
-From ad9e95b534d4605cbbca3e4fe7fcf35cdce8866f Mon Sep 17 00:00:00 2001
+From 1836ddf781e91b41f66a1add7110bd24d133817c Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Mon, 11 Sep 2023 14:43:07 +0800
-Subject: [PATCH 1036/1044] mtk: wifi: mt76: testmode: add channel 68 & 96
+Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
 
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
-
-Add all the channel between 68 & 96 since ibf 5g channel group 3 will use channel 84.
-Also, "mtk: wifi: mt76: testmode: add channel 68 & 96" can be
-merged into to "mtk: wifi: mt76: testmode: add basic testmode support"
-
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
-
-Fix 5g channel list size
-
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---
  mac80211.c        |  9 +++++++++
  mt7996/eeprom.c   | 49 +++++++++++++++++++++++++++++++++++++++++++++--
@@ -69,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  const u32 dpd_5g_bw160_ch_num = ARRAY_SIZE(dpd_5g_ch_list_bw160);
  const u32 dpd_6g_bw160_ch_num = ARRAY_SIZE(dpd_6g_ch_list_bw160);
  const u32 dpd_6g_bw320_ch_num = ARRAY_SIZE(dpd_6g_ch_list_bw320);
-@@ -133,8 +145,8 @@ mt7996_get_dpd_per_band_size(struct mt79
+@@ -186,8 +198,8 @@ mt7996_get_dpd_per_band_size(struct mt79
  	if (band == NL80211_BAND_2GHZ)
  		dpd_size = dpd_2g_bw20_ch_num * DPD_PER_CH_BW20_SIZE;
  	else if (band == NL80211_BAND_5GHZ)
@@ -80,7 +69,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	else
  		dpd_size = mphy->sband_6g.sband.n_channels * DPD_PER_CH_BW20_SIZE +
  			   (dpd_6g_bw160_ch_num + dpd_6g_bw320_ch_num) * DPD_PER_CH_GT_BW20_SIZE;
-@@ -377,6 +389,39 @@ out:
+@@ -409,6 +421,39 @@ out:
  	return ret;
  }
  
@@ -133,7 +122,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  extern const struct ieee80211_channel dpd_6g_ch_list_bw160[];
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3748,7 +3748,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3769,7 +3769,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  		chan_list_size = mphy->sband_5g.sband.n_channels;
  		base_offset += dpd_size_2g;
  		if (bw == NL80211_CHAN_WIDTH_160) {
@@ -143,7 +132,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			per_chan_size = DPD_PER_CH_GT_BW20_SIZE;
  			cal_id = RF_DPD_FLAT_5G_MEM_CAL;
  			chan_list = dpd_5g_ch_list_bw160;
-@@ -3757,6 +3758,9 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3778,6 +3779,9 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  			/* apply (center channel - 2)'s dpd cal data for bw 40/80 channels */
  			channel -= 2;
  		}
@@ -153,7 +142,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		break;
  	case NL80211_BAND_6GHZ:
  		dpd_mask = MT_EE_WIFI_CAL_DPD_6G;
-@@ -3796,6 +3800,10 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3817,6 +3821,10 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	if (idx == chan_list_size)
  		return -EINVAL;
  

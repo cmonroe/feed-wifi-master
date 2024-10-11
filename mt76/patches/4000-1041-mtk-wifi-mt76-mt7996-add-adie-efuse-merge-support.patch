@@ -1,25 +1,26 @@
-From 81f7ffda64a8720f49b3bff6ff93a3346e9ef124 Mon Sep 17 00:00:00 2001
+From 031841be718eb6736dec9c52744664433ed2a34e Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Fri, 24 Nov 2023 09:49:08 +0800
-Subject: [PATCH 1041/1044] mtk: wifi: mt76: mt7996: add adie efuse merge
- support
+Subject: [PATCH 044/223] mtk: mt76: mt7996: add adie efuse merge support
 
 Merge adie-dependent parameters in efuse into eeprom after FT.
 Note that Eagle BE14000 is not considered yet.
 Add efuse dump command.
 
+Change-Id: Ib088b90147c75d7437f40dd3569e3584c6ff9ab0
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---
- mt7996/debugfs.c |  41 ++++++++++++++
- mt7996/eeprom.c  | 145 +++++++++++++++++++++++++++++++++++++++++++++++
- mt7996/mcu.c     |   6 +-
- 3 files changed, 190 insertions(+), 2 deletions(-)
+ mt7996/debugfs.c  |  41 +++++++++++++
+ mt7996/eeprom.c   | 144 ++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/main.c     |   4 +-
+ mt7996/testmode.c |   8 ++-
+ 4 files changed, 193 insertions(+), 4 deletions(-)
 
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -832,6 +832,46 @@ mt7996_rf_regval_set(void *data, u64 val
- DEFINE_DEBUGFS_ATTRIBUTE(fops_rf_regval, mt7996_rf_regval_get,
- 			 mt7996_rf_regval_set, "0x%08llx\n");
+@@ -894,6 +894,46 @@ DEFINE_DEBUGFS_ATTRIBUTE(fops_fw_debug_m
+ 			 mt7996_fw_debug_muru_disable_get,
+ 			 mt7996_fw_debug_muru_disable_set, "%lld\n");
  
 +static ssize_t
 +mt7996_efuse_get(struct file *file, char __user *user_buf,
@@ -33,7 +34,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	u32 block_num;
 +
 +	mdev->otp.size = MT7996_EEPROM_SIZE;
-+	if (is_mt7996(&dev->mt76) && dev->chip_sku == MT7996_SKU_444)
++	if (is_mt7996(&dev->mt76) && dev->var.type == MT7996_VAR_TYPE_444)
 +		mdev->otp.size += 3 * MT_EE_CAL_UNIT;
 +
 +	if (!mdev->otp.data) {
@@ -44,9 +45,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		block_num = DIV_ROUND_UP(mdev->otp.size, MT7996_EEPROM_BLOCK_SIZE);
 +		for (i = 0; i < block_num; i++) {
 +			buff = mdev->otp.data + i * MT7996_EEPROM_BLOCK_SIZE;
-+			ret = mt7996_mcu_get_eeprom(dev, i * MT7996_EEPROM_BLOCK_SIZE, buff);
-+			if (ret)
-+				continue;
++			ret = mt7996_mcu_get_eeprom(dev, i * MT7996_EEPROM_BLOCK_SIZE, buff, MT7996_EEPROM_BLOCK_SIZE);
++			if (ret && ret != -EINVAL)
++				return ret;
 +		}
 +	}
 +
@@ -64,7 +65,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_init_debugfs(struct mt7996_phy *phy)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -858,6 +898,7 @@ int mt7996_init_debugfs(struct mt7996_ph
+@@ -920,6 +960,7 @@ int mt7996_init_debugfs(struct mt7996_ph
  	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
  				    mt7996_twt_stats);
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
@@ -74,7 +75,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		debugfs_create_u32("dfs_hw_pattern", 0400, dir,
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -442,6 +442,147 @@ static int mt7996_eeprom_load_precal(str
+@@ -474,6 +474,146 @@ static int mt7996_eeprom_load_precal(str
  	return mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
  }
  
@@ -97,11 +98,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +			       0x70, 0x71, 0x790, 0x791, 0x794, 0x795, 0x7a6, 0x7a8, 0x7aa, -1},
 +		[ADIE_7977] = {0x4c, 0x4d, 0x4e, 0x4f, 0x50, 0x51, 0x53, 0x55, 0x57, 0x59,
 +			       0x69, 0x6a, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, -1},
-+		[ADIE_7978] = {0x4c, 0x4d, 0x4e, 0x4f, 0x50, 0x51, 0x53, 0x55, 0x57, 0x59,
-+			       0x90, 0x91, 0x94, 0x95, 0xa6, 0xa7, 0xa8, 0xa9, 0xaa,
-+			       0x100, 0x101, 0x102, 0x103, 0x104, 0x105, -1},
++		[ADIE_7978] = {0x91, 0x95, 0x100, 0x102, 0x104, 0x106, 0x107,
++			       0x108, 0x109, 0x10a, 0x10b, 0x10c, 0x10e, 0x110, -1},
 +		[ADIE_7979] = {0x4c, 0x4d, 0x4e, 0x4f, 0x50, 0x51, 0x53, 0x55, 0x57, 0x59,
-+			       0x69, 0x6a, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, -1},
++			       0x69, 0x6a, 0x7a, 0x7b, 0x7c, 0x7e, 0x80, -1},
 +	};
 +	static const u16 eep_offs_list[][MT_EE_CAL_FREE_MAX_SIZE] = {
 +		[ADIE_7975] = {0x451, 0x453, 0x455, 0x457, 0x44c, 0x44d, 0x44e, 0x44f,
@@ -113,14 +113,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		[ADIE_7977] = {0x124c, 0x124d, 0x124e, 0x124f, 0x1250,
 +			       0x1251, 0x1253, 0x1255, 0x1257, 0x1259,
 +			       0x1269, 0x126a, 0x127a, 0x127b, 0x127c, 0x127d, 0x127e, -1},
-+		[ADIE_7978] = {0x44c, 0x44d, 0x44e, 0x44f, 0x450,
-+			       0x451, 0x453, 0x455, 0x457, 0x459,
-+			       0xb90, 0xb91, 0xb94, 0xb95,
-+			       0xba6, 0xba7, 0xba8, 0xba9, 0xbaa,
-+			       0x480, 0x481, 0x482, 0x483, 0x484, 0x485, -1},
-+		[ADIE_7979] = {0x124c, 0x124d, 0x124e, 0x124f, 0x1250,
-+			       0x1251, 0x1253, 0x1255, 0x1257, 0x1259,
-+			       0x1269, 0x126a, 0x127a, 0x127b, 0x127c, 0x127d, 0x127e, -1},
++		[ADIE_7978] = {0xb91, 0xb95, 0x480, 0x482, 0x484, 0x486, 0x487, 0x488, 0x489,
++			       0x48a, 0x48b, 0x48c, 0x48e, 0x490, -1},
++		[ADIE_7979] = {0x124c, 0x124d, 0x124e, 0x124f, 0x1250, 0x1251,
++			       0x1253, 0x1255, 0x1257, 0x1259, 0x1269, 0x126a,
++			       0x127a, 0x127b, 0x127c, 0x127e, 0x1280, -1},
 +	};
 +	static const u16 adie_base_7996[] = {
 +		0x400, 0x1e00, 0x1200
@@ -139,7 +136,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	case 0x7990:
 +		adie_base = adie_base_7996;
 +		/* adie 0 */
-+		if (dev->fem_type == MT7996_FEM_INT)
++		if (dev->var.fem == MT7996_FEM_INT)
 +			adie_id = ADIE_7975;
 +		else
 +			adie_id = ADIE_7976;
@@ -147,7 +144,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		eep_offs[0] = eep_offs_list[adie_id];
 +
 +		/* adie 1 */
-+		if (dev->chip_sku != MT7996_SKU_404) {
++		if (dev->var.type != MT7996_VAR_TYPE_404) {
 +			adie_offs[1] = adie_offs_list[ADIE_7977];
 +			eep_offs[1] = eep_offs_list[ADIE_7977];
 +		}
@@ -159,10 +156,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	case 0x7992:
 +		adie_base = adie_base_7992;
 +		/* adie 0 */
-+		if (dev->chip_sku == MT7992_SKU_44 &&
-+		    dev->fem_type != MT7996_FEM_EXT)
++		if (dev->var.type == MT7992_VAR_TYPE_44 &&
++		    dev->var.fem != MT7996_FEM_EXT)
 +			adie_id = ADIE_7975;
-+		else if (dev->chip_sku == MT7992_SKU_24)
++		else if (dev->var.type == MT7992_VAR_TYPE_24)
 +			adie_id = ADIE_7978;
 +		else
 +			adie_id = ADIE_7976;
@@ -170,10 +167,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		eep_offs[0] = eep_offs_list[adie_id];
 +
 +		/* adie 1 */
-+		if (dev->chip_sku == MT7992_SKU_44 &&
-+		    dev->fem_type != MT7996_FEM_INT)
++		if (dev->var.type == MT7992_VAR_TYPE_44 &&
++		    dev->var.fem != MT7996_FEM_INT)
 +			adie_id = ADIE_7977;
-+		else if (dev->chip_sku != MT7992_SKU_23)
++		else if (dev->var.type != MT7992_VAR_TYPE_23)
 +			adie_id = ADIE_7979;
 +		else
 +			break;
@@ -199,13 +196,16 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +			if (adie_offs[band][i] == MT_EE_END_OFFSET)
 +				break;
 +
-+			if (is_mt7996(&dev->mt76) && dev->chip_sku == MT7996_SKU_444 &&
++			if (is_mt7996(&dev->mt76) && dev->var.type == MT7996_VAR_TYPE_444 &&
 +			    band == MT_BAND1)
 +				eep_offset -= MT_EE_7977BN_OFFSET;
 +
 +			if (prev_block_num != block_num) {
-+				ret = mt7996_mcu_get_eeprom(dev, adie_offset, buf);
++				ret = mt7996_mcu_get_eeprom(dev, adie_offset, buf, sizeof(buf));
 +				if (ret) {
++					if (ret != -EINVAL)
++						return ret;
++
 +					prev_block_num = -1;
 +					continue;
 +				}
@@ -222,7 +222,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_eeprom_init(struct mt7996_dev *dev)
  {
  	int ret;
-@@ -467,6 +608,10 @@ int mt7996_eeprom_init(struct mt7996_dev
+@@ -488,6 +628,10 @@ int mt7996_eeprom_init(struct mt7996_dev
  	if (ret)
  		return ret;
  
@@ -233,29 +233,3 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	ret = mt7996_eeprom_parse_hw_cap(dev, &dev->phy);
  	if (ret < 0)
  		return ret;
---- a/mt7996/mcu.c
-+++ b/mt7996/mcu.c
-@@ -3588,7 +3588,7 @@ int mt7996_mcu_get_eeprom(struct mt7996_
- 	};
- 	struct sk_buff *skb;
- 	bool valid;
--	int ret;
-+	int ret = 0;
- 	u8 *buf = read_buf;
- 
- 	ret = mt76_mcu_send_and_get_msg(&dev->mt76,
-@@ -3606,11 +3606,13 @@ int mt7996_mcu_get_eeprom(struct mt7996_
- 
- 		skb_pull(skb, 48);
- 		memcpy(buf, skb->data, MT7996_EEPROM_BLOCK_SIZE);
-+	} else {
-+		ret = -EINVAL;
- 	}
- 
- 	dev_kfree_skb(skb);
- 
--	return 0;
-+	return ret;
- }
- 
- int mt7996_mcu_get_eeprom_free_block(struct mt7996_dev *dev, u8 *block_num)

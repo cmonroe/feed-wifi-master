@@ -138,8 +138,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int mt7996_check_eeprom(struct mt7996_dev *dev)
  {
  #define FEM_INT				0
-@@ -66,6 +102,36 @@ static char *mt7996_eeprom_name(struct m
- 	}
+@@ -148,6 +184,36 @@ static bool mt7996_eeprom_variant_valid(
+ 	return true;
  }
  
 +int
@@ -173,7 +173,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +}
 +
  static int
- mt7996_eeprom_load_default(struct mt7996_dev *dev)
+ mt7996_eeprom_check_or_use_default(struct mt7996_dev *dev, bool use_default)
  {
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
@@ -240,7 +240,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF2_TX_PATH_BAND2		GENMASK(5, 3)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -361,6 +361,9 @@ struct mt7996_dev {
+@@ -369,6 +369,9 @@ struct mt7996_dev {
  	struct dentry *debugfs_dir;
  	struct rchan *relay_fwlog;
  
@@ -250,7 +250,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	struct {
  		u16 table_mask;
  		u8 n_agrt;
-@@ -479,6 +482,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -509,6 +512,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
  				   struct ieee80211_channel *chan);
  s8 mt7996_eeprom_get_power_delta(struct mt7996_dev *dev, int band);

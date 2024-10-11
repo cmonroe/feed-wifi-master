@@ -10,7 +10,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@smartrg.com>
 
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -5255,6 +5255,19 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
+@@ -5256,6 +5256,19 @@ brcmf_cfg80211_start_ap(struct wiphy *wi
  				 err);
  			goto exit;
  		}

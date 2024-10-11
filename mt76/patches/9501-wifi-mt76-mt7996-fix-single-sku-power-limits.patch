@@ -148,7 +148,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1128,6 +1128,14 @@ struct mt76_power_limits {
+@@ -1127,6 +1127,14 @@ struct mt76_power_limits {
  	} path;
  };
  
@@ -163,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -1759,6 +1767,12 @@ static inline bool mt76_queue_is_rx(stru
+@@ -1758,6 +1766,12 @@ static inline bool mt76_queue_is_rx(stru
  	return false;
  }
  
@@ -178,7 +178,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return (q->flags & MT_QFLAG_WED) &&
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -946,9 +946,34 @@ enum {
+@@ -936,9 +936,34 @@ enum {
  	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
  };
  
@@ -218,7 +218,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4952,7 +4952,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -4966,7 +4966,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  bool mt7996_is_psd_country(char *country)
  {
@@ -227,7 +227,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -4989,7 +4989,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5003,7 +5003,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -236,7 +236,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
-@@ -4998,7 +4998,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5012,7 +5012,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	txpower_limit = mt7996_get_power_bound(phy, hw->conf.power_level);
  
  	if (phy->sku_limit_en) {
@@ -245,7 +245,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  							   &la, &la_path, txpower_limit);
  		mt7996_update_max_txpower_cur(phy, txpower_limit);
  	} else {
-@@ -5019,7 +5019,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5033,7 +5033,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	 * driver doesn't need to do it
  	 */
  	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
@@ -254,7 +254,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la.eht[3], sizeof(la.ofdm));
-@@ -5145,10 +5145,13 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -5159,10 +5159,13 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.band_idx = phy->mt76->band_idx,
  		.tag = cpu_to_le16(UNI_BAND_CONFIG_LPI_CTRL),
  		.len = cpu_to_le16(sizeof(req) - 4),
@@ -271,7 +271,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -297,23 +297,23 @@ static void __mt7996_init_txpower(struct
+@@ -294,23 +294,23 @@ static void __mt7996_init_txpower(struct
  	int nss_delta = mt76_tx_power_nss_delta(nss);
  	int pwr_delta = mt7996_eeprom_get_power_delta(dev, sband->band);
  	struct mt76_power_limits limits;
@@ -318,7 +318,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2500,7 +2500,7 @@ mt7996_get_txpower_info(struct file *fil
+@@ -2521,7 +2521,7 @@ mt7996_get_txpower_info(struct file *fil
  	len += scnprintf(buf + len, size - len,
  			 "    Theraml Compensation Value: %d\n",
  			 basic_info->thermal_compensate_value);

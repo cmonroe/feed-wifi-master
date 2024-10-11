@@ -114,9 +114,9 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  
 +#include <linux/of.h>
  #include <linux/firmware.h>
+ #include <linux/moduleparam.h>
  #include "mt7915.h"
- #include "eeprom.h"
-@@ -24,6 +25,20 @@ static int mt7915_eeprom_load_precal(str
+@@ -29,6 +30,20 @@ static int mt7915_eeprom_load_precal(str
  
  	offs = is_mt7915(&dev->mt76) ? MT_EE_PRECAL : MT_EE_PRECAL_V2;
  
@@ -139,7 +139,7 @@ eeprom.c |  103 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  		return ret;
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1189,6 +1189,7 @@ void mt76_seq_puts_array(struct seq_file
+@@ -1190,6 +1190,7 @@ void mt76_seq_puts_array(struct seq_file
  
  int mt76_eeprom_init(struct mt76_dev *dev, int len);
  void mt76_eeprom_override(struct mt76_phy *phy);

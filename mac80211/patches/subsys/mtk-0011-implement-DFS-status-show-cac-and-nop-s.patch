@@ -21,7 +21,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -4950,6 +4950,7 @@ struct cfg80211_ops {
+@@ -4951,6 +4951,7 @@ struct cfg80211_ops {
  	int	(*set_ttlm)(struct wiphy *wiphy, struct net_device *dev,
  			    struct cfg80211_ttlm_params *params);
  	u32	(*get_radio_mask)(struct wiphy *wiphy, struct net_device *dev);
@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /*
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -5094,6 +5094,30 @@ ieee80211_set_ttlm(struct wiphy *wiphy,
+@@ -5102,6 +5102,30 @@ ieee80211_set_ttlm(struct wiphy *wiphy,
  	return ieee80211_req_neg_ttlm(sdata, params);
  }
  
@@ -48,21 +48,21 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		return;
 +
 +	wiphy_delayed_work_cancel(sdata->local->hw.wiphy,
-+				  &sdata->dfs_cac_timer_work);
-+	if (wdev->cac_started) {
++				  &link->dfs_cac_timer_work);
++	if (wdev->links[link_id].cac_started) {
 +		ieee80211_link_release_channel(link);
-+		cac_time_ms = wdev->cac_time_ms;
-+		wdev->cac_start_time = jiffies -
++		cac_time_ms = wdev->links[link_id].cac_time_ms;
++		wdev->links[link_id].cac_start_time = jiffies -
 +				       msecs_to_jiffies(cac_time_ms + 1);
 +		cfg80211_cac_event(wdev->netdev, &link->conf->chanreq.oper,
-+				   NL80211_RADAR_CAC_FINISHED, GFP_KERNEL);
++				   NL80211_RADAR_CAC_FINISHED, GFP_KERNEL, link_id);
 +	}
 +}
 +
  const struct cfg80211_ops mac80211_config_ops = {
  	.add_virtual_intf = ieee80211_add_iface,
  	.del_virtual_intf = ieee80211_del_iface,
-@@ -5208,4 +5232,5 @@ const struct cfg80211_ops mac80211_confi
+@@ -5216,4 +5240,5 @@ const struct cfg80211_ops mac80211_confi
  	.set_hw_timestamp = ieee80211_set_hw_timestamp,
  	.set_ttlm = ieee80211_set_ttlm,
  	.get_radio_mask = ieee80211_get_radio_mask,
@@ -185,10 +185,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +				if (remain_time > wait_time_ms)
 +					remain_time = 0;
 +			} else if (chan->dfs_state == NL80211_DFS_USABLE) {
-+				if (wdev->cac_started &&
++				if (wdev->links[link_id].cac_started &&
 +				    cfg80211_is_sub_chan(chandef, chan, false)) {
-+					jiffies_passed = jiffies - wdev->cac_start_time;
-+					wait_time_ms = wdev->cac_time_ms;
++					jiffies_passed = jiffies - wdev->links[link_id].cac_start_time;
++					wait_time_ms = wdev->links[link_id].cac_time_ms;
 +					remain_time = (wait_time_ms -
 +						       jiffies_to_msecs(jiffies_passed));
 +				}
@@ -334,7 +334,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +					continue;
 +
 +				if (cfg80211_chandef_dfs_required(wiphy, c, wdev->iftype) > 0 &&
-+				    cfg80211_chandef_dfs_usable(wiphy, c) && wdev->cac_started) {
++				    cfg80211_chandef_dfs_usable(wiphy, c) && wdev->links[link_id].cac_started) {
 +					rdev_skip_cac(rdev, wdev, link_id);
 +				}
 +			}
@@ -429,7 +429,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  struct debugfs_read_work {
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1177,13 +1177,16 @@ __cfg80211_background_cac_event(struct c
+@@ -1179,13 +1179,16 @@ __cfg80211_background_cac_event(struct c
  		queue_work(cfg80211_wq, &rdev->propagate_cac_done_wk);
  		cfg80211_sched_dfs_chan_update(rdev);
  		wdev = rdev->background_radar_wdev;
@@ -446,7 +446,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		break;
  	default:
  		return;
-@@ -1193,7 +1196,7 @@ __cfg80211_background_cac_event(struct c
+@@ -1195,7 +1198,7 @@ __cfg80211_background_cac_event(struct c
  	nl80211_radar_notify(rdev, chandef, event, netdev, GFP_KERNEL);
  }
  
@@ -455,7 +455,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  cfg80211_background_cac_event(struct cfg80211_registered_device *rdev,
  			      const struct cfg80211_chan_def *chandef,
  			      enum nl80211_radar_event event)
-@@ -1203,6 +1206,7 @@ cfg80211_background_cac_event(struct cfg
+@@ -1205,6 +1208,7 @@ cfg80211_background_cac_event(struct cfg
  					chandef, event);
  	wiphy_unlock(&rdev->wiphy);
  }
@@ -463,7 +463,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  void cfg80211_background_cac_done_wk(struct work_struct *work)
  {
-@@ -1264,8 +1268,10 @@ cfg80211_start_background_radar_detectio
+@@ -1266,8 +1270,10 @@ cfg80211_start_background_radar_detectio
  	if (!cac_time_ms)
  		cac_time_ms = IEEE80211_DFS_MIN_CAC_TIME_MS;
  
@@ -476,7 +476,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  					NL80211_RADAR_CAC_STARTED);
 --- a/net/wireless/rdev-ops.h
 +++ b/net/wireless/rdev-ops.h
-@@ -1544,4 +1544,18 @@ rdev_get_radio_mask(struct cfg80211_regi
+@@ -1545,4 +1545,18 @@ rdev_get_radio_mask(struct cfg80211_regi
  
  	return rdev->ops->get_radio_mask(wiphy, dev);
  }
@@ -497,7 +497,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif /* __CFG80211_RDEV_OPS */
 --- a/net/wireless/trace.h
 +++ b/net/wireless/trace.h
-@@ -4084,6 +4084,19 @@ TRACE_EVENT(cfg80211_links_removed,
+@@ -4102,6 +4102,19 @@ TRACE_EVENT(cfg80211_links_removed,
  		  __entry->link_mask)
  );
  
