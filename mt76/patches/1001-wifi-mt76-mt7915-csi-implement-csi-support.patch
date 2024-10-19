@@ -51,7 +51,7 @@ Subject: [PATCH 1001/1033] wifi: mt76: mt7915: csi: implement csi support
  mt7915e-$(CONFIG_MT798X_WMAC) += soc.o
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -701,6 +701,12 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -704,6 +704,12 @@ mt7915_register_ext_phy(struct mt7915_de
  	/* init wiphy according to mphy and phy */
  	mt7915_init_wiphy(phy);
  
@@ -64,7 +64,7 @@ Subject: [PATCH 1001/1033] wifi: mt76: mt7915: csi: implement csi support
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1184,6 +1190,25 @@ void mt7915_set_stream_he_caps(struct mt
+@@ -1187,6 +1193,25 @@ void mt7915_set_stream_he_caps(struct mt
  	}
  }
  
@@ -90,7 +90,7 @@ Subject: [PATCH 1001/1033] wifi: mt76: mt7915: csi: implement csi support
  static void mt7915_unregister_ext_phy(struct mt7915_dev *dev)
  {
  	struct mt7915_phy *phy = mt7915_ext_phy(dev);
-@@ -1192,6 +1217,10 @@ static void mt7915_unregister_ext_phy(st
+@@ -1195,6 +1220,10 @@ static void mt7915_unregister_ext_phy(st
  	if (!phy)
  		return;
  
@@ -101,7 +101,7 @@ Subject: [PATCH 1001/1033] wifi: mt76: mt7915: csi: implement csi support
  	mt7915_unregister_thermal(phy);
  	mt76_unregister_phy(mphy);
  	ieee80211_free_hw(mphy->hw);
-@@ -1204,6 +1233,10 @@ static void mt7915_stop_hardware(struct
+@@ -1207,6 +1236,10 @@ static void mt7915_stop_hardware(struct
  	mt7915_dma_cleanup(dev);
  	tasklet_disable(&dev->mt76.irq_tasklet);
  
@@ -112,7 +112,7 @@ Subject: [PATCH 1001/1033] wifi: mt76: mt7915: csi: implement csi support
  	if (is_mt798x(&dev->mt76))
  		mt7986_wmac_disable(dev);
  }
-@@ -1244,6 +1277,12 @@ int mt7915_register_device(struct mt7915
+@@ -1247,6 +1280,12 @@ int mt7915_register_device(struct mt7915
  	dev->mt76.test_ops = &mt7915_testmode_ops;
  #endif
  

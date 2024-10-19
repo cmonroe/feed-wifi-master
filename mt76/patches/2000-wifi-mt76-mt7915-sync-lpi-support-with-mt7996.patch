@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -335,10 +335,8 @@ void mt7915_init_txpower(struct mt7915_p
+@@ -338,10 +338,8 @@ void mt7915_init_txpower(struct mt7915_p
  		__mt7915_init_txpower(phy, &phy->mt76->sband_2g.sband);
  	if (phy->mt76->cap.has_5ghz)
  		__mt7915_init_txpower(phy, &phy->mt76->sband_5g.sband);

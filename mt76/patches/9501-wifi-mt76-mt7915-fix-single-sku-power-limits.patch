@@ -160,7 +160,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	req.sku_enable = sku_disable ? 0 : phy->sku_path_en;
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -290,7 +290,7 @@ static void __mt7915_init_txpower(struct
+@@ -293,7 +293,7 @@ static void __mt7915_init_txpower(struct
  	struct device_node *np;
  
  	phy->sku_limit_en = true;
@@ -169,7 +169,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	np = mt76_find_power_limits_node(phy->mt76);
  	for (i = 0; i < sband->n_channels; i++) {
  		struct ieee80211_channel *chan = &sband->channels[i];
-@@ -310,8 +310,8 @@ static void __mt7915_init_txpower(struct
+@@ -313,8 +313,8 @@ static void __mt7915_init_txpower(struct
  							  target_power);
  
  		/* MT7915N can not enable Backoff table without setting value in dts */
