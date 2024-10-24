@@ -4,7 +4,7 @@
  
  	memcpy(eep, data, len);
  
-+	dev_warn(dev->dev, "nvmem cell: %s loaded %d bytes", cell_name, len); 
++	dev_info(dev->dev, "nvmem cell: %s loaded %d bytes", cell_name, len);
 +
  exit:
  	kfree(data);
