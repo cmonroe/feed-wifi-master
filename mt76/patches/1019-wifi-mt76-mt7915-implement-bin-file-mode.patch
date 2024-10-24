@@ -17,7 +17,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -226,6 +226,31 @@ static int mt76_get_of_eeprom(struct mt7
+@@ -161,6 +161,31 @@ static int mt76_get_of_eeprom(struct mt7
  	return mt76_get_of_data_from_nvmem(dev, eep, "eeprom", len);
  }
  
@@ -61,7 +61,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
  };
-@@ -1226,6 +1229,7 @@ int mt76_get_of_data_from_file(struct mt
+@@ -1225,6 +1228,7 @@ void mt76_eeprom_override(struct mt76_ph
  int mt76_get_of_data_from_mtd(struct mt76_dev *dev, void *eep, int offset, int len);
  int mt76_get_of_data_from_nvmem(struct mt76_dev *dev, void *eep,
  				const char *cell_name, int len);
@@ -71,7 +71,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  mt76_init_queue(struct mt76_dev *dev, int qid, int idx, int n_desc,
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
-@@ -11,6 +11,30 @@ static bool enable_6ghz;
+@@ -10,6 +10,30 @@ static bool enable_6ghz;
  module_param(enable_6ghz, bool, 0644);
  MODULE_PARM_DESC(enable_6ghz, "Enable 6 GHz instead of 5 GHz on hardware that supports both");
  
@@ -102,9 +102,9 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  static int mt7915_eeprom_load_precal(struct mt7915_dev *dev)
  {
  	struct mt76_dev *mdev = &dev->mt76;
-@@ -44,6 +68,9 @@ static int mt7915_eeprom_load_precal(str
- 	}
- #endif
+@@ -29,6 +53,9 @@ static int mt7915_eeprom_load_precal(str
+ 
+ 	offs = is_mt7915(&dev->mt76) ? MT_EE_PRECAL : MT_EE_PRECAL_V2;
  
 +	if (dev->bin_file_mode)
 +		return mt7915_eeprom_load_precal_binfile(dev, offs, size);
@@ -112,7 +112,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, size);
  	if (!ret)
  		return ret;
-@@ -79,8 +106,11 @@ static int mt7915_check_eeprom(struct mt
+@@ -64,8 +91,11 @@ static int mt7915_check_eeprom(struct mt
  	}
  }
  
@@ -125,7 +125,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	switch (mt76_chip(&dev->mt76)) {
  	case 0x7915:
  		return dev->dbdc_support ?
-@@ -121,7 +151,10 @@ mt7915_eeprom_load_default(struct mt7915
+@@ -106,7 +136,10 @@ mt7915_eeprom_load_default(struct mt7915
  		return ret;
  
  	if (!fw || !fw->data) {
@@ -137,7 +137,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		ret = -EINVAL;
  		goto out;
  	}
-@@ -188,6 +221,7 @@ static int mt7915_eeprom_load(struct mt7
+@@ -173,6 +206,7 @@ static int mt7915_eeprom_load(struct mt7
  
  	if (ret) {
  		dev->flash_mode = true;
@@ -145,7 +145,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	} else {
  		u8 free_block_num;
  		u32 block_num, i;
-@@ -208,6 +242,8 @@ static int mt7915_eeprom_load(struct mt7
+@@ -193,6 +227,8 @@ static int mt7915_eeprom_load(struct mt7
  			if (ret < 0)
  				return ret;
  		}
@@ -154,7 +154,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	}
  
  	return mt7915_check_eeprom(dev);
-@@ -325,12 +361,33 @@ int mt7915_eeprom_init(struct mt7915_dev
+@@ -310,12 +346,33 @@ int mt7915_eeprom_init(struct mt7915_dev
  {
  	int ret;
  

@@ -1,6 +1,6 @@
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
-@@ -149,7 +149,7 @@ static int mt7915_efuse_load(struct mt79
+@@ -134,7 +134,7 @@ static int mt7915_efuse_load(struct mt79
  	block_num = DIV_ROUND_UP(eeprom_size, MT7915_EEPROM_BLOCK_SIZE);
  
  	for (i = 0; i < block_num; i++)
@@ -9,7 +9,7 @@
  
  	dev_info(dev->mt76.dev, "read efuse data size=%lu, caching to OTP\n",
  			dev->mt76.eeprom.size);
-@@ -204,7 +204,7 @@ static int mt7915_eeprom_load(struct mt7
+@@ -189,7 +189,7 @@ static int mt7915_eeprom_load(struct mt7
  		/* read eeprom data from efuse */
  		block_num = DIV_ROUND_UP(eeprom_size, eeprom_blk_size);
  		for (i = 0; i < block_num; i++) {

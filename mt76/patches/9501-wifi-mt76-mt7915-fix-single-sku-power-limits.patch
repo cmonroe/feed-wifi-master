@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -310,7 +310,6 @@ mt76_find_power_limits_node(struct mt76_
+@@ -245,7 +245,6 @@ mt76_find_power_limits_node(struct mt76_
  	};
  	struct device_node *cur, *fallback = NULL;
  	const char *region_name = NULL;
@@ -30,7 +30,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (dev->region < ARRAY_SIZE(region_names))
  		region_name = region_names[dev->region];
-@@ -319,20 +318,17 @@ mt76_find_power_limits_node(struct mt76_
+@@ -254,20 +253,17 @@ mt76_find_power_limits_node(struct mt76_
  	if (!np)
  		return NULL;
  
@@ -53,7 +53,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			of_node_put(np);
  			return cur;
  		}
-@@ -415,10 +411,9 @@ mt76_apply_array_limit(s8 *pwr, size_t p
+@@ -350,10 +346,9 @@ mt76_apply_array_limit(s8 *pwr, size_t p
  static void
  mt76_apply_multi_array_limit(s8 *pwr, size_t pwr_len, s8 pwr_num,
  			     const __be32 *data, size_t len, s8 target_power,
@@ -65,7 +65,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (!data)
  		return;
-@@ -430,7 +425,7 @@ mt76_apply_multi_array_limit(s8 *pwr, si
+@@ -365,7 +360,7 @@ mt76_apply_multi_array_limit(s8 *pwr, si
  			break;
  
  		mt76_apply_array_limit(pwr + pwr_len * i, pwr_len, data + 1,
@@ -74,7 +74,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (--cur > 0)
  			continue;
  
-@@ -512,12 +507,12 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -447,12 +442,12 @@ s8 mt76_get_rate_power_limits(struct mt7
  	val = mt76_get_of_array(np, "rates-mcs", &len, mcs_rates + 1);
  	mt76_apply_multi_array_limit(dest->mcs[0], ARRAY_SIZE(dest->mcs[0]),
  				     ARRAY_SIZE(dest->mcs), val, len,
@@ -89,7 +89,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	max_power_backoff = max_power;
  	val = mt76_get_of_array(np, "paths-cck", &len, ARRAY_SIZE(dest->path.cck));
-@@ -535,12 +530,12 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -470,12 +465,12 @@ s8 mt76_get_rate_power_limits(struct mt7
  	val = mt76_get_of_array(np, "paths-ru", &len, ARRAY_SIZE(dest->path.ru[0]) + 1);
  	mt76_apply_multi_array_limit(dest->path.ru[0], ARRAY_SIZE(dest->path.ru[0]),
  				     ARRAY_SIZE(dest->path.ru), val, len,

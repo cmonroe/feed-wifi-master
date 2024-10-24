@@ -1,6 +1,6 @@
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -458,7 +458,13 @@ static int mt7996_eeprom_load_precal(str
+@@ -457,7 +457,13 @@ static int mt7996_eeprom_load_precal(str
  
  	mt7996_eeprom_init_precal(dev);
  
@@ -15,3 +15,20 @@
  		return 0;
  
  	size = MT_EE_CAL_GROUP_SIZE + MT_EE_CAL_DPD_SIZE;
+@@ -473,7 +479,15 @@ static int mt7996_eeprom_load_precal(str
+ 	if (!ret)
+  		return ret;
+ 
+-	return mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
++	ret = mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
++	if (!ret)
++ 		return ret;
++
++	dev_warn(mdev->dev, "missing precal data, size=%d\n", size);
++	devm_kfree(mdev->dev, dev->cal);
++	dev->cal = NULL;
++
++	return ret;
+ }
+ 
+ static int mt7996_apply_cal_free_data(struct mt7996_dev *dev)

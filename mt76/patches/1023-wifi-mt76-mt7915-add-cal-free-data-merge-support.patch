@@ -16,7 +16,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
-@@ -357,6 +357,190 @@ void mt7915_eeprom_parse_hw_cap(struct m
+@@ -342,6 +342,190 @@ void mt7915_eeprom_parse_hw_cap(struct m
  	dev->chainshift = hweight8(dev->mphy.chainmask);
  }
  
@@ -207,7 +207,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7915_eeprom_init(struct mt7915_dev *dev)
  {
  	int ret;
-@@ -394,6 +578,11 @@ int mt7915_eeprom_init(struct mt7915_dev
+@@ -379,6 +563,11 @@ int mt7915_eeprom_init(struct mt7915_dev
  	}
  
  	mt7915_eeprom_load_precal(dev);

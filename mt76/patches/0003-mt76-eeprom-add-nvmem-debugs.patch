@@ -1,0 +1,11 @@
+--- a/eeprom.c
++++ b/eeprom.c
+@@ -133,6 +133,8 @@ int mt76_get_of_data_from_nvmem(struct m
+ 
+ 	memcpy(eep, data, len);
+ 
++	dev_warn(dev->dev, "nvmem cell: %s loaded %d bytes", cell_name, len); 
++
+ exit:
+ 	kfree(data);
+ 
