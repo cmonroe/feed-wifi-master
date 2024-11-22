@@ -129,7 +129,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif /* __MT76_CONNAC2_MAC_H */
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -596,7 +596,8 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -595,7 +595,8 @@ void mt76_connac2_mac_write_txwi(struct
  		u16 rate = mt76_connac2_mac_tx_rate_val(mphy, vif, beacon,
  							multicast);
  		u32 val = MT_TXD6_FIXED_BW;
@@ -139,7 +139,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* hardware won't add HTC for mgmt/ctrl frame */
  		txwi[2] |= cpu_to_le32(MT_TXD2_HTC_VLD);
  
-@@ -609,7 +610,9 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -608,7 +609,9 @@ void mt76_connac2_mac_write_txwi(struct
  
  			if (!spe_idx)
  				spe_idx = 24 + phy_idx;
