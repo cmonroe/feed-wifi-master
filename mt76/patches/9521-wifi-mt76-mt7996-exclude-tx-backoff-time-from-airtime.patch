@@ -1,0 +1,38 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 25 Nov 2024 18:03:07 -0800
+Subject: [PATCH] mt76: mt7996: exclude tx backoff time from airtime
+
+This helps to make STA airtime counters more accurate.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+Suggested-by: Ryder Lee <ryder.lee@mediatek.com>
+---
+ mt7996/init.c |    4 ++++
+ mt7996/regs.h |    3 +++
+ 2 files changed, 7 insertions(+)
+
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -472,6 +472,10 @@ mt7996_mac_init_band(struct mt7996_dev *
+ 	mt76_clear(dev, MT_WF_RMAC_MIB_AIRTIME4(band),
+ 		   MT_WF_RMAC_MIB_QOS23_BACKOFF);
+ 
++	/* clear backoff time for Tx duration */
++	mt76_clear(dev, MT_WTBLOFF_ACR(band),
++		   MT_WTBLOFF_ADM_BACKOFFTIME);
++
+ 	/* clear backoff time and set software compensation for OBSS time */
+ 	mask = MT_WF_RMAC_MIB_OBSS_BACKOFF | MT_WF_RMAC_MIB_ED_OFFSET;
+ 	set = FIELD_PREP(MT_WF_RMAC_MIB_OBSS_BACKOFF, 0) |
+--- a/mt7996/regs.h
++++ b/mt7996/regs.h
+@@ -177,6 +177,9 @@ enum offs_rev {
+ #define MT_WTBLOFF_RSCR_RCPI_MODE		GENMASK(31, 30)
+ #define MT_WTBLOFF_RSCR_RCPI_PARAM		GENMASK(25, 24)
+ 
++#define MT_WTBLOFF_ACR(_band)			MT_WTBLOFF(_band, 0x010)
++#define MT_WTBLOFF_ADM_BACKOFFTIME		BIT(29)
++
+ /* ETBF: band 0(0x820ea000), band 1(0x820fa000), band 2(0x830ea000) */
+ #define MT_WF_ETBF_BASE(_band)			__BASE(WF_ETBF_BASE, (_band))
+ #define MT_WF_ETBF(_band, ofs)			(MT_WF_ETBF_BASE(_band) + (ofs))
