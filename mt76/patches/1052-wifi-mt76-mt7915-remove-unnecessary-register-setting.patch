@@ -45,7 +45,7 @@ Signed-off-by: Henry.Yen <henry.yen@mediatek.com>
  	/* mt7915: disable rx rate report by default due to hw issues */
  	mt76_clear(dev, MT_DMA_DCR0(band), MT_DMA_DCR0_RXD_G5_EN);
  
-@@ -621,23 +597,12 @@ mt7915_init_led_mux(struct mt7915_dev *d
+@@ -620,23 +596,12 @@ mt7915_init_led_mux(struct mt7915_dev *d
  void mt7915_mac_init(struct mt7915_dev *dev)
  {
  	int i;
@@ -71,7 +71,7 @@ Signed-off-by: Henry.Yen <henry.yen@mediatek.com>
  				       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1172,61 +1172,20 @@ void mt7915_mac_reset_counters(struct mt
+@@ -1161,61 +1161,20 @@ void mt7915_mac_reset_counters(struct mt
  
  void mt7915_mac_set_timing(struct mt7915_phy *phy)
  {

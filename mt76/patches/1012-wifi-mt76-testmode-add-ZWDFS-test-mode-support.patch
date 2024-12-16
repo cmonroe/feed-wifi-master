@@ -187,7 +187,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -256,6 +256,7 @@ struct mt7915_phy {
+@@ -255,6 +255,7 @@ struct mt7915_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -195,7 +195,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	u8 stats_work_count;
  	struct list_head stats_list;
-@@ -701,6 +702,9 @@ int mt7915_vendor_amnt_sta_remove(struct
+@@ -700,6 +701,9 @@ int mt7915_vendor_amnt_sta_remove(struct
  				  struct ieee80211_sta *sta);
  #endif
  
