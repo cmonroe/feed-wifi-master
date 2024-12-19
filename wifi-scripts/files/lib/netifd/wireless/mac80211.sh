@@ -161,7 +161,7 @@ mac80211_hostapd_setup_base() {
 	chan_ofs=0
 	[ "$band" = "6g" ] && chan_ofs=1
 
-	if [ "$band" != "6g" ]; then
+	#if [ "$band" != "6g" ]; then
 		ieee80211n=1
 		ht_capab=
 		case "$htmode" in
@@ -233,7 +233,7 @@ mac80211_hostapd_setup_base() {
 			ht_capab="$ht_capab$ht_capab_flags"
 			[ -n "$ht_capab" ] && append base_cfg "ht_capab=$ht_capab" "$N"
 		}
-	fi
+	#fi
 
 	# 802.11ac
 	enable_ac=0
