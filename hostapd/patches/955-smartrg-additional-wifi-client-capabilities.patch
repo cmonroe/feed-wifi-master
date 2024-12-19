@@ -1,6 +1,6 @@
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4457,6 +4457,12 @@ static int __check_assoc_ies(struct host
+@@ -4486,6 +4486,12 @@ static int __check_assoc_ies(struct host
  				hapd->conf->max_acceptable_idle_period;
  	}
  
@@ -25,7 +25,7 @@
  	sae_clear_data(sta->sae);
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -317,6 +317,8 @@ struct sta_info {
+@@ -321,6 +321,8 @@ struct sta_info {
  	u8 mld_assoc_link_id;
  #endif /* CONFIG_IEEE80211BE */
  
@@ -909,7 +909,7 @@
  	ieee80211_freq_to_channel_ext(hapd->iface->freq,
  				      hapd->iconf->secondary_channel,
  				      hostapd_get_oper_chwidth(hapd->iconf),
-@@ -1617,6 +2285,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1618,6 +2286,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),

@@ -21,7 +21,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -4951,6 +4951,7 @@ struct cfg80211_ops {
+@@ -4954,6 +4954,7 @@ struct cfg80211_ops {
  	int	(*set_ttlm)(struct wiphy *wiphy, struct net_device *dev,
  			    struct cfg80211_ttlm_params *params);
  	u32	(*get_radio_mask)(struct wiphy *wiphy, struct net_device *dev);
@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /*
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -5102,6 +5102,30 @@ ieee80211_set_ttlm(struct wiphy *wiphy,
+@@ -5111,6 +5111,30 @@ ieee80211_set_ttlm(struct wiphy *wiphy,
  	return ieee80211_req_neg_ttlm(sdata, params);
  }
  
@@ -62,7 +62,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  const struct cfg80211_ops mac80211_config_ops = {
  	.add_virtual_intf = ieee80211_add_iface,
  	.del_virtual_intf = ieee80211_del_iface,
-@@ -5216,4 +5240,5 @@ const struct cfg80211_ops mac80211_confi
+@@ -5225,4 +5249,5 @@ const struct cfg80211_ops mac80211_confi
  	.set_hw_timestamp = ieee80211_set_hw_timestamp,
  	.set_ttlm = ieee80211_set_ttlm,
  	.get_radio_mask = ieee80211_get_radio_mask,
@@ -476,7 +476,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  					NL80211_RADAR_CAC_STARTED);
 --- a/net/wireless/rdev-ops.h
 +++ b/net/wireless/rdev-ops.h
-@@ -1545,4 +1545,18 @@ rdev_get_radio_mask(struct cfg80211_regi
+@@ -1546,4 +1546,18 @@ rdev_get_radio_mask(struct cfg80211_regi
  
  	return rdev->ops->get_radio_mask(wiphy, dev);
  }
@@ -497,7 +497,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif /* __CFG80211_RDEV_OPS */
 --- a/net/wireless/trace.h
 +++ b/net/wireless/trace.h
-@@ -4102,6 +4102,19 @@ TRACE_EVENT(cfg80211_links_removed,
+@@ -4104,6 +4104,19 @@ TRACE_EVENT(cfg80211_links_removed,
  		  __entry->link_mask)
  );
  

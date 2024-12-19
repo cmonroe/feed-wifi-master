@@ -55,11 +55,12 @@
  				struct ieee80211_channel *tmp_ch =
  				    &local->hw.wiphy->bands[band]->channels[i];
  
+-				if (tmp_ch->flags & (IEEE80211_CHAN_NO_IR |
+-						     IEEE80211_CHAN_DISABLED) ||
 +				// Don't skip DFS if it is the current channel.
- 				if (tmp_ch->flags & (IEEE80211_CHAN_NO_IR |
--						     IEEE80211_CHAN_DISABLED))
++				if ((tmp_ch->flags & (IEEE80211_CHAN_NO_IR |
 +						     IEEE80211_CHAN_DISABLED) &&
-+					(tmp_ch != local->hw.conf.chandef.chan))
++					(tmp_ch != local->hw.conf.chandef.chan)) ||
+ 				    !cfg80211_wdev_channel_allowed(&sdata->wdev,
+ 								   tmp_ch))
  					continue;
- 
- 				local->int_scan_req->channels[n_ch] = tmp_ch;
