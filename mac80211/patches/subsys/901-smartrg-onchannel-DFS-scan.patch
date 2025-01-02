@@ -51,7 +51,7 @@
  		/* wait for the work to finish/time out */
  		rcu_assign_pointer(local->scan_req, req);
  		rcu_assign_pointer(local->scan_sdata, sdata);
-@@ -1201,8 +1214,10 @@ int ieee80211_request_ibss_scan(struct i
+@@ -1199,8 +1212,10 @@ int ieee80211_request_ibss_scan(struct i
  				struct ieee80211_channel *tmp_ch =
  				    &local->hw.wiphy->bands[band]->channels[i];
  
