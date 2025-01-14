@@ -1,27 +1,23 @@
 --- a/include/iwinfo.h
 +++ b/include/iwinfo.h
-@@ -400,7 +400,7 @@ struct iwinfo_ops {
- 	int (*quality_max)(const char *, int *);
+@@ -401,6 +401,7 @@ struct iwinfo_ops {
  	int (*mbssid_support)(const char *, int *);
  	int (*hwmodelist)(const char *, int *);
--	int (*htmodelist)(const char *, int *);
-+	int (*htmodelist)(const char *, int *, int);
+ 	int (*htmodelist)(const char *, int *);
++	int (*htmodelistfilter)(const char *, int *, int);
  	int (*htmode)(const char *, int *);
  	int (*ssid)(const char *, char *);
  	int (*bssid)(const char *, char *);
 --- a/iwinfo_cli.c
 +++ b/iwinfo_cli.c
-@@ -870,11 +870,21 @@ static void print_countrylist(const stru
- 	}
+@@ -887,6 +887,33 @@ static void print_htmodelist(const struc
+ 	printf("\n");
  }
  
--static void print_htmodelist(const struct iwinfo_ops *iw, const char *ifname)
-+static void print_htmodelist(const struct iwinfo_ops *iw, const char *ifname, const char *band_str)
- {
--	int i, htmodes = 0;
++static void print_htmodelistfilter(const struct iwinfo_ops *iw, const char *ifname, const char *band_str)
++{
 +	int i, band = 0, htmodes = 0;
- 
--	if (iw->htmodelist(ifname, &htmodes))
++
 +	if (band_str != NULL)
 +	{
 +		if (band_str[0] == '2')
@@ -32,11 +28,23 @@
 +			band = IWINFO_BAND_6;
 +	}
 +
-+	if (iw->htmodelist(ifname, &htmodes, band))
- 	{
- 		printf("No HT mode information available\n");
- 		return;
-@@ -934,7 +944,7 @@ int main(int argc, char **argv)
++	if (iw->htmodelistfilter(ifname, &htmodes, band))
++	{
++		printf("No HT mode information available\n");
++		return;
++	}
++
++	for (i = 0; i < IWINFO_HTMODE_COUNT; i++)
++		if (htmodes & (1 << i))
++			printf("%s ", IWINFO_HTMODE_NAMES[i]);
++
++	printf("\n");
++}
++
+ static void lookup_phy(const struct iwinfo_ops *iw, const char *section)
+ {
+ 	char buf[IWINFO_BUFSIZE];
+@@ -934,7 +961,7 @@ int main(int argc, char **argv)
  			"	iwinfo <device> freqlist\n"
  			"	iwinfo <device> assoclist\n"
  			"	iwinfo <device> countrylist\n"
@@ -45,7 +53,7 @@
  			"	iwinfo <backend> phyname <section>\n"
  		);
  
-@@ -965,7 +975,7 @@ int main(int argc, char **argv)
+@@ -965,7 +992,7 @@ int main(int argc, char **argv)
  		return 0;
  	}
  
@@ -54,11 +62,12 @@
  	{
  		iw = iwinfo_backend_by_name(argv[1]);
  
-@@ -992,6 +1002,29 @@ int main(int argc, char **argv)
+@@ -991,6 +1018,29 @@ int main(int argc, char **argv)
+ 				rv = 1;
  			}
  		}
- 	}
-+	else if (argc == 3 && argv[2][0] == 'h')
++	}
++	else if (argc == 4 && argv[2][0] == 'h')
 +	{
 +		iw = iwinfo_backend(argv[1]);
 +
@@ -72,7 +81,7 @@
 +			switch(argv[2][0])
 +			{
 +			case 'h':
-+				print_htmodelist(iw, argv[1], argv[3]);
++				print_htmodelistfilter(iw, argv[1], argv[3]);
 +				break;
 +
 +			default:
@@ -80,88 +89,52 @@
 +				rv = 1;
 +			}
 +		}
-+	}
+ 	}
  	else
  	{
- 		iw = iwinfo_backend(argv[1]);
-@@ -1032,7 +1065,7 @@ int main(int argc, char **argv)
- 					break;
- 
- 				case 'h':
--					print_htmodelist(iw, argv[1]);
-+					print_htmodelist(iw, argv[1], 0);
- 					break;
- 
- 				default:
---- a/iwinfo_lua.c
-+++ b/iwinfo_lua.c
-@@ -573,12 +573,12 @@ static int iwinfo_L_hwmodelist(lua_State
- }
- 
- /* Wrapper for htmode list */
--static int iwinfo_L_htmodelist(lua_State *L, int (*func)(const char *, int *))
-+static int iwinfo_L_htmodelist(lua_State *L, int (*func)(const char *, int *, int))
- {
- 	const char *ifname = luaL_checkstring(L, 1);
- 	int i, htmodes = 0;
- 
--	if (!(*func)(ifname, &htmodes))
-+	if (!(*func)(ifname, &htmodes, 0))
- 	{
- 		lua_newtable(L);
- 
---- a/iwinfo_madwifi.c
-+++ b/iwinfo_madwifi.c
-@@ -1036,7 +1036,7 @@ static int madwifi_get_hwmodelist(const
- 	return -1;
- }
- 
--static int madwifi_get_htmodelist(const char *ifname, int *buf)
-+static int madwifi_get_htmodelist(const char *ifname, int *buf, int band)
- {
- 	/* OpenWrt's madwifi did never support any HT rates */
- 	return -1;
 --- a/iwinfo_nl80211.c
 +++ b/iwinfo_nl80211.c
-@@ -3521,14 +3521,17 @@ static int nl80211_get_htmode(const char
- 	return 0;
- }
- 
--static int nl80211_get_htmodelist(const char *ifname, int *buf)
-+static int nl80211_get_htmodelist(const char *ifname, int *buf, int band)
- {
- 	struct nl80211_msg_conveyor *cv;
- 	struct nl80211_modes m = {};
- 	uint32_t features = nl80211_get_protocol_features(ifname);
- 	int flags;
- 
--	m.radio_band = nl80211_get_band_ifname(ifname);
-+	if (band)
-+		m.radio_band = band;
-+	else
-+		m.radio_band = nl80211_get_band_ifname(ifname);
- 
- 	flags = features & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP ? NLM_F_DUMP : 0;
- 	cv = nl80211_msg(ifname, NL80211_CMD_GET_WIPHY, flags);
---- a/iwinfo_wext.c
-+++ b/iwinfo_wext.c
-@@ -450,7 +450,7 @@ static int wext_get_hwmodelist(const cha
+@@ -3551,6 +3551,35 @@ out:
  	return -1;
  }
  
--static int wext_get_htmodelist(const char *ifname, int *buf)
-+static int wext_get_htmodelist(const char *ifname, int *buf, int band)
- {
- 	/* Stub */
- 	return -1;
---- a/iwinfo_wl.c
-+++ b/iwinfo_wl.c
-@@ -645,7 +645,7 @@ static int wl_get_hwmodelist(const char
- 	return -1;
- }
++static int nl80211_get_htmodelistfilter(const char *ifname, int *buf, int band)
++{
++	struct nl80211_msg_conveyor *cv;
++	struct nl80211_modes m = {};
++	uint32_t features = nl80211_get_protocol_features(ifname);
++	int flags;
++
++	m.radio_band = band;
++
++	flags = features & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP ? NLM_F_DUMP : 0;
++	cv = nl80211_msg(ifname, NL80211_CMD_GET_WIPHY, flags);
++	if (!cv)
++		goto out;
++
++	NLA_PUT_FLAG(cv->msg, NL80211_ATTR_SPLIT_WIPHY_DUMP);
++	if (nl80211_send(cv, nl80211_get_modelist_cb, &m))
++		goto nla_put_failure;
++
++	nl80211_eval_modelist(&m);
++
++	*buf = m.ht;
++
++	return 0;
++
++nla_put_failure:
++	nl80211_free(cv);
++out:
++	return -1;
++}
  
--static int wl_get_htmodelist(const char *ifname, int *buf)
-+static int wl_get_htmodelist(const char *ifname, int *buf, int band)
+ static int nl80211_get_ifcomb_cb(struct nl_msg *msg, void *arg)
  {
- 	int modes;
- 
+@@ -3770,6 +3799,7 @@ const struct iwinfo_ops nl80211_ops = {
+ 	.mbssid_support   = nl80211_get_mbssid_support,
+ 	.hwmodelist       = nl80211_get_hwmodelist,
+ 	.htmodelist       = nl80211_get_htmodelist,
++	.htmodelistfilter = nl80211_get_htmodelistfilter,
+ 	.htmode		  = nl80211_get_htmode,
+ 	.mode             = nl80211_get_mode,
+ 	.ssid             = nl80211_get_ssid,
