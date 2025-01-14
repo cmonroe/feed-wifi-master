@@ -1,0 +1,124 @@
+--- a/iwinfo_nl80211.c
++++ b/iwinfo_nl80211.c
+@@ -1568,6 +1568,27 @@ static int nl80211_get_txpower(const cha
+ 	return 0;
+ }
+ 
++static int nl80211_get_band_ifname(const char *ifname)
++{
++	int freq = 0;
++
++	if (strncmp(ifname, "phy", 3) == 0)
++		return -1;
++
++	if (!nl80211_get_frequency(ifname, &freq))
++	{
++		if (freq > 50000)
++			return IWINFO_BAND_60;
++		else if (freq > 5900)
++			return IWINFO_BAND_6;
++		else if (freq > 4000)
++			return IWINFO_BAND_5;
++		else if (freq > 2400)
++			return IWINFO_BAND_24;
++	}
++
++	return -1;
++}
+ 
+ static int nl80211_fill_signal_cb(struct nl_msg *msg, void *arg)
+ {
+@@ -3049,11 +3070,18 @@ static int nl80211_get_scanlist(const ch
+ 	return -1;
+ }
+ 
++struct nl80211_freqlist
++{
++	int8_t radio_band;
++	struct nl80211_array_buf *arr;
++};
++
+ static int nl80211_get_freqlist_cb(struct nl_msg *msg, void *arg)
+ {
+ 	int bands_remain, freqs_remain;
+ 
+-	struct nl80211_array_buf *arr = arg;
++	struct nl80211_freqlist *fl = arg;
++	struct nl80211_array_buf *arr = fl->arr;
+ 	struct iwinfo_freqlist_entry *e;
+ 
+ 	struct nlattr **attr = nl80211_parse(msg);
+@@ -3067,6 +3095,11 @@ static int nl80211_get_freqlist_cb(struc
+ 	if (attr[NL80211_ATTR_WIPHY_BANDS]) {
+ 		nla_for_each_nested(band, attr[NL80211_ATTR_WIPHY_BANDS], bands_remain)
+ 		{
++			if (fl->radio_band != -1) {
++				if (nl80211_get_band(band->nla_type) != fl->radio_band)
++					continue;
++			}
++
+ 			nla_parse(bands, NL80211_BAND_ATTR_MAX,
+ 				  nla_data(band), nla_len(band), NULL);
+ 
+@@ -3119,18 +3152,22 @@ static int nl80211_get_freqlist_cb(struc
+ 
+ static int nl80211_get_freqlist(const char *ifname, char *buf, int *len)
+ {
++	struct nl80211_freqlist fl;
+ 	struct nl80211_msg_conveyor *cv;
+ 	struct nl80211_array_buf arr = { .buf = buf, .count = 0 };
+ 	uint32_t features = nl80211_get_protocol_features(ifname);
+ 	int flags;
+ 
++	fl.radio_band = nl80211_get_band_ifname(ifname);
++	fl.arr = &arr;
++
+ 	flags = features & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP ? NLM_F_DUMP : 0;
+ 	cv = nl80211_msg(ifname, NL80211_CMD_GET_WIPHY, flags);
+ 	if (!cv)
+ 		goto out;
+ 
+ 	NLA_PUT_FLAG(cv->msg, NL80211_ATTR_SPLIT_WIPHY_DUMP);
+-	if (nl80211_send(cv, nl80211_get_freqlist_cb, &arr))
++	if (nl80211_send(cv, nl80211_get_freqlist_cb, &fl))
+ 		goto out;
+ 
+ 	*len = arr.count * sizeof(struct iwinfo_freqlist_entry);
+@@ -3191,6 +3228,7 @@ struct nl80211_modes
+ 	uint32_t ht;
+ 
+ 	uint8_t bands;
++	int8_t	radio_band;
+ 
+ 	uint16_t nl_ht;
+ 	uint32_t nl_vht;
+@@ -3289,6 +3327,11 @@ static int nl80211_get_modelist_cb(struc
+ 	{
+ 		nla_for_each_nested(band, attr[NL80211_ATTR_WIPHY_BANDS], bands_remain)
+ 		{
++			if (m->radio_band != -1) {
++				if (nl80211_get_band(band->nla_type) != m->radio_band)
++					continue;
++			}
++
+ 			m->bands |= nl80211_get_band(band->nla_type);
+ 
+ 			nla_parse(bands, NL80211_BAND_ATTR_MAX,
+@@ -3348,6 +3391,8 @@ static int nl80211_get_hwmodelist(const
+ 	uint32_t features = nl80211_get_protocol_features(ifname);
+ 	int flags;
+ 
++	m.radio_band = nl80211_get_band_ifname(ifname);
++
+ 	flags = features & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP ? NLM_F_DUMP : 0;
+ 	cv = nl80211_msg(ifname, NL80211_CMD_GET_WIPHY, flags);
+ 	if (!cv)
+@@ -3483,6 +3528,8 @@ static int nl80211_get_htmodelist(const
+ 	uint32_t features = nl80211_get_protocol_features(ifname);
+ 	int flags;
+ 
++	m.radio_band = nl80211_get_band_ifname(ifname);
++
+ 	flags = features & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP ? NLM_F_DUMP : 0;
+ 	cv = nl80211_msg(ifname, NL80211_CMD_GET_WIPHY, flags);
+ 	if (!cv)

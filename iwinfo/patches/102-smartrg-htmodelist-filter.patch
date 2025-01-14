@@ -1,0 +1,167 @@
+--- a/include/iwinfo.h
++++ b/include/iwinfo.h
+@@ -400,7 +400,7 @@ struct iwinfo_ops {
+ 	int (*quality_max)(const char *, int *);
+ 	int (*mbssid_support)(const char *, int *);
+ 	int (*hwmodelist)(const char *, int *);
+-	int (*htmodelist)(const char *, int *);
++	int (*htmodelist)(const char *, int *, int);
+ 	int (*htmode)(const char *, int *);
+ 	int (*ssid)(const char *, char *);
+ 	int (*bssid)(const char *, char *);
+--- a/iwinfo_cli.c
++++ b/iwinfo_cli.c
+@@ -870,11 +870,21 @@ static void print_countrylist(const stru
+ 	}
+ }
+ 
+-static void print_htmodelist(const struct iwinfo_ops *iw, const char *ifname)
++static void print_htmodelist(const struct iwinfo_ops *iw, const char *ifname, const char *band_str)
+ {
+-	int i, htmodes = 0;
++	int i, band = 0, htmodes = 0;
+ 
+-	if (iw->htmodelist(ifname, &htmodes))
++	if (band_str != NULL)
++	{
++		if (band_str[0] == '2')
++			band = IWINFO_BAND_24; 
++		else if (band_str[0] == '5')
++			band = IWINFO_BAND_5;
++		else if (band_str[0] == '6')
++			band = IWINFO_BAND_6;
++	}
++
++	if (iw->htmodelist(ifname, &htmodes, band))
+ 	{
+ 		printf("No HT mode information available\n");
+ 		return;
+@@ -934,7 +944,7 @@ int main(int argc, char **argv)
+ 			"	iwinfo <device> freqlist\n"
+ 			"	iwinfo <device> assoclist\n"
+ 			"	iwinfo <device> countrylist\n"
+-			"	iwinfo <device> htmodelist\n"
++			"	iwinfo <device> htmodelist [2|5|6]\n"
+ 			"	iwinfo <backend> phyname <section>\n"
+ 		);
+ 
+@@ -965,7 +975,7 @@ int main(int argc, char **argv)
+ 		return 0;
+ 	}
+ 
+-	if (argc > 3)
++	if (argc > 3 && argv[2][0] == 'p')
+ 	{
+ 		iw = iwinfo_backend_by_name(argv[1]);
+ 
+@@ -992,6 +1002,29 @@ int main(int argc, char **argv)
+ 			}
+ 		}
+ 	}
++	else if (argc == 3 && argv[2][0] == 'h')
++	{
++		iw = iwinfo_backend(argv[1]);
++
++		if (!iw)
++		{
++			fprintf(stderr, "No such wireless device: %s\n", argv[1]);
++			rv = 1;
++		}
++		else
++		{
++			switch(argv[2][0])
++			{
++			case 'h':
++				print_htmodelist(iw, argv[1], argv[3]);
++				break;
++
++			default:
++				fprintf(stderr, "Unknown command: %s\n", argv[i]);
++				rv = 1;
++			}
++		}
++	}
+ 	else
+ 	{
+ 		iw = iwinfo_backend(argv[1]);
+@@ -1032,7 +1065,7 @@ int main(int argc, char **argv)
+ 					break;
+ 
+ 				case 'h':
+-					print_htmodelist(iw, argv[1]);
++					print_htmodelist(iw, argv[1], 0);
+ 					break;
+ 
+ 				default:
+--- a/iwinfo_lua.c
++++ b/iwinfo_lua.c
+@@ -573,12 +573,12 @@ static int iwinfo_L_hwmodelist(lua_State
+ }
+ 
+ /* Wrapper for htmode list */
+-static int iwinfo_L_htmodelist(lua_State *L, int (*func)(const char *, int *))
++static int iwinfo_L_htmodelist(lua_State *L, int (*func)(const char *, int *, int))
+ {
+ 	const char *ifname = luaL_checkstring(L, 1);
+ 	int i, htmodes = 0;
+ 
+-	if (!(*func)(ifname, &htmodes))
++	if (!(*func)(ifname, &htmodes, 0))
+ 	{
+ 		lua_newtable(L);
+ 
+--- a/iwinfo_madwifi.c
++++ b/iwinfo_madwifi.c
+@@ -1036,7 +1036,7 @@ static int madwifi_get_hwmodelist(const
+ 	return -1;
+ }
+ 
+-static int madwifi_get_htmodelist(const char *ifname, int *buf)
++static int madwifi_get_htmodelist(const char *ifname, int *buf, int band)
+ {
+ 	/* OpenWrt's madwifi did never support any HT rates */
+ 	return -1;
+--- a/iwinfo_nl80211.c
++++ b/iwinfo_nl80211.c
+@@ -3521,14 +3521,17 @@ static int nl80211_get_htmode(const char
+ 	return 0;
+ }
+ 
+-static int nl80211_get_htmodelist(const char *ifname, int *buf)
++static int nl80211_get_htmodelist(const char *ifname, int *buf, int band)
+ {
+ 	struct nl80211_msg_conveyor *cv;
+ 	struct nl80211_modes m = {};
+ 	uint32_t features = nl80211_get_protocol_features(ifname);
+ 	int flags;
+ 
+-	m.radio_band = nl80211_get_band_ifname(ifname);
++	if (band)
++		m.radio_band = band;
++	else
++		m.radio_band = nl80211_get_band_ifname(ifname);
+ 
+ 	flags = features & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP ? NLM_F_DUMP : 0;
+ 	cv = nl80211_msg(ifname, NL80211_CMD_GET_WIPHY, flags);
+--- a/iwinfo_wext.c
++++ b/iwinfo_wext.c
+@@ -450,7 +450,7 @@ static int wext_get_hwmodelist(const cha
+ 	return -1;
+ }
+ 
+-static int wext_get_htmodelist(const char *ifname, int *buf)
++static int wext_get_htmodelist(const char *ifname, int *buf, int band)
+ {
+ 	/* Stub */
+ 	return -1;
+--- a/iwinfo_wl.c
++++ b/iwinfo_wl.c
+@@ -645,7 +645,7 @@ static int wl_get_hwmodelist(const char
+ 	return -1;
+ }
+ 
+-static int wl_get_htmodelist(const char *ifname, int *buf)
++static int wl_get_htmodelist(const char *ifname, int *buf, int band)
+ {
+ 	int modes;
+ 
