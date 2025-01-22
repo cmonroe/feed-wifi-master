@@ -15,7 +15,7 @@ Suggested-by: Ryder Lee <ryder.lee@mediatek.com>
 
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3340,8 +3340,13 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3355,8 +3355,13 @@ int mt7915_mcu_get_chan_mib_info(struct
  	res = (struct mt7915_mcu_mib *)(skb->data + offs_cc);
  
  #define __res_u64(s) le64_to_cpu(res[s].data)
