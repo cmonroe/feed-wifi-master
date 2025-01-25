@@ -18,8 +18,16 @@ function radio_exists(path, macaddr, phy, radio) {
 	for (let name, s in config) {
 		if (s[".type"] != "wifi-device")
 			continue;
-		if (radio != null && int(s.radio) != radio)
+		if (radio != null && int(s.radio) != radio) {
+			// on upgrade to single wiphy mode, don't generate new
+			// wifi-device objects if the base path (before +X) matches
+			// the newly calculated path.
+			if (s.path && path) {
+				if (substr(s.path, 0, length(path)) == path)
+					return true;
+			}
 			continue;
+		}
 		if (s.macaddr & lc(s.macaddr) == lc(macaddr))
 			return true;
 		if (s.phy == phy)
