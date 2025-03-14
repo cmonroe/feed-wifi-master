@@ -368,7 +368,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -4682,9 +4761,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -4681,9 +4760,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -526,7 +526,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -4695,7 +4920,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -4694,7 +4919,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  
