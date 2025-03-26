@@ -1,0 +1,22 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 26 Mar 2025 11:27:21 -0700
+Subject: [PATCH] mt76: mt7996: fix MT7995 6G group pre-cal size 
+
+adjust MT7995 6G group pre-cal size to match firmware
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/eeprom.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/mt7996/eeprom.h
++++ b/mt7996/eeprom.h
+@@ -72,7 +72,7 @@ static const u32 mt7996_prek_rev[] = {
+ static const u32 mt7996_prek_rev_233[] = {
+ 	[GROUP_SIZE_2G] =			4 * MT_EE_CAL_UNIT,
+ 	[GROUP_SIZE_5G] =			44 * MT_EE_CAL_UNIT,
+-	[GROUP_SIZE_6G] =			100 * MT_EE_CAL_UNIT,
++	[GROUP_SIZE_6G] =			125 * MT_EE_CAL_UNIT,
+ 	[ADCDCOC_SIZE_2G] =			4 * 4,
+ 	[ADCDCOC_SIZE_5G] =			4 * 4,
+ 	[ADCDCOC_SIZE_6G] =			4 * 5,
