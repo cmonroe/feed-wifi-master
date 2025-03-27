@@ -82,15 +82,17 @@
  
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -24,6 +24,7 @@
+@@ -24,6 +24,9 @@
  #include "taxonomy.h"
  #include "airtime_policy.h"
  #include "hw_features.h"
 +#include <stdlib.h>     /* qsort */
++
++u16 smartrg_eht_ppet_size(u16 ppe_thres_hdr, const u8 *phy_cap_info);
  
  static struct ubus_context *ctx;
  static struct blob_buf b;
-@@ -168,7 +169,7 @@ hostapd_bss_reload(struct ubus_context *
+@@ -168,7 +171,7 @@ hostapd_bss_reload(struct ubus_context *
  
  
  static void
@@ -99,7 +101,7 @@
  {
  	char label[4];
  	int16_t val;
-@@ -177,14 +178,33 @@ hostapd_parse_vht_map_blobmsg(uint16_t m
+@@ -177,14 +180,33 @@ hostapd_parse_vht_map_blobmsg(uint16_t m
  	for (i = 0; i < 8; i++) {
  		snprintf(label, 4, "%dss", i + 1);
  
@@ -137,7 +139,7 @@
  {
  	void *supported_mcs;
  	void *map;
-@@ -194,31 +214,565 @@ hostapd_parse_vht_capab_blobmsg(struct i
+@@ -194,31 +216,569 @@ hostapd_parse_vht_capab_blobmsg(struct i
  		const char *name;
  		uint32_t flag;
  	} vht_capas[] = {
@@ -311,7 +313,8 @@
 +	}
 +}
 +
-+static void
+ static void
+-hostapd_parse_capab_blobmsg(struct sta_info *sta)
 +hostapd_parse_ht_capab_blobmsg(struct ieee80211_ht_capabilities *htc, bool filter_false)
 +{
 +	// HT capabilities fields from IEEE 802.11
@@ -449,7 +452,7 @@
 +{
 +	void *new_table;
 +	u8 *ptr;
-+	char str[32];
++	char str[2 + EHT_PPE_THRESH_CAPAB_LEN + 1]; // 0x + EHT_PPE_THRESH_CAPAB_LEN + \0
 +
 +	// EHT capabilities fields from IEEE P802.11be™/D6.0, May 2024
 +	// field values are written in JSON by hostapd_add_capab_table()
@@ -528,6 +531,7 @@
 +	strcpy(str, "0x");
 +	new_table = blobmsg_open_table(&b, "supported_mcs_set");
 +	// he_phy_capab_info[0]: bit0 -reserved, bits1-7 - channel_width_set
++	// Based off of 'Table 35-7—Indication of supported channel widths by an EHT STA'
 +	if (freq < 4000 ) { // 2.4 Ghz
 +		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 1, 1) == 0)  { // HE PHY "channel_width_set" B0=0 means 20 MHz only
 +			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 4);
@@ -564,12 +568,14 @@
 +	blobmsg_close_table(&b, new_table);
 +
 +	// add EHT PPE thresholds
-+	wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, EHT_PPE_THRESH_CAPAB_LEN);
-+	blobmsg_add_string(&b, "eht_ppe_thresholds", str);
++	u16 ppet_size = smartrg_eht_ppet_size(*(u16*)ptr, &(ehtc->phy_cap[0]));
++	if (ppet_size != 0) {
++		wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, ppet_size);
++		blobmsg_add_string(&b, "eht_ppe_thresholds", str);
++	}
 +}
 +
- static void
--hostapd_parse_capab_blobmsg(struct sta_info *sta)
++static void
 +hostapd_parse_he_capab_blobmsg(struct ieee80211_he_capabilities *hec, bool filter_false)
 +{
 +	void *supported_mcs;
@@ -708,7 +714,7 @@
  {
  	void *r, *v;
  
-@@ -226,19 +780,74 @@ hostapd_parse_capab_blobmsg(struct sta_i
+@@ -226,19 +786,74 @@ hostapd_parse_capab_blobmsg(struct sta_i
  
  	if (sta->vht_capabilities) {
  		r = blobmsg_open_table(&b, "vht");
@@ -787,7 +793,7 @@
  {
  	struct hostapd_data *hapd = container_of(obj, struct hostapd_data, ubus.obj);
  	struct hostap_sta_driver_data sta_driver_data;
-@@ -258,12 +867,16 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -258,12 +873,16 @@ hostapd_bss_get_clients(struct ubus_cont
  		{ "ht", WLAN_STA_HT },
  		{ "vht", WLAN_STA_VHT },
  		{ "he", WLAN_STA_HE },
@@ -805,7 +811,7 @@
  	list = blobmsg_open_table(&b, "clients");
  	for (sta = hapd->sta_list; sta; sta = sta->next) {
  		void *r;
-@@ -275,13 +888,50 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -275,13 +894,50 @@ hostapd_bss_get_clients(struct ubus_cont
  			blobmsg_add_u8(&b, sta_flags[i].name,
  				       !!(sta->flags & sta_flags[i].flag));
  
@@ -857,7 +863,7 @@
  		blobmsg_close_array(&b, r);
  
  		r = blobmsg_open_array(&b, "extended_capabilities");
-@@ -301,7 +951,8 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -301,7 +957,8 @@ hostapd_bss_get_clients(struct ubus_cont
  #endif
  
  		/* Driver information */
@@ -867,7 +873,7 @@
  			r = blobmsg_open_table(&b, "bytes");
  			blobmsg_add_u64(&b, "rx", sta_driver_data.rx_bytes);
  			blobmsg_add_u64(&b, "tx", sta_driver_data.tx_bytes);
-@@ -322,7 +973,8 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -322,7 +979,8 @@ hostapd_bss_get_clients(struct ubus_cont
  			blobmsg_add_u32(&b, "signal", sta_driver_data.signal);
  		}
  
@@ -877,7 +883,7 @@
  
  		blobmsg_close_table(&b, c);
  	}
-@@ -333,6 +985,22 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -333,6 +991,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -900,7 +906,7 @@
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -362,7 +1030,7 @@ hostapd_bss_get_status(struct ubus_conte
+@@ -362,7 +1036,7 @@ hostapd_bss_get_status(struct ubus_conte
  
  	if (hapd->conf->ssid.ssid_len < SSID_MAX_LEN)
  		ssid_len = hapd->conf->ssid.ssid_len;
@@ -909,7 +915,7 @@
  	ieee80211_freq_to_channel_ext(hapd->iface->freq,
  				      hapd->iconf->secondary_channel,
  				      hostapd_get_oper_chwidth(hapd->iconf),
-@@ -1618,6 +2286,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1618,6 +2292,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),
@@ -917,3 +923,15 @@
  #ifdef CONFIG_TAXONOMY
  	UBUS_METHOD("get_sta_ies", hostapd_bss_get_sta_ies, addr_policy),
  #endif
+--- a/src/ap/ieee802_11_eht.c
++++ b/src/ap/ieee802_11_eht.c
+@@ -42,6 +42,9 @@ static u16 ieee80211_eht_ppet_size(u16 p
+ 	return sz;
+ }
+ 
++u16 smartrg_eht_ppet_size(u16 ppe_thres_hdr, const u8 *phy_cap_info) {
++	return ieee80211_eht_ppet_size(ppe_thres_hdr, phy_cap_info);
++}
+ 
+ static u8 ieee80211_eht_mcs_set_size(enum hostapd_hw_mode mode, u8 opclass,
+ 				     int he_oper_chwidth, const u8 *he_phy_cap,
