@@ -23,7 +23,7 @@ PKG_CONFIG_DEPENDS:=CONFIG_WIFI_SCRIPTS_UCODE
 IWINFO_ABI_VERSION:=20230701
 
 include $(INCLUDE_DIR)/package.mk
-
+include $(TOPDIR)/feeds/packages/lang/python/python3-version.mk
 
 define Package/libiwinfo
   SECTION:=libs
@@ -58,6 +58,18 @@ define Package/libiwinfo-data
   HIDDEN:=1
 endef
 
+define Package/python3-libiwinfo
+  SUBMENU:=Python
+  SECTION:=lang
+  CATEGORY:=Languages
+  TITLE:=libiwinfo Python binding
+  DEPENDS:=+libiwinfo +python3-ctypes
+endef
+
+define Package/python3-libiwinfo/description
+  This is the python binding for the iwinfo library. It provides access to all enabled
+  backends.
+endef
 
 define Package/iwinfo
   SECTION:=utils
@@ -111,6 +123,11 @@ define Package/libiwinfo-data/install
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/devices.txt $(1)/usr/share/libiwinfo/devices.txt
 endef
 
+define Package/python3-libiwinfo/install
+	$(INSTALL_DIR) $(1)/usr/lib/python$(PYTHON3_VERSION)/site-packages/iwinfo
+	$(INSTALL_BIN) ./files/iwinfo/* $(1)/usr/lib/python$(PYTHON3_VERSION)/site-packages/iwinfo/
+endef
+
 define Package/iwinfo/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/iwinfo $(1)/usr/bin/iwinfo
@@ -120,3 +137,4 @@ $(eval $(call BuildPackage,libiwinfo))
 $(eval $(call BuildPackage,libiwinfo-lua))
 $(eval $(call BuildPackage,libiwinfo-data))
 $(eval $(call BuildPackage,iwinfo))
+$(eval $(call BuildPackage,python3-libiwinfo))

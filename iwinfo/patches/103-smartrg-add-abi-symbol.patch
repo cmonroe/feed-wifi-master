@@ -1,0 +1,36 @@
+--- a/include/iwinfo.h
++++ b/include/iwinfo.h
+@@ -23,6 +23,8 @@
+ #define IWINFO_BUFSIZE	24 * 1024
+ #define IWINFO_ESSID_MAX_SIZE	32
+ 
++extern int libiwinfo_ABI;
++
+ enum iwinfo_80211 {
+ 	IWINFO_80211_A = 0,
+ 	IWINFO_80211_B,
+--- a/iwinfo_lib.c
++++ b/iwinfo_lib.c
+@@ -18,6 +18,11 @@
+ 
+ #include "iwinfo.h"
+ 
++#ifdef IWINFO_SOVERSION
++int libiwinfo_ABI = IWINFO_SOVERSION;
++#else
++int libiwinfo_ABI = 20040725;
++#endif
+ 
+ /*
+  * name constants
+--- a/Makefile
++++ b/Makefile
+@@ -1,7 +1,7 @@
+ IWINFO_SOVERSION   = $(if $(SOVERSION),$(SOVERSION),0)
+ 
+ IWINFO_BACKENDS    = $(BACKENDS)
+-IWINFO_CFLAGS      = $(CFLAGS) -Wall -std=gnu99 -fstrict-aliasing -Iinclude
++IWINFO_CFLAGS      = $(CFLAGS) -Wall -std=gnu99 -fstrict-aliasing -Iinclude -DIWINFO_SOVERSION=$(IWINFO_SOVERSION)
+ IWINFO_LDFLAGS     = -luci -lubox -lubus
+ 
+ IWINFO_LIB         = libiwinfo.so
