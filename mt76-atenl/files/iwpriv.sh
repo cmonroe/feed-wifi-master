@@ -12,6 +12,7 @@ work_mode="RUN" # RUN/PRINT/DEBUG
 iwpriv_file="/tmp/iwpriv_wrapper"
 interface_file="/tmp/interface"
 phy_idx=$(echo ${interface} | tr -dc '0-9')
+main_phy_idx=0
 
 function do_cmd() {
     case ${work_mode} in
@@ -42,7 +43,7 @@ function record_config() {
     local config=$1
     local tmp_file=$3
 
-    # check it is SOC(mt7986)/Eagle or PCIE card (mt7915/7916), and write its config
+    # check it is SOC(mt7986)/Eagle/Kite or PCIE card (mt7915/7916), and write its config
     if [ ${tmp_file} != ${interface_file} ]; then
         if [ $phy_idx -lt $SOC_start_idx ]; then
             config="${config}_PCIE"
@@ -71,7 +72,7 @@ function get_config() {
         return
     fi
 
-    # check it is SOC(mt7986)/Eagle or PCIE card (mt7915/7916), and write its config
+    # check it is SOC(mt7986)/Eagle/Kite or PCIE card (mt7915/7916), and write its config
     if [ ${tmp_file} != ${interface_file} ]; then
         if [ $phy_idx -lt $SOC_start_idx ]; then
             config="${config}_PCIE"
@@ -117,6 +118,10 @@ function parse_sku {
             SOC_start_idx="0"
             SOC_end_idx="1"
             is_connac3="1"
+        elif [ ! -z "$(head -c 2 ${eeprom_file} | hexdump | grep "7993")" ]; then
+            SOC_start_idx="0"
+            SOC_end_idx="1"
+            is_connac3="1"
         else
             echo "Interface Conversion Failed!"
             echo "Please use iwpriv <phy0/phy1/..> set <...> or configure the sku of your board manually by the following commands"
@@ -137,6 +142,10 @@ function parse_sku {
             echo "      echo ENDIDX=2 >> ${interface_file}"
             echo "      echo IS_CONNAC3=1 >> ${interface_file}"
             echo "For Kite:"
+            echo "      echo STARTIDX=0 >> ${interface_file}"
+            echo "      echo ENDIDX=1 >> ${interface_file}"
+            echo "      echo IS_CONNAC3=1 >> ${interface_file}"
+            echo "For Griffin:"
             echo "      echo STARTIDX=0 >> ${interface_file}"
             echo "      echo ENDIDX=1 >> ${interface_file}"
             echo "      echo IS_CONNAC3=1 >> ${interface_file}"
@@ -178,7 +187,7 @@ function convert_interface {
             fi
         fi
     else
-        # Eagle has different mapping method
+        # Connac 3 chips has different mapping method
         # phy0: ra0
         # phy1: rai0
         # phy2: rax0
@@ -197,9 +206,7 @@ function convert_interface {
 function change_band_idx {
     local new_idx=$1
     local new_phy_idx=$phy_idx
-
     local old_idx=$(get_config "ATECTRLBANDIDX" ${iwpriv_file})
-
 
     if [[ ${interface_ori} == "ra"* ]]; then
         if [ -z "${old_idx}" ] || [ "${old_idx}" != "${new_idx}" ]; then
@@ -242,7 +249,7 @@ function simple_convert() {
         echo "tx_length"
     elif [ "$1" = "ATETXMCS" ]; then
         echo "tx_rate_idx"
-    elif [ "$1" = "ATEVHTNSS" ]; then
+    elif [ "$1" = "ATEVHTNSS" ] || [ "$1" = "ATETXNSS" ]; then
         echo "tx_rate_nss"
     elif [ "$1" = "ATETXLDPC" ]; then
         echo "tx_rate_ldpc"
@@ -368,15 +375,76 @@ function convert_gi {
     do_cmd "mt76-test ${interface} set tx_rate_sgi=${sgi} tx_ltf=${he_ltf}"
 }
 
+function convert_tm_cbw_to_nl {
+    local cbw=$1
+    local bw="NOHT"
+
+    case ${cbw} in
+        # TM_CBW_20MHZ
+        "0")
+            bw="20"
+            ;;
+        # TM_CBW_40MHZ
+        "1")
+            bw="40"
+            ;;
+        # TM_CBW_80MHZ
+        "2")
+            bw="80"
+            ;;
+        # TM_CBW_10MHZ
+        "3")
+            bw="10"
+            ;;
+        # TM_CBW_5MHZ
+        "4")
+            bw="5"
+            ;;
+        # TM_CBW_160MHZ
+        "5")
+            bw="160"
+            ;;
+        # TM_CBW_8080MHZ
+        "6")
+            bw="80p80"
+            ;;
+        # TM_CBW_320MHZ
+        "12")
+            bw="320"
+            ;;
+    esac
+
+    echo ${bw}
+}
+
+function convert_bw {
+    local system_bw=$(echo $1 | sed s/:/' '/g | cut -d " " -f 1)
+    local data_bw=$(echo $1 | sed s/:/' '/g | cut -d " " -f 2)
+    # Convert TM_CBW to NL80211_CHAN_WIDTH
+    local tx_pkt_bw=$(convert_tm_cbw_to_nl ${data_bw})
+
+    record_config "ATETXBW" ${system_bw} ${iwpriv_file}
+
+    # apply per-packet bw
+    if [[ $1 == *":"* ]]; then
+        do_cmd "mt76-test phy${phy_idx} set tx_pkt_bw=${tx_pkt_bw}"
+    fi
+}
+
 function convert_channel {
-    local ctrl_band_idx=$(get_config "ATECTRLBANDIDX" ${iwpriv_file})
     local ch=$(echo $1 | sed s/:/' '/g | cut -d " " -f 1)
+    local control_ch=$(echo $1 | sed s/:/' '/g | cut -d " " -f 1)
+    local band=$(echo $1 | sed s/:/' '/g | cut -d " " -f 2)
+    local pri_sel=$(echo $1 | sed s/:/' '/g | cut -d " " -f 3)
+    local center_ch2=$(echo $1 | sed s/:/' '/g | cut -d " " -f 4)
+    local fast_cal=$(echo $1 | sed s/:/' '/g | cut -d " " -f 5)
+    local fast_cal_type="none"
+    local ctrl_band_idx=$(get_config "ATECTRLBANDIDX" ${iwpriv_file})
     local bw=$(get_config "ATETXBW" ${iwpriv_file} | cut -d ":" -f 1)
-    local bw_str="HT20"
+    local bw_str="20"
     local base_chan=1
     local control_freq=0
     local base_freq=0
-    local band=$(echo $1 | sed s/:/' '/g | cut -d " " -f 2)
     local temp=$((phy_idx+1))
 
     # Handle ATECTRLBANDIDX
@@ -402,301 +470,85 @@ function convert_channel {
         fi
     fi
 
+    if [[ $1 == *":"* ]] && [ -n "${pri_sel}" ]; then
+        do_cmd "mt76-test phy${phy_idx} set tx_pri_sel=${pri_sel}"
+    fi
+
+    if [[ $1 == *":"* ]] && [ -n "${fast_cal}" ]; then
+        case ${fast_cal} in
+            "200000")
+                fast_cal_type="rx_verify"
+                ;;
+            "400000")
+                fast_cal_type="power_cal"
+                ;;
+        esac
+        do_cmd "mt76-test phy${phy_idx} set fast_cal=${fast_cal_type}"
+    fi
+
     if [[ $1 != *":"* ]] || [ "${band}" = "0" ]; then
         case ${bw} in
             "1")
                 if [ "${ch}" -lt "3" ] || [ "${ch}" -gt "12" ]; then
-                    local bw_str="HT20"
+                    bw_str="20"
                 else
-                    local bw_str="HT40+"
-                    ch=$(expr ${ch} - "2")
+                    bw_str="40"
+                    control_ch=$(expr ${ch} - "2")
                 fi
                 ;;
         esac
-        local base_freq=2412
-    elif [ "${band}" = "1" ]; then
-        case ${bw} in
-            "5")
-                bw_str="160MHz"
-                if [ ${ch} -lt "68" ]; then
-                    ch="36"
-                elif [ ${ch} -lt "100" ]; then
-                    ch="68"
-                elif [ ${ch} -lt "132" ]; then
-                    ch="100"
-                elif [ ${ch} -lt "181" ]; then
-                    ch="149"
-                fi
-                ;;
-            "2")
-                bw_str="80MHz"
-                if [ ${ch} -lt "52" ]; then
-                    ch="36"
-                elif [ ${ch} -lt "68" ]; then
-                    ch="52"
-                elif [ ${ch} -lt "84" ]; then
-                    ch="68"
-                elif [ ${ch} -lt "100" ]; then
-                    ch="84"
-                elif [ ${ch} -lt "116" ]; then
-                    ch="100"
-                elif [ ${ch} -lt "132" ]; then
-                    ch="116"
-                elif [ ${ch} -lt "149" ]; then
-                    ch="132"
-                elif [ ${ch} -lt "165" ]; then
-                    ch="149"
-                elif [ ${ch} -lt "181" ]; then
-                    ch="165"
-                fi
-                ;;
-            "1")
-                if [ ${ch} -lt "44" ]; then
-                    ch=$([ "${ch}" -lt "40" ] && echo "36" || echo "40")
-                    bw_str=$([ "${ch}" -le "38" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "52" ]; then
-                    ch=$([ "${ch}" -lt "48" ] && echo "44" || echo "48")
-                    bw_str=$([ "${ch}" -le "46" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "60" ]; then
-                    ch=$([ "${ch}" -lt "56" ] && echo "52" || echo "56")
-                    bw_str=$([ "${ch}" -le "54" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "68" ]; then
-                    ch=$([ "${ch}" -lt "64" ] && echo "60" || echo "64")
-                    bw_str=$([ "${ch}" -le "62" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "76" ]; then
-                    ch=$([ "${ch}" -lt "72" ] && echo "68" || echo "72")
-                    bw_str=$([ "${ch}" -le "70" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "84" ]; then
-                    ch=$([ "${ch}" -lt "80" ] && echo "76" || echo "80")
-                    bw_str=$([ "${ch}" -le "78" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "92" ]; then
-                    ch=$([ "${ch}" -lt "88" ] && echo "84" || echo "88")
-                    bw_str=$([ "${ch}" -le "86" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "100" ]; then
-                    ch=$([ "${ch}" -lt "96" ] && echo "92" || echo "96")
-                    bw_str=$([ "${ch}" -le "94" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "108" ]; then
-                    ch=$([ "${ch}" -lt "104" ] && echo "100" || echo "104")
-                    bw_str=$([ "${ch}" -le "102" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "116" ]; then
-                    ch=$([ "${ch}" -lt "112" ] && echo "108" || echo "112")
-                    bw_str=$([ "${ch}" -le "110" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "124" ]; then
-                    ch=$([ "${ch}" -lt "120" ] && echo "116" || echo "120")
-                    bw_str=$([ "${ch}" -le "118" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "132" ]; then
-                    ch=$([ "${ch}" -lt "128" ] && echo "124" || echo "128")
-                    bw_str=$([ "${ch}" -le "126" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "140" ]; then
-                    ch=$([ "${ch}" -lt "136" ] && echo "132" || echo "136")
-                    bw_str=$([ "${ch}" -le "134" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "149" ]; then
-                    ch=$([ "${ch}" -lt "144" ] && echo "140" || echo "144")
-                    bw_str=$([ "${ch}" -le "142" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "157" ]; then
-                    ch=$([ "${ch}" -lt "153" ] && echo "149" || echo "153")
-                    bw_str=$([ "${ch}" -le "151" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "165" ]; then
-                    ch=$([ "${ch}" -lt "161" ] && echo "157" || echo "161")
-                    bw_str=$([ "${ch}" -le "159" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "173" ]; then
-                    ch=$([ "${ch}" -lt "169" ] && echo "165" || echo "169")
-                    bw_str=$([ "${ch}" -le "167" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "181" ]; then
-                    ch=$([ "${ch}" -lt "177" ] && echo "173" || echo "177")
-                    bw_str=$([ "${ch}" -le "175" ] && echo "HT40+" || echo "HT40-")
-                fi
-                ;;
-            "0")
-                local bw_str="HT20"
-                ;;
-        esac
-        local base_freq=5180
-        local base_chan=36
+        base_freq=2412
     else
-        local base_freq=5955
         case ${bw} in
             "12")
-                local bw_str="320"
-                if [ ${ch} == "31" ]; then
-                    local control_freq="5955"
-                elif [ ${ch} == "63" ]; then
-                    local control_freq="6115"
-                elif [ ${ch} == "95" ]; then
-                    local control_freq="6275"
-                elif [ ${ch} == "127" ]; then
-                    local control_freq="6435"
-                elif [ ${ch} == "159" ]; then
-                    local control_freq="6595"
-                elif [ ${ch} == "191" ]; then
-                    local control_freq="6755"
-                fi
-                local center_freq=$(((ch - base_chan) * 5 + base_freq))
-                do_cmd "iw dev mon${phy_idx} set freq ${control_freq} ${bw_str} ${center_freq}"
-                return
+                bw_str="320"
+                control_ch=$(expr ${ch} - "30")
                 ;;
             "5")
-                bw_str="160MHz"
-                if [ ${ch} -lt "33" ]; then
-                    ch="1"
-                elif [ ${ch} -lt "65" ]; then
-                    ch="33"
-                elif [ ${ch} -lt "97" ]; then
-                    ch="65"
-                elif [ ${ch} -lt "129" ]; then
-                    ch="97"
-                elif [ ${ch} -lt "161" ]; then
-                    ch="129"
-                elif [ ${ch} -lt "193" ]; then
-                    ch="161"
-                elif [ ${ch} -lt "225" ]; then
-                    ch="193"
-                fi
+                bw_str="160"
+                control_ch=$(expr ${ch} - "14")
                 ;;
             "2")
-                bw_str="80MHz"
-                if [ ${ch} -lt "17" ]; then
-                    ch="1"
-                elif [ ${ch} -lt "33" ]; then
-                    ch="17"
-                elif [ ${ch} -lt "49" ]; then
-                    ch="33"
-                elif [ ${ch} -lt "65" ]; then
-                    ch="49"
-                elif [ ${ch} -lt "81" ]; then
-                    ch="65"
-                elif [ ${ch} -lt "97" ]; then
-                    ch="81"
-                elif [ ${ch} -lt "113" ]; then
-                    ch="97"
-                elif [ ${ch} -lt "129" ]; then
-                    ch="113"
-                elif [ ${ch} -lt "145" ]; then
-                    ch="129"
-                elif [ ${ch} -lt "161" ]; then
-                    ch="145"
-                elif [ ${ch} -lt "177" ]; then
-                    ch="161"
-                elif [ ${ch} -lt "193" ]; then
-                    ch="177"
-                elif [ ${ch} -lt "209" ]; then
-                    ch="193"
-                elif [ ${ch} -lt "225" ]; then
-                    ch="209"
-                fi
+                bw_str="80"
+                control_ch=$(expr ${ch} - "6")
                 ;;
             "1")
-                if [ ${ch} -lt "9" ]; then
-                    ch=$([ "${ch}" -lt "5" ] && echo "1" || echo "5")
-                    bw_str=$([ "${ch}" -le "3" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "17" ]; then
-                    ch=$([ "${ch}" -lt "13" ] && echo "9" || echo "13")
-                    bw_str=$([ "${ch}" -le "11" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "25" ]; then
-                    ch=$([ "${ch}" -lt "21" ] && echo "17" || echo "21")
-                    bw_str=$([ "${ch}" -le "19" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "33" ]; then
-                    ch=$([ "${ch}" -lt "29" ] && echo "25" || echo "29")
-                    bw_str=$([ "${ch}" -le "27" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "33" ]; then
-                    ch=$([ "${ch}" -lt "29" ] && echo "25" || echo "29")
-                    bw_str=$([ "${ch}" -le "27" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "41" ]; then
-                    ch=$([ "${ch}" -lt "37" ] && echo "33" || echo "37")
-                    bw_str=$([ "${ch}" -le "35" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "49" ]; then
-                    ch=$([ "${ch}" -lt "45" ] && echo "41" || echo "45")
-                    bw_str=$([ "${ch}" -le "43" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "57" ]; then
-                    ch=$([ "${ch}" -lt "53" ] && echo "49" || echo "53")
-                    bw_str=$([ "${ch}" -le "51" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "65" ]; then
-                    ch=$([ "${ch}" -lt "61" ] && echo "57" || echo "61")
-                    bw_str=$([ "${ch}" -le "59" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "73" ]; then
-                    ch=$([ "${ch}" -lt "69" ] && echo "65" || echo "69")
-                    bw_str=$([ "${ch}" -le "67" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "81" ]; then
-                    ch=$([ "${ch}" -lt "77" ] && echo "73" || echo "77")
-                    bw_str=$([ "${ch}" -le "75" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "89" ]; then
-                    ch=$([ "${ch}" -lt "85" ] && echo "81" || echo "85")
-                    bw_str=$([ "${ch}" -le "83" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "97" ]; then
-                    ch=$([ "${ch}" -lt "93" ] && echo "89" || echo "93")
-                    bw_str=$([ "${ch}" -le "91" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "105" ]; then
-                    ch=$([ "${ch}" -lt "101" ] && echo "97" || echo "101")
-                    bw_str=$([ "${ch}" -le "99" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "113" ]; then
-                    ch=$([ "${ch}" -lt "109" ] && echo "105" || echo "109")
-                    bw_str=$([ "${ch}" -le "107" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "121" ]; then
-                    ch=$([ "${ch}" -lt "117" ] && echo "113" || echo "117")
-                    bw_str=$([ "${ch}" -le "115" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "129" ]; then
-                    ch=$([ "${ch}" -lt "125" ] && echo "121" || echo "125")
-                    bw_str=$([ "${ch}" -le "123" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "137" ]; then
-                    ch=$([ "${ch}" -lt "133" ] && echo "129" || echo "133")
-                    bw_str=$([ "${ch}" -le "131" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "145" ]; then
-                    ch=$([ "${ch}" -lt "141" ] && echo "137" || echo "141")
-                    bw_str=$([ "${ch}" -le "139" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "153" ]; then
-                    ch=$([ "${ch}" -lt "149" ] && echo "145" || echo "149")
-                    bw_str=$([ "${ch}" -le "147" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "161" ]; then
-                    ch=$([ "${ch}" -lt "157" ] && echo "153" || echo "157")
-                    bw_str=$([ "${ch}" -le "155" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "169" ]; then
-                    ch=$([ "${ch}" -lt "165" ] && echo "161" || echo "165")
-                    bw_str=$([ "${ch}" -le "163" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "177" ]; then
-                    ch=$([ "${ch}" -lt "173" ] && echo "169" || echo "173")
-                    bw_str=$([ "${ch}" -le "171" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "185" ]; then
-                    ch=$([ "${ch}" -lt "181" ] && echo "177" || echo "181")
-                    bw_str=$([ "${ch}" -le "179" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "193" ]; then
-                    ch=$([ "${ch}" -lt "189" ] && echo "185" || echo "189")
-                    bw_str=$([ "${ch}" -le "187" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "201" ]; then
-                    ch=$([ "${ch}" -lt "197" ] && echo "193" || echo "197")
-                    bw_str=$([ "${ch}" -le "195" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "209" ]; then
-                    ch=$([ "${ch}" -lt "205" ] && echo "201" || echo "205")
-                    bw_str=$([ "${ch}" -le "203" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "217" ]; then
-                    ch=$([ "${ch}" -lt "213" ] && echo "209" || echo "213")
-                    bw_str=$([ "${ch}" -le "211" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "225" ]; then
-                    ch=$([ "${ch}" -lt "221" ] && echo "217" || echo "221")
-                    bw_str=$([ "${ch}" -le "219" ] && echo "HT40+" || echo "HT40-")
-                elif [ ${ch} -lt "233" ]; then
-                    ch=$([ "${ch}" -lt "229" ] && echo "225" || echo "229")
-                    bw_str=$([ "${ch}" -le "227" ] && echo "HT40+" || echo "HT40-")
-                fi
+                bw_str="40"
+                control_ch=$(expr ${ch} - "2")
                 ;;
             "0")
-                local bw_str="HT20"
+                bw_str="20"
+                control_ch=${ch}
                 ;;
         esac
+        if [ "${band}" = "1" ]; then
+            base_freq=5180
+            base_chan=36
+        else
+            base_freq=5955
+        fi
     fi
 
-    local control_freq=$(((ch - base_chan) * 5 + base_freq))
-    do_cmd "iw dev mon${phy_idx} set freq ${control_freq} ${bw_str}"
+    local center_freq=$(((ch - base_chan) * 5 + base_freq))
+    local control_freq=$(((control_ch - base_chan) * 5 + base_freq))
+    if [ "${center_freq}" == "${control_freq}" ]; then
+        do_cmd "iw dev mon${phy_idx} set freq ${control_freq} ${bw_str}"
+    else
+        do_cmd "iw dev mon${phy_idx} set freq ${control_freq} ${bw_str} ${center_freq}"
+    fi
 }
 
 function convert_rxstat {
     local res=$(do_cmd "mt76-test ${interface} dump stats")
     local mdrdy=$(echo "${res}" | grep "rx_packets" | cut -d "=" -f 2)
     local fcs_error=$(echo "${res}" | grep "rx_fcs_error" | cut -d "=" -f 2)
+    local rx_ok=$(echo "${res}" | grep "rx_success" | cut -d "=" -f 2)
+    local rssi=$(echo "${res}" | grep "last_rssi" | cut -d "=" -f 2 | sed 's/,/ /g')
     local rcpi=$(echo "${res}" | grep "last_rcpi" | cut -d "=" -f 2 | sed 's/,/ /g')
     local ib_rssi=$(echo "${res}" | grep "last_ib_rssi" | cut -d "=" -f 2 | sed 's/,/ /g')
     local wb_rssi=$(echo "${res}" | grep "last_wb_rssi" | cut -d "=" -f 2 | sed 's/,/ /g')
-    local rx_ok=$(expr ${mdrdy} - ${fcs_error})
 
+    write_dmesg "rssi: ${rssi}"
     write_dmesg "rcpi: ${rcpi}"
     write_dmesg "fagc rssi ib: ${ib_rssi}"
     write_dmesg "fagc rssi wb: ${wb_rssi}"
@@ -756,8 +608,20 @@ function convert_ibf {
             new_cmd="phase_cal"
             ;;
         "ATEIBfGdCal")
+            local group=${new_param:0:2}
+            local group_l_m_h=${new_param:3:2}
+            local band_idx=${new_param:6:2}
+            local cal_type=${new_param:9:2}
+            local version=${new_param:12}
+            local lna_level="00"
+
+            # only ibf 2.0 will set version, so add null check for backward compatibility
+            if [ -z $version ]; then
+                version="00"
+            fi
+
             new_cmd="phase_cal"
-            new_param="${new_param},00"
+            new_param="${group},${group_l_m_h},${band_idx},${cal_type},${lna_level},${version}"
             ;;
         "TxBfTxApply")
             new_cmd="apply_tx"
@@ -767,14 +631,14 @@ function convert_ibf {
             local aid="01"
             local wlan_idx=${new_param:3:2}
             local update="00"
-            local tx_len=${new_param:6}
+            local tx_count=${new_param:6}
 
             new_cmd="tx_prep"
             new_param="${bf_on},${aid},${wlan_idx},${update}"
-            if [ "${tx_len}" = "00" ]; then
+            if [ "${tx_count}" = "00" ]; then
                 new_param="${new_param} aid=1 tx_count=10000000 tx_length=1024"
             else
-                new_param="${new_param} aid=1 tx_count=${tx_len} tx_length=1024"
+                new_param="${new_param} aid=1 tx_count=${tx_count} tx_length=1024"
             fi
             do_cmd "mt76-test phy${phy_idx} set state=idle"
             ;;
@@ -966,6 +830,8 @@ function do_ate_work() {
 
             if [ ! -z "${if_str}" -a "${if_str}" != " " ]; then
                 echo "ATE already starts."
+            elif [ ${is_connac3} == "1" ]; then
+                do_cmd "mt76-test phy${phy_idx} add mon${phy_idx}"
             else
                 do_cmd "iw phy ${interface} interface add mon${phy_idx} type monitor"
 
@@ -1014,6 +880,8 @@ function do_ate_work() {
 
             if [ -z "${if_str}" -a "${if_str}" != " " ]; then
                 echo "ATE does not start."
+            elif [ ${is_connac3} == "1" ]; then
+                do_cmd "mt76-test phy${phy_idx} del mon${phy_idx}"
             else
                 do_cmd "mt76-test ${interface} set state=off"
                 do_cmd "iw dev mon${phy_idx} del"
@@ -1123,8 +991,87 @@ function do_ate_work() {
             do_cmd "mt76-test ${interface} set state=dpd_clean"
             do_cmd "atenl -i ${interface} -c \"eeprom precal dpd clean\""
             ;;
+        "RXGAINCAL")
+            do_cmd "mt76-test ${interface} set state=rx_gain_cal"
+            do_cmd "atenl -i ${interface} -c \"eeprom rx gain sync\""
+            ;;
         *)
             print_debug "skip ${ate_cmd}"
+            ;;
+    esac
+}
+
+function convert_listmode {
+    local tag=$(echo $1 | sed s/,/' '/g | cut -d " " -f 1)
+
+    case ${tag} in
+        "16")
+            local params=$(echo $1 | sed s/,/' '/g)
+            local da=$(echo $params | cut -d " " -f 6)
+            local sa=$(echo $params | cut -d " " -f 7)
+            local bssid=$(echo $params | cut -d " " -f 8)
+            local cmd="list_act=tx_seg"
+
+            cmd="${cmd} tx_length=$(echo $params | cut -d " " -f 5)"
+            cmd="${cmd} mac_addrs=${da},${sa},${bssid}"
+            cmd="${cmd} tx_rate_stbc=$(echo $params | cut -d " " -f 9)"
+            cmd="${cmd} lm_seg_idx=$(echo $params | cut -d " " -f 12)"
+            cmd="${cmd} tx_antenna=$(echo $params | cut -d " " -f 15)"
+            cmd="${cmd} lm_center_ch=$(echo $params | cut -d " " -f 17)"
+            cmd="${cmd} lm_cbw=$(convert_tm_cbw_to_nl $(echo $params | cut -d " " -f 19))"
+            cmd="${cmd} tx_pkt_bw=$(convert_tm_cbw_to_nl $(echo $params | cut -d " " -f 20))"
+            cmd="${cmd} tx_pri_sel=$(echo $params | cut -d " " -f 21)"
+            cmd="${cmd} tx_count=$(echo $params | cut -d " " -f 24)"
+            cmd="${cmd} tx_power=$(echo $params | cut -d " " -f 25)"
+            cmd="${cmd} tx_rate_mode=$(convert_tx_mode $(echo $params | cut -d " " -f 26))"
+            cmd="${cmd} tx_rate_idx=$(echo $params | cut -d " " -f 27)"
+            cmd="${cmd} tx_rate_ldpc=$(echo $params | cut -d " " -f 28)"
+            cmd="${cmd} tx_ipg=$(echo $params | cut -d " " -f 29)"
+            cmd="${cmd} tx_rate_sgi=$(echo $params | cut -d " " -f 30)"
+            cmd="${cmd} tx_rate_nss=$(echo $params | cut -d " " -f 31)"
+            cmd="${cmd} lm_seg_timeout=$(echo $params | cut -d " " -f 34)"
+            do_cmd "mt76-test ${interface} set ${cmd}"
+            ;;
+        "17")
+            do_cmd "mt76-test ${interface} set list_act=tx_start"
+            ;;
+        "19")
+            do_cmd "mt76-test ${interface} set list_act=tx_stop"
+            do_cmd "mt76-test ${interface} set list_act=clear_seg"
+            ;;
+        "20")
+            local params=$(echo $1 | sed s/,/' '/g)
+            local cmd="list_act=rx_seg"
+
+            cmd="${cmd} mac_addrs=$(echo $params | cut -d " " -f 2)"
+            cmd="${cmd} lm_seg_idx=$(echo $params | cut -d " " -f 5)"
+            cmd="${cmd} tx_antenna=$(echo $params | cut -d " " -f 8)"
+            cmd="${cmd} lm_center_ch=$(echo $params | cut -d " " -f 10)"
+            cmd="${cmd} lm_cbw=$(convert_tm_cbw_to_nl $(echo $params | cut -d " " -f 12))"
+            cmd="${cmd} tx_pkt_bw=$(convert_tm_cbw_to_nl $(echo $params | cut -d " " -f 13))"
+            cmd="${cmd} tx_pri_sel=$(echo $params | cut -d " " -f 14)"
+            cmd="${cmd} lm_sta_idx=$(echo $params | cut -d " " -f 15)"
+            cmd="${cmd} lm_seg_timeout=$(echo $params | cut -d " " -f 18)"
+            do_cmd "mt76-test ${interface} set ${cmd}"
+            ;;
+        "21")
+            do_cmd "mt76-test ${interface} set list_act=rx_start"
+            ;;
+        "22")
+            do_cmd "mt76-test ${interface} set list_act=rx_stat"
+            ;;
+        "23")
+            do_cmd "mt76-test ${interface} set list_act=rx_stop"
+            do_cmd "mt76-test ${interface} set list_act=clear_seg"
+            ;;
+        "24")
+            do_cmd "mt76-test ${interface} set list_act=dut_stat"
+            ;;
+        "25")
+            do_cmd "mt76-test ${interface} set list_act=switch_seg"
+            ;;
+        *)
+            print_debug "skip ${tag}"
             ;;
     esac
 }
@@ -1155,14 +1102,13 @@ function dump_usage {
 
 function register_handler {
 
-	local phy_idx=$1
-	local offset=$2
-	local val=$3
-	local cmd=$4
+	local offset=$1
+	local val=$2
+	local cmd=$3
 	local w_cmd="write"
 
-	regidx=/sys/kernel/debug/ieee80211/phy${phy_idx}/mt76/regidx
-	regval=/sys/kernel/debug/ieee80211/phy${phy_idx}/mt76/regval
+	regidx=/sys/kernel/debug/ieee80211/phy${main_phy_idx}/mt76/regidx
+	regval=/sys/kernel/debug/ieee80211/phy${main_phy_idx}/mt76/regval
 
 	echo ${offset} > ${regidx}
 	if [[ "${cmd}" == "${w_cmd}" ]]; then
@@ -1187,6 +1133,11 @@ elif [[ ${interface} == "phy" ]]; then
     full_cmd=$4
 fi
 
+# get main phy idx
+if [ "${phy_idx}" -ge "${SOC_start_idx}" ]; then
+    main_phy_idx=${SOC_start_idx}
+fi
+
 tmp_work_mode=$(get_config "WORKMODE" ${iwpriv_file})
 
 if [ ! -z ${tmp_work_mode} ]; then
@@ -1195,6 +1146,7 @@ fi
 
 cmd=$(echo ${full_cmd} | sed s/=/' '/g | cut -d " " -f 1)
 param=$(echo ${full_cmd} | sed s/=/' '/g | cut -d " " -f 2)
+mld=$(iw dev | grep 'link ID')
 
 if [ "${cmd_type}" = "set" ]; then
     skip=0
@@ -1203,12 +1155,55 @@ if [ "${cmd_type}" = "set" ]; then
         ## Therefore this wrapper would translate it to either mt76-test or mt76-vendor based on the attribute of the command
         ## Translate to mt76-vendor command
         "csi"|"amnt"|"ap_rfeatures"|"ap_wireless"|"mu"|"set_muru_manual_config")
+            cert_cmd="$*"
+
+	    if [ ! -z "$mld" ]; then
+		    mld_interface=$(iw dev | grep Interface | awk '{print $2}' | tail -n1)
+		    if [ $cmd == "ap_rfeatures" ] || [ "$cmd" == "ap_wireless" ]; then
+
+			    band_number=$(echo "$cert_cmd" | grep -o 'band[0-9]*')
+
+			    links_info_base="/sys/kernel/debug/ieee80211/phy0/netdev"
+			    links_info_intf="${mld_interface}/mt76_links_info"
+			    links_info_cmd="${links_info_base}:${links_info_intf}"
+
+			    band_link_id_info=$(
+			    	cat "$links_info_cmd" | grep "${band_number}_link_id"
+			    )
+			    band_link_id=$(
+			    	echo "$band_link_id_info" | awk -F'=' '{print $2}' | tr -d ' '
+			    )
+
+			    cmd_w_link_id=$(echo $* | sed "s/band[0-9]/& -l ${band_link_id}/g")
+			    cert_cmd=${cmd_w_link_id}
+
+		    fi
+		    ## convert bandX to mld interface name
+		    cert_cmd="$(echo ${cert_cmd} | sed 's/band[0-9]/${mld_interface}/')"
+	    fi
+
             if [ ${is_connac3} == "1" ]; then
-                hostapd_cmd="$(echo $* | sed 's/set/raw/')"
+                hostapd_cmd="$(echo $cert_cmd | sed 's/set/raw/')"
                 do_cmd "hostapd_cli -i $hostapd_cmd"
             else
-                do_cmd "mt76-vendor $*"
+                do_cmd "mt76-vendor $cert_cmd"
             fi
+            skip=1
+            ;;
+    	"txbftxsndinfo"|"TxBfTxSndInfo")
+            cert_cmd="$*"
+            cmd_setting=$(echo $cert_cmd | awk -F'=' '{print $2}')
+            snd_cmd_base="/sys/kernel/debug/ieee80211/phy0/mt76/band0/bf_txsnd_info"
+            mt76_snd_cmd="echo $cmd_setting > $snd_cmd_base"
+            do_cmd "$mt76_snd_cmd"
+            skip=1
+            ;;
+    	"muruDbgInfo")
+            cert_cmd="$*"
+            cmd_setting=$(echo $cert_cmd | awk -F'=' '{print $2}')
+            muru_cmd_base="/sys/kernel/debug/ieee80211/phy0/mt76/muru_dbg"
+            mt76_muru_cmd="echo $cmd_setting > $muru_cmd_base"
+            do_cmd "$mt76_muru_cmd"
             skip=1
             ;;
         "ATE")
@@ -1216,7 +1211,7 @@ if [ "${cmd_type}" = "set" ]; then
 
             skip=1
             ;;
-        "ATETXCNT"|"ATETXLEN"|"ATETXMCS"|"ATEVHTNSS"|"ATETXLDPC"|"ATETXSTBC"| \
+        "ATETXCNT"|"ATETXLEN"|"ATETXMCS"|"ATEVHTNSS"|"ATETXNSS"|"ATETXLDPC"|"ATETXSTBC"| \
         "ATEPKTTXTIME"|"ATEIPG"|"ATEDUTYCYCLE"|"ATETXFREQOFFSET")
             cmd_new=$(simple_convert ${cmd})
             if [ "${param_new}" = "undefined" ]; then
@@ -1266,7 +1261,7 @@ if [ "${cmd_type}" = "set" ]; then
             param_new=${param}
             ;;
         "ATETXBW")
-            record_config ${cmd} ${param} ${iwpriv_file}
+            convert_bw ${param}
             skip=1
             ;;
         "ATECHANNEL")
@@ -1297,7 +1292,7 @@ if [ "${cmd_type}" = "set" ]; then
             convert_ibf ${cmd} ${param}
             skip=1
             ;;
-        "bufferMode")
+        "bufferMode"|"buffermode")
             if [ "${param}" = "2" ]; then
                 do_cmd "atenl -i ${interface} -c \"eeprom update buffermode\""
             fi
@@ -1315,6 +1310,10 @@ if [ "${cmd_type}" = "set" ]; then
             convert_ruinfo ${param}
             skip=1
             ;;
+        "ATELISTMODE")
+            convert_listmode ${param}
+            skip=1
+            ;;
         *)
             print_debug "Unknown command to set: ${cmd}"
             skip=1
@@ -1326,8 +1325,8 @@ if [ "${cmd_type}" = "set" ]; then
 
 elif [ "${cmd_type}" = "show" ]; then
     if [ "${cmd}" = "wtbl" ]; then
-        wlan_idx=/sys/kernel/debug/ieee80211/phy${phy_idx}/mt76/wlan_idx
-        wtbl_info=/sys/kernel/debug/ieee80211/phy${phy_idx}/mt76/wtbl_info
+        wlan_idx=/sys/kernel/debug/ieee80211/phy${main_phy_idx}/mt76/wlan_idx
+        wtbl_info=/sys/kernel/debug/ieee80211/phy${main_phy_idx}/mt76/wtbl_info
 
         do_cmd "echo ${param} > ${wlan_idx}"
         do_cmd "cat ${wtbl_info}"
@@ -1392,20 +1391,20 @@ elif [ "${cmd_type}" = "mac" ]; then
 
     # reg write
     if [[ ${full_cmd} == *"="* ]]; then
-        register_handler ${phy_idx} ${offset} ${val} "write"
+        register_handler ${offset} ${val} "write"
     else
 	start_addr=$(echo ${full_cmd} | sed s/-/' '/g | cut -d " " -f 1)
 	end_addr=$(echo ${full_cmd} | sed s/-/' '/g | cut -d " " -f 2)
 	loop=$((0x${end_addr}-0x${start_addr}))
 
 	if [[ ${loop} == "0" ]]; then
-		register_handler ${phy_idx} ${offset} ${val}
+		register_handler ${offset} ${val}
         else
 		i=0
 		while [ $i -le $loop ]; do
 			addr=$((0x${start_addr}+$i))
 			offset=$(printf "0x%x" ${addr})
-			register_handler ${phy_idx} ${offset} ${val}
+			register_handler ${offset} ${val}
 			i=$(($i + 4))
 		done
        fi
@@ -1426,6 +1425,11 @@ elif [ "${cmd_type}" = "switch" ]; then
 
     if [ "${cmd}" = "testmode" ]; then
         testmode_enable="1"
+        do_cmd "wifi down"
+        do_cmd "uci set wireless.radio0.disabled=1"
+        do_cmd "uci set wireless.radio1.disabled=1"
+        do_cmd "uci set wireless.radio2.disabled=1"
+        do_cmd "uci commit"
     fi
 
     if [ "${eeprom_mode}" = "flash" ]; then

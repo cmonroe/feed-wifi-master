@@ -17,6 +17,14 @@
 #include "util.h"
 #include "debug.h"
 
+/* workaround for legacy codebase */
+#undef NL80211_ATTR_WIPHY_RADIOS
+#undef NL80211_ATTR_MAX
+#define NL80211_ATTR_WIPHY_RADIOS	331
+#define NL80211_ATTR_MAX		(__NL80211_ATTR_AFTER_LAST > NL80211_ATTR_WIPHY_RADIOS ? \
+					 __NL80211_ATTR_AFTER_LAST - 1 : \
+					 NL80211_ATTR_WIPHY_RADIOS + 1)
+
 #define BRIDGE_NAME_OPENWRT	"br-lan"
 #define BRIDGE_NAME_RDKB	"brlan0"
 #define ETH_P_RACFG		0x2880
@@ -85,14 +93,15 @@ struct atenl {
 	u16 adie_id;
 	u8 sub_chip_id;
 	u8 cur_band;
+	u8 main_phy_idx;
 
 	u8 mac_addr[ETH_ALEN];
 	char *bridge_name;
 	bool unicast;
 	int sock_eth;
 
-	const char *mtd_part;
-	u32 mtd_offset;
+	const char *flash_part;
+	u32 flash_offset;
 	u8 band_idx;
 	u8 *eeprom_data;
 	int eeprom_fd;
@@ -103,6 +112,8 @@ struct atenl {
 	u32 cal_info[5];
 
 	bool cmd_mode;
+
+	bool is_single_wiphy;
 
 	/* intermediate data */
 	u8 ibf_mcs;
@@ -284,7 +295,10 @@ enum {
 	MT_EE_EAGLE_BAND_SEL_2GHZ,
 	MT_EE_EAGLE_BAND_SEL_5GHZ,
 	MT_EE_EAGLE_BAND_SEL_6GHZ,
-	MT_EE_EAGLE_BAND_SEL_5GHZ_6GHZ,
+	MT_EE_EAGLE_BAND_SEL_5GHZ_LOW,
+	MT_EE_EAGLE_BAND_SEL_5GHZ_HIGH,
+	MT_EE_EAGLE_BAND_SEL_6GHZ_LOW,
+	MT_EE_EAGLE_BAND_SEL_6GHZ_HIGH,
 };
 
 #define MT_EE_WIFI_CONF				0x190
@@ -292,6 +306,11 @@ enum {
 #define MT_EE_WIFI_EAGLE_CONF0_BAND_SEL		GENMASK(2, 0)
 #define MT_EE_WIFI_EAGLE_CONF1_BAND_SEL		GENMASK(5, 3)
 #define MT_EE_WIFI_EAGLE_CONF2_BAND_SEL		GENMASK(2, 0)
+
+#define MT_EE_DO_RX_GAIN_CAL			0x1a1
+#define MT_EE_RX_GAIN_CAL			0x1830
+
+#define MT_EE_CAL_RX_GAIN_SIZE			748
 
 enum {
 	MT7976_ONE_ADIE_DBDC		= 0x7,
@@ -390,59 +409,92 @@ enum prek_ops {
 	PREK_CLEAN_DPD,
 };
 
+#define MT7916_EEPROM_CHIP_ID		0x7916
+
+/* Wi-Fi6 device id */
+#define MT7915_DEVICE_ID		0x7915
+#define MT7915_DEVICE_ID_2		0x7916
+#define MT7916_DEVICE_ID		0x7906
+#define MT7916_DEVICE_ID_2		0x790a
+#define MT7981_DEVICE_ID		0x7981
+#define MT7986_DEVICE_ID		0x7986
+
+/* Wi-Fi7 device id */
+#define MT7996_DEVICE_ID		0x7990
+#define MT7996_DEVICE_ID_2		0x7991
+#define MT7992_DEVICE_ID		0x7992
+#define MT7992_DEVICE_ID_2		0x799a
+#define MT7990_DEVICE_ID		0x7993
+#define MT7990_DEVICE_ID_2		0x799b
+
 static inline bool is_mt7915(struct atenl *an)
 {
-	return an->chip_id == 0x7915;
+	return an->chip_id == MT7915_DEVICE_ID;
 }
 
 static inline bool is_mt7916(struct atenl *an)
 {
-	return (an->chip_id == 0x7916) || (an->chip_id == 0x7906);
+	/* Merlin is special case:
+	 * pcie id is 0x7906/0x790a but eeprom chip id use 0x7916,
+	 * since 0x7916 is already used by the second pcie of Harrier.
+	 */
+	return (an->chip_id == MT7916_EEPROM_CHIP_ID) ||
+	       (an->chip_id == MT7916_DEVICE_ID);
 }
 
 static inline bool is_mt7981(struct atenl *an)
 {
-	return an->chip_id == 0x7981;
+	return an->chip_id == MT7981_DEVICE_ID;
 }
 
 static inline bool is_mt7986(struct atenl *an)
 {
-	return an->chip_id == 0x7986;
+	return an->chip_id == MT7986_DEVICE_ID;
 }
 
 static inline bool is_mt7996(struct atenl *an)
 {
-	return an->chip_id == 0x7990;
+	return an->chip_id == MT7996_DEVICE_ID;
 }
 
 static inline bool is_mt7992(struct atenl *an)
 {
-	return an->chip_id == 0x7992;
+	return an->chip_id == MT7992_DEVICE_ID;
+}
+
+static inline bool is_mt7990(struct atenl *an)
+{
+	return an->chip_id == MT7990_DEVICE_ID;
 }
 
 static inline bool is_connac3(struct atenl *an)
 {
-	return is_mt7996(an) || is_mt7992(an);
+	return is_mt7996(an) || is_mt7992(an) || is_mt7990(an);
 }
 
 int atenl_eth_init(struct atenl *an);
 int atenl_eth_recv(struct atenl *an, struct atenl_data *data);
 int atenl_eth_send(struct atenl *an, struct atenl_data *data);
 int atenl_hqa_proc_cmd(struct atenl *an);
+void atenl_set_channel(struct atenl *an, u8 bw, u8 ch_band,
+		       u16 ch, u16 center_ch1, u16 center_ch2);
 int atenl_nl_process(struct atenl *an, struct atenl_data *data);
 int atenl_nl_process_many(struct atenl *an, struct atenl_data *data);
-int atenl_nl_check_mtd(struct atenl *an);
+int atenl_nl_check_flash(struct atenl *an);
 int atenl_nl_write_eeprom(struct atenl *an, u32 offset, u8 *val, int len);
 int atenl_nl_write_efuse_all(struct atenl *an);
+int atenl_nl_write_ext_eeprom_all(struct atenl *an);
 int atenl_nl_update_buffer_mode(struct atenl *an);
 int atenl_nl_set_state(struct atenl *an, u8 band,
 		       enum mt76_testmode_state state);
 int atenl_nl_set_aid(struct atenl *an, u8 band, u8 aid);
 int atenl_nl_precal_sync_from_driver(struct atenl *an, enum prek_ops ops);
+int atenl_nl_get_wiphy(struct atenl *an);
 void atenl_get_ibf_cal_result(struct atenl *an);
+void atenl_get_rx_gain_cal_result(struct atenl *an);
 int atenl_eeprom_init(struct atenl *an, u8 phy_idx);
 void atenl_eeprom_close(struct atenl *an);
-int atenl_eeprom_write_mtd(struct atenl *an);
+int atenl_eeprom_write_flash(struct atenl *an);
 int atenl_eeprom_update_precal(struct atenl *an, int write_offs, int size);
 int atenl_eeprom_read_from_driver(struct atenl *an, u32 offset, int len);
 void atenl_eeprom_cmd_handler(struct atenl *an, u8 phy_idx, char *cmd);

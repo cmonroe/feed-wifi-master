@@ -831,20 +831,23 @@ out:
 void
 atenl_get_ibf_cal_result(struct atenl *an)
 {
-	u16 offset, group_size = 40;
+	u16 offset, len = 40 * 9;
 
 	if (an->adie_id == 0x7975)
 		offset = 0x651;
-	else if (an->adie_id == 0x7976)
+	else
 		offset = 0x60a;
 
-	if (is_mt7996(an)) {
+	if (is_connac3(an)) {
 		offset = 0xc00;
-		group_size = 46;
+		/* Group 0: 29, Group 1 ~ 12: 34 for ibf 2.0 */
+		if (!is_mt7996(an))
+			len = 29 + 34 * 12;
+		else
+			len = 46 * 9;
 	}
 
-	/* per group size = 40 or 46, for group 0-8 */
-	atenl_eeprom_read_from_driver(an, offset, group_size * 9);
+	atenl_eeprom_read_from_driver(an, offset, len);
 }
 
 static int
@@ -866,7 +869,6 @@ atenl_nl_ibf_set_val(struct atenl *an, struct atenl_data *data,
 	u16 val[8], is_atenl = 1;
 	u8 tmp_ant;
 	void *ptr, *a;
-	char cmd[64];
 	int i;
 
 	for (i = 0; i < 8; i++)
@@ -1043,6 +1045,16 @@ atenl_nl_ibf_profile_update_all(struct atenl *an, struct atenl_data *data,
 	return 0;
 }
 
+void
+atenl_get_rx_gain_cal_result(struct atenl *an)
+{
+	if (!is_connac3(an))
+		return;
+
+	atenl_eeprom_read_from_driver(an, MT_EE_DO_RX_GAIN_CAL, 1);
+	atenl_eeprom_read_from_driver(an, MT_EE_RX_GAIN_CAL, MT_EE_CAL_RX_GAIN_SIZE);
+}
+
 #define NL_OPS_GROUP(cmd, ...)	[HQA_CMD_##cmd] = { __VA_ARGS__ }
 static const struct atenl_nl_ops nl_ops[] = {
 	NL_OPS_GROUP(SET_TX_PATH, .set=MT76_TM_ATTR_TX_ANTENNA),
@@ -1187,7 +1199,7 @@ int atenl_nl_set_aid(struct atenl *an, u8 band, u8 aid)
 	return 0;
 }
 
-static int atenl_nl_check_mtd_cb(struct nl_msg *msg, void *arg)
+static int atenl_nl_check_flash_cb(struct nl_msg *msg, void *arg)
 {
 	struct atenl_nl_priv *nl_priv = (struct atenl_nl_priv *)arg;
 	struct atenl *an = nl_priv->an;
@@ -1199,17 +1211,18 @@ static int atenl_nl_check_mtd_cb(struct nl_msg *msg, void *arg)
 		return NL_SKIP;
 
 	nla_parse_nested(tb, MT76_TM_ATTR_MAX, attr, testdata_policy);
+	an->band_idx = nla_get_u32(tb[MT76_TM_ATTR_BAND_IDX]);
+
 	if (!tb[MT76_TM_ATTR_MTD_PART] || !tb[MT76_TM_ATTR_MTD_OFFSET])
 		return NL_SKIP;
 
-	an->mtd_part = strdup(nla_get_string(tb[MT76_TM_ATTR_MTD_PART]));
-	an->mtd_offset = nla_get_u32(tb[MT76_TM_ATTR_MTD_OFFSET]);
-	an->band_idx = nla_get_u32(tb[MT76_TM_ATTR_BAND_IDX]);
+	an->flash_part = strdup(nla_get_string(tb[MT76_TM_ATTR_MTD_PART]));
+	an->flash_offset = nla_get_u32(tb[MT76_TM_ATTR_MTD_OFFSET]);
 
 	return NL_SKIP;
 }
 
-int atenl_nl_check_mtd(struct atenl *an)
+int atenl_nl_check_flash(struct atenl *an)
 {
 	struct atenl_nl_priv nl_priv = { .an = an };
 	struct nl_msg *msg;
@@ -1219,9 +1232,14 @@ int atenl_nl_check_mtd(struct atenl *an)
 		return 2;
 	}
 
+	/* User has a specified flash partition */
+	if (an->flash_part)
+		return 0;
+
 	msg = unl_genl_msg(&nl_priv.unl, NL80211_CMD_TESTMODE, true);
 	nla_put_u32(msg, NL80211_ATTR_WIPHY, get_band_val(an, 0, phy_idx));
-	unl_genl_request(&nl_priv.unl, msg, atenl_nl_check_mtd_cb, (void *)&nl_priv);
+	unl_genl_request(&nl_priv.unl, msg, atenl_nl_check_flash_cb,
+			 (void *)&nl_priv);
 
 	unl_free(&nl_priv.unl);
 
@@ -1294,6 +1312,36 @@ int atenl_nl_write_efuse_all(struct atenl *an)
 
 	nla_put_u8(msg, MT76_TM_ATTR_EEPROM_ACTION,
 		   MT76_TM_EEPROM_ACTION_WRITE_TO_EFUSE);
+
+	nla_nest_end(msg, ptr);
+
+	unl_genl_request(&nl_priv.unl, msg, NULL, NULL);
+
+	unl_free(&nl_priv.unl);
+
+	return 0;
+}
+
+int atenl_nl_write_ext_eeprom_all(struct atenl *an)
+{
+	struct atenl_nl_priv nl_priv = {};
+	struct nl_msg *msg;
+	void *ptr;
+
+	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
+		atenl_err("Failed to connect to nl80211\n");
+		return 2;
+	}
+
+	msg = unl_genl_msg(&nl_priv.unl, NL80211_CMD_TESTMODE, false);
+	nla_put_u32(msg, NL80211_ATTR_WIPHY, get_band_val(an, 0, phy_idx));
+
+	ptr = nla_nest_start(msg, NL80211_ATTR_TESTDATA);
+	if (!ptr)
+		return -ENOMEM;
+
+	nla_put_u8(msg, MT76_TM_ATTR_EEPROM_ACTION,
+		   MT76_TM_EEPROM_ACTION_WRITE_TO_EXT_EEPROM);
 
 	nla_nest_end(msg, ptr);
 
@@ -1533,10 +1581,50 @@ start:
 		ret = atenl_eeprom_update_precal(an, group_size, dpd_size);
 		break;
 	default:
+		ret = -EINVAL;
 		break;
 	}
 
 out:
 	unl_free(&nl_priv.unl);
 	return ret;
+}
+
+static int atenl_nl_get_wiphy_cb(struct nl_msg *msg, void *arg)
+{
+	struct atenl_nl_priv *nl_priv = (struct atenl_nl_priv *)arg;
+	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
+	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct atenl *an = nl_priv->an;
+
+	nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+		  genlmsg_attrlen(gnlh, 0), NULL);
+
+	if (!tb_msg[NL80211_ATTR_WIPHY])
+		return NL_STOP;
+
+	if (tb_msg[NL80211_ATTR_WIPHY_RADIOS])
+		an->is_single_wiphy = true;
+
+	return NL_SKIP;
+}
+
+int atenl_nl_get_wiphy(struct atenl *an)
+{
+	struct atenl_nl_priv nl_priv = {.an = an};
+	struct nl_msg *msg;
+
+	if (unl_genl_init(&nl_priv.unl, "nl80211") < 0) {
+		atenl_err("Failed to connect to nl80211\n");
+		return 2;
+	}
+
+	msg = unl_genl_msg(&(nl_priv.unl), NL80211_CMD_GET_WIPHY, true);
+	nla_put_flag(msg, NL80211_ATTR_SPLIT_WIPHY_DUMP);
+	nl_priv.msg = msg;
+	unl_genl_request(&(nl_priv.unl), msg, atenl_nl_get_wiphy_cb, (void *)&nl_priv);
+
+	unl_free(&nl_priv.unl);
+
+	return 0;
 }

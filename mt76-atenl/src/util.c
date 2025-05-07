@@ -11,7 +11,7 @@ int atenl_reg_read(struct atenl *an, u32 offset, u32 *res)
 	/* write offset into regidx */
 	ret = snprintf(dir, sizeof(dir),
 		       "/sys/kernel/debug/ieee80211/phy%d/mt76/regidx",
-		       get_band_val(an, 0, phy_idx));
+		       an->main_phy_idx);
 	if (snprintf_error(sizeof(dir), ret))
 		return ret;
 
@@ -30,7 +30,7 @@ int atenl_reg_read(struct atenl *an, u32 offset, u32 *res)
 	/* read value from regval */
 	ret = snprintf(dir, sizeof(dir),
 		       "/sys/kernel/debug/ieee80211/phy%d/mt76/regval",
-		       get_band_val(an, 0, phy_idx));
+		       an->main_phy_idx);
 	if (snprintf_error(sizeof(dir), ret))
 		return ret;
 
@@ -63,7 +63,7 @@ int atenl_reg_write(struct atenl *an, u32 offset, u32 val)
 	/* write offset into regidx */
 	ret = snprintf(dir, sizeof(dir),
 		       "/sys/kernel/debug/ieee80211/phy%d/mt76/regidx",
-		       get_band_val(an, 0, phy_idx));
+		       an->main_phy_idx);
 	if (snprintf_error(sizeof(dir), ret))
 		return ret;
 
@@ -82,7 +82,7 @@ int atenl_reg_write(struct atenl *an, u32 offset, u32 val)
 	/* write value into regval */
 	ret = snprintf(dir, sizeof(dir),
 		       "/sys/kernel/debug/ieee80211/phy%d/mt76/regval",
-		       get_band_val(an, 0, phy_idx));
+		       an->main_phy_idx);
 	if (snprintf_error(sizeof(dir), ret))
 		return ret;
 
@@ -118,7 +118,7 @@ int atenl_rf_read(struct atenl *an, u32 wf_sel, u32 offset, u32 *res)
 	/* write regidx */
 	ret = snprintf(dir, sizeof(dir),
 		       "/sys/kernel/debug/ieee80211/phy%d/mt76/regidx",
-		       get_band_val(an, 0, phy_idx));
+		       an->main_phy_idx);
 	if (snprintf_error(sizeof(dir), ret))
 		return ret;
 
@@ -137,7 +137,7 @@ int atenl_rf_read(struct atenl *an, u32 wf_sel, u32 offset, u32 *res)
 	/* read from rf_regval */
 	ret = snprintf(dir, sizeof(dir),
 		       "/sys/kernel/debug/ieee80211/phy%d/mt76/rf_regval",
-		       get_band_val(an, 0, phy_idx));
+		       an->main_phy_idx);
 	if (snprintf_error(sizeof(dir), ret))
 		return ret;
 
@@ -175,7 +175,7 @@ int atenl_rf_write(struct atenl *an, u32 wf_sel, u32 offset, u32 val)
 	/* write regidx */
 	ret = snprintf(dir, sizeof(dir),
 		       "/sys/kernel/debug/ieee80211/phy%d/mt76/regidx",
-		       get_band_val(an, 0, phy_idx));
+		       an->main_phy_idx);
 	if (snprintf_error(sizeof(dir), ret))
 		return ret;
 
@@ -194,7 +194,7 @@ int atenl_rf_write(struct atenl *an, u32 wf_sel, u32 offset, u32 val)
 	/* write value into rf_val */
 	ret = snprintf(dir, sizeof(dir),
 		       "/sys/kernel/debug/ieee80211/phy%d/mt76/rf_regval",
-		       get_band_val(an, 0, phy_idx));
+		       an->main_phy_idx);
 	if (snprintf_error(sizeof(dir), ret))
 		return ret;
 

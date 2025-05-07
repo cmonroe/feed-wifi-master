@@ -9,8 +9,10 @@ cmd="atenl"
 interface=""
 phy_idx=0
 ated_file="/tmp/interface"
+iwpriv_file="/tmp/iwpriv_wrapper"
 SOC_start_idx="0"
-is_eagle="0"
+SOC_end_idx="0"
+is_connac3="0"
 
 function do_cmd() {
     case ${work_mode} in
@@ -31,8 +33,8 @@ function record_config() {
     local config=$1
     local tmp_file=$3
 
-    # check it is SOC(mt7986)/Eagle or PCIE card (mt7915/7916), and write its config
-    if [ ${config} != "STARTIDX" ] && [ ${config} != "IS_EAGLE" ]; then
+    # check it is SOC(mt7986)/Eagle/Kite or PCIE card (mt7915/7916), and write its config
+    if [ ${config} != "STARTIDX" ] && [ ${config} != "ENDIDX" ] && [ ${config} != "IS_CONNAC3" ]; then
         if [ $phy_idx -lt $SOC_start_idx ]; then
             config="${config}_PCIE"
         elif [ $phy_idx -ge $SOC_start_idx ]; then
@@ -60,8 +62,8 @@ function get_config() {
         return
     fi
 
-    # check it is SOC(mt7986)/Eagle or PCIE card (mt7915/7916), and write its config
-    if [ ${config} != "STARTIDX" ] && [ ${config} != "IS_EAGLE" ]; then
+    # check it is SOC(mt7986)/Eagle/Kite or PCIE card (mt7915/7916), and write its config
+    if [ ${config} != "STARTIDX" ] && [ ${config} != "ENDIDX" ] && [ ${config} != "IS_CONNAC3" ]; then
         if [ $phy_idx -lt $SOC_start_idx ]; then
             config="${config}_PCIE"
         elif [ $phy_idx -ge $SOC_start_idx ]; then
@@ -76,37 +78,77 @@ function get_config() {
     fi
 }
 
-function convert_interface {
+function parse_sku {
     SOC_start_idx=$(get_config "STARTIDX" ${ated_file})
-    is_eagle=$(get_config "IS_EAGLE" ${ated_file})
+    SOC_end_idx=$(get_config "ENDIDX" ${ated_file})
+    is_connac3=$(get_config "IS_CONNAC3" ${ated_file})
     local eeprom_file=/sys/kernel/debug/ieee80211/phy0/mt76/eeprom
-    if [ -z "${SOC_start_idx}" ] || [ -z "${is_eagle}" ]; then
+    if [ -z "${SOC_start_idx}" ] || [ -z "${SOC_end_idx}" ] || [ -z "${is_connac3}" ]; then
         if [ ! -z "$(head -c 2 ${eeprom_file} | hexdump | grep "7916")" ]; then
             SOC_start_idx="2"
-            is_eagle="0"
+            SOC_end_idx="3"
+            is_connac3="0"
         elif [ ! -z "$(head -c 2 ${eeprom_file} | hexdump | grep "7915")" ]; then
             SOC_start_idx="1"
-            is_eagle="0"
+            SOC_end_idx="2"
+            is_connac3="0"
+        elif [ ! -z "$(head -c 2 ${eeprom_file} | hexdump | grep "7981")" ]; then
+            SOC_start_idx="0"
+            SOC_end_idx="1"
+            is_connac3="0"
         elif [ ! -z "$(head -c 2 ${eeprom_file} | hexdump | grep "7986")" ]; then
             SOC_start_idx="0"
-            is_eagle="0"
+            SOC_end_idx="1"
+            is_connac3="0"
         elif [ ! -z "$(head -c 2 ${eeprom_file} | hexdump | grep "7990")" ]; then
             SOC_start_idx="0"
-            is_eagle="1"
+            SOC_end_idx="2"
+            is_connac3="1"
+        elif [ ! -z "$(head -c 2 ${eeprom_file} | hexdump | grep "7992")" ]; then
+            SOC_start_idx="0"
+            SOC_end_idx="1"
+            is_connac3="1"
+        elif [ ! -z "$(head -c 2 ${eeprom_file} | hexdump | grep "7993")" ]; then
+            SOC_start_idx="0"
+            SOC_end_idx="1"
+            is_connac3="1"
         else
             echo "Interface Conversion Failed!"
             echo "Please use iwpriv <phy0/phy1/..> set <...> or configure the sku of your board manually by the following commands"
-            echo "For AX6000/Eagle: echo STARTIDX=0 >> ${ated_file}"
-            echo "For AX7800: echo STARTIDX=2 >> ${ated_file}"
-            echo "For AX8400: echo STARTIDX=1 >> ${ated_file}"
+            echo "For AX3000/AX6000:"
+            echo "      echo STARTIDX=0 >> ${ated_file}"
+            echo "      echo ENDIDX=1 >> ${ated_file}"
+            echo "      echo IS_CONNAC3=0 >> ${ated_file}"
+            echo "For AX7800:"
+            echo "      echo STARTIDX=2 >> ${ated_file}"
+            echo "      echo ENDIDX=3 >> ${ated_file}"
+            echo "      echo IS_CONNAC3=0 >> ${ated_file}"
+            echo "For AX8400:"
+            echo "      echo STARTIDX=1 >> ${ated_file}"
+            echo "      echo ENDIDX=2 >> ${ated_file}"
+            echo "      echo IS_CONNAC3=0 >> ${ated_file}"
+            echo "For Eagle:"
+            echo "      echo STARTIDX=0 >> ${ated_file}"
+            echo "      echo ENDIDX=2 >> ${ated_file}"
+            echo "      echo IS_CONNAC3=1 >> ${ated_file}"
+            echo "For Kite:"
+            echo "      echo STARTIDX=0 >> ${ated_file}"
+            echo "      echo ENDIDX=1 >> ${ated_file}"
+            echo "      echo IS_CONNAC3=1 >> ${ated_file}"
+            echo "For Griffin:"
+            echo "      echo STARTIDX=0 >> ${interface_file}"
+            echo "      echo ENDIDX=1 >> ${interface_file}"
+            echo "      echo IS_CONNAC3=1 >> ${interface_file}"
             exit 0
         fi
         record_config "STARTIDX" ${SOC_start_idx} ${ated_file}
-        record_config "IS_EAGLE" ${is_eagle} ${ated_file}
+        record_config "ENDIDX" ${SOC_end_idx} ${ated_file}
+        record_config "IS_CONNAC3" ${is_connac3} ${ated_file}
     fi
+}
 
-
-    if [ ${is_eagle} == "0" ]; then
+function convert_interface {
+    if [ ${is_connac3} == "0" ]; then
         if [[ $1 == "raix"* ]]; then
             phy_idx=1
         elif [[ $1 == "rai"* ]]; then
@@ -118,7 +160,7 @@ function convert_interface {
         fi
 
         # convert phy index according to band idx
-        local band_idx=$(get_config "ATECTRLBANDIDX" ${ated_file})
+        local band_idx=$(get_config "ATECTRLBANDIDX" ${iwpriv_file})
         if [ "${band_idx}" = "0" ]; then
             if [[ $1 == "raix"* ]]; then
                 phy_idx=0
@@ -135,7 +177,7 @@ function convert_interface {
             fi
         fi
     else
-        # Eagle has different mapping method
+        # Connac 3 chips has different mapping method
         # phy0: ra0
         # phy1: rai0
         # phy2: rax0
@@ -162,6 +204,7 @@ do
         add_quote="0"
     else
         if [[ ${i} == "ra"* ]]; then
+            parse_sku
             convert_interface $i
             cmd="${cmd} ${interface}"
         else

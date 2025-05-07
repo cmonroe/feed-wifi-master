@@ -20,10 +20,11 @@ define Package/mt76-atenl
   CATEGORY:=MTK Properties
   TITLE:=testmode daemon for nl80211
   SUBMENU:=Applications
-  DEPENDS:=+libnl-tiny
+  DEPENDS:=+libnl-tiny +libblkid
 endef
 
 TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include/libnl-tiny
+TARGET_CFLAGS += -lblkid
 
 define Package/mt76-atenl/install
 	mkdir -p $(1)/usr/sbin

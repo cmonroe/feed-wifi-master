@@ -480,7 +480,7 @@ static int
 atenl_hqa_check_efuse_mode(struct atenl *an, struct atenl_data *data)
 {
 	struct atenl_cmd_hdr *hdr = atenl_hdr(data);
-	bool flash_mode = an->mtd_part != NULL;
+	bool flash_mode = an->flash_part != NULL;
 	enum atenl_cmd cmd = data->cmd;
 	u32 mode;
 

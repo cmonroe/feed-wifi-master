@@ -31,14 +31,19 @@ out:
 	perror("signal");
 }
 
-static int phy_lookup_idx(const char *name)
+static int phy_lookup_idx(struct atenl *an, const char *phyname)
 {
 	char buf[128];
 	FILE *f;
 	size_t len;
 	int ret;
 
-	ret = snprintf(buf, sizeof(buf), "/sys/class/ieee80211/%s/index", name);
+	atenl_nl_get_wiphy(an);
+	/* TODO: Handle single wiphy model */
+	if (an->is_single_wiphy)
+		return 0;
+
+	ret = snprintf(buf, sizeof(buf), "/sys/class/ieee80211/%s/index", phyname);
 	if (snprintf_error(sizeof(buf), ret))
 		return -1;
 
@@ -60,7 +65,6 @@ static int get_default_bridge_name(struct atenl *an)
 {
 	char buf[128];
 	FILE *f;
-	size_t len;
 	int ret;
 
 	ret = snprintf(buf, sizeof(buf), "/sbin/procd");
@@ -88,7 +92,9 @@ static void usage(void)
 	       "  -h = show help text\n"
 	       "  -i = phy name of driver interface, please use first phy for dbdc\n"
 	       "  -u = use unicast to respond to HQADLL\n"
-	       "  -b = specify your bridge name\n");
+	       "  -b = specify your bridge name\n"
+	       "  -c = eeprom-related command\n"
+	       "  -p = specify the flash partition name and offset (<name>:<offs>)\n");
 	printf("examples:\n"
 	       "  %s -u -i phy0 -b br-lan\n", progname);
 
@@ -125,6 +131,7 @@ int main(int argc, char **argv)
 {
 	int opt, phy_idx, ret = 0;
 	char *phy = "phy0", *cmd = NULL;
+	char *token;
 	struct atenl *an;
 
 	progname = argv[0];
@@ -134,7 +141,7 @@ int main(int argc, char **argv)
 		return -ENOMEM;
 
 	while(1) {
-		opt = getopt(argc, argv, "hi:uc:b:");
+		opt = getopt(argc, argv, "hi:uc:b:p:");
 		if (opt == -1)
 			break;
 
@@ -155,13 +162,20 @@ int main(int argc, char **argv)
 			case 'c':
 				cmd = optarg;
 				break;
+			case 'p':
+				token = strtok(optarg, ":");
+				if (!token)
+					break;
+				an->flash_part = token;
+				an->flash_offset = strtol(strtok(NULL, ":"), NULL, 0);
+				break;
 			default:
 				atenl_err("Not supported option: %c\n", opt);
 				goto out;
 		}
 	}
 
-	phy_idx = phy_lookup_idx(phy);
+	phy_idx = phy_lookup_idx(an, phy);
 	if (phy_idx < 0 || phy_idx > UCHAR_MAX) {
 		atenl_err("Could not find phy '%s'\n", phy);
 		goto out;

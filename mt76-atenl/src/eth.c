@@ -11,6 +11,7 @@ int atenl_eth_init(struct atenl *an)
  
 	if (!an->bridge_name) {
 		perror("Bridge name not specified");
+		ret = -EINVAL;
 		goto out;
 	}
 
