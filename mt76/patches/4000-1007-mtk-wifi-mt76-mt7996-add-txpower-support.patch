@@ -292,7 +292,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -726,6 +729,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -727,6 +730,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
@@ -303,7 +303,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2439,6 +2439,364 @@ mt7996_scs_enable_set(void *data, u64 va
+@@ -2464,6 +2464,364 @@ mt7996_scs_enable_set(void *data, u64 va
  DEFINE_DEBUGFS_ATTRIBUTE(fops_scs_enable, NULL,
  			 mt7996_scs_enable_set, "%lld\n");
  
@@ -668,7 +668,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2502,6 +2860,10 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2527,6 +2885,10 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_devm_seqfile(dev->mt76.dev, "tr_info", dir,
  				    mt7996_trinfo_read);

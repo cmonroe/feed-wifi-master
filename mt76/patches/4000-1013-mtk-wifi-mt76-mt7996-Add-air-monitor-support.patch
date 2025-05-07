@@ -97,7 +97,7 @@ Subject: [PATCH 1013/1044] mtk: wifi: mt76: mt7996: Add air monitor support
  };
  
  struct mt7996_dev {
-@@ -734,6 +767,9 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -735,6 +768,9 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  #ifdef CONFIG_MTK_VENDOR
  void mt7996_set_wireless_vif(void *data, u8 *mac, struct ieee80211_vif *vif);
  void mt7996_vendor_register(struct mt7996_phy *phy);

@@ -167,7 +167,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	bool ibf;
  	u8 fw_debug_wm;
  	u8 fw_debug_wa;
-@@ -523,6 +526,7 @@ irqreturn_t mt7996_irq_handler(int irq,
+@@ -524,6 +527,7 @@ irqreturn_t mt7996_irq_handler(int irq,
  u64 __mt7996_get_tsf(struct ieee80211_hw *hw, struct mt7996_vif *mvif);
  int mt7996_register_device(struct mt7996_dev *dev);
  void mt7996_unregister_device(struct mt7996_dev *dev);
@@ -177,7 +177,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2797,6 +2797,44 @@ static const struct file_operations mt79
+@@ -2822,6 +2822,44 @@ static const struct file_operations mt79
  	.llseek = default_llseek,
  };
  
@@ -222,7 +222,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2865,6 +2903,9 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2890,6 +2928,9 @@ int mt7996_mtk_init_debugfs(struct mt799
  	debugfs_create_file("txpower_sku", 0600, dir, phy, &mt7996_txpower_sku_fops);
  	debugfs_create_file("txpower_path", 0600, dir, phy, &mt7996_txpower_path_fops);
  

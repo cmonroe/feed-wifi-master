@@ -84,7 +84,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  #endif
  };
  
-@@ -797,6 +800,8 @@ enum edcca_bw_id {
+@@ -798,6 +801,8 @@ enum edcca_bw_id {
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
@@ -95,7 +95,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2835,6 +2835,83 @@ static int mt7996_show_eeprom_mode(struc
+@@ -2860,6 +2860,83 @@ static int mt7996_show_eeprom_mode(struc
  	return 0;
  }
  
@@ -179,7 +179,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2914,6 +2991,11 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2942,6 +3019,11 @@ int mt7996_mtk_init_debugfs(struct mt799
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  	debugfs_create_file("scs_enable", 0200, dir, phy, &fops_scs_enable);
  

@@ -250,7 +250,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	struct {
  		u16 table_mask;
  		u8 n_agrt;
-@@ -509,6 +512,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -510,6 +513,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
  				   struct ieee80211_channel *chan);
  s8 mt7996_eeprom_get_power_delta(struct mt7996_dev *dev, int band);

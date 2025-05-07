@@ -250,7 +250,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  enum {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -803,6 +803,7 @@ void mt7996_vendor_register(struct mt799
+@@ -804,6 +804,7 @@ void mt7996_vendor_register(struct mt799
  void mt7996_vendor_amnt_fill_rx(struct mt7996_phy *phy, struct sk_buff *skb);
  int mt7996_vendor_amnt_sta_remove(struct mt7996_phy *phy,
  				  struct ieee80211_sta *sta);
@@ -260,7 +260,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mcu_edcca_enable(struct mt7996_phy *phy, bool enable);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -3037,6 +3037,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -3065,6 +3065,8 @@ int mt7996_mtk_init_debugfs(struct mt799
  	debugfs_create_file("sr_stats", 0400, dir, phy, &mt7996_sr_stats_fops);
  	debugfs_create_file("sr_scene_cond", 0400, dir, phy, &mt7996_sr_scene_cond_fops);
  

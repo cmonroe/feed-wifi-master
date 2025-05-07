@@ -397,7 +397,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	struct dentry *debugfs_dir;
  	struct rchan *relay_fwlog;
-@@ -380,6 +381,17 @@ struct mt7996_dev {
+@@ -380,6 +381,18 @@ struct mt7996_dev {
  		u8 type:4;
  		u8 fem:4;
  	} var;
@@ -409,13 +409,14 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +		u32 fw_dbg_module;
 +		u8 fw_dbg_lv;
 +		u32 bcn_total_cnt[__MT_MAX_BAND];
++		u32 token_idx;
 +	} dbg;
 +	const struct mt7996_dbg_reg_desc *dbg_reg;
 +#endif
  };
  
  enum {
-@@ -695,6 +707,7 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -695,6 +708,7 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
@@ -2714,7 +2715,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +#endif
 --- /dev/null
 +++ b/mt7996/mtk_debugfs.c
-@@ -0,0 +1,2506 @@
+@@ -0,0 +1,2534 @@
 +// SPDX-License-Identifier: ISC
 +/*
 + * Copyright (C) 2023 MediaTek Inc.
@@ -5146,6 +5147,31 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +	return 0;
 +}
 +
++static int mt7996_token_txd_read(struct seq_file *s, void *data)
++{
++	struct mt7996_dev *dev = dev_get_drvdata(s->private);
++	struct mt76_txwi_cache *t;
++	u8* txwi;
++
++	seq_printf(s, "\n");
++	spin_lock_bh(&dev->mt76.token_lock);
++
++	t = idr_find(&dev->mt76.token, dev->dbg.token_idx);
++	if (t != NULL) {
++		struct mt76_dev *mdev = &dev->mt76;
++		txwi = ((u8*)(t)) - (mdev->drv->txwi_size);
++		/* dump one txd info */
++		//dev->dbg.txd_read_cnt = 1;
++		//mt7996_dump_bmac_txd_info(s, dev, (__le32 *)txwi, true, true);
++		//seq_printf(s, "\n");
++		seq_printf(s, "[SKB]\n");
++		seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 1, (u8 *)t->skb->data, t->skb->len, false);
++		seq_printf(s, "\n");
++	}
++	spin_unlock_bh(&dev->mt76.token_lock);
++	return 0;
++}
++
 +int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
 +{
 +	struct mt7996_dev *dev = phy->dev;
@@ -5214,6 +5240,9 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +				    mt7996_wtbl_read);
 +
 +	debugfs_create_devm_seqfile(dev->mt76.dev, "token", dir, mt7996_token_read);
++	debugfs_create_u32("token_idx", 0600, dir, &dev->dbg.token_idx);
++	debugfs_create_devm_seqfile(dev->mt76.dev, "token_txd", dir,
++					mt7996_token_txd_read);
 +
 +	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
 +

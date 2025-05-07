@@ -629,10 +629,10 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		u8 fw_dbg_lv;
  		u32 bcn_total_cnt[__MT_MAX_BAND];
 +		u32 sid;
+ 		u32 token_idx;
  	} dbg;
  	const struct mt7996_dbg_reg_desc *dbg_reg;
- #endif
-@@ -682,7 +699,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -683,7 +700,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);
@@ -646,7 +646,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static inline u8 mt7996_max_interface_num(struct mt7996_dev *dev)
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2951,6 +2951,69 @@ static int mt7996_rx_counters(struct seq
+@@ -2976,6 +2976,69 @@ static int mt7996_rx_counters(struct seq
  	return 0;
  }
  
@@ -716,7 +716,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -3039,6 +3102,14 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -3067,6 +3130,14 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_bool("mgmt_pwr_enhance", 0600, dir, &dev->mt76.mgmt_pwr_enhance);
  

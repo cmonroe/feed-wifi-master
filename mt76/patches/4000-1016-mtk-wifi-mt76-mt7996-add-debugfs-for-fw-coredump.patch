@@ -151,7 +151,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  #ifdef CONFIG_DEV_COREDUMP
  	struct {
  		struct mt7996_crash_data *crash_data[__MT7996_RAM_TYPE_MAX];
-@@ -579,6 +588,7 @@ void mt7996_init_txpower(struct mt7996_p
+@@ -580,6 +589,7 @@ void mt7996_init_txpower(struct mt7996_p
  int mt7996_txbf_init(struct mt7996_dev *dev);
  int mt7996_get_chip_sku(struct mt7996_dev *dev);
  void mt7996_reset(struct mt7996_dev *dev);

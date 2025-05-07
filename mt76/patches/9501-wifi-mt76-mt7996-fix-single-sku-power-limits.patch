@@ -318,7 +318,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2521,7 +2521,7 @@ mt7996_get_txpower_info(struct file *fil
+@@ -2546,7 +2546,7 @@ mt7996_get_txpower_info(struct file *fil
  	len += scnprintf(buf + len, size - len,
  			 "    Theraml Compensation Value: %d\n",
  			 basic_info->thermal_compensate_value);

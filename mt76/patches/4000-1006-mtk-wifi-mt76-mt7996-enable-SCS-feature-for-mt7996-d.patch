@@ -247,7 +247,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -713,6 +726,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -714,6 +727,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
@@ -258,7 +258,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  int mt7996_dma_rro_init(struct mt7996_dev *dev);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2429,6 +2429,16 @@ static int mt7996_token_read(struct seq_
+@@ -2454,6 +2454,16 @@ static int mt7996_token_txd_read(struct
  	return 0;
  }
  
@@ -275,8 +275,8 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -2499,6 +2509,7 @@ int mt7996_mtk_init_debugfs(struct mt799
- 	debugfs_create_devm_seqfile(dev->mt76.dev, "token", dir, mt7996_token_read);
+@@ -2527,6 +2537,7 @@ int mt7996_mtk_init_debugfs(struct mt799
+ 					mt7996_token_txd_read);
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
 +	debugfs_create_file("scs_enable", 0200, dir, phy, &fops_scs_enable);
