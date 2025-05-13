@@ -1,0 +1,27 @@
+From cf8114eec26952255007d9a6d054683038d5086c Mon Sep 17 00:00:00 2001
+From: Peter Chiu <chui-hao.chiu@mediatek.com>
+Date: Tue, 18 Feb 2025 13:41:28 +0800
+Subject: [PATCH] mtk: mt76: mt7996: config rxfilter to drop other unicast by
+ default
+
+Set MT_WF_RFCR_DROP_OTHER_UC by default and disable this flag in
+mt7996_set_monitor only if monitor mode is enabled.
+
+Without this patch, the MT_WF_RFCR_DROP_OTHER_UC would not be set so the
+driver would receive lots of packets that is not sent to me.
+
+Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
+---
+ mt7996/init.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -378,6 +378,7 @@ mt7996_init_wiphy(struct ieee80211_hw *h
+ 	phy->slottime = 9;
+ 	phy->beacon_rate = -1;
+ 	phy->muru_onoff = OFDMA_UL | OFDMA_DL | MUMIMO_DL | MUMIMO_UL;
++	phy->rxfilter = MT_WF_RFCR_DROP_OTHER_UC;
+ 
+ 	hw->sta_data_size = sizeof(struct mt7996_sta);
+ 	hw->vif_data_size = sizeof(struct mt7996_vif);

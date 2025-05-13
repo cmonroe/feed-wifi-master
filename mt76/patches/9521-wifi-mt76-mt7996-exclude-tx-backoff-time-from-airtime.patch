@@ -13,7 +13,7 @@ Suggested-by: Ryder Lee <ryder.lee@mediatek.com>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -472,6 +472,10 @@ mt7996_mac_init_band(struct mt7996_dev *
+@@ -473,6 +473,10 @@ mt7996_mac_init_band(struct mt7996_dev *
  	mt76_clear(dev, MT_WF_RMAC_MIB_AIRTIME4(band),
  		   MT_WF_RMAC_MIB_QOS23_BACKOFF);
  
