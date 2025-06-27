@@ -87,7 +87,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4624,3 +4624,108 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -4597,3 +4597,108 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
@@ -198,7 +198,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -927,6 +927,12 @@ enum {
+@@ -919,6 +919,12 @@ enum {
  	UNI_CMD_PP_EN_CTRL,
  };
  

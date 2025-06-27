@@ -1,6 +1,15 @@
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4854,13 +4854,15 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -4819,7 +4819,7 @@ int mt7996_mcu_get_per_sta_info(struct m
+ 
+ 			wlan_idx = le16_to_cpu(res->rssi[i].wlan_idx);
+ 			wcid = rcu_dereference(dev->wcid[wlan_idx]);
+-			if (wcid) {
++			if (wcid_to_sta(wcid)) {
+ 				rcpi = res->rssi[i].rcpi;
+ 				rssi[0] = to_rssi(MT_PRXV_RCPI0, rcpi[0]);
+ 				rssi[1] = to_rssi(MT_PRXV_RCPI0, rcpi[1]);
+@@ -4827,13 +4827,15 @@ int mt7996_mcu_get_per_sta_info(struct m
  				rssi[3] = to_rssi(MT_PRXV_RCPI0, rcpi[3]);
  
  				msta = container_of(wcid, struct mt7996_sta, wcid);
@@ -21,7 +30,15 @@
  			}
  		}
  		break;
-@@ -4875,8 +4877,6 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -4841,15 +4843,13 @@ int mt7996_mcu_get_per_sta_info(struct m
+ 		for (i = 0; i < sta_num; ++i) {
+ 			wlan_idx = le16_to_cpu(res->tx_cnt[i].wlan_idx);
+ 			wcid = rcu_dereference(dev->wcid[wlan_idx]);
+-			if (wcid) {
++			if (wcid_to_sta(wcid)) {
+ 				wcid->stats.tx_total_mpdu_cnt +=
+ 				            le32_to_cpu(res->tx_cnt[i].total);
+ 				wcid->stats.tx_failed_mpdu_cnt +=
  				            le32_to_cpu(res->tx_cnt[i].failed);
  			} else {
  				ret = -EINVAL;

@@ -178,7 +178,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return (q->flags & MT_QFLAG_WED) &&
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -936,9 +936,34 @@ enum {
+@@ -928,9 +928,34 @@ enum {
  	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
  };
  
@@ -218,7 +218,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4965,7 +4965,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -4938,7 +4938,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  bool mt7996_is_psd_country(char *country)
  {
@@ -227,7 +227,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -5002,7 +5002,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4975,7 +4975,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -236,7 +236,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
-@@ -5011,7 +5011,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4984,7 +4984,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	txpower_limit = mt7996_get_power_bound(phy, hw->conf.power_level);
  
  	if (phy->sku_limit_en) {
@@ -245,7 +245,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  							   &la, &la_path, txpower_limit);
  		mt7996_update_max_txpower_cur(phy, txpower_limit);
  	} else {
-@@ -5032,7 +5032,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5005,7 +5005,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	 * driver doesn't need to do it
  	 */
  	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
@@ -254,7 +254,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la.eht[3], sizeof(la.ofdm));
-@@ -5158,10 +5158,13 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -5131,10 +5131,13 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.band_idx = phy->mt76->band_idx,
  		.tag = cpu_to_le16(UNI_BAND_CONFIG_LPI_CTRL),
  		.len = cpu_to_le16(sizeof(req) - 4),

@@ -102,7 +102,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	if (sta->deflink.vht_cap.vht_supported)
  		muru->mimo_dl.vht_mu_bfee =
-@@ -4954,3 +4959,25 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -4927,3 +4932,25 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(SCS),
  				 &req, sizeof(req), false);
  }
@@ -130,7 +130,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +#endif
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -744,8 +744,20 @@ enum {
+@@ -736,8 +736,20 @@ enum {
  	RATE_PARAM_FIXED_MCS,
  	RATE_PARAM_FIXED_GI = 11,
  	RATE_PARAM_AUTO = 20,
