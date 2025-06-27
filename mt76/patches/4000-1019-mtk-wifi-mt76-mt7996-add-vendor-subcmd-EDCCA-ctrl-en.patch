@@ -15,7 +15,7 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -835,6 +835,8 @@ mt7996_get_power_bound(struct mt7996_phy
+@@ -827,6 +827,8 @@ mt7996_get_power_bound(struct mt7996_phy
  
  enum {
  	UNI_BAND_CONFIG_RADIO_ENABLE,

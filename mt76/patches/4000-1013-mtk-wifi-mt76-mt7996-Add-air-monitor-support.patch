@@ -37,7 +37,7 @@ Subject: [PATCH 1013/1044] mtk: wifi: mt76: mt7996: Add air monitor support
  		mt7996_wed_check_ppe(dev, &dev->mt76.q_rx[q], msta, skb,
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -710,6 +710,10 @@ int mt7996_mac_sta_add(struct mt76_dev *
+@@ -711,6 +711,10 @@ int mt7996_mac_sta_add(struct mt76_dev *
  	mt7996_mac_wtbl_update(dev, idx,
  			       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
  

@@ -114,7 +114,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -921,7 +921,11 @@ enum {
+@@ -913,7 +913,11 @@ enum {
  	UNI_CMD_SER_SET_RECOVER_L3_BF,
  	UNI_CMD_SER_SET_RECOVER_L4_MDP,
  	UNI_CMD_SER_SET_RECOVER_FULL,
