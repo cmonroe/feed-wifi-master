@@ -1,0 +1,14 @@
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -1742,6 +1742,11 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 	if (i == 10)
+ 		dev_err(dev->mt76.dev, "chip full reset failed\n");
+ 
++	spin_lock_bh(&dev->mt76.sta_poll_lock);
++	while (!list_empty(&dev->mt76.sta_poll_list))
++		list_del_init(dev->mt76.sta_poll_list.next);
++	spin_unlock_bh(&dev->mt76.sta_poll_lock);
++
+ 	ieee80211_restart_hw(mt76_hw(dev));
+ 	if (phy2)
+ 		ieee80211_restart_hw(phy2->mt76->hw);
