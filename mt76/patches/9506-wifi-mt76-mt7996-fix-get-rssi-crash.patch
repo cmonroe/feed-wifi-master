@@ -5,7 +5,7 @@
  			wlan_idx = le16_to_cpu(res->rssi[i].wlan_idx);
  			wcid = rcu_dereference(dev->wcid[wlan_idx]);
 -			if (wcid) {
-+			if (wcid_to_sta(wcid)) {
++			if (wcid && wcid->sta && !wcid->sta_disabled) {
  				rcpi = res->rssi[i].rcpi;
  				rssi[0] = to_rssi(MT_PRXV_RCPI0, rcpi[0]);
  				rssi[1] = to_rssi(MT_PRXV_RCPI0, rcpi[1]);
@@ -35,7 +35,7 @@
  			wlan_idx = le16_to_cpu(res->tx_cnt[i].wlan_idx);
  			wcid = rcu_dereference(dev->wcid[wlan_idx]);
 -			if (wcid) {
-+			if (wcid_to_sta(wcid)) {
++			if (wcid && wcid->sta && !wcid->sta_disabled) {
  				wcid->stats.tx_total_mpdu_cnt +=
  				            le32_to_cpu(res->tx_cnt[i].total);
  				wcid->stats.tx_failed_mpdu_cnt +=
