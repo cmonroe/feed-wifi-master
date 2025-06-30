@@ -1,0 +1,113 @@
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -1717,6 +1717,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 	phy3 = mt7996_phy3(dev);
+ 	dev->recovery.hw_full_reset = true;
+ 
++	set_bit(MT76_RESET, &dev->mphy.state);
+ 	wake_up(&dev->mt76.mcu.wait);
+ 	ieee80211_stop_queues(mt76_hw(dev));
+ 	if (phy2)
+@@ -1737,7 +1738,6 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 		if (!mt7996_mac_restart(dev))
+ 			break;
+ 	}
+-	mutex_unlock(&dev->mt76.mutex);
+ 
+ 	if (i == 10)
+ 		dev_err(dev->mt76.dev, "chip full reset failed\n");
+@@ -1747,31 +1747,26 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 		list_del_init(dev->mt76.sta_poll_list.next);
+ 	spin_unlock_bh(&dev->mt76.sta_poll_lock);
+ 
+-	ieee80211_restart_hw(mt76_hw(dev));
++	memset(dev->mt76.wcid_mask, 0, sizeof(dev->mt76.wcid_mask));
++	dev->mt76.vif_mask = 0;
++	dev->phy.omac_mask = 0;
+ 	if (phy2)
+-		ieee80211_restart_hw(phy2->mt76->hw);
++		phy2->omac_mask = 0;
+ 	if (phy3)
+-		ieee80211_restart_hw(phy3->mt76->hw);
++		phy3->omac_mask = 0;
+ 
+-	ieee80211_wake_queues(mt76_hw(dev));
+-	if (phy2)
+-		ieee80211_wake_queues(phy2->mt76->hw);
+-	if (phy3)
+-		ieee80211_wake_queues(phy3->mt76->hw);
++	i = mt76_wcid_alloc(dev->mt76.wcid_mask, MT7996_WTBL_STA);
++	dev->mt76.global_wcid.idx = i;
+ 
+ 	dev->recovery.hw_full_reset = false;
+-	ieee80211_queue_delayed_work(mt76_hw(dev),
+-				     &dev->mphy.mac_work,
+-				     MT7996_WATCHDOG_TIME);
++
++	mutex_unlock(&dev->mt76.mutex);
++
++	ieee80211_restart_hw(mt76_hw(dev));
+ 	if (phy2)
+-		ieee80211_queue_delayed_work(phy2->mt76->hw,
+-					     &phy2->mt76->mac_work,
+-					     MT7996_WATCHDOG_TIME);
++		ieee80211_restart_hw(phy2->mt76->hw);
+ 	if (phy3)
+-		ieee80211_queue_delayed_work(phy3->mt76->hw,
+-					     &phy3->mt76->mac_work,
+-					     MT7996_WATCHDOG_TIME);
+-	ieee80211_queue_delayed_work(mt76_hw(dev), &dev->scs_work, HZ);
++		ieee80211_restart_hw(phy3->mt76->hw);
+ }
+ 
+ void mt7996_mac_reset_work(struct work_struct *work)
+@@ -1844,6 +1839,10 @@ void mt7996_mac_reset_work(struct work_s
+ 		set_bit(MT76_RESET, &phy3->mt76->state);
+ 		cancel_delayed_work_sync(&phy3->mt76->mac_work);
+ 	}
++	cancel_delayed_work_sync(&dev->scs_work);
++
++	mutex_lock(&dev->mt76.mutex);
++
+ 	mt76_worker_disable(&dev->mt76.tx_worker);
+ 
+ 	dev_info(dev->mt76.dev,"%s L1 SER disable tx_work done.",
+@@ -1858,8 +1857,6 @@ void mt7996_mac_reset_work(struct work_s
+ 	}
+ 	napi_disable(&dev->mt76.tx_napi);
+ 
+-	mutex_lock(&dev->mt76.mutex);
+-
+ 	dev_info(dev->mt76.dev,"%s L1 SER napi disable done.",
+ 		 wiphy_name(dev->mt76.hw->wiphy));
+ 
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1567,6 +1567,21 @@ mt7996_net_fill_forward_path(struct ieee
+ 
+ #endif
+ 
++static void
++mt7996_reconfig_complete(struct ieee80211_hw *hw,
++			 enum ieee80211_reconfig_type reconfig_type)
++{
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	struct mt7996_phy *phy = mt7996_hw_phy(hw);
++
++	ieee80211_wake_queues(hw);
++	ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
++				     MT7996_WATCHDOG_TIME);
++
++	if (phy->scs_ctrl.scs_enable)
++		ieee80211_queue_delayed_work(mt76_hw(dev), &dev->scs_work, HZ);
++}
++
+ const struct ieee80211_ops mt7996_ops = {
+ 	.add_chanctx = ieee80211_emulate_add_chanctx,
+ 	.remove_chanctx = ieee80211_emulate_remove_chanctx,
+@@ -1619,4 +1634,5 @@ const struct ieee80211_ops mt7996_ops =
+ 	.net_fill_forward_path = mt7996_net_fill_forward_path,
+ 	.net_setup_tc = mt76_wed_net_setup_tc,
+ #endif
++	.reconfig_complete = mt7996_reconfig_complete,
+ };
