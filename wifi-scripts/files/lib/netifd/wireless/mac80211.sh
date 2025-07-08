@@ -161,7 +161,7 @@ mac80211_hostapd_setup_base() {
 	chan_ofs=0
 	[ "$band" = "6g" ] && chan_ofs=1
 
-	#if [ "$band" != "6g" ]; then
+	if [ "$band" != "6g" ]; then
 		ieee80211n=1
 		ht_capab=
 		case "$htmode" in
@@ -233,7 +233,7 @@ mac80211_hostapd_setup_base() {
 			ht_capab="$ht_capab$ht_capab_flags"
 			[ -n "$ht_capab" ] && append base_cfg "ht_capab=$ht_capab" "$N"
 		}
-	#fi
+	fi
 
 	# 802.11ac
 	enable_ac=0
@@ -471,7 +471,6 @@ mac80211_hostapd_setup_base() {
 			he_su_beamformer:${he_phy_cap:6:2}:0x80:$he_su_beamformer \
 			he_su_beamformee:${he_phy_cap:8:2}:0x1:$he_su_beamformee \
 			he_mu_beamformer:${he_phy_cap:8:2}:0x2:$he_mu_beamformer \
-			he_spr_psr_enabled:${he_phy_cap:14:2}:0x1:$he_spr_psr_enabled \
 			he_twt_required:${he_mac_cap:0:2}:0x6:$he_twt_required
 
 		if [ "$he_bss_color_enabled" -gt 0 ]; then
@@ -480,6 +479,7 @@ mac80211_hostapd_setup_base() {
 				append base_cfg "he_spr_non_srg_obss_pd_max_offset=$he_spr_non_srg_obss_pd_max_offset" "$N"
 				he_spr_sr_control=$((he_spr_sr_control | (1 << 2)))
 			}
+			[ "$he_spr_psr_enabled" -gt 0 ] && he_spr_psr_enabled=$((0x${he_phy_cap:14:2} & 0x1))
 			[ "$he_spr_psr_enabled" -gt 0 ] || he_spr_sr_control=$((he_spr_sr_control | (1 << 0)))
 			append base_cfg "he_spr_sr_control=$he_spr_sr_control" "$N"
 		else
@@ -746,8 +746,10 @@ mac80211_prepare_vif() {
 
 mac80211_prepare_iw_htmode() {
 	case "$htmode" in
-		VHT20|HT20|HE20) iw_htmode=HT20;;
-		HT40*|VHT40|VHT160|HE40)
+		HT20|VHT20|HE20|EHT20)
+			iw_htmode=HT20
+		;;
+		HT40*|VHT40|HE40|EHT40)
 			case "$band" in
 				2g)
 					case "$htmode" in
@@ -771,8 +773,11 @@ mac80211_prepare_iw_htmode() {
 			esac
 			[ "$auto_channel" -gt 0 ] && iw_htmode="HT40+"
 		;;
-		VHT80|HE80)
-			iw_htmode="80MHZ"
+		VHT80|HE80|EHT80)
+			iw_htmode="80MHz"
+		;;
+		VHT160|HE160|EHT160)
+			iw_htmode="160MHz"
 		;;
 		NONE|NOHT)
 			iw_htmode="NOHT"
@@ -850,10 +855,21 @@ mac80211_setup_adhoc() {
 
 mac80211_setup_mesh() {
 	json_get_vars ssid mesh_id mcast_rate
+	json_get_values iface_basic_rate_list basic_rate
 
 	mcval=
 	[ -n "$mcast_rate" ] && wpa_supplicant_add_rate mcval "$mcast_rate"
 	[ -n "$mesh_id" ] && ssid="$mesh_id"
+
+	br_list="$basic_rate_list"
+	if [ -n "$iface_basic_rate_list" ]; then
+		br_list="$iface_basic_rate_list"
+	fi
+
+	brstr=
+	for br in $br_list; do
+		wpa_supplicant_add_rate brstr "$br"
+	done
 
 	local prev
 	json_set_namespace wdev_uc prev
@@ -865,6 +881,7 @@ mac80211_setup_mesh() {
 	json_add_string freq "$freq"
 	json_add_string htmode "$iw_htmode"
 	[ -n "$mcval" ] && json_add_string mcast-rate "$mcval"
+	[ -n "$brstr" ] && json_add_string basic-rates "$brstr"
 	json_add_int beacon-interval "$beacon_int"
 	mac80211_add_mesh_params
 
