@@ -1,0 +1,58 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 20 Aug 2025 15:44:17 -0700
+Subject: [PATCH] wifi: mt76: mt7996: support MT7996/MT7995 single pcie
+
+MT7996 and MT7995 radios expect 2 PCIe connections by default. Allow
+operation with only 1 PCIe when the 2nd link is missing in order to
+support some newer SoCs.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/dma.c  |   16 ++++++++++++++--
+ mt7996/init.c |    3 ++-
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+--- a/mt7996/dma.c
++++ b/mt7996/dma.c
+@@ -12,6 +12,14 @@ int mt7996_init_tx_queues(struct mt7996_
+ {
+ 	struct mt7996_dev *dev = phy->dev;
+ 	u32 flags = 0;
++	int i;
++
++	if (phy->mt76->band_idx == MT_BAND1 && !dev->hif2 && is_mt7996(&dev->mt76)) {
++		phy->mt76->q_tx[0] = phy->mt76->dev->phys[MT_BAND0]->q_tx[0];
++		for (i = 1; i <= MT_TXQ_PSD; i++)
++			phy->mt76->q_tx[i] = phy->mt76->q_tx[0];
++		return 0;
++	}
+ 
+ 	if (mtk_wed_device_active(wed)) {
+ 		ring_base += MT_TXQ_ID(0) * MT_RING_SIZE;
+@@ -109,8 +117,12 @@ static void mt7996_dma_config(struct mt7
+ 	/* data tx queue */
+ 	TXQ_CONFIG(0, WFDMA0, MT_INT_TX_DONE_BAND0, MT7996_TXQ_BAND0);
+ 	if (is_mt7996(&dev->mt76)) {
+-		TXQ_CONFIG(1, WFDMA0, MT_INT_TX_DONE_BAND1, MT7996_TXQ_BAND1);
+-		TXQ_CONFIG(2, WFDMA0, MT_INT_TX_DONE_BAND2, MT7996_TXQ_BAND2);
++		if (dev->hif2) {
++			TXQ_CONFIG(1, WFDMA0, MT_INT_TX_DONE_BAND1, MT7996_TXQ_BAND1);
++			TXQ_CONFIG(2, WFDMA0, MT_INT_TX_DONE_BAND2, MT7996_TXQ_BAND2);
++		} else {
++			TXQ_CONFIG(2, WFDMA0, MT_INT_TX_DONE_BAND1, MT7996_TXQ_BAND1);
++		}
+ 	} else {
+ 		TXQ_CONFIG(1, WFDMA0, MT_INT_TX_DONE_BAND1, MT7996_TXQ_BAND1);
+ 	}
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -594,7 +594,8 @@ void mt7996_mac_init(struct mt7996_dev *
+ 
+ 	/* rro module init */
+ 	if (is_mt7996(&dev->mt76))
+-		mt7996_mcu_set_rro(dev, UNI_RRO_SET_PLATFORM_TYPE, 2);
++		mt7996_mcu_set_rro(dev, UNI_RRO_SET_PLATFORM_TYPE,
++				   dev->hif2 ? 2 : 0);
+ 	else
+ 		mt7996_mcu_set_rro(dev, UNI_RRO_SET_PLATFORM_TYPE,
+ 				   dev->hif2 ? 7 : 0);
