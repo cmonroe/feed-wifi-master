@@ -16,53 +16,63 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1307,6 +1307,7 @@ enum {
+@@ -1318,6 +1318,7 @@ enum {
  	MCU_UNI_CMD_CHANNEL_SWITCH = 0x34,
  	MCU_UNI_CMD_THERMAL = 0x35,
  	MCU_UNI_CMD_VOW = 0x37,
 +	MCU_UNI_CMD_PP = 0x38,
  	MCU_UNI_CMD_FIXED_RATE_TABLE = 0x40,
+ 	MCU_UNI_CMD_TESTMODE_CTRL = 0x46,
  	MCU_UNI_CMD_RRO = 0x57,
- 	MCU_UNI_CMD_OFFCH_SCAN_CTRL = 0x58,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4588,3 +4588,33 @@ int mt7996_mcu_cp_support(struct mt7996_
+@@ -4904,3 +4904,43 @@ int mt7996_mcu_cp_support(struct mt7996_
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WA_EXT_CMD(CP_SUPPORT),
  				 &cp_mode, sizeof(cp_mode), true);
  }
 +
-+int mt7996_mcu_set_pp_en(struct mt7996_phy *phy, bool auto_mode,
-+			 u8 force_bitmap_ctrl, u16 bitmap)
++int mt7996_mcu_set_pp_en(struct mt7996_phy *phy, u8 mode, u16 bitmap)
 +{
 +	struct mt7996_dev *dev = phy->dev;
++	bool pp_auto = (mode == PP_FW_MODE);
 +	struct {
-+		u8 _rsv[4];
++		u8 _rsv1[4];
 +
 +		__le16 tag;
 +		__le16 len;
-+		bool mgmt_mode;
++		u8 mgmt_mode;
 +		u8 band_idx;
 +		u8 force_bitmap_ctrl;
-+		bool auto_mode;
++		u8 auto_mode;
 +		__le16 bitmap;
 +		u8 _rsv2[2];
 +	} __packed req = {
 +		.tag = cpu_to_le16(UNI_CMD_PP_EN_CTRL),
 +		.len = cpu_to_le16(sizeof(req) - 4),
 +
-+		.mgmt_mode = !auto_mode,
++		.mgmt_mode = !pp_auto,
 +		.band_idx = phy->mt76->band_idx,
-+		.force_bitmap_ctrl = force_bitmap_ctrl,
-+		.auto_mode = auto_mode,
++		.force_bitmap_ctrl = (mode == PP_USR_MODE) ? 2 : 0,
++		.auto_mode = pp_auto,
 +		.bitmap = cpu_to_le16(bitmap),
 +	};
++
++	if (phy->mt76->chandef.chan->band == NL80211_BAND_2GHZ ||
++	    mode > PP_USR_MODE)
++		return 0;
++
++	if (bitmap && phy->punct_bitmap == bitmap)
++		return 0;
++
++	phy->punct_bitmap = bitmap;
++	phy->pp_mode = mode;
 +
 +	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
 +				 &req, sizeof(req), false);
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -923,6 +923,10 @@ enum {
+@@ -951,6 +951,16 @@ enum {
  	MT7996_SEC_MODE_MAX,
  };
  
@@ -70,17 +80,32 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +	UNI_CMD_PP_EN_CTRL,
 +};
 +
++enum pp_mode {
++	PP_DISABLE = 0,
++	PP_FW_MODE,
++	PP_USR_MODE,
++};
++
  #define MT7996_PATCH_SEC		GENMASK(31, 24)
  #define MT7996_PATCH_SCRAMBLE_KEY	GENMASK(15, 8)
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -683,6 +683,8 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
- 				     struct ieee80211_vif *vif,
- 				     struct ieee80211_sta *sta);
+@@ -336,6 +336,9 @@ struct mt7996_phy {
+ 
+ 	bool has_aux_rx;
+ 	bool counter_reset;
++
++	u8 pp_mode;
++	u16 punct_bitmap;
+ };
+ 
+ struct mt7996_dev {
+@@ -802,6 +805,7 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
+ 				     struct mt7996_vif_link *link,
+ 				     struct mt7996_sta_link *msta_link);
  int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode);
-+int mt7996_mcu_set_pp_en(struct mt7996_phy *phy, bool auto_mode, u8 force_bitmap,
-+			 u16 bitmap);
++int mt7996_mcu_set_pp_en(struct mt7996_phy *phy, u8 mode, u16 bitmap);
  #ifdef CONFIG_MAC80211_DEBUGFS
  void mt7996_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  			    struct ieee80211_sta *sta, struct dentry *dir);

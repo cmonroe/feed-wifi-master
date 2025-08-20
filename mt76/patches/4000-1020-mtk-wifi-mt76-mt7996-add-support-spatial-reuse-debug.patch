@@ -28,7 +28,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1057,6 +1057,7 @@ enum {
+@@ -1060,6 +1060,7 @@ enum {
  	MCU_UNI_EVENT_BSS_BEACON_LOSS = 0x0c,
  	MCU_UNI_EVENT_SCAN_DONE = 0x0e,
  	MCU_UNI_EVENT_RDD_REPORT = 0x11,
@@ -46,10 +46,10 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
 +#include "mtk_mcu.h"
 +#endif
  
- static bool mt7996_dev_running(struct mt7996_dev *dev)
+ int mt7996_run(struct mt7996_phy *phy)
  {
-@@ -72,6 +75,9 @@ int mt7996_run(struct ieee80211_hw *hw)
- 		goto out;
+@@ -39,6 +42,9 @@ int mt7996_run(struct mt7996_phy *phy)
+ 		return ret;
  
  #ifdef CONFIG_MTK_DEBUG
 +	phy->sr_enable = true;
@@ -60,7 +60,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -730,6 +730,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -749,6 +749,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_WED_RRO:
  		mt7996_mcu_wed_rro_event(dev, skb);
  		break;
@@ -74,20 +74,22 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -340,6 +340,9 @@ struct mt7996_phy {
- #ifdef CONFIG_MTK_VENDOR
- 	spinlock_t amnt_lock;
- 	struct mt7996_air_monitor_ctrl amnt_ctrl;
+@@ -368,6 +368,11 @@ struct mt7996_phy {
+ 	bool sku_path_en;
+ 
+ 	u8 muru_onoff;
 +
++#ifdef CONFIG_MTK_VENDOR
 +	bool sr_enable:1;
 +	bool enhanced_sr_enable:1;
- #endif
++#endif
  };
  
-@@ -798,6 +801,8 @@ enum edcca_bw_id {
- #ifdef CONFIG_MTK_DEBUG
- int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
+ struct mt7996_dev {
+@@ -895,6 +900,8 @@ enum edcca_bw_id {
+ int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
+ int mt7996_mcu_set_muru_cfg(struct mt7996_dev *dev, void *data);
 +int mt7996_mcu_set_sr_enable(struct mt7996_phy *phy, u8 action, u64 val, bool set);
 +void mt7996_mcu_rx_sr_event(struct mt7996_dev *dev, struct sk_buff *skb);
  #endif
@@ -95,7 +97,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2860,6 +2860,83 @@ static int mt7996_show_eeprom_mode(struc
+@@ -2835,6 +2835,83 @@ static int mt7996_show_eeprom_mode(struc
  	return 0;
  }
  
@@ -176,24 +178,31 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
 +}
 +DEFINE_SHOW_ATTRIBUTE(mt7996_sr_scene_cond);
 +
- int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
+ int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir)
  {
- 	struct mt7996_dev *dev = phy->dev;
-@@ -2942,6 +3019,11 @@ int mt7996_mtk_init_debugfs(struct mt799
- 	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
- 	debugfs_create_file("scs_enable", 0200, dir, phy, &fops_scs_enable);
+ 	struct ieee80211_hw *hw = mt76_hw(dev);
+@@ -2927,6 +3004,18 @@ int mt7996_mtk_init_debugfs(struct mt799
  
-+	debugfs_create_file("sr_enable", 0600, dir, phy, &fops_sr_enable);
-+	debugfs_create_file("sr_enhanced_enable", 0600, dir, phy, &fops_sr_enhanced_enable);
-+	debugfs_create_file("sr_stats", 0400, dir, phy, &mt7996_sr_stats_fops);
-+	debugfs_create_file("sr_scene_cond", 0400, dir, phy, &mt7996_sr_scene_cond_fops);
+ 		snprintf(buf, sizeof(buf), "txpower_path%d", i);
+ 		debugfs_create_file(buf, 0600, dir, phy, &mt7996_txpower_path_fops);
 +
- 	return 0;
- }
++		snprintf(buf, sizeof(buf), "sr_enable%d", i);
++		debugfs_create_file(buf, 0600, dir, phy, &fops_sr_enable);
++
++		snprintf(buf, sizeof(buf), "sr_enhanced_enable%d", i);
++		debugfs_create_file(buf, 0600, dir, phy, &fops_sr_enhanced_enable);
++
++		snprintf(buf, sizeof(buf), "sr_stats%d", i);
++		debugfs_create_file(buf, 0400, dir, phy, &mt7996_sr_stats_fops);
++
++		snprintf(buf, sizeof(buf), "sr_scene_cond%d", i);
++		debugfs_create_file(buf, 0400, dir, phy, &mt7996_sr_scene_cond_fops);
+ 	}
  
+ 	return 0;
 --- a/mt7996/mtk_mcu.c
 +++ b/mt7996/mtk_mcu.c
-@@ -145,4 +145,116 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
+@@ -173,4 +173,116 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
  
  	return 0;
  }
@@ -312,7 +321,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  #endif
 --- a/mt7996/mtk_mcu.h
 +++ b/mt7996/mtk_mcu.h
-@@ -123,4 +123,60 @@ enum {
+@@ -29,6 +29,62 @@ enum {
  	EDCCA_JAPAN = 3
  };
  
@@ -373,3 +382,5 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
 +	__le32 sr_ampdu_mpdu_acked_cnt;
 +};
  #endif
+ 
+ struct txpower_basic_info {

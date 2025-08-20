@@ -82,7 +82,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_SKB_HEAD_LEN		256
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1059,8 +1059,10 @@ enum {
+@@ -1062,8 +1062,10 @@ enum {
  	MCU_UNI_EVENT_RDD_REPORT = 0x11,
  	MCU_UNI_EVENT_ROC = 0x27,
  	MCU_UNI_EVENT_TX_DONE = 0x2d,
@@ -137,8 +137,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
  static int mt7996_check_eeprom(struct mt7996_dev *dev)
  {
- #define FEM_INT				0
-@@ -148,6 +184,36 @@ static bool mt7996_eeprom_variant_valid(
+ 	u8 *eeprom = dev->mt76.eeprom.data;
+@@ -152,6 +188,36 @@ static bool mt7996_eeprom_variant_valid(
  	return true;
  }
  
@@ -240,7 +240,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF2_TX_PATH_BAND2		GENMASK(5, 3)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -369,6 +369,9 @@ struct mt7996_dev {
+@@ -433,6 +433,9 @@ struct mt7996_dev {
  	struct dentry *debugfs_dir;
  	struct rchan *relay_fwlog;
  
@@ -250,10 +250,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	struct {
  		u16 table_mask;
  		u8 n_agrt;
-@@ -510,6 +513,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
- int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
+@@ -609,6 +612,7 @@ int mt7996_eeprom_get_target_power(struc
  				   struct ieee80211_channel *chan);
  s8 mt7996_eeprom_get_power_delta(struct mt7996_dev *dev, int band);
+ bool mt7996_eeprom_has_background_radar(struct mt7996_dev *dev);
 +int mt7996_get_dpd_per_band_size(struct mt7996_dev *dev, enum nl80211_band band);
  int mt7996_dma_init(struct mt7996_dev *dev);
  void mt7996_dma_reset(struct mt7996_dev *dev, bool force);

@@ -20,8 +20,8 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 
 --- a/mt76_connac.h
 +++ b/mt76_connac.h
-@@ -430,7 +430,7 @@ u16 mt76_connac2_mac_tx_rate_val(struct
- 				 struct ieee80211_vif *vif,
+@@ -435,7 +435,7 @@ u16 mt76_connac2_mac_tx_rate_val(struct
+ 				 struct ieee80211_bss_conf *conf,
  				 bool beacon, bool mcast);
  bool mt76_connac2_mac_fill_txs(struct mt76_dev *dev, struct mt76_wcid *wcid,
 -			       __le32 *txs_data);
@@ -31,7 +31,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt76_connac2_mac_decode_he_radiotap(struct mt76_dev *dev,
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -618,7 +618,7 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -621,7 +621,7 @@ void mt76_connac2_mac_write_txwi(struct
  EXPORT_SYMBOL_GPL(mt76_connac2_mac_write_txwi);
  
  bool mt76_connac2_mac_fill_txs(struct mt76_dev *dev, struct mt76_wcid *wcid,
@@ -40,7 +40,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  {
  	struct mt76_sta_stats *stats = &wcid->stats;
  	struct ieee80211_supported_band *sband;
-@@ -630,8 +630,7 @@ bool mt76_connac2_mac_fill_txs(struct mt
+@@ -633,8 +633,7 @@ bool mt76_connac2_mac_fill_txs(struct mt
  	txs = le32_to_cpu(txs_data[0]);
  
  	/* PPDU based reporting */
@@ -50,7 +50,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		stats->tx_bytes +=
  			le32_get_bits(txs_data[5], MT_TXS5_MPDU_TX_BYTE) -
  			le32_get_bits(txs_data[7], MT_TXS7_MPDU_RETRY_BYTE);
-@@ -652,6 +651,9 @@ bool mt76_connac2_mac_fill_txs(struct mt
+@@ -655,6 +654,9 @@ bool mt76_connac2_mac_fill_txs(struct mt
  		}
  	}
  
@@ -60,7 +60,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	txrate = FIELD_GET(MT_TXS0_TX_RATE, txs);
  
  	rate.mcs = FIELD_GET(MT_TX_RATE_IDX, txrate);
-@@ -761,7 +763,7 @@ bool mt76_connac2_mac_add_txs_skb(struct
+@@ -764,7 +766,7 @@ bool mt76_connac2_mac_add_txs_skb(struct
  			!!(info->flags & IEEE80211_TX_STAT_ACK);
  		info->status.rates[0].idx = -1;
  
@@ -71,7 +71,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	mt76_tx_status_unlock(dev, &list);
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -535,8 +535,7 @@ mt7915_mac_init_band(struct mt7915_dev *
+@@ -545,8 +545,7 @@ mt7915_mac_init_band(struct mt7915_dev *
  	/* MT_TXD5_TX_STATUS_HOST (MPDU format) has higher priority than
  	 * MT_AGG_ACR_PPDU_TXS2H (PPDU format) even though ACR bit is set.
  	 */
@@ -83,7 +83,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -747,17 +747,6 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -740,17 +740,6 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	if (!wcid)
  		wcid = &dev->mt76.global_wcid;
  
@@ -101,7 +101,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
  
-@@ -1022,7 +1011,7 @@ static void mt7915_mac_add_txs(struct mt
+@@ -1010,7 +999,7 @@ static void mt7915_mac_add_txs(struct mt
  	msta = container_of(wcid, struct mt7915_sta, wcid);
  
  	if (le32_get_bits(txs_data[0], MT_TXS0_TXS_FORMAT) == MT_TXS_PPDU_FMT)
@@ -122,7 +122,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
 --- a/tx.c
 +++ b/tx.c
-@@ -136,9 +136,8 @@ mt76_tx_status_skb_add(struct mt76_dev *
+@@ -137,9 +137,8 @@ mt76_tx_status_skb_add(struct mt76_dev *
  
  	if (!(info->flags & (IEEE80211_TX_CTL_REQ_TX_STATUS |
  			     IEEE80211_TX_CTL_RATE_CTRL_PROBE))) {
@@ -136,7 +136,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		return MT_PACKET_ID_NO_SKB;
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -779,7 +779,6 @@ int mt7915_mac_sta_add(struct mt76_dev *
+@@ -781,7 +781,6 @@ int mt7915_mac_sta_add(struct mt76_dev *
  	msta->wcid.sta_disabled = 1;
  	msta->wcid.idx = idx;
  	msta->wcid.phy_idx = ext_phy;

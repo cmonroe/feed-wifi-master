@@ -32,7 +32,7 @@
  		i++;
  	}
  
-@@ -792,6 +805,25 @@ static void acs_update_puncturing_bitmap
+@@ -795,6 +808,25 @@ static void acs_update_puncturing_bitmap
  }
  #endif /* CONFIG_IEEE80211BE */
  
@@ -58,7 +58,7 @@
  
  static bool
  acs_usable_bw320_chan(struct hostapd_iface *iface,
-@@ -873,6 +905,12 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -876,6 +908,12 @@ acs_find_ideal_chan_mode(struct hostapd_
  		    iface->conf->acs_exclude_dfs)
  			continue;
  
@@ -71,8 +71,8 @@
  		if (!is_in_chanlist(iface, chan))
  			continue;
  
-@@ -901,8 +939,8 @@ acs_find_ideal_chan_mode(struct hostapd_
- 		     is_6ghz_freq(chan->freq)) &&
+@@ -903,8 +941,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		    iface->conf->ieee80211n &&
  		    !acs_usable_bw_chan(chan, ACS_BW40)) {
  			wpa_printf(MSG_WARNING,
 -				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
@@ -82,9 +82,9 @@
  			continue;
  		}
  
-@@ -913,8 +951,8 @@ acs_find_ideal_chan_mode(struct hostapd_
- 			    CONF_OPER_CHWIDTH_80MHZ &&
- 			    !acs_usable_bw_chan(chan, ACS_BW80)) {
+@@ -913,15 +951,15 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		     iface->conf->ieee80211be)) {
+ 			if (bw == 80 && !acs_usable_bw_chan(chan, ACS_BW80)) {
  				wpa_printf(MSG_WARNING,
 -					   "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
 -					   chan->chan);
@@ -93,9 +93,7 @@
  				continue;
  			}
  
-@@ -922,8 +960,8 @@ acs_find_ideal_chan_mode(struct hostapd_
- 			    CONF_OPER_CHWIDTH_160MHZ &&
- 			    !acs_usable_bw_chan(chan, ACS_BW160)) {
+ 			if (bw == 160 && !acs_usable_bw_chan(chan, ACS_BW160)) {
  				wpa_printf(MSG_WARNING,
 -					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
 -					   chan->chan);
@@ -104,7 +102,18 @@
  				continue;
  			}
  		}
-@@ -944,9 +982,28 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -932,8 +970,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 			    !acs_usable_bw320_chan(iface, chan,
+ 						   &bw320_offset)) {
+ 				wpa_printf(MSG_WARNING,
+-					   "ACS: Channel %d: not allowed as primary channel for 320 MHz bandwidth",
+-					   chan->chan);
++					   "ACS: Channel %d (freq %d): not allowed as primary channel for 320 MHz bandwidth",
++					   chan->chan, chan->freq);
+ 				continue;
+ 			}
+ 		}
+@@ -946,9 +984,28 @@ acs_find_ideal_chan_mode(struct hostapd_
  			best = chan;
  		}
  
@@ -136,7 +145,7 @@
  			if (!adj_chan)
  				break;
  
-@@ -963,6 +1020,13 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -965,6 +1022,13 @@ acs_find_ideal_chan_mode(struct hostapd_
  			factor += adj_chan->interference_factor;
  			total_weight += 1;
  
@@ -150,7 +159,7 @@
  			/* find the best channel in this segment */
  			if (!best || adj_chan->interference_factor <
  			    best->interference_factor)
-@@ -1053,12 +1117,12 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -1055,12 +1119,12 @@ acs_find_ideal_chan_mode(struct hostapd_
  		if (bias) {
  			factor *= bias->bias;
  			wpa_printf(MSG_WARNING,
@@ -167,7 +176,7 @@
  		}
  
  		if (acs_usable_chan(chan) &&
-@@ -1136,7 +1200,9 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1138,7 +1202,9 @@ acs_find_ideal_chan(struct hostapd_iface
  		}
  	}
  

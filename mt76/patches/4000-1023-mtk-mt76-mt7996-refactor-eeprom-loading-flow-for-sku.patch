@@ -38,12 +38,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -45,33 +45,14 @@ const u32 dpd_6g_bw320_ch_num = ARRAY_SI
- 
+@@ -46,30 +46,13 @@ const u32 dpd_6g_bw320_ch_num = ARRAY_SI
  static int mt7996_check_eeprom(struct mt7996_dev *dev)
  {
--#define FEM_INT				0
--#define FEM_EXT				3
  	u8 *eeprom = dev->mt76.eeprom.data;
 -	u8 i, fem[__MT_MAX_BAND], fem_type;
  	u16 val = get_unaligned_le16(eeprom);
@@ -52,9 +49,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 -		fem[i] = eeprom[MT_EE_WIFI_CONF + 6 + i] & MT_EE_WIFI_PA_LNA_CONFIG;
 -
  	switch (val) {
- 	case 0x7990:
+ 	case MT7996_DEVICE_ID:
  		return is_mt7996(&dev->mt76) ? 0 : -EINVAL;
- 	case 0x7992:
+ 	case MT7992_DEVICE_ID:
 -		if (dev->fem_type == MT7996_FEM_UNSET)
 -			return is_mt7992(&dev->mt76) ? 0 : -EINVAL;
 -
@@ -70,10 +67,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 -		return (is_mt7992(&dev->mt76) ? 0 : -EINVAL) |
 -		       (dev->var.fem == fem_type ? 0 : -EINVAL);
 +		return is_mt7992(&dev->mt76) ? 0 : -EINVAL;
+ 	case MT7990_DEVICE_ID:
+ 		return is_mt7990(&dev->mt76) ? 0 : -EINVAL;
  	default:
- 		return -EINVAL;
- 	}
-@@ -79,9 +60,6 @@ static int mt7996_check_eeprom(struct mt
+@@ -79,9 +62,6 @@ static int mt7996_check_eeprom(struct mt
  
  const char *mt7996_eeprom_name(struct mt7996_dev *dev)
  {
@@ -81,9 +78,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 -		return dev->mt76.bin_file_name;
 -
  	switch (mt76_chip(&dev->mt76)) {
- 	case 0x7992:
+ 	case MT7992_DEVICE_ID:
  		switch (dev->var.type) {
-@@ -229,10 +207,7 @@ mt7996_eeprom_check_or_use_default(struc
+@@ -233,10 +213,7 @@ mt7996_eeprom_check_or_use_default(struc
  		return ret;
  
  	if (!fw || !fw->data) {
@@ -95,7 +92,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		ret = -EINVAL;
  		goto out;
  	}
-@@ -242,6 +217,7 @@ mt7996_eeprom_check_or_use_default(struc
+@@ -246,6 +223,7 @@ mt7996_eeprom_check_or_use_default(struc
  
  	dev_warn(dev->mt76.dev, "eeprom load fail, use default bin\n");
  	memcpy(eeprom, fw->data, MT7996_EEPROM_SIZE);
@@ -105,7 +102,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3499,7 +3499,7 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -3767,7 +3767,7 @@ int mt7996_mcu_set_chan_info(struct mt79
  				 &req, sizeof(req), true);
  }
  
@@ -124,7 +121,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		[MT7996_FEM_EXT] = "eFEM",
  		[MT7996_FEM_INT] = "iFEM",
  		[MT7996_FEM_MIX] = "mixed FEM",
-@@ -2851,7 +2850,7 @@ static int mt7996_show_eeprom_mode(struc
+@@ -2826,7 +2825,7 @@ static int mt7996_show_eeprom_mode(struc
  			seq_printf(s, "   flash mode\n");
  		break;
  	case BIN_FILE_MODE:

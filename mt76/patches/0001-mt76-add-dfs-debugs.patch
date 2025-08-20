@@ -26,31 +26,31 @@
  }
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -313,6 +313,12 @@ mt7915_mcu_rx_radar_detected(struct mt79
- 	    dev->mt76.phys[MT_BAND1])
- 		mphy = dev->mt76.phys[MT_BAND1];
+@@ -336,6 +336,12 @@ mt7915_mcu_rx_radar_detected(struct mt79
+ 	if (!mphy)
+ 		return;
  
-+	dev_info(dev->mt76.dev, "%s: RADAR DETECTED r->band_idx=%d\n", __func__, r->band_idx);
++	dev_info(dev->mt76.dev, "%s: RADAR DETECTED r->rdd_idx=%d\n", __func__, r->rdd_idx);
 +	dev_dbg(dev->mt76.dev, "%s: long_detected=%u constant_prf_detected=%u staggered_prf_detected=%u\n",
 +			__func__, r->long_detected, r->constant_prf_detected, r->staggered_prf_detected);
 +	dev_dbg(dev->mt76.dev, "%s: radar_type_idx=%u periodic_pulse_num=%u long_pulse_num=%u hw_pulse_num=%u\n",
 +			__func__, r->radar_type_idx, r->periodic_pulse_num, r->long_pulse_num, r->hw_pulse_num);
 +
- 	if (r->band_idx == MT_RX_SEL2)
+ 	if (r->rdd_idx == MT_RDD_IDX_BACKGROUND)
  		cfg80211_background_radar_event(mphy->hw->wiphy,
  						&dev->rdd2_chandef,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -378,6 +378,12 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -400,6 +400,12 @@ mt7996_mcu_rx_radar_detected(struct mt79
  	if (!mphy)
  		return;
  
-+	dev_info(dev->mt76.dev, "%s: RADAR DETECTED r->band_idx=%d\n", __func__, r->band_idx);
++	dev_info(dev->mt76.dev, "%s: RADAR DETECTED r->rdd_idx=%d\n", __func__, r->rdd_idx);
 +	dev_dbg(dev->mt76.dev, "%s: long_detected=%u constant_prf_detected=%u staggered_prf_detected=%u\n",
 +			__func__, r->long_detected, r->constant_prf_detected, r->staggered_prf_detected);
 +	dev_dbg(dev->mt76.dev, "%s: radar_type_idx=%u periodic_pulse_num=%u long_pulse_num=%u hw_pulse_num=%u\n",
 +			__func__, r->radar_type_idx, r->periodic_pulse_num, r->long_pulse_num, r->hw_pulse_num);
 +
- 	if (r->band_idx == MT_RX_SEL2)
+ 	if (r->rdd_idx == MT_RDD_IDX_BACKGROUND)
  		cfg80211_background_radar_event(mphy->hw->wiphy,
  						&dev->rdd2_chandef,

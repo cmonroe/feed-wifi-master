@@ -73,7 +73,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int mt7996_check_eeprom(struct mt7996_dev *dev)
  {
  	u8 *eeprom = dev->mt76.eeprom.data;
-@@ -177,36 +198,6 @@ static bool mt7996_eeprom_variant_valid(
+@@ -183,36 +204,6 @@ static bool mt7996_eeprom_variant_valid(
  	return true;
  }
  
@@ -208,7 +208,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define RF_PRE_CAL				BIT(29)
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3710,13 +3710,11 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -3978,13 +3978,11 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	enum nl80211_chan_width bw = chandef->width;
  	const struct ieee80211_channel *chan_list;
  	u32 cal_id, chan_list_size, base_offset = 0, offs = MT_EE_DO_PRE_CAL;
@@ -224,7 +224,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	switch (band) {
  	case NL80211_BAND_2GHZ:
-@@ -3732,27 +3730,35 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4000,27 +3998,35 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  			return 0;
  		cal_id = RF_DPD_FLAT_CAL;
  		chan_list = dpd_2g_ch_list_bw20;
@@ -266,7 +266,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			return 0;
  		break;
  	case NL80211_BAND_6GHZ:
-@@ -3760,20 +3766,27 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4028,20 +4034,27 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  		cal_id = RF_DPD_FLAT_6G_CAL;
  		chan_list = mphy->sband_6g.sband.channels;
  		chan_list_size = mphy->sband_6g.sband.n_channels;
@@ -299,7 +299,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		} else if (bw > NL80211_CHAN_WIDTH_20) {
  			/* apply (center channel - 2)'s dpd cal data for bw 40/80 channels */
  			channel -= 2;
-@@ -3793,9 +3806,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4061,9 +4074,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	if (idx == chan_list_size)
  		return -EINVAL;
  
@@ -313,9 +313,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -198,6 +198,19 @@ struct mt7996_twt_flow {
- 
- DECLARE_EWMA(avg_signal, 10, 8)
+@@ -252,6 +252,19 @@ struct mt7996_sta_link {
+ 	struct rcu_head rcu_head;
+ };
  
 +enum mt7996_dpd_ch_num {
 +	DPD_CH_NUM_BW20_2G,
@@ -331,9 +331,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +};
 +
  struct mt7996_sta {
- 	struct mt76_wcid wcid; /* must be first */
- 
-@@ -440,6 +453,10 @@ struct mt7996_dev {
+ 	struct mt7996_sta_link deflink; /* must be first */
+ 	struct mt7996_sta_link __rcu *link[IEEE80211_MLD_MAX_NUM_LINKS];
+@@ -476,6 +489,10 @@ struct mt7996_dev {
  
  	void *cal;
  	u32 cur_prek_offset;
@@ -344,10 +344,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	struct {
  		u16 table_mask;
-@@ -583,7 +600,6 @@ int mt7996_eeprom_parse_hw_cap(struct mt
- int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
+@@ -654,7 +671,6 @@ int mt7996_eeprom_get_target_power(struc
  				   struct ieee80211_channel *chan);
  s8 mt7996_eeprom_get_power_delta(struct mt7996_dev *dev, int band);
+ bool mt7996_eeprom_has_background_radar(struct mt7996_dev *dev);
 -int mt7996_get_dpd_per_band_size(struct mt7996_dev *dev, enum nl80211_band band);
  int mt7996_dma_init(struct mt7996_dev *dev);
  void mt7996_dma_reset(struct mt7996_dev *dev, bool force);

@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1405,6 +1405,61 @@ mt7996_twt_teardown_request(struct ieee8
+@@ -2111,6 +2111,61 @@ mt7996_twt_teardown_request(struct ieee8
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -79,15 +79,15 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int
  mt7996_set_radar_background(struct ieee80211_hw *hw,
  			    struct cfg80211_chan_def *chandef)
-@@ -1413,6 +1468,7 @@ mt7996_set_radar_background(struct ieee8
- 	struct mt7996_dev *dev = phy->dev;
+@@ -2119,6 +2174,7 @@ mt7996_set_radar_background(struct ieee8
+ 	struct mt7996_phy *phy;
  	int ret = -EINVAL;
  	bool running;
 +	struct cfg80211_chan_def ifem_chandef = {};
  
- 	mutex_lock(&dev->mt76.mutex);
- 
-@@ -1425,13 +1481,14 @@ mt7996_set_radar_background(struct ieee8
+ 	if (chandef)
+ 		phy = mt7996_band_phy(dev, chandef->chan->band);
+@@ -2138,13 +2194,14 @@ mt7996_set_radar_background(struct ieee8
  		goto out;
  	}
  
@@ -104,7 +104,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		ret = mt7996_mcu_rdd_background_enable(phy, NULL);
  		if (ret)
  			goto out;
-@@ -1440,7 +1497,9 @@ mt7996_set_radar_background(struct ieee8
+@@ -2153,7 +2210,9 @@ mt7996_set_radar_background(struct ieee8
  			goto update_phy;
  	}
  
@@ -117,12 +117,12 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -387,12 +387,14 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -409,12 +409,14 @@ mt7996_mcu_rx_radar_detected(struct mt79
  	dev_dbg(dev->mt76.dev, "%s: radar_type_idx=%u periodic_pulse_num=%u long_pulse_num=%u hw_pulse_num=%u\n",
  			__func__, r->radar_type_idx, r->periodic_pulse_num, r->long_pulse_num, r->hw_pulse_num);
  
--	if (r->band_idx == MT_RX_SEL2)
-+	if (r->band_idx == MT_RX_SEL2) {
+-	if (r->rdd_idx == MT_RDD_IDX_BACKGROUND)
++	if (r->rdd_idx == MT_RDD_IDX_BACKGROUND) {
 +		dev->bg_nxt_freq = 0;
  		cfg80211_background_radar_event(mphy->hw->wiphy,
  						&dev->rdd2_chandef,
@@ -136,7 +136,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -426,6 +426,8 @@ struct mt7996_dev {
+@@ -462,6 +462,8 @@ struct mt7996_dev {
  	bool bin_file_mode;
  	u8 eeprom_mode;
  

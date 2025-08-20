@@ -1,6 +1,6 @@
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -457,7 +457,13 @@ static int mt7996_eeprom_load_precal(str
+@@ -465,7 +465,13 @@ static int mt7996_eeprom_load_precal(str
  
  	mt7996_eeprom_init_precal(dev);
  
@@ -15,7 +15,7 @@
  		return 0;
  
  	size = MT_EE_CAL_GROUP_SIZE + MT_EE_CAL_DPD_SIZE;
-@@ -473,7 +479,15 @@ static int mt7996_eeprom_load_precal(str
+@@ -481,7 +487,15 @@ static int mt7996_eeprom_load_precal(str
  	if (!ret)
   		return ret;
  

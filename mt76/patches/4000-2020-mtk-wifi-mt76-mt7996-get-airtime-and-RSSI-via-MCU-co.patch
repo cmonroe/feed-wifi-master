@@ -24,7 +24,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -346,12 +346,16 @@ struct mt76_sta_stats {
+@@ -358,12 +358,16 @@ struct mt76_sta_stats {
  	u32 tx_packets;		/* unit: MSDU */
  	u32 tx_retries;
  	u32 tx_failed;
@@ -41,7 +41,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  };
  
  enum mt76_wcid_flags {
-@@ -1352,6 +1356,22 @@ static inline int mt76_decr(int val, int
+@@ -1419,6 +1423,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -66,7 +66,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1401,11 +1401,23 @@ enum {
+@@ -1415,11 +1415,23 @@ enum {
  	UNI_OFFLOAD_OFFLOAD_BMC_RPY_DETECT,
  };
  
@@ -102,7 +102,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static const struct mt7996_dfs_radar_spec etsi_radar_specs = {
  	.pulse_th = { 110, -10, -80, 40, 5200, 128, 5200 },
  	.radar_pattern = {
-@@ -92,104 +90,6 @@ u32 mt7996_mac_wtbl_lmac_addr(struct mt7
+@@ -111,119 +109,6 @@ u32 mt7996_mac_wtbl_lmac_addr(struct mt7
  	return MT_WTBL_LMAC_OFFS(wcid, dw);
  }
  
@@ -114,10 +114,13 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 -		[IEEE80211_AC_VI] = 4,
 -		[IEEE80211_AC_VO] = 6
 -	};
+-	struct mt7996_sta_link *msta_link;
+-	struct mt76_vif_link *mlink;
 -	struct ieee80211_sta *sta;
 -	struct mt7996_sta *msta;
 -	u32 tx_time[IEEE80211_NUM_ACS], rx_time[IEEE80211_NUM_ACS];
 -	LIST_HEAD(sta_poll_list);
+-	struct mt76_wcid *wcid;
 -	int i;
 -
 -	spin_lock_bh(&dev->mt76.sta_poll_lock);
@@ -137,25 +140,28 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 -			spin_unlock_bh(&dev->mt76.sta_poll_lock);
 -			break;
 -		}
--		msta = list_first_entry(&sta_poll_list,
--					struct mt7996_sta, wcid.poll_list);
--		list_del_init(&msta->wcid.poll_list);
+-		msta_link = list_first_entry(&sta_poll_list,
+-					     struct mt7996_sta_link,
+-					     wcid.poll_list);
+-		msta = msta_link->sta;
+-		wcid = &msta_link->wcid;
+-		list_del_init(&wcid->poll_list);
 -		spin_unlock_bh(&dev->mt76.sta_poll_lock);
 -
--		idx = msta->wcid.idx;
+-		idx = wcid->idx;
 -
 -		/* refresh peer's airtime reporting */
 -		addr = mt7996_mac_wtbl_lmac_addr(dev, idx, 20);
 -
 -		for (i = 0; i < IEEE80211_NUM_ACS; i++) {
--			u32 tx_last = msta->airtime_ac[i];
--			u32 rx_last = msta->airtime_ac[i + 4];
+-			u32 tx_last = msta_link->airtime_ac[i];
+-			u32 rx_last = msta_link->airtime_ac[i + 4];
 -
--			msta->airtime_ac[i] = mt76_rr(dev, addr);
--			msta->airtime_ac[i + 4] = mt76_rr(dev, addr + 4);
+-			msta_link->airtime_ac[i] = mt76_rr(dev, addr);
+-			msta_link->airtime_ac[i + 4] = mt76_rr(dev, addr + 4);
 -
--			tx_time[i] = msta->airtime_ac[i] - tx_last;
--			rx_time[i] = msta->airtime_ac[i + 4] - rx_last;
+-			tx_time[i] = msta_link->airtime_ac[i] - tx_last;
+-			rx_time[i] = msta_link->airtime_ac[i + 4] - rx_last;
 -
 -			if ((tx_last | rx_last) & BIT(30))
 -				clear = true;
@@ -166,10 +172,11 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 -		if (clear) {
 -			mt7996_mac_wtbl_update(dev, idx,
 -					       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
--			memset(msta->airtime_ac, 0, sizeof(msta->airtime_ac));
+-			memset(msta_link->airtime_ac, 0,
+-			       sizeof(msta_link->airtime_ac));
 -		}
 -
--		if (!msta->wcid.sta)
+-		if (!wcid->sta)
 -			continue;
 -
 -		sta = container_of((void *)msta, struct ieee80211_sta,
@@ -195,19 +202,27 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 -		rssi[2] = to_rssi(GENMASK(23, 16), val);
 -		rssi[3] = to_rssi(GENMASK(31, 14), val);
 -
--		msta->ack_signal =
--			mt76_rx_signal(msta->vif->phy->mt76->antenna_mask, rssi);
+-		mlink = rcu_dereference(msta->vif->mt76.link[wcid->link_id]);
+-		if (mlink) {
+-			struct mt76_phy *mphy = mt76_vif_link_phy(mlink);
 -
--		ewma_avg_signal_add(&msta->avg_ack_signal, -msta->ack_signal);
+-			if (mphy)
+-				msta_link->ack_signal =
+-					mt76_rx_signal(mphy->antenna_mask,
+-						       rssi);
+-		}
+-
+-		ewma_avg_signal_add(&msta_link->avg_ack_signal,
+-				    -msta_link->ack_signal);
 -	}
 -
 -	rcu_read_unlock();
 -}
 -
- void mt7996_mac_enable_rtscts(struct mt7996_dev *dev,
- 			      struct ieee80211_vif *vif, bool enable)
+ /* The HW does not translate the mac header to 802.3 for mesh point */
+ static int mt7996_reverse_frag0_hdr_trans(struct sk_buff *skb, u16 hdr_gap)
  {
-@@ -1205,8 +1105,6 @@ mt7996_mac_tx_free(struct mt7996_dev *de
+@@ -1299,8 +1184,6 @@ next:
  		}
  	}
  
@@ -216,7 +231,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -2348,31 +2246,42 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2445,31 +2328,42 @@ void mt7996_mac_sta_rc_work(struct work_
  
  void mt7996_mac_work(struct work_struct *work)
  {
@@ -274,7 +289,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -539,7 +539,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -561,7 +561,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
  	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
  		u8 ac;
  		u16 wlan_idx;
@@ -285,7 +300,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -578,6 +581,82 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -600,6 +603,82 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			wcid->stats.rx_packets +=
  				le32_to_cpu(res->msdu_cnt[i].rx_msdu_cnt);
  			break;
@@ -368,7 +383,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -4654,9 +4733,155 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -4931,9 +5010,135 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -420,7 +435,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +	switch (tag) {
 +	case UNI_PER_STA_RSSI:
 +		for (i = 0; i < sta_num; ++i) {
-+			struct mt7996_sta *msta;
++			struct mt7996_sta_link *msta_link;
 +			struct mt76_phy *phy;
 +			s8 rssi[4];
 +			u8 *rcpi;
@@ -434,30 +449,10 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +				rssi[2] = to_rssi(MT_PRXV_RCPI0, rcpi[2]);
 +				rssi[3] = to_rssi(MT_PRXV_RCPI0, rcpi[3]);
 +
-+				msta = container_of(wcid, struct mt7996_sta, wcid);
-+				phy = msta->vif->phy->mt76;
-+				msta->ack_signal = mt76_rx_signal(phy->antenna_mask, rssi);
-+				ewma_avg_signal_add(&msta->avg_ack_signal, -msta->ack_signal);
-+			} else {
-+				ret = -EINVAL;
-+				dev_err(dev->dev, "Failed to update RSSI for "
-+				                  "invalid WCID: %hu\n", wlan_idx);
-+			}
-+		}
-+		break;
-+	case UNI_PER_STA_TX_CNT:
-+		for (i = 0; i < sta_num; ++i) {
-+			wlan_idx = le16_to_cpu(res->tx_cnt[i].wlan_idx);
-+			wcid = rcu_dereference(dev->wcid[wlan_idx]);
-+			if (wcid) {
-+				wcid->stats.tx_total_mpdu_cnt +=
-+				            le32_to_cpu(res->tx_cnt[i].total);
-+				wcid->stats.tx_failed_mpdu_cnt +=
-+				            le32_to_cpu(res->tx_cnt[i].failed);
-+			} else {
-+				ret = -EINVAL;
-+				dev_err(dev->dev, "Failed to update TX MPDU counts "
-+				                  "for invalid WCID: %hu\n", wlan_idx);
++				msta_link = container_of(wcid, struct mt7996_sta_link, wcid);
++				phy = dev->phys[wcid->phy_idx];
++				msta_link->ack_signal = mt76_rx_signal(phy->antenna_mask, rssi);
++				ewma_avg_signal_add(&msta_link->avg_ack_signal, -msta_link->ack_signal);
 +			}
 +		}
 +		break;
@@ -475,7 +470,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +{
 +	u16 sta_list[PER_STA_INFO_MAX_NUM];
 +	LIST_HEAD(sta_poll_list);
-+	struct mt7996_sta *msta;
++	struct mt7996_sta_link *msta_link;
 +	int i, ret;
 +	bool empty = false;
 +
@@ -495,13 +490,13 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +				empty = true;
 +				break;
 +			}
-+			msta = list_first_entry(&sta_poll_list,
-+			                        struct mt7996_sta,
++			msta_link = list_first_entry(&sta_poll_list,
++			                        struct mt7996_sta_link,
 +			                        wcid.poll_list);
-+			list_del_init(&msta->wcid.poll_list);
++			list_del_init(&msta_link->wcid.poll_list);
 +			spin_unlock_bh(&dev->sta_poll_lock);
 +
-+			sta_list[i] = msta->wcid.idx;
++			sta_list[i] = msta_link->wcid.idx;
 +		}
 +
 +		ret = mt7996_mcu_get_per_sta_info(dev, UNI_PER_STA_RSSI,
@@ -526,7 +521,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -4667,7 +4892,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -4944,7 +5149,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  
@@ -537,7 +532,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -175,6 +175,31 @@ struct mt7996_mcu_mib {
+@@ -175,6 +175,23 @@ struct mt7996_mcu_mib {
  	__le64 data;
  } __packed;
  
@@ -545,13 +540,6 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +	__le16 wlan_idx;
 +	u8 __rsv[2];
 +	u8 rcpi[4];
-+} __packed;
-+
-+struct per_sta_tx_cnt {
-+	__le16 wlan_idx;
-+	u8 __rsv[2];
-+	__le32 total;
-+	__le32 failed;
 +} __packed;
 +
 +struct mt7996_mcu_per_sta_info_event {
@@ -562,14 +550,13 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +
 +	union {
 +		struct per_sta_rssi rssi[0];
-+		struct per_sta_tx_cnt tx_cnt[0];
 +	};
 +} __packed;
 +
  struct all_sta_trx_rate {
  	__le16 wlan_idx;
  	u8 __rsv1[2];
-@@ -220,6 +245,13 @@ struct mt7996_mcu_all_sta_info_event {
+@@ -220,6 +237,13 @@ struct mt7996_mcu_all_sta_info_event {
  			__le32 tx_msdu_cnt;
  			__le32 rx_msdu_cnt;
  		} __packed, msdu_cnt);
@@ -585,7 +572,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -113,6 +113,8 @@
+@@ -138,6 +138,8 @@
  #define MT7996_RX_MSDU_PAGE_SIZE	(128 + \
  					 SKB_DATA_ALIGN(sizeof(struct skb_shared_info)))
  
@@ -594,17 +581,17 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct mt7996_vif;
  struct mt7996_sta;
  struct mt7996_dfs_pulse;
-@@ -218,7 +220,6 @@ struct mt7996_sta {
- 	struct mt7996_vif *vif;
+@@ -236,7 +238,6 @@ struct mt7996_sta_link {
+ 	struct mt7996_sta *sta;
  
  	struct list_head rc_list;
 -	u32 airtime_ac[8];
  
  	int ack_signal;
  	struct ewma_avg_signal avg_ack_signal;
-@@ -313,6 +314,21 @@ struct mt7996_air_monitor_ctrl {
+@@ -339,6 +340,21 @@ struct mt7996_wed_rro_session_id {
+ 	u16 id;
  };
- #endif
  
 +struct mt7996_rro_ba_session {
 +	u32 ack_sn         :12;
@@ -624,15 +611,15 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct mt7996_phy {
  	struct mt76_phy *mt76;
  	struct mt7996_dev *dev;
-@@ -479,6 +495,7 @@ struct mt7996_dev {
+@@ -515,6 +531,7 @@ struct mt7996_dev {
  		u32 fw_dbg_module;
  		u8 fw_dbg_lv;
  		u32 bcn_total_cnt[__MT_MAX_BAND];
 +		u32 sid;
- 		u32 token_idx;
  	} dbg;
  	const struct mt7996_dbg_reg_desc *dbg_reg;
-@@ -683,7 +700,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+ #endif
+@@ -771,7 +788,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);
@@ -642,13 +629,13 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +int mt7996_mcu_get_rssi(struct mt76_dev *dev);
 +int mt7996_mcu_get_all_sta_info(struct mt76_dev *dev, u16 tag);
  int mt7996_mcu_wed_rro_reset_sessions(struct mt7996_dev *dev, u16 id);
+ int mt7996_mcu_set_sniffer_mode(struct mt7996_phy *phy, bool enabled);
  
- static inline u8 mt7996_max_interface_num(struct mt7996_dev *dev)
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2976,6 +2976,69 @@ static int mt7996_rx_counters(struct seq
- 	return 0;
+@@ -2911,6 +2911,69 @@ mt7996_sr_scene_cond_show(struct seq_fil
  }
+ DEFINE_SHOW_ATTRIBUTE(mt7996_sr_scene_cond);
  
 +static int
 +mt7996_rro_session_read(struct seq_file *s, void *data)
@@ -713,10 +700,10 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +	return 0;
 +}
 +
- int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
+ int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir)
  {
- 	struct mt7996_dev *dev = phy->dev;
-@@ -3067,6 +3130,14 @@ int mt7996_mtk_init_debugfs(struct mt799
+ 	struct ieee80211_hw *hw = mt76_hw(dev);
+@@ -3019,6 +3082,14 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_bool("mgmt_pwr_enhance", 0600, dir, &dev->mt76.mgmt_pwr_enhance);
  
@@ -733,7 +720,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
-@@ -112,6 +112,8 @@ enum offs_rev {
+@@ -123,6 +123,8 @@ enum offs_rev {
  #define MT_MCU_INT_EVENT_DMA_INIT		BIT(1)
  #define MT_MCU_INT_EVENT_RESET_DONE		BIT(3)
  

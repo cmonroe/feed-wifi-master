@@ -1,30 +1,30 @@
-From 53a7b7af61b75ea0e3f9d12d3d6302cf40941a8a Mon Sep 17 00:00:00 2001
+From b4557d3862e4db26ccf7ad665cf4e7761fb04b0d Mon Sep 17 00:00:00 2001
 From: TomLiu <tomml.liu@mediatek.com>
 Date: Tue, 9 Aug 2022 10:23:44 -0700
-Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
+Subject: [PATCH 013/206] mtk: hostapd: Add hostapd MU SET/GET control
 
 ---
  hostapd/config_file.c             |   9 +++
- hostapd/ctrl_iface.c              |  62 +++++++++++++++++
- hostapd/hostapd_cli.c             |  18 +++++
+ hostapd/ctrl_iface.c              |  66 +++++++++++++++++++
+ hostapd/hostapd_cli.c             |  18 ++++++
  src/ap/ap_config.c                |   1 +
  src/ap/ap_config.h                |   1 +
  src/ap/ap_drv_ops.c               |  14 ++++
  src/ap/ap_drv_ops.h               |   2 +
  src/ap/hostapd.c                  |   2 +
- src/common/mtk_vendor.h           |  15 ++++
+ src/common/mtk_vendor.h           |  15 +++++
  src/drivers/driver.h              |  13 ++++
- src/drivers/driver_nl80211.c      | 110 ++++++++++++++++++++++++++++++
+ src/drivers/driver_nl80211.c      | 104 ++++++++++++++++++++++++++++++
  src/drivers/driver_nl80211.h      |   1 +
  src/drivers/driver_nl80211_capa.c |   3 +
- 13 files changed, 251 insertions(+)
+ 13 files changed, 249 insertions(+)
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3981,6 +3981,15 @@ static int hostapd_config_fill(struct ho
- 			return 1;
- 		}
- 		bss->unsol_bcast_probe_resp_interval = val;
+@@ -3765,6 +3765,15 @@ static int hostapd_config_fill(struct ho
+ 		bss->mbssid_index = atoi(pos);
+ 	} else if (os_strcmp(buf, "mbssid_max") == 0) {
+ 		conf->mbssid_max = atoi(pos);
 +	} else if (os_strcmp(buf, "mu_onoff") == 0) {
 +		int val = atoi(pos);
 +		if (val < 0 || val > 15) {
@@ -34,13 +34,13 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
 +			return 1;
 +		}
 +		conf->mu_onoff = val;
- 	} else if (os_strcmp(buf, "mbssid") == 0) {
- 		int mbssid = atoi(pos);
- 		if (mbssid < 0 || mbssid > ENHANCED_MBSSID_ENABLED) {
+ #endif /* CONFIG_IEEE80211AX */
+ 	} else if (os_strcmp(buf, "max_listen_interval") == 0) {
+ 		bss->max_listen_interval = atoi(pos);
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4169,6 +4169,63 @@ hostapd_ctrl_iface_get_edcca(struct host
- }
+@@ -4201,6 +4201,67 @@ fail:
+ #endif /* CONFIG_NAN_USD */
  
  
 +static int
@@ -89,6 +89,10 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
 +	pos = buf;
 +	end = buf + buflen;
 +
++	if (hapd->iface->state != HAPD_IFACE_ENABLED)
++		return os_snprintf(pos, end - pos, "Not allowed to get_mu when current state is %s\n",
++				   hostapd_state_text(hapd->iface->state));
++
 +	if (hostapd_drv_mu_dump(hapd, &mu_onoff) == 0) {
 +		hapd->iconf->mu_onoff = mu_onoff;
 +		return os_snprintf(pos, end - pos, "[hostapd_cli] = UL MU-MIMO: %d, DL MU-MIMO: %d, UL OFDMA: %d, DL OFDMA: %d\n",
@@ -103,7 +107,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4783,6 +4840,11 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4815,6 +4876,11 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "GET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_get_edcca(hapd, buf+10, reply,
  							  reply_size);
@@ -151,27 +155,27 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  	  "report a scanned DPP URI from a QR Code" },
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -290,6 +290,7 @@ struct hostapd_config * hostapd_config_d
+@@ -294,6 +294,7 @@ struct hostapd_config * hostapd_config_d
  	conf->reg_def_cli_eirp_psd = -1;
  	conf->reg_sub_cli_eirp_psd = -1;
  	conf->reg_def_cli_eirp = -1;
-+	conf->mu_onoff = 0xf;
++	conf->mu_onoff = 15;
  #endif /* CONFIG_IEEE80211AX */
  
  	/* The third octet of the country string uses an ASCII space character
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1235,6 +1235,7 @@ struct hostapd_config {
+@@ -1220,6 +1220,7 @@ struct hostapd_config {
+ 	int reg_def_cli_eirp;
  
  	bool require_he;
- #endif /* CONFIG_IEEE80211AX */
 +	u8 mu_onoff;
+ #endif /* CONFIG_IEEE80211AX */
  
  	/* VHT enable/disable config from CHAN_SWITCH */
- #define CH_SWITCH_VHT_ENABLED BIT(0)
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1325,3 +1325,17 @@ int hostapd_drv_get_edcca(struct hostapd
+@@ -1466,3 +1466,17 @@ int hostapd_drv_get_edcca(struct hostapd
  		return 0;
  	return hapd->driver->get_edcca(hapd->drv_priv, mode, value);
  }
@@ -191,7 +195,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
 +}
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -161,6 +161,8 @@ int hostapd_drv_configure_edcca_enable(s
+@@ -162,6 +162,8 @@ int hostapd_drv_configure_edcca_enable(s
  int hostapd_drv_configure_edcca_threshold(struct hostapd_data *hapd,
  					  const int *threshold);
  int hostapd_drv_get_edcca(struct hostapd_data *hapd, const u8 mode, u8 *value);
@@ -202,7 +206,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2775,6 +2775,8 @@ dfs_offload:
+@@ -2813,6 +2813,8 @@ dfs_offload:
  	if (hostapd_drv_configure_edcca_threshold(hapd,
  						  hapd->iconf->edcca_threshold) < 0)
  		goto fail;
@@ -244,19 +248,19 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1780,6 +1780,11 @@ struct wpa_driver_ap_params {
- 	size_t fd_frame_tmpl_len;
- 
- 	/**
+@@ -187,6 +187,11 @@ struct hostapd_channel_data {
+ 	 * punct_bitmap - RU puncturing bitmap
+ 	 */
+ 	u16 punct_bitmap;
++
++	/**
 +	 * mu onoff=<val> (bitmap- UL MU-MIMO(bit3), DL MU-MIMO(bit2), UL OFDMA(bit1), DL OFDMA(bit0))
 +	 */
 +	u8 mu_onoff;
-+
-+	/**
- 	 * mbssid_tx_iface - Transmitting interface of the MBSSID set
- 	 */
- 	const char *mbssid_tx_iface;
-@@ -5370,6 +5375,14 @@ struct wpa_driver_ops {
+ };
+ 
+ #define HE_MAC_CAPAB_0		0
+@@ -5542,6 +5547,14 @@ struct wpa_driver_ops {
  				  const s8 edcca_compensation);
  	int (*configure_edcca_threshold)(void *priv, const int *threshold);
  	int (*get_edcca)(void *priv, const u8 mode, u8 *value);
@@ -273,7 +277,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  /**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -14400,6 +14400,114 @@ fail:
+@@ -14693,6 +14693,108 @@ fail:
  }
  
  
@@ -292,7 +296,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
 +		return 0;
 +	}
 +
-+	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR)) ||
++	if (!(msg = nl80211_bss_msg(bss, 0, NL80211_CMD_VENDOR)) ||
 +		nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
 +		nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD, MTK_NL80211_VENDOR_SUBCMD_MU_CTRL) ||
 +		!(data = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA)) ||
@@ -301,7 +305,7 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
 +		return -ENOBUFS;
 +	}
 +	nla_nest_end(msg, data);
-+	ret = send_and_recv(bss->drv->global, bss->drv->global->nl, msg, NULL, NULL, NULL, NULL, NULL);
++	ret = send_and_recv_cmd(drv, msg);
 +	if(ret){
 +		wpa_printf(MSG_ERROR, "Failed to set mu_onoff. ret=%d (%s)", ret, strerror(-ret));
 +	}
@@ -359,22 +363,16 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
 +		return 0;
 +	}
 +
-+	if (!(msg = nl80211_drv_msg(drv, NLM_F_DUMP, NL80211_CMD_VENDOR)) ||
++	if (!(msg = nl80211_bss_msg(bss, NLM_F_DUMP, NL80211_CMD_VENDOR)) ||
 +		nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
 +		nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD, MTK_NL80211_VENDOR_SUBCMD_MU_CTRL)) {
 +		nlmsg_free(msg);
 +		return -ENOBUFS;
 +	}
 +
-+  attr = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA);
-+	if (!attr) {
-+		nlmsg_free(msg);
-+		return -1;
-+	}
-+
 +	nla_nest_end(msg, attr);
 +
-+	ret = send_and_recv(bss->drv->global, bss->drv->global->nl, msg, mu_dump_handler, mu_onoff, NULL, NULL, NULL);
++	ret = send_and_recv_resp(drv, msg, mu_dump_handler, mu_onoff);
 +
 +	if(ret){
 +		wpa_printf(MSG_ERROR, "Failed to get mu_onoff. ret=%d (%s)", ret, strerror(-ret));
@@ -388,14 +386,12 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  #ifdef CONFIG_DPP
  static int nl80211_dpp_listen(void *priv, bool enable)
  {
-@@ -14900,6 +15008,10 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -15387,6 +15489,8 @@ const struct wpa_driver_ops wpa_driver_n
  	.update_connect_params = nl80211_update_connection_params,
  	.send_external_auth_status = nl80211_send_external_auth_status,
  	.set_4addr_mode = nl80211_set_4addr_mode,
-+#ifdef CONFIG_IEEE80211AX
 +	.mu_ctrl = nl80211_mu_onoff,
 +	.mu_dump = nl80211_mu_dump,
-+#endif
  #ifdef CONFIG_DPP
  	.dpp_listen = nl80211_dpp_listen,
  #endif /* CONFIG_DPP */
@@ -407,11 +403,11 @@ Subject: [PATCH 06/37] hostapd: mtk: Add hostapd MU SET/GET control
  	unsigned int mtk_edcca_vendor_cmd_avail:1;
 +	unsigned int mtk_mu_vendor_cmd_avail:1;
  
- 	u32 ignore_next_local_disconnect;
- 	u32 ignore_next_local_deauth;
+ 	u8 extra_bss_membership_selectors[8];
+ 
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -1147,6 +1147,9 @@ static int wiphy_info_handler(struct nl_
+@@ -1152,6 +1152,9 @@ static int wiphy_info_handler(struct nl_
  				case MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL:
  					drv->mtk_edcca_vendor_cmd_avail = 1;
  					break;

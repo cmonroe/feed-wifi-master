@@ -16,43 +16,52 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -321,6 +321,7 @@ static int mt7996_set_key(struct ieee802
- 	struct mt76_wcid *wcid = &msta->wcid;
- 	u8 *wcid_keyidx = &wcid->hw_key_idx;
+@@ -186,6 +186,7 @@ mt7996_set_hw_key(struct ieee80211_hw *h
+ {
+ 	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	int idx = key->keyidx;
 +	u8 pn[6] = {};
- 	int err = 0;
+ 	unsigned int link_id;
+ 	unsigned long links;
  
- 	/* The hardware does not support per-STA RX GTK, fallback
-@@ -349,6 +350,9 @@ static int mt7996_set_key(struct ieee802
- 		if (key->keyidx == 6 || key->keyidx == 7) {
- 			wcid_keyidx = &wcid->hw_key_idx2;
- 			key->flags |= IEEE80211_KEY_FLAG_GENERATE_MMIE;
-+			err = mt7996_mcu_get_pn(dev, vif, pn);
-+			if (err)
-+				return err;
+@@ -232,12 +233,16 @@ mt7996_set_hw_key(struct ieee80211_hw *h
+ 			if (key->keyidx == 6 || key->keyidx == 7) {
+ 				wcid_keyidx = &msta_link->wcid.hw_key_idx2;
+ 				key->flags |= IEEE80211_KEY_FLAG_GENERATE_MMIE;
++				err = mt7996_mcu_get_pn(dev, link, msta_link, pn);
++				if (err)
++					return err;
+ 			}
+ 			break;
+ 		default:
  			break;
  		}
- 		fallthrough;
-@@ -375,12 +379,9 @@ static int mt7996_set_key(struct ieee802
  
- 	mt76_wcid_key_setup(&dev->mt76, wcid, key);
++		/* Todo: remove me after fix set dtim period to fw */
+ 		if (cmd == SET_KEY && !sta && !link->mt76.cipher) {
+ 			struct ieee80211_bss_conf *link_conf;
  
--	if (key->keyidx == 6 || key->keyidx == 7)
--		err = mt7996_mcu_bcn_prot_enable(dev, vif, key);
--	else
--		err = mt7996_mcu_add_key(&dev->mt76, vif, key,
--					 MCU_WMWA_UNI_CMD(STA_REC_UPDATE),
--					 &msta->wcid, cmd);
-+	err = mt7996_mcu_add_key(&dev->mt76, vif, key,
-+				 MCU_WMWA_UNI_CMD(STA_REC_UPDATE),
-+				 &msta->wcid, cmd, pn);
- out:
- 	mutex_unlock(&dev->mt76.mutex);
+@@ -262,16 +267,9 @@ mt7996_set_hw_key(struct ieee80211_hw *h
  
+ 		mt76_wcid_key_setup(&dev->mt76, &msta_link->wcid, key);
+ 
+-		if (key->keyidx == 6 || key->keyidx == 7) {
+-			err = mt7996_mcu_bcn_prot_enable(dev, link,
+-							 msta_link, key);
+-			if (err)
+-				return err;
+-		}
+-
+ 		err = mt7996_mcu_add_key(&dev->mt76, vif, key,
+ 					 MCU_WMWA_UNI_CMD(STA_REC_UPDATE),
+-					 &msta_link->wcid, cmd);
++					 &msta_link->wcid, cmd, pn);
+ 		if (err)
+ 			return err;
+ 	}
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2242,10 +2242,12 @@ out:
+@@ -2485,10 +2485,12 @@ int mt7996_mcu_teardown_mld_sta(struct m
  }
  
  static int
@@ -67,7 +76,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
  	struct sta_rec_sec_uni *sec;
  	struct tlv *tlv;
-@@ -2271,6 +2273,26 @@ mt7996_mcu_sta_key_tlv(struct mt76_wcid
+@@ -2514,6 +2516,26 @@ mt7996_mcu_sta_key_tlv(struct mt76_wcid
  		sec_key->key_len = key->keylen;
  		sec_key->need_resp = 0;
  		memcpy(sec_key->key, key->key, key->keylen);
@@ -94,7 +103,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  		if (cipher == MCU_CIPHER_TKIP) {
  			/* Rx/Tx MIC keys are swapped */
-@@ -2288,7 +2310,8 @@ mt7996_mcu_sta_key_tlv(struct mt76_wcid
+@@ -2531,7 +2553,8 @@ mt7996_mcu_sta_key_tlv(struct mt76_wcid
  
  int mt7996_mcu_add_key(struct mt76_dev *dev, struct ieee80211_vif *vif,
  		       struct ieee80211_key_conf *key, int mcu_cmd,
@@ -102,9 +111,9 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 +		       struct mt76_wcid *wcid, enum set_key_cmd cmd,
 +		       u8 *pn)
  {
- 	struct mt76_vif *mvif = (struct mt76_vif *)vif->drv_priv;
+ 	struct mt76_vif_link *mvif = (struct mt76_vif_link *)vif->drv_priv;
  	struct sk_buff *skb;
-@@ -2299,14 +2322,16 @@ int mt7996_mcu_add_key(struct mt76_dev *
+@@ -2542,16 +2565,18 @@ int mt7996_mcu_add_key(struct mt76_dev *
  	if (IS_ERR(skb))
  		return PTR_ERR(skb);
  
@@ -119,19 +128,24 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	return mt76_mcu_skb_send_msg(dev, skb, mcu_cmd, true);
  }
  
--static int mt7996_mcu_get_pn(struct mt7996_dev *dev, struct ieee80211_vif *vif,
-+int mt7996_mcu_get_pn(struct mt7996_dev *dev, struct ieee80211_vif *vif,
- 			     u8 *pn)
+-static int mt7996_mcu_get_pn(struct mt7996_dev *dev,
+-			     struct mt7996_vif_link *link,
+-			     struct mt7996_sta_link *msta_link, u8 *pn)
++int mt7996_mcu_get_pn(struct mt7996_dev *dev,
++		      struct mt7996_vif_link *link,
++		      struct mt7996_sta_link *msta_link, u8 *pn)
  {
  #define TSC_TYPE_BIGTK_PN 2
-@@ -2340,58 +2365,6 @@ static int mt7996_mcu_get_pn(struct mt79
+ 	struct sta_rec_pn_info *pn_info;
+@@ -2584,60 +2609,6 @@ static int mt7996_mcu_get_pn(struct mt79
  	return 0;
  }
  
--int mt7996_mcu_bcn_prot_enable(struct mt7996_dev *dev, struct ieee80211_vif *vif,
+-int mt7996_mcu_bcn_prot_enable(struct mt7996_dev *dev,
+-			       struct mt7996_vif_link *link,
+-			       struct mt7996_sta_link *msta_link,
 -			       struct ieee80211_key_conf *key)
 -{
--	struct mt7996_vif *mvif = (struct mt7996_vif *)vif->drv_priv;
 -	struct mt7996_mcu_bcn_prot_tlv *bcn_prot;
 -	struct sk_buff *skb;
 -	struct tlv *tlv;
@@ -140,7 +154,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 -		  sizeof(struct mt7996_mcu_bcn_prot_tlv);
 -	int ret;
 -
--	skb = __mt7996_mcu_alloc_bss_req(&dev->mt76, &mvif->mt76, len);
+-	skb = __mt7996_mcu_alloc_bss_req(&dev->mt76, &link->mt76, len);
 -	if (IS_ERR(skb))
 -		return PTR_ERR(skb);
 -
@@ -148,7 +162,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 -
 -	bcn_prot = (struct mt7996_mcu_bcn_prot_tlv *)tlv;
 -
--	ret = mt7996_mcu_get_pn(dev, vif, pn);
+-	ret = mt7996_mcu_get_pn(dev, link, msta_link, pn);
 -	if (ret) {
 -		dev_kfree_skb(skb);
 -		return ret;
@@ -180,9 +194,10 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 -	return mt76_mcu_skb_send_msg(&dev->mt76, skb,
 -				     MCU_WMWA_UNI_CMD(BSS_INFO_UPDATE), true);
 -}
- int mt7996_mcu_add_dev_info(struct mt7996_phy *phy,
- 			    struct ieee80211_vif *vif, bool enable)
- {
+-
+ int mt7996_mcu_add_dev_info(struct mt7996_phy *phy, struct ieee80211_vif *vif,
+ 			    struct ieee80211_bss_conf *link_conf,
+ 			    struct mt76_vif_link *mlink, bool enable)
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
 @@ -351,17 +351,6 @@ enum {
@@ -203,7 +218,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  struct bss_ra_tlv {
  	__le16 tag;
  	__le16 len;
-@@ -530,6 +519,9 @@ struct sec_key_uni {
+@@ -531,6 +520,9 @@ struct sec_key_uni {
  	u8 key_len;
  	u8 need_resp;
  	u8 key[32];
@@ -215,18 +230,22 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  struct sta_rec_sec_uni {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -674,11 +674,11 @@ void mt7996_update_channel(struct mt76_p
- int mt7996_init_debugfs(struct mt7996_phy *phy);
+@@ -793,13 +793,13 @@ void mt7996_update_channel(struct mt76_p
+ int mt7996_init_debugfs(struct mt7996_dev *dev);
  void mt7996_debugfs_rx_fw_monitor(struct mt7996_dev *dev, const void *data, int len);
  bool mt7996_debugfs_rx_log(struct mt7996_dev *dev, const void *data, int len);
-+int mt7996_mcu_get_pn(struct mt7996_dev *dev, struct ieee80211_vif *vif, u8 *pn);
++int mt7996_mcu_get_pn(struct mt7996_dev *dev,
++		      struct mt7996_vif_link *mconf,
++		      struct mt7996_sta_link *msta_link, u8 *pn);
  int mt7996_mcu_add_key(struct mt76_dev *dev, struct ieee80211_vif *vif,
  		       struct ieee80211_key_conf *key, int mcu_cmd,
 -		       struct mt76_wcid *wcid, enum set_key_cmd cmd);
--int mt7996_mcu_bcn_prot_enable(struct mt7996_dev *dev, struct ieee80211_vif *vif,
+-int mt7996_mcu_bcn_prot_enable(struct mt7996_dev *dev,
+-			       struct mt7996_vif_link *link,
+-			       struct mt7996_sta_link *msta_link,
 -			       struct ieee80211_key_conf *key);
 +		       struct mt76_wcid *wcid, enum set_key_cmd cmd,
 +		       u8 *pn);
  int mt7996_mcu_wtbl_update_hdr_trans(struct mt7996_dev *dev,
  				     struct ieee80211_vif *vif,
- 				     struct ieee80211_sta *sta);
+ 				     struct mt7996_vif_link *link,

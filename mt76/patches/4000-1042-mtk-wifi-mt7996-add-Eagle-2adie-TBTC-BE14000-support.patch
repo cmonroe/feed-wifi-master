@@ -19,7 +19,7 @@ Change-Id: I53479ad22aec81ba3f3028aa0aada86b175379f8
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -428,6 +428,8 @@ static void mt7996_eeprom_init_precal(st
+@@ -436,6 +436,8 @@ static void mt7996_eeprom_init_precal(st
  	switch (mt76_chip(&dev->mt76)) {
  	case 0x7990:
  		dev->prek.rev = mt7996_prek_rev;
@@ -28,7 +28,7 @@ Change-Id: I53479ad22aec81ba3f3028aa0aada86b175379f8
  		/* 5g & 6g bw 80 dpd channel list is not used */
  		dev->prek.dpd_ch_num[DPD_CH_NUM_BW320_6G] = ARRAY_SIZE(dpd_6g_ch_list_bw320);
  		break;
-@@ -531,7 +533,7 @@ static int mt7996_apply_cal_free_data(st
+@@ -539,7 +541,7 @@ static int mt7996_apply_cal_free_data(st
  	case 0x7990:
  		adie_base = adie_base_7996;
  		/* adie 0 */
@@ -37,7 +37,7 @@ Change-Id: I53479ad22aec81ba3f3028aa0aada86b175379f8
  			adie_id = ADIE_7975;
  		else
  			adie_id = ADIE_7976;
-@@ -539,7 +541,7 @@ static int mt7996_apply_cal_free_data(st
+@@ -547,7 +549,7 @@ static int mt7996_apply_cal_free_data(st
  		eep_offs[0] = eep_offs_list[adie_id];
  
  		/* adie 1 */
@@ -69,7 +69,7 @@ Change-Id: I53479ad22aec81ba3f3028aa0aada86b175379f8
  	[GROUP_SIZE_2G] =			4 * MT_EE_CAL_UNIT,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -37,6 +37,7 @@
+@@ -48,6 +48,7 @@
  #define MT7996_FIRMWARE_WA_233		"mediatek/mt7996/mt7996_wa_233.bin"
  #define MT7996_FIRMWARE_WM_233		"mediatek/mt7996/mt7996_wm_233.bin"
  #define MT7996_FIRMWARE_DSP_233		MT7996_FIRMWARE_DSP

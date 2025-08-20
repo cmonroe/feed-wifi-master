@@ -1,21 +1,22 @@
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4486,6 +4486,12 @@ static int __check_assoc_ies(struct host
- 				hapd->conf->max_acceptable_idle_period;
- 	}
+@@ -4764,6 +4764,13 @@ skip_wpa_ies:
+ 		hostapd_wfa_capab(hapd, sta, elems->wfa_capab,
+ 				  elems->wfa_capab + elems->wfa_capab_len);
  
 +	wpabuf_free(sta->vendors_ie);
-+	if (ies && ies_len)	{
++	if (ies && ies_len) {
 +		sta->vendors_ie = ieee802_11_all_vendor_ie_concat(ies, ies_len);
 +	} else {
 +		sta->vendors_ie = 0;
 +	}
++
  	return WLAN_STATUS_SUCCESS;
  }
  
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -422,6 +422,7 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -424,6 +424,7 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->t_c_url);
  	wpabuf_free(sta->hs20_deauth_req);
  	os_free(sta->hs20_session_info_url);
@@ -25,18 +26,18 @@
  	sae_clear_data(sta->sae);
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -321,6 +321,8 @@ struct sta_info {
- 	u8 mld_assoc_link_id;
+@@ -320,6 +320,8 @@ struct sta_info {
+ 	struct link_reconf_req_list *reconf_req;
  #endif /* CONFIG_IEEE80211BE */
  
 +	struct wpabuf *vendors_ie;
 +
  	u16 max_idle_period; /* if nonzero, the granted BSS max idle period in
  			      * units of 1000 TUs */
- };
+ 
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -1182,6 +1182,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
+@@ -1196,6 +1196,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
  }
  
  
@@ -72,7 +73,7 @@
  	u16 fc, type, stype;
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -217,6 +217,7 @@ ParseRes ieee802_11_parse_link_assoc_req
+@@ -218,6 +218,7 @@ ParseRes ieee802_11_parse_link_assoc_req
  int ieee802_11_ie_count(const u8 *ies, size_t ies_len);
  struct wpabuf * ieee802_11_vendor_ie_concat(const u8 *ies, size_t ies_len,
  					    u32 oui_type);
@@ -189,24 +190,22 @@
 +		uint16_t value = (vhtc->vht_capabilities_info & vht_capas_value[i].mask) >> vht_capas_value[i].shift;
 +		blobmsg_add_u32(&b, vht_capas_value[i].name, value);
 +	}
- 
- 	supported_mcs = blobmsg_open_table(&b, "mcs_map");
- 
- 	/* RX map */
- 	map = blobmsg_open_table(&b, "rx");
--	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map));
++
++	supported_mcs = blobmsg_open_table(&b, "mcs_map");
++
++	/* RX map */
++	map = blobmsg_open_table(&b, "rx");
 +	hostapd_parse_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map), WLAN_STA_VHT);
- 	blobmsg_close_table(&b, map);
- 
- 	/* TX map */
- 	map = blobmsg_open_table(&b, "tx");
--	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map));
++	blobmsg_close_table(&b, map);
++
++	/* TX map */
++	map = blobmsg_open_table(&b, "tx");
 +	hostapd_parse_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map), WLAN_STA_VHT);
- 	blobmsg_close_table(&b, map);
- 
- 	blobmsg_close_table(&b, supported_mcs);
- }
- 
++	blobmsg_close_table(&b, map);
++
++	blobmsg_close_table(&b, supported_mcs);
++}
++
 +static uint16_t get_value_from_bitfield(uint8_t *databuf, uint8_t bitstart, uint8_t bitcount)
 +{
 +	uint16_t value=0;
@@ -313,8 +312,7 @@
 +	}
 +}
 +
- static void
--hostapd_parse_capab_blobmsg(struct sta_info *sta)
++static void
 +hostapd_parse_ht_capab_blobmsg(struct ieee80211_ht_capabilities *htc, bool filter_false)
 +{
 +	// HT capabilities fields from IEEE 802.11
@@ -693,23 +691,26 @@
 +
 +	hostapd_add_capab_table("mac_capabilities", mac_capas, ARRAY_SIZE(mac_capas), (uint8_t *) &hec->he_mac_capab_info, filter_false);
 +	hostapd_add_capab_table("phy_capabilities", phy_capas, ARRAY_SIZE(phy_capas), (uint8_t *) &hec->he_phy_capab_info, filter_false);
-+
-+	supported_mcs = blobmsg_open_table(&b, "mcs_map");
-+
-+	/* RX map */
-+	map = blobmsg_open_table(&b, "rx");
+ 
+ 	supported_mcs = blobmsg_open_table(&b, "mcs_map");
+ 
+ 	/* RX map */
+ 	map = blobmsg_open_table(&b, "rx");
+-	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map));
 +	hostapd_parse_map_blobmsg(le_to_host16(*((le16 *)&hec->optional[0])), WLAN_STA_HE);
-+	blobmsg_close_table(&b, map);
-+
-+	/* TX map */
-+	map = blobmsg_open_table(&b, "tx");
+ 	blobmsg_close_table(&b, map);
+ 
+ 	/* TX map */
+ 	map = blobmsg_open_table(&b, "tx");
+-	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map));
 +	hostapd_parse_map_blobmsg(le_to_host16(*((le16 *)&hec->optional[2])), WLAN_STA_HE);
-+	blobmsg_close_table(&b, map);
-+
-+	blobmsg_close_table(&b, supported_mcs);
-+}
-+
-+static void
+ 	blobmsg_close_table(&b, map);
+ 
+ 	blobmsg_close_table(&b, supported_mcs);
+ }
+ 
+ static void
+-hostapd_parse_capab_blobmsg(struct sta_info *sta)
 +hostapd_parse_capab_blobmsg(struct sta_info *sta, int freq, bool filter_false)
  {
  	void *r, *v;
@@ -906,15 +907,6 @@
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -362,7 +1036,7 @@ hostapd_bss_get_status(struct ubus_conte
- 
- 	if (hapd->conf->ssid.ssid_len < SSID_MAX_LEN)
- 		ssid_len = hapd->conf->ssid.ssid_len;
--	
-+
- 	ieee80211_freq_to_channel_ext(hapd->iface->freq,
- 				      hapd->iconf->secondary_channel,
- 				      hostapd_get_oper_chwidth(hapd->iconf),
 @@ -1618,6 +2292,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
@@ -925,7 +917,7 @@
  #endif
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -42,6 +42,9 @@ static u16 ieee80211_eht_ppet_size(u16 p
+@@ -46,6 +46,9 @@ static u16 ieee80211_eht_ppet_size(u16 p
  	return sz;
  }
  

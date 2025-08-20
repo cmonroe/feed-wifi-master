@@ -8,7 +8,7 @@
  #include "mt7915.h"
  #include "mac.h"
  #include "mcu.h"
-@@ -818,6 +819,11 @@ mt7915_init_hardware(struct mt7915_dev *
+@@ -828,6 +829,11 @@ mt7915_init_hardware(struct mt7915_dev *
  
  	INIT_WORK(&dev->init_work, mt7915_init_work);
  
@@ -22,11 +22,11 @@
  		return ret;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -2046,6 +2046,27 @@ static void mt7915_dfs_stop_radar_detect
- 					MT_RX_SEL0, 0);
+@@ -2037,6 +2037,27 @@ static void mt7915_dfs_stop_radar_detect
+ 	mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_STOP, rdd_idx, 0, 0);
  }
  
-+static int mt7915_dfs_set_wf_ant(struct mt7915_dev *dev, int chain, int start)
++static int mt7915_dfs_set_wf_ant(struct mt7915_dev *dev, int rdd_idx, int start)
 +{
 +	int err = 0;
 +
@@ -37,47 +37,46 @@
 +			rdd_antenna = dev->phy.rdd_antenna;
 +
 +		if (start)
-+			dev_info(dev->mt76.dev, "%s: dts rdd_antenna=%u rdd_antenna=%u band_idx=%d\n",
-+			         __func__, dev->phy.rdd_antenna, rdd_antenna, chain);
++			dev_info(dev->mt76.dev, "%s: dts rdd_antenna=%u rdd_antenna=%u rdd_idx=%d\n",
++			         __func__, dev->phy.rdd_antenna, rdd_antenna, rdd_idx);
 +
-+		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT, chain,
-+		                              MT_RX_SEL0, rdd_antenna);
++		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT, rdd_idx,
++		                              0, rdd_antenna);
 +	}
 +
 +	return err;
 +}
 +
- static int mt7915_dfs_start_rdd(struct mt7915_dev *dev, int chain)
+ static int mt7915_dfs_start_rdd(struct mt7915_dev *dev, int rdd_idx)
  {
  	int err, region;
-@@ -2068,12 +2089,18 @@ static int mt7915_dfs_start_rdd(struct m
+@@ -2058,12 +2079,18 @@ static int mt7915_dfs_start_rdd(struct m
  	if (err < 0)
  		return err;
  
 +#if 0
  	if (is_mt7915(&dev->mt76)) {
- 		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT, chain,
+ 		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT, rdd_idx,
  					      0, dev->dbdc_support ? 2 : 0);
  		if (err < 0)
  			return err;
  	}
 +#endif
 +
-+	err = mt7915_dfs_set_wf_ant(dev, chain, 1);
++	err = mt7915_dfs_set_wf_ant(dev, rdd_idx, 1);
 +	if (err < 0)
 +		return err;
  
- 	return mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_DET_MODE, chain,
- 				       MT_RX_SEL0, 1);
-@@ -2195,6 +2222,7 @@ stop:
+ 	return mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_DET_MODE, rdd_idx, 0, 1);
+ }
+@@ -2170,13 +2197,16 @@ stop:
  	if (err < 0)
  		return err;
  
 +#if 0
  	if (is_mt7915(&dev->mt76)) {
  		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT,
- 					      phy->mt76->band_idx, 0,
-@@ -2202,7 +2230,9 @@ stop:
+ 					      rdd_idx, 0, dev->dbdc_support ? 2 : 0);
  		if (err < 0)
  			return err;
  	}

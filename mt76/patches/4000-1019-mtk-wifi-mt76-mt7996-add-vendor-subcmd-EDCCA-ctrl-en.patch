@@ -15,7 +15,7 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -827,6 +827,8 @@ mt7996_get_power_bound(struct mt7996_phy
+@@ -849,6 +849,8 @@ enum {
  
  enum {
  	UNI_BAND_CONFIG_RADIO_ENABLE,
@@ -26,8 +26,8 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -784,6 +784,17 @@ int mt7996_vendor_amnt_sta_remove(struct
- 				  struct ieee80211_sta *sta);
+@@ -880,6 +880,17 @@ void mt7996_set_wireless_vif(void *data,
+ void mt7996_vendor_register(struct mt7996_phy *phy);
  #endif
  
 +int mt7996_mcu_edcca_enable(struct mt7996_phy *phy, bool enable);
@@ -42,13 +42,13 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +};
 +
  #ifdef CONFIG_MTK_DEBUG
- int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
+ int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
 --- a/mt7996/mtk_mcu.c
 +++ b/mt7996/mtk_mcu.c
-@@ -59,4 +59,90 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+@@ -86,4 +86,91 @@ int mt7996_mcu_set_muru_cfg(struct mt799
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(MURU), &req,
- 				 sizeof(req), true);
+ 				 sizeof(req), false);
  }
 +
 +int mt7996_mcu_edcca_enable(struct mt7996_phy *phy, bool enable)
@@ -103,6 +103,7 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +		__le16 len;
 +		u8 threshold[4];
 +		bool init;
++		u8 _rsv2[3];
 +	} __packed *res, req = {
 +		.band_idx = phy->mt76->band_idx,
 +		.tag = cpu_to_le16(UNI_BAND_CONFIG_EDCCA_THRESHOLD),
@@ -139,8 +140,8 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
  #endif
 --- a/mt7996/mtk_mcu.h
 +++ b/mt7996/mtk_mcu.h
-@@ -108,4 +108,19 @@ enum txpower_event {
- 	UNI_TXPOWER_PHY_RATE_INFO = 5,
+@@ -14,6 +14,21 @@ enum {
+ 	UNI_CMD_MURU_DBG_INFO = 0x18,
  };
  
 +enum {
@@ -159,9 +160,11 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +};
 +
  #endif
+ 
+ struct txpower_basic_info {
 --- a/mt7996/vendor.c
 +++ b/mt7996/vendor.c
-@@ -40,6 +40,26 @@ bss_color_ctrl_policy[NUM_MTK_VENDOR_ATT
+@@ -23,6 +23,27 @@ bss_color_ctrl_policy[NUM_MTK_VENDOR_ATT
  	[MTK_VENDOR_ATTR_AVAL_BSS_COLOR_BMP] = { .type = NLA_U64 },
  };
  
@@ -174,6 +177,7 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +	[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL] = { .type = NLA_U8 },
 +	[MTK_VENDOR_ATTR_EDCCA_CTRL_COMPENSATE] = { .type = NLA_S8 },
 +	[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX] = { .type = NLA_U8 },
 +};
 +
 +static const struct nla_policy
@@ -185,21 +189,22 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +	[MTK_VENDOR_ATTR_EDCCA_DUMP_SEC160_VAL] = { .type = NLA_U8 },
 +};
 +
- struct mt7996_amnt_data {
- 	u8 idx;
- 	u8 addr[ETH_ALEN];
-@@ -436,6 +456,106 @@ mt7996_vendor_bss_color_ctrl_dump(struct
- 	return len;
+ static int
+ mt7996_vendor_bss_color_ctrl_dump(struct wiphy *wiphy, struct wireless_dev *wdev,
+ 				  struct sk_buff *skb, const void *data, int data_len,
+@@ -129,6 +150,112 @@ error:
+ 	return -EINVAL;
  }
  
 +static int mt7996_vendor_edcca_ctrl(struct wiphy *wiphy, struct wireless_dev *wdev,
 +				    const void *data, int data_len)
 +{
 +	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
-+	struct mt7996_phy *phy = mt7996_hw_phy(hw);
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	struct mt7996_phy *phy = &dev->phy;
 +	struct nlattr *tb[NUM_MTK_VENDOR_ATTRS_EDCCA_CTRL];
 +	int err;
-+	u8 edcca_mode;
++	u8 edcca_mode, radio_idx;
 +	u8 edcca_value[EDCCA_MAX_BW_NUM];
 +
 +	err = nla_parse(tb, MTK_VENDOR_ATTR_EDCCA_CTRL_MAX, data, data_len,
@@ -207,27 +212,32 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +	if (err)
 +		return err;
 +
-+	if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE])
++	if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE] ||
++	    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX])
 +		return -EINVAL;
 +
 +	edcca_mode = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE]);
-+	if (edcca_mode == EDCCA_CTRL_SET_EN) {
++	radio_idx = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX]);
++	if (!mt7996_radio_valid(dev, radio_idx))
++		return -EINVAL;
++
++	phy = dev->radio_phy[radio_idx];
++
++	switch (edcca_mode) {
++	case EDCCA_CTRL_SET_EN:
 +		if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL])
 +			return -EINVAL;
 +
-+		edcca_value[0] =
-+			nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL]);
++		edcca_value[0] = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL]);
 +
-+		err = mt7996_mcu_edcca_enable(phy, !!edcca_value[0]);
-+		if (err)
-+			return err;
-+	} else if (edcca_mode == EDCCA_CTRL_SET_THRES) {
++		return mt7996_mcu_edcca_enable(phy, !!edcca_value[0]);
++	case EDCCA_CTRL_SET_THRES:
 +		if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL] ||
 +		    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL] ||
 +		    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL] ||
-+		    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL]) {
++		    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL])
 +			return -EINVAL;
-+		}
++
 +		edcca_value[EDCCA_BW_20] =
 +			nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL]);
 +		edcca_value[EDCCA_BW_40] =
@@ -237,17 +247,13 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +		edcca_value[EDCCA_BW_160] =
 +			nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL]);
 +
-+		err = mt7996_mcu_edcca_threshold_ctrl(phy, edcca_value, true);
-+
-+		if (err)
-+			return err;
-+	} else {
++		return mt7996_mcu_edcca_threshold_ctrl(phy, edcca_value, true);
++	default:
 +		return -EINVAL;
 +	}
 +
 +	return 0;
 +}
-+
 +
 +static int
 +mt7996_vendor_edcca_ctrl_dump(struct wiphy *wiphy, struct wireless_dev *wdev,
@@ -255,10 +261,11 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +			     unsigned long *storage)
 +{
 +	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
-+	struct mt7996_phy *phy = mt7996_hw_phy(hw);
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	struct mt7996_phy *phy = &dev->phy;
 +	struct nlattr *tb[NUM_MTK_VENDOR_ATTRS_EDCCA_CTRL];
 +	int err;
-+	u8 edcca_mode;
++	u8 edcca_mode, radio_idx, i;
 +	u8 value[EDCCA_MAX_BW_NUM];
 +
 +	if (*storage == 1)
@@ -270,24 +277,27 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +	if (err)
 +		return err;
 +
-+	if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE])
++	if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE] ||
++	    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX])
 +		return -EINVAL;
 +
 +	edcca_mode = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE]);
-+
 +	if (edcca_mode != EDCCA_CTRL_GET_THRES)
 +		return -EINVAL;
 +
-+	err = mt7996_mcu_edcca_threshold_ctrl(phy, value, false);
++	radio_idx = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX]);
++	if (!mt7996_radio_valid(dev, radio_idx))
++		return -EINVAL;
 +
++	phy = dev->radio_phy[radio_idx];
++	err = mt7996_mcu_edcca_threshold_ctrl(phy, value, false);
 +	if (err)
 +		return err;
 +
-+	if (nla_put_u8(skb, MTK_VENDOR_ATTR_EDCCA_DUMP_PRI20_VAL, value[EDCCA_BW_20]) ||
-+	    nla_put_u8(skb, MTK_VENDOR_ATTR_EDCCA_DUMP_SEC40_VAL, value[EDCCA_BW_40]) ||
-+	    nla_put_u8(skb, MTK_VENDOR_ATTR_EDCCA_DUMP_SEC80_VAL, value[EDCCA_BW_80]) ||
-+	    nla_put_u8(skb, MTK_VENDOR_ATTR_EDCCA_DUMP_SEC160_VAL, value[EDCCA_BW_160]))
-+		return -ENOMEM;
++	for (i = 0; i < EDCCA_MAX_BW_NUM; i++)
++		if (nla_put_u8(skb, MTK_VENDOR_ATTR_EDCCA_DUMP_PRI20_VAL + i,
++			       value[EDCCA_BW_20 + i]))
++			return -ENOMEM;
 +
 +	return EDCCA_MAX_BW_NUM;
 +}
@@ -295,7 +305,7 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
  static const struct wiphy_vendor_command mt7996_vendor_commands[] = {
  	{
  		.info = {
-@@ -472,6 +592,18 @@ static const struct wiphy_vendor_command
+@@ -153,6 +280,18 @@ static const struct wiphy_vendor_command
  		.policy = bss_color_ctrl_policy,
  		.maxattr = MTK_VENDOR_ATTR_BSS_COLOR_CTRL_MAX,
  	},
@@ -316,9 +326,9 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
  void mt7996_vendor_register(struct mt7996_phy *phy)
 --- a/mt7996/vendor.h
 +++ b/mt7996/vendor.h
-@@ -6,9 +6,42 @@
+@@ -5,9 +5,43 @@
+ 
  enum mtk_nl80211_vendor_subcmds {
- 	MTK_NL80211_VENDOR_SUBCMD_AMNT_CTRL = 0xae,
  	MTK_NL80211_VENDOR_SUBCMD_MU_CTRL = 0xc5,
 +	MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL = 0xc7,
  	MTK_NL80211_VENDOR_SUBCMD_BSS_COLOR_CTRL = 0xca,
@@ -334,6 +344,7 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +	MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL,
 +	MTK_VENDOR_ATTR_EDCCA_CTRL_COMPENSATE,
 +	MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL,
++	MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX,
 +
 +	/* keep last */
 +	NUM_MTK_VENDOR_ATTRS_EDCCA_CTRL,

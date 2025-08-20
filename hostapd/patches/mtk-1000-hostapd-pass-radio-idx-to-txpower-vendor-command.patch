@@ -1,0 +1,79 @@
+--- a/src/ap/ap_drv_ops.c
++++ b/src/ap/ap_drv_ops.c
+@@ -1501,16 +1501,16 @@ int hostapd_drv_mu_dump(struct hostapd_d
+ 
+ int hostapd_drv_txpower_ctrl(struct hostapd_data *hapd)
+ {
+-	s8 link_id = -1;
++	s8 radio_idx = -1;
+ 
+ 	if (!hapd->driver || !hapd->driver->txpower_ctrl)
+ 		return 0;
+ 
+-	if (hapd->conf->mld_ap)
+-		link_id = hapd->mld_link_id;
++	if (hapd->iface->current_hw_info)
++		radio_idx = hapd->iface->current_hw_info->hw_idx;
+ 
+ 	return hapd->driver->txpower_ctrl(hapd->drv_priv, hapd->iconf->lpi_psd,
+ 					  hapd->iconf->sku_idx,
+ 					  hapd->iconf->lpi_bcn_enhance,
+-					  link_id);
++					  radio_idx);
+ }
+--- a/src/common/mtk_vendor.h
++++ b/src/common/mtk_vendor.h
+@@ -200,7 +200,7 @@ enum mtk_vendor_attr_txpower_ctrl {
+ 	MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD,
+ 	MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX,
+ 	MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE,
+-	MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID,
++	MTK_VENDOR_ATTR_TXPOWER_CTRL_RADIO_IDX,
+ 
+ 	/* keep last */
+ 	NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL,
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -96,7 +96,7 @@ txpower_ctrl_policy[NUM_MTK_VENDOR_ATTRS
+ 	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD] = { .type = NLA_U8 },
+ 	[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX] = { .type = NLA_U8 },
+ 	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE] = { .type = NLA_U8 },
+-	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_TXPOWER_CTRL_RADIO_IDX] = { .type = NLA_U8 },
+ };
+ 
+ static struct nl_sock * nl_create_handle(struct nl_cb *cb, const char *dbg)
+@@ -15371,7 +15371,7 @@ wpa_driver_get_multi_hw_info(void *priv,
+ 
+ 
+ static int nl80211_txpower_ctrl(void *priv, u8 lpi_psd, u8 sku_idx, u8 lpi_bcn_enhance,
+-				u8 link_id)
++				s8 radio_idx)
+ {
+ 	struct i802_bss *bss = priv;
+ 	struct wpa_driver_nl80211_data *drv = bss->drv;
+@@ -15401,7 +15401,8 @@ static int nl80211_txpower_ctrl(void *pr
+ 	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD, lpi_psd);
+ 	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX, sku_idx);
+ 	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE, lpi_bcn_enhance);
+-	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID, link_id);
++	if (radio_idx > -1)
++		nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_RADIO_IDX, radio_idx);
+ 
+ 	nla_nest_end(msg, data);
+ 	ret = send_and_recv_cmd(drv, msg);
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -5562,10 +5562,10 @@ struct wpa_driver_ops {
+ 	* @lpi_psd: 1 to enable lpi psd compensate, 0 to disable
+ 	* @lpi_bcn_enhance: 1 to enable beacon duplicate enhancement in 6G lpi mode, 0 to disable enhancement
+ 	* @sku_idx: index used to indicate which sku table should be used
+-	* @link_id: MLD link id. -1 if this is an non-MLD AP
++	* @radio_idx: radio index 
+ 	*/
+ 	int (*txpower_ctrl)(void *priv, u8 lpi_psd, u8 sku_idx, u8 lpi_bcn_enhance,
+-			    u8 link_id);
++			    s8 radio_idx);
+ };
+ 
+ /**

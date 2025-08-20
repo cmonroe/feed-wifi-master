@@ -17,7 +17,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -161,6 +161,31 @@ static int mt76_get_of_eeprom(struct mt7
+@@ -165,6 +165,31 @@ static int mt76_get_of_eeprom(struct mt7
  	return mt76_get_of_data_from_nvmem(dev, eep, "eeprom", len);
  }
  
@@ -51,9 +51,9 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -959,6 +959,9 @@ struct mt76_dev {
- 		struct mt76_sdio sdio;
- 	};
+@@ -1020,6 +1020,9 @@ struct mt76_dev {
+ 
+ 	atomic_t bus_hung;
  
 +	/* for mtk internal */
 +	const char *bin_file_name;
@@ -61,7 +61,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
  };
-@@ -1225,6 +1228,7 @@ void mt76_eeprom_override(struct mt76_ph
+@@ -1308,6 +1311,7 @@ void mt76_eeprom_override(struct mt76_ph
  int mt76_get_of_data_from_mtd(struct mt76_dev *dev, void *eep, int offset, int len);
  int mt76_get_of_data_from_nvmem(struct mt76_dev *dev, void *eep,
  				const char *cell_name, int len);
@@ -191,7 +191,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			return ret;
 --- a/mt7915/eeprom.h
 +++ b/mt7915/eeprom.h
-@@ -109,6 +109,13 @@ enum mt7915_sku_rate_group {
+@@ -110,6 +110,13 @@ enum mt7915_sku_rate_group {
  	MAX_SKU_RATE_GROUP_NUM,
  };
  
@@ -207,7 +207,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -354,6 +354,8 @@ struct mt7915_dev {
+@@ -352,6 +352,8 @@ struct mt7915_dev {
  
  	bool dbdc_support;
  	bool flash_mode;
@@ -216,7 +216,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	bool muru_debug;
  	bool ibf;
  
-@@ -713,6 +715,7 @@ void mt7915_dump_tmac_info(u8 *tmac_info
+@@ -724,6 +726,7 @@ void mt7915_dump_tmac_info(u8 *tmac_info
  int mt7915_mcu_set_txpower_level(struct mt7915_phy *phy, u8 drop_level);
  void mt7915_packet_log_to_host(struct mt7915_dev *dev, const void *data, int len, int type, int des_len);
  int mt7915_mcu_set_amsdu_algo(struct mt7915_dev *dev, u16 wcid, u8 enable);

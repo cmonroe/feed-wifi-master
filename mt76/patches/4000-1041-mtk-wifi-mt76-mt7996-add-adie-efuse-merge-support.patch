@@ -18,7 +18,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -894,6 +894,46 @@ DEFINE_DEBUGFS_ATTRIBUTE(fops_fw_debug_m
+@@ -961,6 +961,46 @@ DEFINE_DEBUGFS_ATTRIBUTE(fops_fw_debug_m
  			 mt7996_fw_debug_muru_disable_get,
  			 mt7996_fw_debug_muru_disable_set, "%lld\n");
  
@@ -62,20 +62,20 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	.llseek = default_llseek,
 +};
 +
- int mt7996_init_debugfs(struct mt7996_phy *phy)
+ int mt7996_init_debugfs(struct mt7996_dev *dev)
  {
- 	struct mt7996_dev *dev = phy->dev;
-@@ -920,6 +960,7 @@ int mt7996_init_debugfs(struct mt7996_ph
+ 	struct dentry *dir;
+@@ -987,6 +1027,7 @@ int mt7996_init_debugfs(struct mt7996_de
  	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
  				    mt7996_twt_stats);
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
 +	debugfs_create_file("otp", 0400, dir, dev, &mt7996_efuse_ops);
  
- 	if (phy->mt76->cap.has_5ghz) {
- 		debugfs_create_u32("dfs_hw_pattern", 0400, dir,
+ 	debugfs_create_u32("dfs_hw_pattern", 0400, dir, &dev->hw_pattern);
+ 	debugfs_create_file("radar_trigger", 0200, dir, dev,
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -474,6 +474,146 @@ static int mt7996_eeprom_load_precal(str
+@@ -482,6 +482,146 @@ static int mt7996_eeprom_load_precal(str
  	return mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
  }
  
@@ -222,7 +222,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_eeprom_init(struct mt7996_dev *dev)
  {
  	int ret;
-@@ -488,6 +628,10 @@ int mt7996_eeprom_init(struct mt7996_dev
+@@ -496,6 +636,10 @@ int mt7996_eeprom_init(struct mt7996_dev
  	if (ret)
  		return ret;
  

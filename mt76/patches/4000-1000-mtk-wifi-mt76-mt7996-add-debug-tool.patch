@@ -168,7 +168,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	return NULL;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -295,11 +295,39 @@ mt7996_fw_debug_wm_set(void *data, u64 v
+@@ -306,11 +306,39 @@ mt7996_fw_debug_wm_set(void *data, u64 v
  		DEBUG_SPL,
  		DEBUG_RPT_RX,
  		DEBUG_RPT_RA = 68,
@@ -209,7 +209,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	if (dev->fw_debug_bin)
  		val = MCU_FW_LOG_RELAY;
-@@ -314,18 +342,21 @@ mt7996_fw_debug_wm_set(void *data, u64 v
+@@ -325,18 +353,21 @@ mt7996_fw_debug_wm_set(void *data, u64 v
  	if (ret)
  		return ret;
  
@@ -237,7 +237,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	}
  
  	return 0;
-@@ -398,6 +429,39 @@ remove_buf_file_cb(struct dentry *f)
+@@ -409,6 +440,39 @@ remove_buf_file_cb(struct dentry *f)
  }
  
  static int
@@ -277,7 +277,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  mt7996_fw_debug_bin_set(void *data, u64 val)
  {
  	static struct rchan_callbacks relay_cb = {
-@@ -405,17 +469,23 @@ mt7996_fw_debug_bin_set(void *data, u64
+@@ -416,17 +480,23 @@ mt7996_fw_debug_bin_set(void *data, u64
  		.remove_buf_file = remove_buf_file_cb,
  	};
  	struct mt7996_dev *dev = data;
@@ -304,7 +304,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	return mt7996_fw_debug_wm_set(dev, dev->fw_debug_wm);
  }
  
-@@ -785,6 +855,30 @@ mt7996_rf_regval_set(void *data, u64 val
+@@ -851,6 +921,30 @@ mt7996_rf_regval_set(void *data, u64 val
  DEFINE_DEBUGFS_ATTRIBUTE(fops_rf_regval, mt7996_rf_regval_get,
  			 mt7996_rf_regval_set, "0x%08llx\n");
  
@@ -332,28 +332,27 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +			 mt7996_fw_debug_muru_disable_get,
 +			 mt7996_fw_debug_muru_disable_set, "%lld\n");
 +
- int mt7996_init_debugfs(struct mt7996_phy *phy)
+ int mt7996_init_debugfs(struct mt7996_dev *dev)
  {
- 	struct mt7996_dev *dev = phy->dev;
-@@ -820,10 +914,17 @@ int mt7996_init_debugfs(struct mt7996_ph
- 		debugfs_create_devm_seqfile(dev->mt76.dev, "rdd_monitor", dir,
- 					    mt7996_rdd_monitor);
- 	}
+ 	struct dentry *dir;
+@@ -883,9 +977,16 @@ int mt7996_init_debugfs(struct mt7996_de
+ 			    &fops_radar_trigger);
+ 	debugfs_create_devm_seqfile(dev->mt76.dev, "rdd_monitor", dir,
+ 				    mt7996_rdd_monitor);
 +	debugfs_create_file("fw_debug_muru_disable", 0600, dir, dev,
 +			    &fops_fw_debug_muru_disable);
  
- 	if (phy == &dev->phy)
- 		dev->debugfs_dir = dir;
+ 	dev->debugfs_dir = dir;
  
 +#ifdef CONFIG_MTK_DEBUG
 +	debugfs_create_u16("wlan_idx", 0600, dir, &dev->wlan_idx);
-+	mt7996_mtk_init_debugfs(phy, dir);
++	mt7996_mtk_init_debugfs(dev, dir);
 +#endif
 +
  	return 0;
  }
  
-@@ -835,7 +936,11 @@ mt7996_debugfs_write_fwlog(struct mt7996
+@@ -897,7 +998,11 @@ mt7996_debugfs_write_fwlog(struct mt7996
  	unsigned long flags;
  	void *dest;
  
@@ -365,7 +364,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	dest = relay_reserve(dev->relay_fwlog, hdrlen + len + 4);
  	if (dest) {
  		*(u32 *)dest = hdrlen + len;
-@@ -868,9 +973,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
+@@ -930,9 +1035,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -377,7 +376,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -956,6 +956,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -1047,6 +1047,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
  	id = mt76_token_consume(mdev, &t);
  	if (id < 0)
  		return id;
@@ -389,7 +388,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	memset(txwi_ptr, 0, MT_TXD_SIZE);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -364,6 +364,7 @@ struct mt7996_dev {
+@@ -428,6 +428,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -397,7 +396,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	struct dentry *debugfs_dir;
  	struct rchan *relay_fwlog;
-@@ -380,6 +381,18 @@ struct mt7996_dev {
+@@ -444,6 +445,17 @@ struct mt7996_dev {
  		u8 type:4;
  		u8 fem:4;
  	} var;
@@ -409,17 +408,18 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +		u32 fw_dbg_module;
 +		u8 fw_dbg_lv;
 +		u32 bcn_total_cnt[__MT_MAX_BAND];
-+		u32 token_idx;
 +	} dbg;
 +	const struct mt7996_dbg_reg_desc *dbg_reg;
 +#endif
  };
  
  enum {
-@@ -695,6 +708,7 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -815,7 +827,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
+ u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
  #ifdef CONFIG_MTK_DEBUG
- int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
+-int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
++int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
 +int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
  
@@ -2715,7 +2715,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +#endif
 --- /dev/null
 +++ b/mt7996/mtk_debugfs.c
-@@ -0,0 +1,2534 @@
+@@ -0,0 +1,2505 @@
 +// SPDX-License-Identifier: ISC
 +/*
 + * Copyright (C) 2023 MediaTek Inc.
@@ -5147,34 +5147,8 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +	return 0;
 +}
 +
-+static int mt7996_token_txd_read(struct seq_file *s, void *data)
++int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir)
 +{
-+	struct mt7996_dev *dev = dev_get_drvdata(s->private);
-+	struct mt76_txwi_cache *t;
-+	u8* txwi;
-+
-+	seq_printf(s, "\n");
-+	spin_lock_bh(&dev->mt76.token_lock);
-+
-+	t = idr_find(&dev->mt76.token, dev->dbg.token_idx);
-+	if (t != NULL) {
-+		struct mt76_dev *mdev = &dev->mt76;
-+		txwi = ((u8*)(t)) - (mdev->drv->txwi_size);
-+		/* dump one txd info */
-+		//dev->dbg.txd_read_cnt = 1;
-+		//mt7996_dump_bmac_txd_info(s, dev, (__le32 *)txwi, true, true);
-+		//seq_printf(s, "\n");
-+		seq_printf(s, "[SKB]\n");
-+		seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 1, (u8 *)t->skb->data, t->skb->len, false);
-+		seq_printf(s, "\n");
-+	}
-+	spin_unlock_bh(&dev->mt76.token_lock);
-+	return 0;
-+}
-+
-+int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
-+{
-+	struct mt7996_dev *dev = phy->dev;
 +	u32 device_id = (dev->mt76.rev) >> 16;
 +	int i = 0;
 +	static const struct mt7996_dbg_reg_desc dbg_reg_s[] = {
@@ -5240,9 +5214,6 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +				    mt7996_wtbl_read);
 +
 +	debugfs_create_devm_seqfile(dev->mt76.dev, "token", dir, mt7996_token_read);
-+	debugfs_create_u32("token_idx", 0600, dir, &dev->dbg.token_idx);
-+	debugfs_create_devm_seqfile(dev->mt76.dev, "token_txd", dir,
-+					mt7996_token_txd_read);
 +
 +	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
 +

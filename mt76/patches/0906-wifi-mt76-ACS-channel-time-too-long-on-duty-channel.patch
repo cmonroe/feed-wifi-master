@@ -27,20 +27,20 @@ scan done and before restore to duty channel.
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -926,6 +926,7 @@ int mt76_set_channel(struct mt76_phy *ph
+@@ -977,6 +977,7 @@ int __mt76_set_channel(struct mt76_phy *
  {
  	struct mt76_dev *dev = phy->dev;
  	int timeout = HZ / 5;
 +	unsigned long was_scanning = ieee80211_get_scanning(phy->hw);
  	int ret;
  
- 	cancel_delayed_work_sync(&phy->mac_work);
-@@ -948,7 +949,7 @@ int mt76_set_channel(struct mt76_phy *ph
+ 	set_bit(MT76_RESET, &phy->state);
+@@ -996,7 +997,7 @@ int __mt76_set_channel(struct mt76_phy *
  	if (!offchannel)
- 		phy->main_chan = chandef->chan;
+ 		phy->main_chandef = *chandef;
  
--	if (chandef->chan != phy->main_chan)
-+	if (chandef->chan != phy->main_chan || was_scanning)
+-	if (chandef->chan != phy->main_chandef.chan)
++	if (chandef->chan != phy->main_chandef.chan || was_scanning)
  		memset(phy->chan_state, 0, sizeof(*phy->chan_state));
- 	mt76_worker_enable(&dev->tx_worker);
  
+ 	ret = dev->drv->set_channel(phy);

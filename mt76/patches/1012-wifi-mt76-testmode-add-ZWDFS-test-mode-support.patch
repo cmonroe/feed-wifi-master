@@ -19,7 +19,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -774,6 +774,15 @@ struct mt76_testmode_data {
+@@ -799,6 +799,15 @@ struct mt76_testmode_data {
  		u64 fcs_error[__MT_RXQ_MAX];
  		u64 len_mismatch;
  	} rx_stats;
@@ -34,10 +34,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	u8 ipi_reset;
  };
  
- struct mt76_vif {
+ struct mt76_vif_link {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1255,6 +1255,7 @@ enum {
+@@ -1264,6 +1264,7 @@ enum {
  	MCU_EXT_CMD_OFFCH_SCAN_CTRL = 0x9a,
  	MCU_EXT_CMD_SET_RDD_TH = 0x9d,
  	MCU_EXT_CMD_MURU_CTRL = 0x9f,
@@ -45,9 +45,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	MCU_EXT_CMD_RX_STAT = 0xa4,
  	MCU_EXT_CMD_SET_SPR = 0xa8,
  	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
-@@ -1263,6 +1264,7 @@ enum {
- 	/* for vendor csi and air monitor */
+@@ -1273,6 +1274,7 @@ enum {
  	MCU_EXT_CMD_SMESH_CTRL = 0xae,
+ 	MCU_EXT_CMD_WF_RF_PIN_CTRL = 0xbd,
  	MCU_EXT_CMD_CSI_CTRL = 0xc2,
 +	MCU_EXT_CMD_IPI_HIST_SCAN = 0xc5,
  };
@@ -55,7 +55,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  enum {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2720,6 +2720,7 @@ mt7915_mcu_background_chain_ctrl(struct
+@@ -2748,6 +2748,7 @@ mt7915_mcu_background_chain_ctrl(struct
  		req.monitor_chan = chandef->chan->hw_value;
  		req.monitor_central_chan =
  			ieee80211_frequency_to_channel(chandef->center_freq1);
@@ -63,7 +63,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		req.band_idx = phy->mt76->band_idx;
  		req.scan_mode = 2;
  		break;
-@@ -4350,3 +4351,68 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4386,3 +4387,68 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(MEC_CTRL), &req, sizeof(req), true);
  }
  #endif
@@ -134,7 +134,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +}
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -667,4 +667,50 @@ struct csi_data {
+@@ -655,4 +655,50 @@ struct csi_data {
  };
  #endif
  
@@ -187,7 +187,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -255,6 +255,7 @@ struct mt7915_phy {
+@@ -253,6 +253,7 @@ struct mt7915_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -195,7 +195,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	u8 stats_work_count;
  	struct list_head stats_list;
-@@ -700,6 +701,9 @@ int mt7915_vendor_amnt_sta_remove(struct
+@@ -711,6 +712,9 @@ int mt7915_vendor_amnt_sta_remove(struct
  				  struct ieee80211_sta *sta);
  #endif
  
@@ -207,7 +207,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7915_dbg_mcu_wa_cmd(struct mt7915_dev *dev, int cmd, u32 a1, u32 a2, u32 a3, bool wait_resp);
 --- a/mt7915/regs.h
 +++ b/mt7915/regs.h
-@@ -1208,6 +1208,8 @@ enum offs_rev {
+@@ -1215,6 +1215,8 @@ enum offs_rev {
  #define MT_WF_IRPI_NSS(phy, nss)	MT_WF_IRPI(0x6000 + ((phy) << 20) + ((nss) << 16))
  #define MT_WF_IRPI_NSS_MT7916(phy, nss)	MT_WF_IRPI(0x1000 + ((phy) << 20) + ((nss) << 16))
  

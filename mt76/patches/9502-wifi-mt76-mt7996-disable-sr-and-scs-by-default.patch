@@ -1,13 +1,13 @@
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -70,13 +70,13 @@ int mt7996_run(struct ieee80211_hw *hw)
+@@ -37,13 +37,13 @@ int mt7996_run(struct mt7996_phy *phy)
  	if (ret)
- 		goto out;
+ 		return ret;
  
 -	ret = mt7996_mcu_set_scs(phy, SCS_ENABLE);
 +	ret = mt7996_mcu_set_scs(phy, SCS_DISABLE);
  	if (ret)
- 		goto out;
+ 		return ret;
  
  #ifdef CONFIG_MTK_DEBUG
 -	phy->sr_enable = true;

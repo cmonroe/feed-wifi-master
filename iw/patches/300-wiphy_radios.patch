@@ -152,9 +152,9 @@
  static int print_phy_handler(struct nl_msg *msg, void *arg)
  {
  	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
-@@ -565,93 +710,11 @@ next:
+@@ -559,93 +704,11 @@ next:
+ 		print_iftype_list("\tsoftware interface modes (can always be added)",
  				  "\t\t", tb_msg[NL80211_ATTR_SOFTWARE_IFTYPES]);
- #endif
  
 -	if (tb_msg[NL80211_ATTR_INTERFACE_COMBINATIONS]) {
 -		struct nlattr *nl_combi;
@@ -248,5 +248,5 @@
 +	if (tb_msg[NL80211_ATTR_WIPHY_RADIOS])
 +		print_radios(tb_msg[NL80211_ATTR_WIPHY_RADIOS]);
  
- #ifdef IW_FULL
  	if (tb_msg[NL80211_ATTR_SUPPORTED_COMMANDS]) {
+ 		printf("\tSupported commands:\n");

@@ -1,0 +1,11 @@
+--- a/src/drivers/driver_nl80211_capa.c
++++ b/src/drivers/driver_nl80211_capa.c
+@@ -2872,7 +2872,7 @@ nl80211_get_multi_hw_info(struct i802_bs
+ 
+ 	*num_multi_hws = 0;
+ 
+-	if (!drv->has_capability || !(drv->capa.flags2 & WPA_DRIVER_FLAGS2_MLO))
++	if (!drv->has_capability)
+ 		return NULL;
+ 
+ 	feat = get_nl80211_protocol_features(drv);

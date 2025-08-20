@@ -33,12 +33,13 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2706,12 +2706,12 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2707,13 +2707,13 @@ static int hostapd_ctrl_iface_chan_switc
  					  char *pos)
  {
  #ifdef NEED_AP_MLME
 -	struct csa_settings settings;
 +	struct csa_settings settings, background_settings;
+ 	struct hostapd_hw_modes *target_mode;
  	int ret;
 -	int dfs_range = 0;
 +	int freq, state;
@@ -50,7 +51,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	unsigned int num_err = 0;
  	int err = 0;
  
-@@ -2745,21 +2745,28 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2753,21 +2753,28 @@ static int hostapd_ctrl_iface_chan_switc
  	switch (settings.freq_params.bandwidth) {
  	case 40:
  		bandwidth = CHAN_WIDTH_40;
@@ -81,7 +82,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		break;
  	}
  
-@@ -2774,41 +2781,29 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2782,41 +2789,29 @@ static int hostapd_ctrl_iface_chan_switc
  	}
  
  	if (settings.freq_params.center_freq1)
@@ -144,7 +145,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	if (iface->cac_started) {
-@@ -2830,6 +2825,36 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2838,6 +2833,36 @@ static int hostapd_ctrl_iface_chan_switc
  		}
  	}
  
@@ -181,7 +182,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	return (iface->num_bss == num_err) ? ret : 0;
  #else /* NEED_AP_MLME */
  	return -1;
-@@ -4305,9 +4330,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
+@@ -4317,9 +4342,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
  	else
  		return -1;
  
@@ -195,9 +196,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			break;
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2669,6 +2669,11 @@ static int __ieee802_11_set_beacon(struc
- 		return -1;
+@@ -2705,6 +2705,11 @@ static int __ieee802_11_set_beacon(struc
  	}
+ #endif /* CONFIG_IEEE80211AX */
  
 +	if (iface->cac_started) {
 +		wpa_printf(MSG_DEBUG, "Ignore set beacons during CAC period");
@@ -209,7 +210,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (ieee802_11_build_ap_params(hapd, &params) < 0)
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1162,6 +1162,7 @@ int hostapd_parse_csa_settings(const cha
+@@ -1189,6 +1189,7 @@ int hostapd_parse_csa_settings(const cha
  			       struct csa_settings *settings)
  {
  	char *end;
@@ -217,7 +218,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	os_memset(settings, 0, sizeof(*settings));
  	settings->cs_count = strtol(pos, &end, 10);
-@@ -1171,7 +1172,9 @@ int hostapd_parse_csa_settings(const cha
+@@ -1198,7 +1199,9 @@ int hostapd_parse_csa_settings(const cha
  	}
  
  	settings->freq_params.freq = atoi(end);
@@ -531,7 +532,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif /* DFS_H */
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6402,6 +6402,11 @@ int ieee802_11_mgmt(struct hostapd_data
+@@ -6732,6 +6732,11 @@ int ieee802_11_mgmt(struct hostapd_data
  		return 1;
  	}
  

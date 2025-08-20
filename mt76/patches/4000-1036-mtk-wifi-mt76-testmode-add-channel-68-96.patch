@@ -58,7 +58,7 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  const u32 dpd_5g_bw160_ch_num = ARRAY_SIZE(dpd_5g_ch_list_bw160);
  const u32 dpd_6g_bw160_ch_num = ARRAY_SIZE(dpd_6g_ch_list_bw160);
  const u32 dpd_6g_bw320_ch_num = ARRAY_SIZE(dpd_6g_ch_list_bw320);
-@@ -186,8 +198,8 @@ mt7996_get_dpd_per_band_size(struct mt79
+@@ -192,8 +204,8 @@ mt7996_get_dpd_per_band_size(struct mt79
  	if (band == NL80211_BAND_2GHZ)
  		dpd_size = dpd_2g_bw20_ch_num * DPD_PER_CH_BW20_SIZE;
  	else if (band == NL80211_BAND_5GHZ)
@@ -69,7 +69,7 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  	else
  		dpd_size = mphy->sband_6g.sband.n_channels * DPD_PER_CH_BW20_SIZE +
  			   (dpd_6g_bw160_ch_num + dpd_6g_bw320_ch_num) * DPD_PER_CH_GT_BW20_SIZE;
-@@ -409,6 +421,39 @@ out:
+@@ -417,6 +429,39 @@ out:
  	return ret;
  }
  
@@ -122,7 +122,7 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  extern const struct ieee80211_channel dpd_6g_ch_list_bw160[];
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3741,7 +3741,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4009,7 +4009,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  		chan_list_size = mphy->sband_5g.sband.n_channels;
  		base_offset += dpd_size_2g;
  		if (bw == NL80211_CHAN_WIDTH_160) {
@@ -132,7 +132,7 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  			per_chan_size = DPD_PER_CH_GT_BW20_SIZE;
  			cal_id = RF_DPD_FLAT_5G_MEM_CAL;
  			chan_list = dpd_5g_ch_list_bw160;
-@@ -3750,6 +3751,9 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4018,6 +4019,9 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  			/* apply (center channel - 2)'s dpd cal data for bw 40/80 channels */
  			channel -= 2;
  		}
@@ -142,7 +142,7 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  		break;
  	case NL80211_BAND_6GHZ:
  		dpd_mask = MT_EE_WIFI_CAL_DPD_6G;
-@@ -3789,6 +3793,10 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4057,6 +4061,10 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	if (idx == chan_list_size)
  		return -EINVAL;
  

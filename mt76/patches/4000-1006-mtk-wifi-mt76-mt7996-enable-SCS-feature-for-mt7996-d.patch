@@ -21,7 +21,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1298,6 +1298,7 @@ enum {
+@@ -1308,6 +1308,7 @@ enum {
  	MCU_UNI_CMD_GET_STAT_INFO = 0x23,
  	MCU_UNI_CMD_SNIFFER = 0x24,
  	MCU_UNI_CMD_SR = 0x25,
@@ -31,7 +31,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TXPOWER = 0x2b,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1416,6 +1416,7 @@ int mt7996_register_device(struct mt7996
+@@ -1490,6 +1490,7 @@ int mt7996_register_device(struct mt7996
  	dev->mt76.phy.priv = &dev->phy;
  	INIT_WORK(&dev->rc_work, mt7996_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7996_mac_work);
@@ -41,7 +41,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1814,6 +1814,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -1921,6 +1921,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  		cancel_delayed_work_sync(&phy2->mt76->mac_work);
  	if (phy3)
  		cancel_delayed_work_sync(&phy3->mt76->mac_work);
@@ -49,7 +49,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  	for (i = 0; i < 10; i++) {
-@@ -1849,6 +1850,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -1956,6 +1957,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  		ieee80211_queue_delayed_work(phy3->mt76->hw,
  					     &phy3->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -59,26 +59,26 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  void mt7996_mac_reset_work(struct work_struct *work)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -67,11 +67,17 @@ int mt7996_run(struct ieee80211_hw *hw)
+@@ -34,11 +34,17 @@ int mt7996_run(struct mt7996_phy *phy)
  	if (ret)
- 		goto out;
+ 		return ret;
  
 +	ret = mt7996_mcu_set_scs(phy, SCS_ENABLE);
 +	if (ret)
-+		goto out;
++		return ret;
 +
  	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
  
- 	ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
+ 	ieee80211_queue_delayed_work(dev->mphy.hw, &phy->mt76->mac_work,
  				     MT7996_WATCHDOG_TIME);
  
 +	ieee80211_queue_delayed_work(mt76_hw(dev), &dev->scs_work, HZ);
 +
- 	if (!running)
+ 	if (!phy->counter_reset) {
  		mt7996_mac_reset_counters(phy);
- 
-@@ -99,6 +105,7 @@ static void mt7996_stop(struct ieee80211
- 	struct mt7996_phy *phy = mt7996_hw_phy(hw);
+ 		phy->counter_reset = true;
+@@ -76,6 +82,7 @@ static void mt7996_stop_phy(struct mt799
+ 	dev = phy->dev;
  
  	cancel_delayed_work_sync(&phy->mt76->mac_work);
 +	cancel_delayed_work_sync(&dev->scs_work);
@@ -87,7 +87,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4597,3 +4597,108 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -4923,3 +4923,116 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
@@ -120,10 +120,18 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +void mt7996_sta_rssi_work(void *data, struct ieee80211_sta *sta)
 +{
 +	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
-+	struct mt7996_phy *poll_phy = (struct mt7996_phy *) data;
++	struct mt7996_sta_link *msta_link;
++	struct mt7996_phy *poll_phy = (struct mt7996_phy *)data;
 +
-+	if (poll_phy->scs_ctrl.sta_min_rssi > msta->ack_signal)
-+		poll_phy->scs_ctrl.sta_min_rssi = msta->ack_signal;
++	mutex_lock(&poll_phy->dev->mt76.mutex);
++	msta_link = mt76_dereference(msta->link[0], &poll_phy->dev->mt76);
++	if (!msta_link)
++		goto out;
++
++	if (poll_phy->scs_ctrl.sta_min_rssi > msta_link->ack_signal)
++		poll_phy->scs_ctrl.sta_min_rssi = msta_link->ack_signal;
++out:
++	mutex_unlock(&poll_phy->dev->mt76.mutex);
 +}
 +
 +void mt7996_mcu_scs_sta_poll(struct work_struct *work)
@@ -198,8 +206,8 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -919,6 +919,12 @@ enum {
- 	UNI_CMD_PP_EN_CTRL,
+@@ -953,6 +953,12 @@ enum pp_mode {
+ 	PP_USR_MODE,
  };
  
 +enum {
@@ -213,7 +221,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -238,6 +238,16 @@ struct mt7996_hif {
+@@ -289,6 +289,16 @@ struct mt7996_hif {
  	int irq;
  };
  
@@ -230,16 +238,16 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  struct mt7996_wed_rro_addr {
  	u32 head_low;
  	u32 head_high : 4;
-@@ -282,6 +292,8 @@ struct mt7996_phy {
- 	struct mt76_channel_state state_ts;
+@@ -339,6 +349,8 @@ struct mt7996_phy {
  
- 	bool has_aux_rx;
+ 	u8 pp_mode;
+ 	u16 punct_bitmap;
 +
 +	struct mt7996_scs_ctrl scs_ctrl;
  };
  
  struct mt7996_dev {
-@@ -311,6 +323,7 @@ struct mt7996_dev {
+@@ -375,6 +387,7 @@ struct mt7996_dev {
  	struct work_struct rc_work;
  	struct work_struct dump_work;
  	struct work_struct reset_work;
@@ -247,8 +255,8 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -714,6 +727,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
- int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
+@@ -834,6 +847,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+ int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
 +int mt7996_mcu_set_scs(struct mt7996_phy *phy, u8 enable);
@@ -258,7 +266,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  int mt7996_dma_rro_init(struct mt7996_dev *dev);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2454,6 +2454,16 @@ static int mt7996_token_txd_read(struct
+@@ -2429,8 +2429,19 @@ static int mt7996_token_read(struct seq_
  	return 0;
  }
  
@@ -272,14 +280,24 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +DEFINE_DEBUGFS_ATTRIBUTE(fops_scs_enable, NULL,
 +			 mt7996_scs_enable_set, "%lld\n");
 +
- int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir)
+ int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir)
  {
- 	struct mt7996_dev *dev = phy->dev;
-@@ -2527,6 +2537,7 @@ int mt7996_mtk_init_debugfs(struct mt799
- 					mt7996_token_txd_read);
++	struct ieee80211_hw *hw = mt76_hw(dev);
+ 	u32 device_id = (dev->mt76.rev) >> 16;
+ 	int i = 0;
+ 	static const struct mt7996_dbg_reg_desc dbg_reg_s[] = {
+@@ -2499,6 +2510,14 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
-+	debugfs_create_file("scs_enable", 0200, dir, phy, &fops_scs_enable);
  
++	for (i = 0; i < hw->wiphy->n_radio; i++) {
++		char buf[32];
++		struct mt7996_phy *phy = dev->radio_phy[i];
++
++		snprintf(buf, sizeof(buf), "scs_enable%d", i);
++		debugfs_create_file(buf, 0200, dir, phy, &fops_scs_enable);
++	}
++
  	return 0;
  }
+ 

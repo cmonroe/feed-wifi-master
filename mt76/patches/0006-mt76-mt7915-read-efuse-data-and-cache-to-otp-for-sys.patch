@@ -29,7 +29,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 +	block_num = DIV_ROUND_UP(eeprom_size, MT7915_EEPROM_BLOCK_SIZE);
 +
 +	for (i = 0; i < block_num; i++)
-+		mt7915_mcu_get_eeprom(dev, i * MT7915_EEPROM_BLOCK_SIZE);
++		mt7915_mcu_get_eeprom(dev, i * MT7915_EEPROM_BLOCK_SIZE, NULL);
 +
 +	dev_info(dev->mt76.dev, "read efuse data size=%lu, caching to OTP\n",
 +			dev->mt76.eeprom.size);

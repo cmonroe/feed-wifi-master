@@ -21,17 +21,17 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static LIST_HEAD(hif_list);
  static DEFINE_SPINLOCK(hif_lock);
  static u32 hif_idx;
-@@ -63,6 +66,9 @@ static struct mt7996_hif *mt7996_pci_ini
+@@ -65,6 +68,9 @@ static struct mt7996_hif *mt7996_pci_ini
  {
  	hif_idx++;
  
 +	if (!hif2_enable)
 +		return NULL;
 +
- 	if (!pci_get_device(PCI_VENDOR_ID_MEDIATEK, 0x7991, NULL) &&
- 	    !pci_get_device(PCI_VENDOR_ID_MEDIATEK, 0x799a, NULL))
- 		return NULL;
-@@ -77,6 +83,9 @@ static int mt7996_pci_hif2_probe(struct
+ 	if (!pci_get_device(PCI_VENDOR_ID_MEDIATEK, MT7996_DEVICE_ID_2, NULL) &&
+ 	    !pci_get_device(PCI_VENDOR_ID_MEDIATEK, MT7992_DEVICE_ID_2, NULL) &&
+ 	    !pci_get_device(PCI_VENDOR_ID_MEDIATEK, MT7990_DEVICE_ID_2, NULL))
+@@ -80,6 +86,9 @@ static int mt7996_pci_hif2_probe(struct
  {
  	struct mt7996_hif *hif;
  
@@ -41,7 +41,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	hif = devm_kzalloc(&pdev->dev, sizeof(*hif), GFP_KERNEL);
  	if (!hif)
  		return -ENOMEM;
-@@ -101,6 +110,8 @@ static int mt7996_pci_probe(struct pci_d
+@@ -104,6 +113,8 @@ static int mt7996_pci_probe(struct pci_d
  	int irq, hif2_irq, ret;
  	struct mt76_dev *mdev;
  

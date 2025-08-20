@@ -19,7 +19,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -363,6 +363,8 @@ static void
+@@ -379,6 +379,8 @@ static void
  mt7996_mcu_rx_radar_detected(struct mt7996_dev *dev, struct sk_buff *skb)
  {
  	struct mt76_phy *mphy = &dev->mt76.phy;
@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct mt7996_mcu_rdd_report *r;
  
  	r = (struct mt7996_mcu_rdd_report *)skb->data;
-@@ -381,6 +383,16 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -403,6 +405,16 @@ mt7996_mcu_rx_radar_detected(struct mt79
  	if (!mphy)
  		return;
  
@@ -37,37 +37,41 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +
 +	if (phy->rdd_hw_value == chandef->chan->hw_value) {
 +		dev_info(dev->mt76.dev,
-+			"%s: radar detection for channel=%u in progress, ignore r->band_idx=%d\n",
-+			__func__, phy->rdd_hw_value, r->band_idx);
++			"%s: radar detection for channel=%u in progress, ignore r->rdd_idx=%d\n",
++			__func__, phy->rdd_hw_value, r->rdd_idx);
 +		return;
 +	}
 +
- 	dev_info(dev->mt76.dev, "%s: RADAR DETECTED r->band_idx=%d\n", __func__, r->band_idx);
+ 	dev_info(dev->mt76.dev, "%s: RADAR DETECTED r->rdd_idx=%d\n", __func__, r->rdd_idx);
  	dev_dbg(dev->mt76.dev, "%s: long_detected=%u constant_prf_detected=%u staggered_prf_detected=%u\n",
  			__func__, r->long_detected, r->constant_prf_detected, r->staggered_prf_detected);
-@@ -393,6 +405,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -415,8 +427,10 @@ mt7996_mcu_rx_radar_detected(struct mt79
  						&dev->rdd2_chandef,
  						GFP_ATOMIC);
  	} else {
 +		phy->rdd_hw_value = chandef->chan->hw_value;
  		ieee80211_radar_detected(mphy->hw, NULL);
  	}
++
  	dev->hw_pattern++;
+ }
+ 
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -349,6 +349,7 @@ struct mt7996_phy {
+@@ -380,6 +380,8 @@ struct mt7996_phy {
+ 	s16 coverage_class;
  	u8 slottime;
  
- 	u8 rdd_state;
 +	u16 rdd_hw_value;
- 
++
  	u16 beacon_rate;
  
+ 	u32 rx_ampdu_ts;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2396,6 +2396,8 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -2433,6 +2433,8 @@ int mt7996_dfs_init_radar_detector(struc
  	enum mt76_dfs_state dfs_state, prev_state;
- 	int err;
+ 	int err, rdd_idx = mt7996_get_rdd_idx(phy, false);
  
 +	phy->rdd_hw_value = 0;
 +
