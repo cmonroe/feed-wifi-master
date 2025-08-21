@@ -1404,7 +1404,7 @@ wpa_supplicant_add_network() {
 	case "$htmode" in
 	EHT*|HE*) [ "$rsn_override" -gt 0 ] && rsn_overriding=1;;
 	esac
-	#append network_data "rsn_overriding=$rsn_overriding" "$N$T"
+	append network_data "rsn_overriding=$rsn_overriding" "$N$T"
 
 	case "$auth_type" in
 		none) ;;
