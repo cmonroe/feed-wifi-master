@@ -1,0 +1,92 @@
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -1821,7 +1821,7 @@ void mt7996_mac_reset_work(struct work_s
+ 	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
+ 		return;
+ 
+-	dev_info(dev->mt76.dev,"\n%s L1 SER recovery start.",
++	dev_info(dev->mt76.dev,"==== %s L1 SER recovery start ====",
+ 		 wiphy_name(dev->mt76.hw->wiphy));
+ 
+ 	if (mtk_wed_device_active(&dev->mt76.mmio.wed_hif2))
+@@ -1836,6 +1836,9 @@ void mt7996_mac_reset_work(struct work_s
+ 	if (phy3)
+ 		ieee80211_stop_queues(phy3->mt76->hw);
+ 
++	dev_info(dev->mt76.dev,"%s L1 SER queue stop done.",
++		wiphy_name(dev->mt76.hw->wiphy));
++
+ 	set_bit(MT76_RESET, &dev->mphy.state);
+ 	set_bit(MT76_MCU_RESET, &dev->mphy.state);
+ 	wake_up(&dev->mt76.mcu.wait);
+@@ -1851,6 +1854,10 @@ void mt7996_mac_reset_work(struct work_s
+ 		cancel_delayed_work_sync(&phy3->mt76->mac_work);
+ 	}
+ 	mt76_worker_disable(&dev->mt76.tx_worker);
++
++	dev_info(dev->mt76.dev,"%s L1 SER disable tx_work done.",
++		wiphy_name(dev->mt76.hw->wiphy));
++
+ 	mt76_for_each_q_rx(&dev->mt76, i) {
+ 		if (mtk_wed_device_active(&dev->mt76.mmio.wed) &&
+ 		    mt76_queue_is_wed_rro(&dev->mt76.q_rx[i]))
+@@ -1862,14 +1869,30 @@ void mt7996_mac_reset_work(struct work_s
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+ 
++	dev_info(dev->mt76.dev,"%s L1 SER napi disable done.",
++		 wiphy_name(dev->mt76.hw->wiphy));
++
+ 	mt76_wr(dev, MT_MCU_INT_EVENT, MT_MCU_INT_EVENT_DMA_STOPPED);
+ 
++	dev_info(dev->mt76.dev,"%s L1 SER dma stop done.",
++		 wiphy_name(dev->mt76.hw->wiphy));
++
+ 	if (mt7996_wait_reset_state(dev, MT_MCU_CMD_RESET_DONE)) {
+ 		mt7996_dma_reset(dev, false);
+ 
++		dev_info(dev->mt76.dev,"%s L1 SER dma reset done.",
++			wiphy_name(dev->mt76.hw->wiphy));
++
+ 		mt7996_tx_token_put(dev);
++
++		dev_info(dev->mt76.dev,"%s L1 SER token put done.",
++			wiphy_name(dev->mt76.hw->wiphy));
++
+ 		idr_init(&dev->mt76.token);
+ 
++		dev_info(dev->mt76.dev,"%s L1 SER idr init done.",
++			wiphy_name(dev->mt76.hw->wiphy));
++
+ 		mt76_wr(dev, MT_MCU_INT_EVENT, MT_MCU_INT_EVENT_DMA_INIT);
+ 		mt7996_wait_reset_state(dev, MT_MCU_CMD_RECOVERY_DONE);
+ 	}
+@@ -1901,6 +1924,9 @@ void mt7996_mac_reset_work(struct work_s
+ 				     MT_INT_TX_RX_DONE_EXT);
+ 	}
+ 
++	dev_info(dev->mt76.dev,"%s L1 SER dma start done.",
++		wiphy_name(dev->mt76.hw->wiphy));
++
+ 	clear_bit(MT76_MCU_RESET, &dev->mphy.state);
+ 	clear_bit(MT76_RESET, &dev->mphy.state);
+ 	if (phy2)
+@@ -1948,7 +1974,7 @@ void mt7996_mac_reset_work(struct work_s
+ 		ieee80211_queue_delayed_work(phy3->mt76->hw,
+ 					     &phy3->mt76->mac_work,
+ 					     MT7996_WATCHDOG_TIME);
+-	dev_info(dev->mt76.dev,"\n%s L1 SER recovery completed.",
++	dev_info(dev->mt76.dev,"==== %s L1 SER recovery completed ====",
+ 		 wiphy_name(dev->mt76.hw->wiphy));
+ }
+ 
+@@ -2057,6 +2083,9 @@ void mt7996_coredump(struct mt7996_dev *
+ 
+ void mt7996_reset(struct mt7996_dev *dev)
+ {
++	dev_info(dev->mt76.dev, "%s SER recovery state: 0x%08x\n",
++		wiphy_name(dev->mt76.hw->wiphy), READ_ONCE(dev->recovery.state));
++
+ 	if (!dev->recovery.hw_init_done)
+ 		return;
+ 
