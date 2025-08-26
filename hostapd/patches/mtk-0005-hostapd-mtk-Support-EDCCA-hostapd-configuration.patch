@@ -423,7 +423,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
 +		wpa_printf(MSG_ERROR, "Failed to configure EDCCA enable. ret=%d (%s) ",
 +			   ret, strerror(-ret));
 +	}
-+	return ret;
++	return 0;
 +}
 +
 +static int nl80211_configure_edcca_threshold(void *priv, const int *threshold)
@@ -466,7 +466,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
 +		wpa_printf(MSG_ERROR, "Failed to configure EDCCA threshold. ret=%d (%s) ",
 +			   ret, strerror(-ret));
 +	}
-+	return ret;
++	return 0;
 +}
 +
 +

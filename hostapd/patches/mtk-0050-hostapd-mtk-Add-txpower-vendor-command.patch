@@ -229,7 +229,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 +		wpa_printf(MSG_ERROR, "Failed to set power. ret=%d (%s)",
 +			   ret, strerror(-ret));
 +
-+	return ret;
++	return 0;
 +
 +fail:
 +	nlmsg_free(msg);

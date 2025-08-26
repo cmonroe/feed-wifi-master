@@ -256,7 +256,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		nlmsg_free(msg);
  		return -ENOBUFS;
 @@ -15201,12 +15210,15 @@ static int nl80211_configure_edcca_enabl
- 	return ret;
+ 	return 0;
  }
  
 -static int nl80211_configure_edcca_threshold(void *priv, const int *threshold)

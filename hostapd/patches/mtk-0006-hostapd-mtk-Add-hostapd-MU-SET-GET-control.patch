@@ -309,7 +309,7 @@ Subject: [PATCH 013/206] mtk: hostapd: Add hostapd MU SET/GET control
 +	if(ret){
 +		wpa_printf(MSG_ERROR, "Failed to set mu_onoff. ret=%d (%s)", ret, strerror(-ret));
 +	}
-+	return ret;
++	return 0;
 +}
 +
 +
