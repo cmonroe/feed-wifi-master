@@ -16,7 +16,7 @@
  }
  
  static void
-@@ -5225,6 +5227,8 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5269,6 +5271,8 @@ int mt7996_mcu_get_per_sta_info(struct m
  		for (i = 0; i < sta_num; ++i) {
  			wlan_idx = le16_to_cpu(res->rssi[i].wlan_idx);
  			wcid = rcu_dereference(dev->wcid[wlan_idx]);
@@ -25,7 +25,7 @@
  			msta_link = container_of(wcid, struct mt7996_sta_link, wcid);
  			if (msta_link) {
  				struct mt76_phy *phy = dev->phys[wcid->phy_idx];
-@@ -5243,6 +5247,8 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5287,6 +5291,8 @@ int mt7996_mcu_get_per_sta_info(struct m
  		for (i = 0; i < sta_num; ++i) {
  			wlan_idx = le16_to_cpu(res->snr[i].wlan_idx);
  			wcid = rcu_dereference(dev->wcid[wlan_idx]);
@@ -34,7 +34,7 @@
  			msta_link = container_of(wcid, struct mt7996_sta_link, wcid);
  			if (msta_link)
  				memcpy(msta_link->chain_ack_snr, res->snr[i].val,
-@@ -5251,15 +5257,16 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5295,15 +5301,16 @@ int mt7996_mcu_get_per_sta_info(struct m
  		break;
  	case UNI_PER_STA_PKT_CNT:
  		for (i = 0; i < sta_num; ++i) {

@@ -22,7 +22,7 @@
  		return ret;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -2037,6 +2037,27 @@ static void mt7915_dfs_stop_radar_detect
+@@ -2035,6 +2035,27 @@ static void mt7915_dfs_stop_radar_detect
  	mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_STOP, rdd_idx, 0, 0);
  }
  
@@ -50,7 +50,7 @@
  static int mt7915_dfs_start_rdd(struct mt7915_dev *dev, int rdd_idx)
  {
  	int err, region;
-@@ -2058,12 +2079,18 @@ static int mt7915_dfs_start_rdd(struct m
+@@ -2056,12 +2077,18 @@ static int mt7915_dfs_start_rdd(struct m
  	if (err < 0)
  		return err;
  
@@ -69,7 +69,7 @@
  
  	return mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_DET_MODE, rdd_idx, 0, 1);
  }
-@@ -2170,13 +2197,16 @@ stop:
+@@ -2168,13 +2195,16 @@ stop:
  	if (err < 0)
  		return err;
  

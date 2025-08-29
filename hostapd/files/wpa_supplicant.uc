@@ -336,6 +336,7 @@ function iface_hostapd_notify(phy, ifname, iface, state)
 		msg.frequency = status.frequency;
 		msg.sec_chan_offset = status.sec_chan_offset;
 		msg.ch_width = status.ch_width;
+		msg.bw320_offset = status.bw320_offset;
 		break;
 	default:
 		return;
@@ -354,6 +355,7 @@ function iface_channel_switch(phy, ifname, iface, info)
 		frequency: info.frequency,
 		sec_chan_offset: info.sec_chan_offset,
 		ch_width: info.ch_width,
+		bw320_offset: info.bw320_offset,
 	};
 	ubus.call("hostapd", "apsta_state", msg);
 }

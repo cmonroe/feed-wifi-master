@@ -86,7 +86,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  };
  
  struct mt7996_dev {
-@@ -895,6 +900,8 @@ enum edcca_bw_id {
+@@ -893,6 +898,8 @@ enum edcca_bw_id {
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  int mt7996_mcu_set_muru_cfg(struct mt7996_dev *dev, void *data);

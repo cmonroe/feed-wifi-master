@@ -33,7 +33,7 @@
  static int hostapd_ctrl_iface_disable(struct hostapd_iface *iface)
  {
  	if (hostapd_disable_iface(iface) < 0) {
-@@ -4276,6 +4295,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4295,6 +4314,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strcmp(buf, "RELOAD") == 0) {
  		if (hostapd_ctrl_iface_reload(hapd->iface))
  			reply_len = -1;
@@ -139,16 +139,7 @@
  
  
  static void acs_clean_chan_surveys(struct hostapd_channel_data *chan)
-@@ -889,7 +890,7 @@ acs_find_ideal_chan_mode(struct hostapd_
- 			continue;
- 
- 		if (!chan_bw_allowed(chan, bw, secondary_channel != -1, 1)) {
--			wpa_printf(MSG_DEBUG,
-+			wpa_printf(MSG_WARNING,
- 				   "ACS: Channel %d: BW %u is not supported",
- 				   chan->chan, bw);
- 			continue;
-@@ -901,7 +902,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -865,7 +866,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  		    mode->mode == HOSTAPD_MODE_IEEE80211A &&
  		    iface->conf->ieee80211n &&
  		    !acs_usable_bw_chan(chan, ACS_BW40)) {
@@ -157,7 +148,7 @@
  				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
  				   chan->chan);
  			continue;
-@@ -911,14 +912,14 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -875,14 +876,14 @@ acs_find_ideal_chan_mode(struct hostapd_
  		    (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
  		     iface->conf->ieee80211be)) {
  			if (bw == 80 && !acs_usable_bw_chan(chan, ACS_BW80)) {
@@ -174,7 +165,7 @@
  					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
  					   chan->chan);
  				continue;
-@@ -930,7 +931,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -894,7 +895,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  			if (bw == 320 &&
  			    !acs_usable_bw320_chan(iface, chan,
  						   &bw320_offset)) {
@@ -183,16 +174,16 @@
  					   "ACS: Channel %d: not allowed as primary channel for 320 MHz bandwidth",
  					   chan->chan);
  				continue;
-@@ -952,7 +953,7 @@ acs_find_ideal_chan_mode(struct hostapd_
- 				break;
+@@ -912,7 +913,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  
- 			if (!chan_bw_allowed(adj_chan, bw, 1, 0)) {
+ 			if (!chan_bw_allowed(chan2, bw, secondary_channel != -1,
+ 					     j == 0)) {
 -				wpa_printf(MSG_DEBUG,
 +				wpa_printf(MSG_WARNING,
- 					   "ACS: PRI Channel %d: secondary channel %d BW %u is not supported",
- 					   chan->chan, adj_chan->chan, bw);
+ 					   "ACS: Channel %d: BW %u is not supported",
+ 					   chan2->chan, bw);
  				break;
-@@ -971,7 +972,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -955,7 +956,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  		}
  
  		if (j != n_chans) {
@@ -201,7 +192,7 @@
  				   chan->chan);
  			continue;
  		}
-@@ -1053,11 +1054,11 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -1044,11 +1045,11 @@ acs_find_ideal_chan_mode(struct hostapd_
  
  		if (bias) {
  			factor *= bias->bias;
@@ -215,7 +206,7 @@
  				   "ACS:  * channel %d: total interference = %Lg",
  				   chan->chan, factor);
  		}
-@@ -1137,13 +1138,16 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1128,13 +1129,16 @@ acs_find_ideal_chan(struct hostapd_iface
  		}
  	}
  
@@ -234,7 +225,7 @@
  
  	for (i = 0; i < iface->num_hw_features; i++) {
  		mode = &iface->hw_features[i];
-@@ -1154,8 +1158,8 @@ bw_selected:
+@@ -1145,8 +1149,8 @@ bw_selected:
  	}
  
  	if (ideal_chan) {
@@ -245,7 +236,7 @@
  
  #ifdef CONFIG_IEEE80211BE
  		if (iface->conf->punct_acs_threshold)
-@@ -1195,6 +1199,19 @@ static void acs_adjust_secondary(struct
+@@ -1186,6 +1190,19 @@ static void acs_adjust_secondary(struct
  
  static void acs_adjust_center_freq(struct hostapd_iface *iface)
  {
@@ -265,7 +256,7 @@
  	int center;
  
  	wpa_printf(MSG_DEBUG, "ACS: Adjusting center frequency");
-@@ -1242,6 +1259,7 @@ static void acs_adjust_center_freq(struc
+@@ -1233,6 +1250,7 @@ static void acs_adjust_center_freq(struc
  	}
  
  	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, center);
@@ -273,7 +264,7 @@
  }
  
  
-@@ -1380,7 +1398,7 @@ static void acs_scan_complete(struct hos
+@@ -1371,7 +1389,7 @@ static void acs_scan_complete(struct hos
  	iface->scan_cb = NULL;
  	iface->acs_num_retries = 0;
  
@@ -282,7 +273,7 @@
  		   iface->conf->acs_num_scans);
  
  	err = hostapd_drv_get_survey(iface->bss[0], 0);
-@@ -1478,11 +1496,11 @@ static int acs_request_scan(struct hosta
+@@ -1469,11 +1487,11 @@ static int acs_request_scan(struct hosta
  	}
  
  	if (!iface->acs_num_retries)

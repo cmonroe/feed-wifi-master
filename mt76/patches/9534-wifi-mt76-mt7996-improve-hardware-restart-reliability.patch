@@ -1,6 +1,6 @@
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1731,6 +1731,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -1737,6 +1737,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  	phy3 = mt7996_phy3(dev);
  	dev->recovery.hw_full_reset = true;
  
@@ -8,7 +8,7 @@
  	wake_up(&dev->mt76.mcu.wait);
  	ieee80211_stop_queues(mt76_hw(dev));
  	if (phy2)
-@@ -1751,7 +1752,6 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -1757,36 +1758,29 @@ mt7996_mac_full_reset(struct mt7996_dev
  		if (!mt7996_mac_restart(dev))
  			break;
  	}
@@ -16,13 +16,8 @@
  
  	if (i == 10)
  		dev_err(dev->mt76.dev, "chip full reset failed\n");
-@@ -1761,31 +1761,22 @@ mt7996_mac_full_reset(struct mt7996_dev
- 		list_del_init(dev->mt76.sta_poll_list.next);
- 	spin_unlock_bh(&dev->mt76.sta_poll_lock);
  
 -	ieee80211_restart_hw(mt76_hw(dev));
-+	memset(dev->mt76.wcid_mask, 0, sizeof(dev->mt76.wcid_mask));
-+	dev->mt76.vif_mask = 0;
 +	dev->phy.omac_mask = 0;
  	if (phy2)
 -		ieee80211_restart_hw(phy2->mt76->hw);
@@ -36,6 +31,11 @@
 -		ieee80211_wake_queues(phy2->mt76->hw);
 -	if (phy3)
 -		ieee80211_wake_queues(phy3->mt76->hw);
++	mt76_reset_device(&dev->mt76);
++
++	INIT_LIST_HEAD(&dev->sta_rc_list);
++	INIT_LIST_HEAD(&dev->twt_list);
++
 +	i = mt76_wcid_alloc(dev->mt76.wcid_mask, MT7996_WTBL_STA);
 +	dev->mt76.global_wcid.idx = i;
  
@@ -59,7 +59,7 @@
  }
  
  void mt7996_mac_reset_work(struct work_struct *work)
-@@ -1858,6 +1849,10 @@ void mt7996_mac_reset_work(struct work_s
+@@ -1859,6 +1853,10 @@ void mt7996_mac_reset_work(struct work_s
  		set_bit(MT76_RESET, &phy3->mt76->state);
  		cancel_delayed_work_sync(&phy3->mt76->mac_work);
  	}
@@ -70,7 +70,7 @@
  	mt76_worker_disable(&dev->mt76.tx_worker);
  
  	dev_info(dev->mt76.dev,"%s L1 SER disable tx_work done.",
-@@ -1872,8 +1867,6 @@ void mt7996_mac_reset_work(struct work_s
+@@ -1873,8 +1871,6 @@ void mt7996_mac_reset_work(struct work_s
  	}
  	napi_disable(&dev->mt76.tx_napi);
  
@@ -81,7 +81,7 @@
  
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2284,6 +2284,29 @@ mt7996_change_vif_links(struct ieee80211
+@@ -2257,6 +2257,29 @@ mt7996_change_vif_links(struct ieee80211
  	return 0;
  }
  
@@ -111,7 +111,7 @@
  const struct ieee80211_ops mt7996_ops = {
  	.add_chanctx = mt76_add_chanctx,
  	.remove_chanctx = mt76_remove_chanctx,
-@@ -2342,4 +2365,5 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2315,4 +2338,5 @@ const struct ieee80211_ops mt7996_ops =
  #endif
  	.change_vif_links = mt7996_change_vif_links,
  	.change_sta_links = mt7996_mac_sta_change_links,

@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4262,6 +4262,26 @@ hostapd_ctrl_iface_get_mu(struct hostapd
+@@ -4281,6 +4281,26 @@ hostapd_ctrl_iface_get_mu(struct hostapd
  }
  
  
@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4881,6 +4901,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4905,6 +4925,9 @@ static int hostapd_ctrl_iface_receive_pr
  							  reply_size);
  	} else if (os_strncmp(buf, "GET_MU", 6) == 0) {
  		reply_len = hostapd_ctrl_iface_get_mu(hapd, reply, reply_size);

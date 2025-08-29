@@ -109,7 +109,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF2_TX_PATH_BAND1		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -948,7 +948,7 @@ static int mt7996_variant_type_init(stru
+@@ -969,7 +969,7 @@ static int mt7996_variant_type_init(stru
  		else if (u32_get_bits(val, MT_PAD_GPIO_ADIE_COMB_7992))
  			var_type = MT7992_VAR_TYPE_44;
  		else

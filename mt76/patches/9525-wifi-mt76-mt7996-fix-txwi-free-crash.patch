@@ -7,5 +7,5 @@
 -	if (link_sta) {
 +	if (link_sta && wcid) {
  		wcid_idx = wcid->idx;
- 		if (likely(t->skb->protocol != cpu_to_be16(ETH_P_PAE)))
- 			mt7996_tx_check_aggr(link_sta, wcid, t->skb);
+ 		if (likely(t->skb->protocol != cpu_to_be16(ETH_P_PAE))) {
+ 			struct mt7996_sta *msta;

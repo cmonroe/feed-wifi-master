@@ -75,8 +75,8 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		if (hostapd_drv_get_edcca(hapd, EDCCA_CTRL_GET_THRES, value) != 0)
  			return -1;
  		return os_snprintf(pos, end - pos,
-@@ -4997,10 +5000,10 @@ static int hostapd_ctrl_iface_receive_pr
- #endif /* CONFIG_IEEE80211BE */
+@@ -5021,10 +5024,10 @@ static int hostapd_ctrl_iface_receive_pr
+ #endif /* CONFIG_SAE */
  	} else if (os_strncmp(buf, "SET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_set_edcca(hapd, buf+10, reply,
 -							  reply_size);
@@ -195,7 +195,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  enum mtk_vendor_attr_csi_ctrl {
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5543,10 +5543,10 @@ struct wpa_driver_ops {
+@@ -5548,10 +5548,10 @@ struct wpa_driver_ops {
  	struct hostapd_multi_hw_info *
  	(*get_multi_hw_info)(void *priv, unsigned int *num_multi_hws);
  
@@ -212,7 +212,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	 * mu_ctrl - ctrl on off for UL/DL MURU
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -15163,14 +15163,17 @@ static int testing_nl80211_radio_disable
+@@ -15173,14 +15173,17 @@ static int testing_nl80211_radio_disable
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -231,7 +231,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	int ret;
  
  	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -15179,6 +15182,12 @@ static int nl80211_configure_edcca_enabl
+@@ -15189,6 +15192,12 @@ static int nl80211_configure_edcca_enabl
  		return 0;
  	}
  
@@ -244,7 +244,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR)) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-@@ -15186,8 +15195,8 @@ static int nl80211_configure_edcca_enabl
+@@ -15196,8 +15205,8 @@ static int nl80211_configure_edcca_enabl
  	    !(data = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA)) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_MODE, EDCCA_CTRL_SET_EN) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL, edcca_enable) ||
@@ -255,7 +255,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -15201,12 +15210,15 @@ static int nl80211_configure_edcca_enabl
+@@ -15211,12 +15220,15 @@ static int nl80211_configure_edcca_enabl
  	return 0;
  }
  
@@ -272,7 +272,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	int ret;
  
  	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -15221,6 +15233,12 @@ static int nl80211_configure_edcca_thres
+@@ -15231,6 +15243,12 @@ static int nl80211_configure_edcca_thres
  		return 0;
  	}
  
@@ -285,7 +285,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR)) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-@@ -15230,7 +15248,8 @@ static int nl80211_configure_edcca_thres
+@@ -15240,7 +15258,8 @@ static int nl80211_configure_edcca_thres
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL, threshold[0] & 0xff) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL, threshold[1] & 0xff) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL, threshold[2] & 0xff) ||
@@ -295,7 +295,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -15298,12 +15317,15 @@ static int edcca_info_handler(struct nl_
+@@ -15308,12 +15327,15 @@ static int edcca_info_handler(struct nl_
  }
  
  
@@ -312,7 +312,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	int ret;
  
  	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -15312,12 +15334,19 @@ static int nl80211_get_edcca(void *priv,
+@@ -15322,12 +15344,19 @@ static int nl80211_get_edcca(void *priv,
  		return 0;
  	}
  

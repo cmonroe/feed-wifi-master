@@ -94,6 +94,7 @@ start_disabled=1
 function iface_freq_info(iface, config, params)
 {
 	let freq = params.frequency;
+	let bw320_offset = params.bw320_offset;
 	if (!freq)
 		return null;
 
@@ -124,7 +125,7 @@ function iface_freq_info(iface, config, params)
 	if (freq < 4000)
 		width = 0;
 
-	return hostapd.freq_info(freq, sec_offset, width);
+	return hostapd.freq_info(freq, sec_offset, width, bw320_offset);
 }
 
 function iface_add(phy, config, phy_status)
@@ -578,7 +579,9 @@ function iface_reload_config(name, phydev, config, old_config)
 
 		// try to preserve MAC address of this BSS by reassigning another
 		// BSS if necessary
-		if (cur_config.default_macaddr &&
+		if ((cur_config.default_macaddr || cur_config.random_macaddr) &&
+		    cur_config.random_macaddr == prev_config.random_macaddr &&
+		    cur_config.default_macaddr == prev_config.default_macaddr &&
 		    !macaddr_list[prev_config.bssid]) {
 			macaddr_list[prev_config.bssid] = i;
 			cur_config.bssid = prev_config.bssid;
@@ -922,6 +925,8 @@ function iface_load_config(phy, radio, filename)
 	while ((line = rtrim(f.read("line"), "\n")) != null) {
 		if (line == "#default_macaddr")
 			bss.default_macaddr = true;
+		if (line == "#random_macaddr")
+			bss.random_macaddr = true;
 
 		let val = split(line, "=", 2);
 		if (!val[0])
@@ -1145,6 +1150,7 @@ let main_obj = {
 			frequency: 0,
 			sec_chan_offset: 0,
 			ch_width: -1,
+			bw320_offset: 1,
 			csa: true,
 			csa_count: 0,
 		},
@@ -1154,7 +1160,7 @@ let main_obj = {
 				return libubus.STATUS_INVALID_ARGUMENT;
 
 			if (req.args.up)
-				hostapd.printf(`apsta_state update phy=${req.args.phy} freqeuncy=${req.args.frequency} sec_chan_offset=${req.args.sec_chan_offset} ch_width=${req.args.ch_width} csa=${req.args.csa}`);
+				hostapd.printf(`apsta_state update phy=${req.args.phy} freqeuncy=${req.args.frequency} sec_chan_offset=${req.args.sec_chan_offset} ch_width=${req.args.ch_width} bw320_offset=${req.args.bw320_offset} csa=${req.args.csa}`);
 
 			let config = hostapd.data.config[phy];
 			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)

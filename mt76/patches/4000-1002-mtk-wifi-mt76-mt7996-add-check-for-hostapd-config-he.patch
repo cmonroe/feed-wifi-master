@@ -16,7 +16,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1225,6 +1225,9 @@ mt7996_mcu_sta_he_tlv(struct sk_buff *sk
+@@ -1269,6 +1269,9 @@ mt7996_mcu_sta_he_tlv(struct sk_buff *sk
  		      struct ieee80211_link_sta *link_sta,
  		      struct mt7996_vif_link *link)
  {
@@ -26,7 +26,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  	struct ieee80211_he_cap_elem *elem = &link_sta->he_cap.he_cap_elem;
  	struct ieee80211_he_mcs_nss_supp mcs_map;
  	struct sta_rec_he_v2 *he;
-@@ -1243,6 +1246,11 @@ mt7996_mcu_sta_he_tlv(struct sk_buff *sk
+@@ -1287,6 +1290,11 @@ mt7996_mcu_sta_he_tlv(struct sk_buff *sk
  		he->he_phy_cap[i] = elem->phy_cap_info[i];
  	}
  

@@ -38,7 +38,7 @@
  
  	seq = ++dev->mt76.mcu.msg_seq & 0xf;
  	if (!seq)
-@@ -3607,6 +3629,7 @@ int mt7996_mcu_init_firmware(struct mt79
+@@ -3651,6 +3673,7 @@ int mt7996_mcu_init_firmware(struct mt79
  int mt7996_mcu_init(struct mt7996_dev *dev)
  {
  	static const struct mt76_mcu_ops mt7996_mcu_ops = {

@@ -191,10 +191,10 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
  #ifdef CONFIG_NAN_USD
  
-@@ -4697,6 +4809,12 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4721,6 +4833,12 @@ static int hostapd_ctrl_iface_receive_pr
+ 		if (hostapd_ctrl_iface_sae_password_bind(hapd, buf + 18))
  			reply_len = -1;
- #endif /* CONFIG_TESTING_OPTIONS */
- #endif /* CONFIG_IEEE80211BE */
+ #endif /* CONFIG_SAE */
 +	} else if (os_strncmp(buf, "SET_EDCCA ", 10) == 0) {
 +		reply_len = hostapd_ctrl_iface_set_edcca(hapd, buf+10, reply,
 +							  reply_size);
@@ -313,7 +313,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2807,6 +2807,13 @@ dfs_offload:
+@@ -2806,6 +2806,13 @@ dfs_offload:
  	}
  #endif /* CONFIG_MESH */
  
@@ -360,7 +360,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  	[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL] = { .type = NLA_U8 },
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5537,6 +5537,11 @@ struct wpa_driver_ops {
+@@ -5542,6 +5542,11 @@ struct wpa_driver_ops {
  	 */
  	struct hostapd_multi_hw_info *
  	(*get_multi_hw_info)(void *priv, unsigned int *num_multi_hws);
@@ -384,7 +384,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
  
  #ifndef NETLINK_CAP_ACK
-@@ -15050,6 +15053,174 @@ static int testing_nl80211_radio_disable
+@@ -15060,6 +15063,174 @@ static int testing_nl80211_radio_disable
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -559,7 +559,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
  static struct hostapd_multi_hw_info *
  wpa_driver_get_multi_hw_info(void *priv, unsigned int *num_multi_hws)
-@@ -15233,4 +15404,8 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -15243,4 +15414,8 @@ const struct wpa_driver_ops wpa_driver_n
  	.radio_disable = testing_nl80211_radio_disable,
  #endif /* CONFIG_TESTING_OPTIONS */
  	.get_multi_hw_info = wpa_driver_get_multi_hw_info,

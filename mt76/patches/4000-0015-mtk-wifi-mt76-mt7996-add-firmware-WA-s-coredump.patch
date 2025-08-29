@@ -427,7 +427,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  }
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2125,28 +2125,25 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2131,28 +2131,25 @@ void mt7996_mac_reset_work(struct work_s
  }
  
  /* firmware coredump */
@@ -460,7 +460,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	if (!mem_region || !crash_data->memdump_buf_len) {
  		mutex_unlock(&dev->dump_mutex);
  		goto skip_memdump;
-@@ -2156,6 +2153,9 @@ void mt7996_mac_dump_work(struct work_st
+@@ -2162,6 +2159,9 @@ void mt7996_mac_dump_work(struct work_st
  	buf_len = crash_data->memdump_buf_len;
  
  	/* dumping memory content... */
@@ -470,7 +470,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	memset(buf, 0, buf_len);
  	for (i = 0; i < num; i++) {
  		if (mem_region->len > buf_len) {
-@@ -2172,6 +2172,7 @@ void mt7996_mac_dump_work(struct work_st
+@@ -2178,6 +2178,7 @@ void mt7996_mac_dump_work(struct work_st
  		mt7996_memcpy_fromio(dev, buf, mem_region->start,
  				     mem_region->len);
  
@@ -478,7 +478,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  		hdr->start = mem_region->start;
  		hdr->len = mem_region->len;
  
-@@ -2188,8 +2189,20 @@ void mt7996_mac_dump_work(struct work_st
+@@ -2194,8 +2195,20 @@ void mt7996_mac_dump_work(struct work_st
  	mutex_unlock(&dev->dump_mutex);
  
  skip_memdump:
@@ -503,7 +503,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2987,6 +2987,8 @@ static int mt7996_load_patch(struct mt79
+@@ -3031,6 +3031,8 @@ static int mt7996_load_patch(struct mt79
  
  	dev_info(dev->mt76.dev, "HW/SW Version: 0x%x, Build Time: %.16s\n",
  		 be32_to_cpu(hdr->hw_sw_ver), hdr->build_date);
@@ -512,7 +512,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
  	for (i = 0; i < be32_to_cpu(hdr->desc.n_region); i++) {
  		struct mt7996_patch_sec *sec;
-@@ -3113,6 +3115,9 @@ static int __mt7996_load_ram(struct mt79
+@@ -3157,6 +3159,9 @@ static int __mt7996_load_ram(struct mt79
  	}
  
  	hdr = (const void *)(fw->data + fw->size - sizeof(*hdr));

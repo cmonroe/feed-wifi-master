@@ -1,6 +1,6 @@
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4764,6 +4764,13 @@ skip_wpa_ies:
+@@ -4811,6 +4811,13 @@ skip_wpa_ies:
  		hostapd_wfa_capab(hapd, sta, elems->wfa_capab,
  				  elems->wfa_capab + elems->wfa_capab_len);
  

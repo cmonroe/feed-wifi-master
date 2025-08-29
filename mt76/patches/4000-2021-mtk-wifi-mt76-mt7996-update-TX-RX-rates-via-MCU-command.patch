@@ -154,7 +154,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		/* RXD Group 5 - C-RXV */
  		if (rxd1 & MT_RXD1_NORMAL_GROUP_5) {
  			rxd += 24;
-@@ -1197,25 +1203,24 @@ next:
+@@ -1203,25 +1209,24 @@ next:
  
  static bool
  mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
@@ -188,7 +188,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		skb = mt76_tx_status_skb_get(mdev, wcid, pid, &list);
  		if (skb) {
  			info = IEEE80211_SKB_CB(skb);
-@@ -1228,6 +1233,15 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1234,6 +1239,15 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  
  			info->status.rates[0].idx = -1;
  		}
@@ -204,7 +204,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	}
  
  	if (mtk_wed_device_active(&dev->mt76.mmio.wed) && wcid->sta) {
-@@ -1240,107 +1254,26 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1246,107 +1260,26 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  	}
  
  	txrate = FIELD_GET(MT_TXS0_TX_RATE, txs);
@@ -327,7 +327,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	mt76_tx_status_unlock(mdev, &list);
  
  	return !!skb;
-@@ -1348,13 +1281,13 @@ out:
+@@ -1354,13 +1287,13 @@ out:
  
  static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
  {
@@ -344,7 +344,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	pid = le32_get_bits(txs_data[3], MT_TXS3_PID);
  
  	if (pid < MT_PACKET_ID_NO_SKB)
-@@ -1366,14 +1299,16 @@ static void mt7996_mac_add_txs(struct mt
+@@ -1372,14 +1305,16 @@ static void mt7996_mac_add_txs(struct mt
  	if (!wcid)
  		goto out;
  
@@ -366,7 +366,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -2326,6 +2261,39 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2332,6 +2267,39 @@ void mt7996_mac_sta_rc_work(struct work_
  	spin_unlock_bh(&dev->mt76.sta_poll_lock);
  }
  
@@ -406,7 +406,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7996_mac_work(struct work_struct *work)
  {
  	struct mt76_phy *mphy = (struct mt76_phy *)container_of(work, struct mt76_phy,
-@@ -2350,11 +2318,10 @@ void mt7996_mac_work(struct work_struct
+@@ -2356,11 +2324,10 @@ void mt7996_mac_work(struct work_struct
  			if (i == mphy->band_idx) {
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_RATE);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_AIRTIME);
@@ -424,7 +424,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  				break;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1683,27 +1683,19 @@ static void mt7996_sta_statistics(struct
+@@ -1656,27 +1656,19 @@ static void mt7996_sta_statistics(struct
  {
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
@@ -462,7 +462,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	sinfo->tx_failed = msta_link->wcid.stats.tx_failed;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_FAILED);
  
-@@ -1713,23 +1705,23 @@ static void mt7996_sta_statistics(struct
+@@ -1686,23 +1678,23 @@ static void mt7996_sta_statistics(struct
  	sinfo->ack_signal = (s8)msta_link->ack_signal;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL);
  
@@ -708,7 +708,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -5011,14 +5145,14 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5055,14 +5189,14 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  }
  
  int mt7996_mcu_get_per_sta_info(struct mt76_dev *dev, u16 tag,
@@ -726,7 +726,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 __rsv1;
  		u8 unsolicit;
-@@ -5057,27 +5191,45 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5101,27 +5235,45 @@ int mt7996_mcu_get_per_sta_info(struct m
  	switch (tag) {
  	case UNI_PER_STA_RSSI:
  		for (i = 0; i < sta_num; ++i) {
@@ -787,7 +787,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	default:
  		ret = -EINVAL;
  		dev_err(dev->dev, "Unknown UNI_PER_STA_INFO_TAG: %d\n", tag);
-@@ -5088,55 +5240,6 @@ out:
+@@ -5132,55 +5284,6 @@ out:
  	return ret;
  }
  
@@ -908,7 +908,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	unsigned long changed;
  
  	struct mt76_connac_sta_key_conf bip;
-@@ -790,7 +796,6 @@ void mt7996_mcu_rx_event(struct mt7996_d
+@@ -788,7 +794,6 @@ void mt7996_mcu_rx_event(struct mt7996_d
  void mt7996_mcu_exit(struct mt7996_dev *dev);
  int mt7996_mcu_get_per_sta_info(struct mt76_dev *dev, u16 tag,
  	                        u16 sta_num, u16 *sta_list);

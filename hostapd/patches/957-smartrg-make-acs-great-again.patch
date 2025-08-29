@@ -10,68 +10,7 @@
  	/* TODO: figure out the best multiplier for noise floor base */
  	factor = pow(10, survey->nf / 5.0L) +
  		(total ? (busy / total) : 0) *
-@@ -445,9 +448,19 @@ static bool acs_usable_bw_chan(const str
- {
- 	unsigned int i = 0;
- 
-+	bool is_6ghz = is_6ghz_freq(chan->freq);
-+
- 	while (bw_desc[bw][i].first != -1) {
--		if (chan->freq == bw_desc[bw][i].first)
--			return true;
-+		// Need to take all 6ghz channels into account to support PSC
-+		if (is_6ghz) {
-+			if (chan->freq >= bw_desc[bw][i].first &&
-+			    chan->freq <= bw_desc[bw][i].last)
-+				return true;
-+		}
-+		else {
-+			if (chan->freq == bw_desc[bw][i].first)
-+				return true;
-+		}
- 		i++;
- 	}
- 
-@@ -795,6 +808,25 @@ static void acs_update_puncturing_bitmap
- }
- #endif /* CONFIG_IEEE80211BE */
- 
-+// To support all channels in 6g, we needed to make some adjustments in
-+// acs_find_ideal_chan_mode to take adjacent channels interference into account
-+short find_first_chan_in_bw(short chan, u32 bw)
-+{
-+	switch (bw) {
-+		case 20:
-+			return chan;
-+		case 40:
-+			return 1+((chan/8)*8);
-+		case 80:
-+			return 1+((chan/16)*16);
-+		case 160:
-+			return 1+((chan/32)*32);
-+		case 320:
-+			return 1+((chan/64)*64);
-+		default:
-+			return chan;
-+	}
-+}
- 
- static bool
- acs_usable_bw320_chan(struct hostapd_iface *iface,
-@@ -876,6 +908,12 @@ acs_find_ideal_chan_mode(struct hostapd_
- 		    iface->conf->acs_exclude_dfs)
- 			continue;
- 
-+		if (is_6ghz_freq(chan->freq)) {
-+			if (iface->conf->acs_exclude_6ghz_non_psc &&
-+				!is_6ghz_psc_frequency(chan->freq))
-+			continue;
-+		}
-+
- 		if (!is_in_chanlist(iface, chan))
- 			continue;
- 
-@@ -903,8 +941,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -867,8 +870,8 @@ acs_find_ideal_chan_mode(struct hostapd_
  		    iface->conf->ieee80211n &&
  		    !acs_usable_bw_chan(chan, ACS_BW40)) {
  			wpa_printf(MSG_WARNING,
@@ -82,7 +21,7 @@
  			continue;
  		}
  
-@@ -913,15 +951,15 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -877,15 +880,15 @@ acs_find_ideal_chan_mode(struct hostapd_
  		     iface->conf->ieee80211be)) {
  			if (bw == 80 && !acs_usable_bw_chan(chan, ACS_BW80)) {
  				wpa_printf(MSG_WARNING,
@@ -102,7 +41,7 @@
  				continue;
  			}
  		}
-@@ -932,8 +970,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -896,8 +899,8 @@ acs_find_ideal_chan_mode(struct hostapd_
  			    !acs_usable_bw320_chan(iface, chan,
  						   &bw320_offset)) {
  				wpa_printf(MSG_WARNING,
@@ -113,53 +52,7 @@
  				continue;
  			}
  		}
-@@ -946,9 +984,28 @@ acs_find_ideal_chan_mode(struct hostapd_
- 			best = chan;
- 		}
- 
--		for (j = 1; j < n_chans; j++) {
--			adj_chan = acs_find_chan(iface, chan->freq +
--						 j * secondary_channel * 20);
-+		// Find first channel in given bandwidth
-+		short fchan = find_first_chan_in_bw(chan->chan, bw);
-+		// Find its corresponding frequency
-+		int fcfreq;
-+		if (is_6ghz_freq(chan->freq))
-+			fcfreq =  ieee80211_chan_to_freq(iface->conf->country, iface->conf->op_class, fchan);
-+		else
-+			fcfreq = chan->freq;
-+
-+		//wpa_printf(MSG_ERROR, "ACS find_ideal %s channel %d country %s op_class %d fchan %d fcfreq %d",
-+		//iface->phy, chan->chan, iface->conf->country, iface->conf->op_class, fchan, fcfreq);
-+
-+		// We don't enter this loop if bw=20 ==> n_chans=1
-+		// Well, we do, but we get out with the first continue.
-+		for (j = 0; j < n_chans; j++) {
-+			int adjfreq = fcfreq + (j * 20);
-+			if (adjfreq == chan->freq) {
-+				// Skipping my own channel
-+				continue;
-+			}
-+
-+			adj_chan = acs_find_chan(iface, adjfreq);
- 			if (!adj_chan)
- 				break;
- 
-@@ -965,6 +1022,13 @@ acs_find_ideal_chan_mode(struct hostapd_
- 			factor += adj_chan->interference_factor;
- 			total_weight += 1;
- 
-+			if (is_6ghz_freq(adjfreq) &&
-+			    iface->conf->acs_exclude_6ghz_non_psc &&
-+			    !is_6ghz_psc_frequency(adjfreq)) {
-+
-+				continue;
-+			}
-+
- 			/* find the best channel in this segment */
- 			if (!best || adj_chan->interference_factor <
- 			    best->interference_factor)
-@@ -1055,12 +1119,12 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -1046,12 +1049,12 @@ acs_find_ideal_chan_mode(struct hostapd_
  		if (bias) {
  			factor *= bias->bias;
  			wpa_printf(MSG_WARNING,
@@ -176,7 +69,7 @@
  		}
  
  		if (acs_usable_chan(chan) &&
-@@ -1138,7 +1202,9 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1129,7 +1132,9 @@ acs_find_ideal_chan(struct hostapd_iface
  		}
  	}
  
