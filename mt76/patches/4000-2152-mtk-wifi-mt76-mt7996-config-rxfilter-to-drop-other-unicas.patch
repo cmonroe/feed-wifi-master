@@ -17,7 +17,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -415,6 +415,7 @@ mt7996_init_wiphy_band(struct ieee80211_
+@@ -424,6 +424,7 @@ mt7996_init_wiphy_band(struct ieee80211_
  	phy->slottime = 9;
  	phy->beacon_rate = -1;
  	phy->muru_onoff = OFDMA_UL | OFDMA_DL | MUMIMO_DL | MUMIMO_UL;

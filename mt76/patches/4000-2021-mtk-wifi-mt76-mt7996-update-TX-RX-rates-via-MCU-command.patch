@@ -424,7 +424,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  				break;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1656,27 +1656,19 @@ static void mt7996_sta_statistics(struct
+@@ -1677,27 +1677,19 @@ static void mt7996_sta_statistics(struct
  {
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
@@ -462,7 +462,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	sinfo->tx_failed = msta_link->wcid.stats.tx_failed;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_FAILED);
  
-@@ -1686,23 +1678,23 @@ static void mt7996_sta_statistics(struct
+@@ -1707,23 +1699,23 @@ static void mt7996_sta_statistics(struct
  	sinfo->ack_signal = (s8)msta_link->ack_signal;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL);
  
@@ -500,7 +500,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 +	mutex_unlock(&dev->mt76.mutex);
  }
  
- static void mt7996_link_rate_ctrl_update(void *data, struct ieee80211_sta *sta)
+ static void mt7996_link_rate_ctrl_update(void *data,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
 @@ -512,42 +512,166 @@ mt7996_mcu_ie_countdown(struct mt7996_de
@@ -708,7 +708,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -5055,14 +5189,14 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5049,14 +5183,14 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  }
  
  int mt7996_mcu_get_per_sta_info(struct mt76_dev *dev, u16 tag,
@@ -726,7 +726,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 __rsv1;
  		u8 unsolicit;
-@@ -5101,27 +5235,45 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5095,27 +5229,45 @@ int mt7996_mcu_get_per_sta_info(struct m
  	switch (tag) {
  	case UNI_PER_STA_RSSI:
  		for (i = 0; i < sta_num; ++i) {
@@ -787,7 +787,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	default:
  		ret = -EINVAL;
  		dev_err(dev->dev, "Unknown UNI_PER_STA_INFO_TAG: %d\n", tag);
-@@ -5132,55 +5284,6 @@ out:
+@@ -5126,55 +5278,6 @@ out:
  	return ret;
  }
  

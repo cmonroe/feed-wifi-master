@@ -61,7 +61,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	}
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2529,10 +2529,12 @@ int mt7996_mcu_teardown_mld_sta(struct m
+@@ -2523,10 +2523,12 @@ int mt7996_mcu_teardown_mld_sta(struct m
  }
  
  static int
@@ -76,7 +76,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
  	struct sta_rec_sec_uni *sec;
  	struct tlv *tlv;
-@@ -2558,6 +2560,26 @@ mt7996_mcu_sta_key_tlv(struct mt76_wcid
+@@ -2552,6 +2554,26 @@ mt7996_mcu_sta_key_tlv(struct mt76_wcid
  		sec_key->key_len = key->keylen;
  		sec_key->need_resp = 0;
  		memcpy(sec_key->key, key->key, key->keylen);
@@ -103,7 +103,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  		if (cipher == MCU_CIPHER_TKIP) {
  			/* Rx/Tx MIC keys are swapped */
-@@ -2575,7 +2597,8 @@ mt7996_mcu_sta_key_tlv(struct mt76_wcid
+@@ -2569,7 +2591,8 @@ mt7996_mcu_sta_key_tlv(struct mt76_wcid
  
  int mt7996_mcu_add_key(struct mt76_dev *dev, struct ieee80211_vif *vif,
  		       struct ieee80211_key_conf *key, int mcu_cmd,
@@ -113,7 +113,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
  	struct mt76_vif_link *mvif = (struct mt76_vif_link *)vif->drv_priv;
  	struct sk_buff *skb;
-@@ -2586,16 +2609,18 @@ int mt7996_mcu_add_key(struct mt76_dev *
+@@ -2580,16 +2603,18 @@ int mt7996_mcu_add_key(struct mt76_dev *
  	if (IS_ERR(skb))
  		return PTR_ERR(skb);
  
@@ -137,7 +137,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
  #define TSC_TYPE_BIGTK_PN 2
  	struct sta_rec_pn_info *pn_info;
-@@ -2628,60 +2653,6 @@ static int mt7996_mcu_get_pn(struct mt79
+@@ -2622,60 +2647,6 @@ static int mt7996_mcu_get_pn(struct mt79
  	return 0;
  }
  

@@ -102,7 +102,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3811,7 +3811,7 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -3805,7 +3805,7 @@ int mt7996_mcu_set_chan_info(struct mt79
  				 &req, sizeof(req), true);
  }
  

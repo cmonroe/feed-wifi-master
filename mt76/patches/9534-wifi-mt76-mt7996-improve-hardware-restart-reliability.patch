@@ -81,7 +81,7 @@
  
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2257,6 +2257,29 @@ mt7996_change_vif_links(struct ieee80211
+@@ -2291,6 +2291,29 @@ mt7996_change_vif_links(struct ieee80211
  	return 0;
  }
  
@@ -111,7 +111,7 @@
  const struct ieee80211_ops mt7996_ops = {
  	.add_chanctx = mt76_add_chanctx,
  	.remove_chanctx = mt76_remove_chanctx,
-@@ -2315,4 +2338,5 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2349,4 +2372,5 @@ const struct ieee80211_ops mt7996_ops =
  #endif
  	.change_vif_links = mt7996_change_vif_links,
  	.change_sta_links = mt7996_mac_sta_change_links,

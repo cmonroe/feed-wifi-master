@@ -218,7 +218,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5375,7 +5375,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -5369,7 +5369,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  bool mt7996_is_psd_country(char *country)
  {
@@ -227,7 +227,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -5411,14 +5411,14 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5405,14 +5405,14 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -244,7 +244,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  							   &la, &la_path, txpower_limit);
  		mt7996_update_max_txpower_cur(phy, txpower_limit);
  	} else {
-@@ -5439,7 +5439,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5433,7 +5433,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	 * driver doesn't need to do it
  	 */
  	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
@@ -253,7 +253,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la.eht[3], sizeof(la.ofdm));
-@@ -5565,10 +5565,13 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -5559,10 +5559,13 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.band_idx = phy->mt76->band_idx,
  		.tag = cpu_to_le16(UNI_BAND_CONFIG_LPI_CTRL),
  		.len = cpu_to_le16(sizeof(req) - 4),
@@ -270,7 +270,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -339,23 +339,23 @@ static void __mt7996_init_txpower(struct
+@@ -348,23 +348,23 @@ static void __mt7996_init_txpower(struct
  	int path_delta = mt76_tx_power_path_delta(n_chains);
  	int pwr_delta = mt7996_eeprom_get_power_delta(dev, sband->band);
  	struct mt76_power_limits limits;

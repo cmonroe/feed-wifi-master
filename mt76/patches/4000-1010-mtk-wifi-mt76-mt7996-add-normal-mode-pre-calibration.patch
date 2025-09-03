@@ -51,7 +51,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF0_TX_PATH		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1077,6 +1077,12 @@ static int mt7996_init_hardware(struct m
+@@ -1086,6 +1086,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -81,7 +81,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3937,6 +3937,172 @@ int mt7996_mcu_get_eeprom_free_block(str
+@@ -3931,6 +3931,172 @@ int mt7996_mcu_get_eeprom_free_block(str
  	return 0;
  }
  

@@ -26,7 +26,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_RRO = 0x57,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4948,3 +4948,43 @@ int mt7996_mcu_cp_support(struct mt7996_
+@@ -4942,3 +4942,43 @@ int mt7996_mcu_cp_support(struct mt7996_
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WA_EXT_CMD(CP_SUPPORT),
  				 &cp_mode, sizeof(cp_mode), true);
  }

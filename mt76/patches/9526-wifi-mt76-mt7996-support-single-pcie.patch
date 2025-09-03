@@ -46,7 +46,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -615,7 +615,8 @@ void mt7996_mac_init(struct mt7996_dev *
+@@ -624,7 +624,8 @@ void mt7996_mac_init(struct mt7996_dev *
  
  	/* rro module init */
  	if (is_mt7996(&dev->mt76))

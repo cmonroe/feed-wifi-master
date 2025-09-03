@@ -84,7 +84,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* odd index for driver, even index for firmware */
  		idx = MT7996_BEACON_RATES_TBL + 2 * phy->mt76->band_idx;
  		if (phy->beacon_rate != rate)
-@@ -1256,6 +1262,7 @@ mt7996_sta_state(struct ieee80211_hw *hw
+@@ -1275,6 +1281,7 @@ mt7996_sta_state(struct ieee80211_hw *hw
  		 struct ieee80211_sta *sta, enum ieee80211_sta_state old_state,
  		 enum ieee80211_sta_state new_state)
  {
@@ -94,7 +94,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4857,7 +4857,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -4851,7 +4851,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -103,7 +103,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -5053,6 +5053,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -5047,6 +5047,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -126,7 +126,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -5098,7 +5114,36 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5092,7 +5108,36 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &req, sizeof(req));
  	/* cck and ofdm */
  	skb_put_data(skb, &la.cck, sizeof(la.cck));
@@ -164,7 +164,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	/* ht20 */
  	skb_put_data(skb, &la.mcs[0], 8);
  	/* ht40 */
-@@ -5135,8 +5180,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5129,8 +5174,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la_path.cck, sizeof(la_path.cck));
@@ -208,7 +208,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -5150,6 +5228,31 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5144,6 +5222,31 @@ int mt7996_mcu_set_txpower_sku(struct mt
  				     MCU_WM_UNI_CMD(TXPOWER), true);
  }
  
