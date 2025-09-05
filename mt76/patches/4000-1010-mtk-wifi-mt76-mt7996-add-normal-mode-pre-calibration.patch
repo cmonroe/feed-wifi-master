@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -581,6 +581,12 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -598,6 +598,12 @@ int mt7996_set_channel(struct mt76_phy *
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
  
@@ -81,7 +81,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3931,6 +3931,172 @@ int mt7996_mcu_get_eeprom_free_block(str
+@@ -3908,6 +3908,172 @@ int mt7996_mcu_get_eeprom_free_block(str
  	return 0;
  }
  
@@ -256,7 +256,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define NIC_CAP	3
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -854,6 +854,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+@@ -850,6 +850,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
  #endif
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);

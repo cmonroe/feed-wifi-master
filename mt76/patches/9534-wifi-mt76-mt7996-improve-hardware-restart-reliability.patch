@@ -1,6 +1,6 @@
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1737,6 +1737,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -1738,6 +1738,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  	phy3 = mt7996_phy3(dev);
  	dev->recovery.hw_full_reset = true;
  
@@ -8,7 +8,7 @@
  	wake_up(&dev->mt76.mcu.wait);
  	ieee80211_stop_queues(mt76_hw(dev));
  	if (phy2)
-@@ -1757,36 +1758,29 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -1758,36 +1759,29 @@ mt7996_mac_full_reset(struct mt7996_dev
  		if (!mt7996_mac_restart(dev))
  			break;
  	}
@@ -59,7 +59,7 @@
  }
  
  void mt7996_mac_reset_work(struct work_struct *work)
-@@ -1859,6 +1853,10 @@ void mt7996_mac_reset_work(struct work_s
+@@ -1860,6 +1854,10 @@ void mt7996_mac_reset_work(struct work_s
  		set_bit(MT76_RESET, &phy3->mt76->state);
  		cancel_delayed_work_sync(&phy3->mt76->mac_work);
  	}
@@ -70,7 +70,7 @@
  	mt76_worker_disable(&dev->mt76.tx_worker);
  
  	dev_info(dev->mt76.dev,"%s L1 SER disable tx_work done.",
-@@ -1873,8 +1871,6 @@ void mt7996_mac_reset_work(struct work_s
+@@ -1874,8 +1872,6 @@ void mt7996_mac_reset_work(struct work_s
  	}
  	napi_disable(&dev->mt76.tx_napi);
  
@@ -81,7 +81,7 @@
  
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2291,6 +2291,29 @@ mt7996_change_vif_links(struct ieee80211
+@@ -2316,6 +2316,29 @@ mt7996_change_vif_links(struct ieee80211
  	return 0;
  }
  
@@ -111,7 +111,7 @@
  const struct ieee80211_ops mt7996_ops = {
  	.add_chanctx = mt76_add_chanctx,
  	.remove_chanctx = mt76_remove_chanctx,
-@@ -2349,4 +2372,5 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2374,4 +2397,5 @@ const struct ieee80211_ops mt7996_ops =
  #endif
  	.change_vif_links = mt7996_change_vif_links,
  	.change_sta_links = mt7996_mac_sta_change_links,

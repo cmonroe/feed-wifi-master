@@ -154,7 +154,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		/* RXD Group 5 - C-RXV */
  		if (rxd1 & MT_RXD1_NORMAL_GROUP_5) {
  			rxd += 24;
-@@ -1203,25 +1209,24 @@ next:
+@@ -1204,25 +1210,24 @@ next:
  
  static bool
  mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
@@ -188,7 +188,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		skb = mt76_tx_status_skb_get(mdev, wcid, pid, &list);
  		if (skb) {
  			info = IEEE80211_SKB_CB(skb);
-@@ -1234,6 +1239,15 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1235,6 +1240,15 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  
  			info->status.rates[0].idx = -1;
  		}
@@ -204,7 +204,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	}
  
  	if (mtk_wed_device_active(&dev->mt76.mmio.wed) && wcid->sta) {
-@@ -1246,107 +1260,26 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1247,107 +1261,26 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  	}
  
  	txrate = FIELD_GET(MT_TXS0_TX_RATE, txs);
@@ -327,7 +327,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	mt76_tx_status_unlock(mdev, &list);
  
  	return !!skb;
-@@ -1354,13 +1287,13 @@ out:
+@@ -1355,13 +1288,13 @@ out:
  
  static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
  {
@@ -344,7 +344,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	pid = le32_get_bits(txs_data[3], MT_TXS3_PID);
  
  	if (pid < MT_PACKET_ID_NO_SKB)
-@@ -1372,14 +1305,16 @@ static void mt7996_mac_add_txs(struct mt
+@@ -1373,14 +1306,16 @@ static void mt7996_mac_add_txs(struct mt
  	if (!wcid)
  		goto out;
  
@@ -366,7 +366,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -2332,6 +2267,39 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2333,6 +2268,39 @@ void mt7996_mac_sta_rc_work(struct work_
  	spin_unlock_bh(&dev->mt76.sta_poll_lock);
  }
  
@@ -406,7 +406,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7996_mac_work(struct work_struct *work)
  {
  	struct mt76_phy *mphy = (struct mt76_phy *)container_of(work, struct mt76_phy,
-@@ -2356,11 +2324,10 @@ void mt7996_mac_work(struct work_struct
+@@ -2357,11 +2325,10 @@ void mt7996_mac_work(struct work_struct
  			if (i == mphy->band_idx) {
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_RATE);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_AIRTIME);
@@ -424,7 +424,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  				break;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1677,27 +1677,19 @@ static void mt7996_sta_statistics(struct
+@@ -1702,27 +1702,19 @@ static void mt7996_sta_statistics(struct
  {
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
@@ -462,7 +462,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	sinfo->tx_failed = msta_link->wcid.stats.tx_failed;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_FAILED);
  
-@@ -1707,23 +1699,23 @@ static void mt7996_sta_statistics(struct
+@@ -1732,23 +1724,23 @@ static void mt7996_sta_statistics(struct
  	sinfo->ack_signal = (s8)msta_link->ack_signal;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL);
  
@@ -708,7 +708,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -5049,14 +5183,14 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5026,14 +5160,14 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  }
  
  int mt7996_mcu_get_per_sta_info(struct mt76_dev *dev, u16 tag,
@@ -726,7 +726,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 __rsv1;
  		u8 unsolicit;
-@@ -5095,27 +5229,45 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5072,27 +5206,45 @@ int mt7996_mcu_get_per_sta_info(struct m
  	switch (tag) {
  	case UNI_PER_STA_RSSI:
  		for (i = 0; i < sta_num; ++i) {
@@ -787,7 +787,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	default:
  		ret = -EINVAL;
  		dev_err(dev->dev, "Unknown UNI_PER_STA_INFO_TAG: %d\n", tag);
-@@ -5126,55 +5278,6 @@ out:
+@@ -5103,55 +5255,6 @@ out:
  	return ret;
  }
  

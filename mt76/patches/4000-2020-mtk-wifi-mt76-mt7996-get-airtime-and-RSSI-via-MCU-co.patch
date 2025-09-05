@@ -41,7 +41,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  };
  
  enum mt76_wcid_flags {
-@@ -1420,6 +1424,22 @@ static inline int mt76_decr(int val, int
+@@ -1421,6 +1425,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -222,7 +222,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  /* The HW does not translate the mac header to 802.3 for mesh point */
  static int mt7996_reverse_frag0_hdr_trans(struct sk_buff *skb, u16 hdr_gap)
  {
-@@ -1305,8 +1190,6 @@ next:
+@@ -1306,8 +1191,6 @@ next:
  		}
  	}
  
@@ -231,7 +231,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -2451,31 +2334,42 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2452,31 +2335,42 @@ void mt7996_mac_sta_rc_work(struct work_
  
  void mt7996_mac_work(struct work_struct *work)
  {
@@ -383,7 +383,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -4969,9 +5048,135 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -4946,9 +5025,135 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -521,7 +521,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -4982,7 +5187,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -4959,7 +5164,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  

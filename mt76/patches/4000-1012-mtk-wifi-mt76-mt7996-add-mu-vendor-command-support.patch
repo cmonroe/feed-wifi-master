@@ -112,7 +112,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  		if (sta->mlo) {
  			mt7996_mcu_sta_mld_setup_tlv(dev, skb, link_conf->vif,
-@@ -5297,3 +5302,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -5274,3 +5279,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(SCS),
  				 &req, sizeof(req), false);
  }
@@ -211,7 +211,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  void mt7996_mac_init(struct mt7996_dev *dev);
  u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
  bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
-@@ -848,9 +862,15 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -844,9 +858,15 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
@@ -384,7 +384,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +#endif
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -529,6 +529,9 @@ static int mt7996_add_interface(struct i
+@@ -546,6 +546,9 @@ static int mt7996_add_interface(struct i
  	vif->offload_flags |= IEEE80211_OFFLOAD_ENCAP_4ADDR;
  	mvif->mt76.deflink_id = IEEE80211_LINK_UNSPECIFIED;
  

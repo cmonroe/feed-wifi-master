@@ -376,7 +376,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1047,6 +1047,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -1048,6 +1048,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
  	id = mt76_token_consume(mdev, &t);
  	if (id < 0)
  		return id;
@@ -414,7 +414,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  };
  
  enum {
-@@ -813,7 +825,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -809,7 +821,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
  #ifdef CONFIG_MTK_DEBUG

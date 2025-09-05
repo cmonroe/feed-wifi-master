@@ -1,6 +1,6 @@
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2111,6 +2111,11 @@ void mt7996_reset(struct mt7996_dev *dev
+@@ -2112,6 +2112,11 @@ void mt7996_reset(struct mt7996_dev *dev
  		return;
  	}
  

@@ -1,6 +1,6 @@
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1080,7 +1080,7 @@ mt7996_txwi_free(struct mt7996_dev *dev,
+@@ -1081,7 +1081,7 @@ mt7996_txwi_free(struct mt7996_dev *dev,
  		goto out;
  
  	txwi = (__le32 *)mt76_get_txwi_ptr(mdev, t);
