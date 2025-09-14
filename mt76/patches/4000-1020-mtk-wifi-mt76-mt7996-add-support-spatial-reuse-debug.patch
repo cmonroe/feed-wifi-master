@@ -60,7 +60,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -749,6 +749,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -773,6 +773,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_WED_RRO:
  		mt7996_mcu_wed_rro_event(dev, skb);
  		break;
@@ -74,7 +74,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -368,6 +368,11 @@ struct mt7996_phy {
+@@ -403,6 +403,11 @@ struct mt7996_phy {
  	bool sku_path_en;
  
  	u8 muru_onoff;
@@ -86,7 +86,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  };
  
  struct mt7996_dev {
-@@ -889,6 +894,8 @@ enum edcca_bw_id {
+@@ -950,6 +955,8 @@ enum edcca_bw_id {
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  int mt7996_mcu_set_muru_cfg(struct mt7996_dev *dev, void *data);
@@ -97,7 +97,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2835,6 +2835,83 @@ static int mt7996_show_eeprom_mode(struc
+@@ -2769,6 +2769,83 @@ static int mt7996_show_eeprom_mode(struc
  	return 0;
  }
  
@@ -181,7 +181,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir)
  {
  	struct ieee80211_hw *hw = mt76_hw(dev);
-@@ -2927,6 +3004,18 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2857,6 +2934,18 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  		snprintf(buf, sizeof(buf), "txpower_path%d", i);
  		debugfs_create_file(buf, 0600, dir, phy, &mt7996_txpower_path_fops);

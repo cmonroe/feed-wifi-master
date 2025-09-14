@@ -41,7 +41,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	hif = devm_kzalloc(&pdev->dev, sizeof(*hif), GFP_KERNEL);
  	if (!hif)
  		return -ENOMEM;
-@@ -104,6 +113,8 @@ static int mt7996_pci_probe(struct pci_d
+@@ -105,6 +114,8 @@ static int mt7996_pci_probe(struct pci_d
  	int irq, hif2_irq, ret;
  	struct mt76_dev *mdev;
  

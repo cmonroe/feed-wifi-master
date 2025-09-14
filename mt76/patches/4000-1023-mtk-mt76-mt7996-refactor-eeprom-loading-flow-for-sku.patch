@@ -102,7 +102,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3782,7 +3782,7 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -3769,7 +3769,7 @@ int mt7996_mcu_set_chan_info(struct mt79
  				 &req, sizeof(req), true);
  }
  
@@ -121,7 +121,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		[MT7996_FEM_EXT] = "eFEM",
  		[MT7996_FEM_INT] = "iFEM",
  		[MT7996_FEM_MIX] = "mixed FEM",
-@@ -2826,7 +2825,7 @@ static int mt7996_show_eeprom_mode(struc
+@@ -2760,7 +2759,7 @@ static int mt7996_show_eeprom_mode(struc
  			seq_printf(s, "   flash mode\n");
  		break;
  	case BIN_FILE_MODE:

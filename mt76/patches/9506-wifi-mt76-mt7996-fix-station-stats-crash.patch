@@ -1,6 +1,6 @@
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -695,6 +695,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -738,6 +738,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
  
  	res = (struct mt7996_mcu_all_sta_info_event *)skb->data;
  
@@ -8,7 +8,7 @@
  	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
  		u8 ac;
  		bool v1;
-@@ -843,6 +844,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -904,6 +905,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			break;
  		}
  	}
@@ -16,7 +16,7 @@
  }
  
  static void
-@@ -5240,6 +5242,8 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5264,6 +5266,8 @@ int mt7996_mcu_get_per_sta_info(struct m
  		for (i = 0; i < sta_num; ++i) {
  			wlan_idx = le16_to_cpu(res->rssi[i].wlan_idx);
  			wcid = rcu_dereference(dev->wcid[wlan_idx]);
@@ -25,7 +25,7 @@
  			msta_link = container_of(wcid, struct mt7996_sta_link, wcid);
  			if (msta_link) {
  				struct mt76_phy *phy = dev->phys[wcid->phy_idx];
-@@ -5258,6 +5262,8 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5282,6 +5286,8 @@ int mt7996_mcu_get_per_sta_info(struct m
  		for (i = 0; i < sta_num; ++i) {
  			wlan_idx = le16_to_cpu(res->snr[i].wlan_idx);
  			wcid = rcu_dereference(dev->wcid[wlan_idx]);
@@ -34,26 +34,12 @@
  			msta_link = container_of(wcid, struct mt7996_sta_link, wcid);
  			if (msta_link)
  				memcpy(msta_link->chain_ack_snr, res->snr[i].val,
-@@ -5266,15 +5272,16 @@ int mt7996_mcu_get_per_sta_info(struct m
- 		break;
- 	case UNI_PER_STA_PKT_CNT:
+@@ -5292,7 +5298,7 @@ int mt7996_mcu_get_per_sta_info(struct m
  		for (i = 0; i < sta_num; ++i) {
-+			u32 retries, drops;
  			wlan_idx = le16_to_cpu(res->msdu_cnt[i].wlan_idx);
  			wcid = rcu_dereference(dev->wcid[wlan_idx]);
 -			if (wcid) {
--				u32 retries = le32_to_cpu(res->msdu_cnt[i].tx_retries),
--				    drops = le32_to_cpu(res->msdu_cnt[i].tx_drops);
-+			if (!wcid || !wcid->sta || wcid->sta_disabled)
-+				continue;
-+			retries = le32_to_cpu(res->msdu_cnt[i].tx_retries);
-+			drops = le32_to_cpu(res->msdu_cnt[i].tx_drops);
++			if (wcid && wcid->sta && !wcid->sta_disabled) {
+ 				u32 retries = le32_to_cpu(res->msdu_cnt[i].tx_retries),
+ 				    drops = le32_to_cpu(res->msdu_cnt[i].tx_drops);
  
--				wcid->stats.tx_packets_retried += retries;
--				wcid->stats.tx_packets_failed += retries + drops;
--			}
-+			wcid->stats.tx_packets_retried += retries;
-+			wcid->stats.tx_packets_failed += retries + drops;
- 		}
- 		break;
- 	default:

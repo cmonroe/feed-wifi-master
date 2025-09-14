@@ -26,7 +26,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_RRO = 0x57,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4942,3 +4942,43 @@ int mt7996_mcu_cp_support(struct mt7996_
+@@ -4877,3 +4877,43 @@ int mt7996_mcu_cp_support(struct mt7996_
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WA_EXT_CMD(CP_SUPPORT),
  				 &cp_mode, sizeof(cp_mode), true);
  }
@@ -72,7 +72,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -951,6 +951,16 @@ enum {
+@@ -943,6 +943,16 @@ enum {
  	MT7996_SEC_MODE_MAX,
  };
  
@@ -91,7 +91,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -336,6 +336,9 @@ struct mt7996_phy {
+@@ -380,6 +380,9 @@ struct mt7996_phy {
  
  	bool has_aux_rx;
  	bool counter_reset;
@@ -101,7 +101,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -800,6 +803,7 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
+@@ -868,6 +871,7 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
  				     struct mt7996_vif_link *link,
  				     struct mt7996_sta_link *msta_link);
  int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode);

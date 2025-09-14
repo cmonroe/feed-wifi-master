@@ -96,76 +96,6 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  mt7996e-$(CONFIG_DEV_COREDUMP) += coredump.o
 +
 +mt7996e-y += mtk_debugfs.o mtk_mcu.o
---- a/mt7996/coredump.c
-+++ b/mt7996/coredump.c
-@@ -195,7 +195,7 @@ mt7996_coredump_fw_stack(struct mt7996_d
- 	}
- }
- 
--static struct mt7996_coredump *mt7996_coredump_build(struct mt7996_dev *dev, u8 type)
-+struct mt7996_coredump *mt7996_coredump_build(struct mt7996_dev *dev, u8 type, bool full_dump)
- {
- 	struct mt7996_crash_data *crash_data = dev->coredump.crash_data[type];
- 	struct mt7996_coredump *dump;
-@@ -206,7 +206,7 @@ static struct mt7996_coredump *mt7996_co
- 
- 	len = hdr_len;
- 
--	if (coredump_memdump && crash_data->memdump_buf_len)
-+	if (full_dump && coredump_memdump && crash_data->memdump_buf_len)
- 		len += sizeof(*dump_mem) + crash_data->memdump_buf_len;
- 
- 	sofar += hdr_len;
-@@ -248,6 +248,9 @@ static struct mt7996_coredump *mt7996_co
- 	mt7996_coredump_fw_state(dev, type, dump, &exception);
- 	mt7996_coredump_fw_stack(dev, type, dump, exception);
- 
-+	if (!full_dump)
-+		goto skip_dump_mem;
-+
- 	/* gather memory content */
- 	dump_mem = (struct mt7996_coredump_mem *)(buf + sofar);
- 	dump_mem->len = crash_data->memdump_buf_len;
-@@ -255,6 +258,7 @@ static struct mt7996_coredump *mt7996_co
- 		memcpy(dump_mem->data, crash_data->memdump_buf,
- 		       crash_data->memdump_buf_len);
- 
-+skip_dump_mem:
- 	mutex_unlock(&dev->dump_mutex);
- 
- 	return dump;
-@@ -264,7 +268,7 @@ int mt7996_coredump_submit(struct mt7996
- {
- 	struct mt7996_coredump *dump;
- 
--	dump = mt7996_coredump_build(dev, type);
-+	dump = mt7996_coredump_build(dev, type, true);
- 	if (!dump) {
- 		dev_warn(dev->mt76.dev, "no crash dump data found\n");
- 		return -ENODATA;
---- a/mt7996/coredump.h
-+++ b/mt7996/coredump.h
-@@ -75,6 +75,7 @@ struct mt7996_mem_region {
- const struct mt7996_mem_region *
- mt7996_coredump_get_mem_layout(struct mt7996_dev *dev, u8 type, u32 *num);
- struct mt7996_crash_data *mt7996_coredump_new(struct mt7996_dev *dev, u8 type);
-+struct mt7996_coredump *mt7996_coredump_build(struct mt7996_dev *dev, u8 type, bool full_dump);
- int mt7996_coredump_submit(struct mt7996_dev *dev, u8 type);
- int mt7996_coredump_register(struct mt7996_dev *dev);
- void mt7996_coredump_unregister(struct mt7996_dev *dev);
-@@ -93,6 +94,12 @@ static inline int mt7996_coredump_submit
- }
- 
- static inline struct
-+mt7996_coredump *mt7996_coredump_build(struct mt7996_dev *dev, u8 type, bool full_dump)
-+{
-+	return NULL;
-+}
-+
-+static inline struct
- mt7996_crash_data *mt7996_coredump_new(struct mt7996_dev *dev, u8 type)
- {
- 	return NULL;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
 @@ -306,11 +306,39 @@ mt7996_fw_debug_wm_set(void *data, u64 v
@@ -376,7 +306,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1048,6 +1048,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -1056,6 +1056,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
  	id = mt76_token_consume(mdev, &t);
  	if (id < 0)
  		return id;
@@ -384,11 +314,11 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +	t->jiffies = jiffies;
 +#endif
  
- 	pid = mt76_tx_status_skb_add(mdev, wcid, tx_info->skb);
- 	memset(txwi_ptr, 0, MT_TXD_SIZE);
+ 	/* Since the rules of HW MLD address translation are not fully
+ 	 * compatible with 802.11 EAPOL frame, we do the translation by
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -428,6 +428,7 @@ struct mt7996_dev {
+@@ -484,6 +484,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -396,7 +326,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	struct dentry *debugfs_dir;
  	struct rchan *relay_fwlog;
-@@ -444,6 +445,17 @@ struct mt7996_dev {
+@@ -500,6 +501,17 @@ struct mt7996_dev {
  		u8 type:4;
  		u8 fem:4;
  	} var;
@@ -414,7 +344,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  };
  
  enum {
-@@ -809,7 +821,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -881,7 +893,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
  #ifdef CONFIG_MTK_DEBUG
@@ -423,7 +353,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
  
- #ifdef CONFIG_NET_MEDIATEK_SOC_WED
+ int mt7996_dma_rro_init(struct mt7996_dev *dev);
 --- /dev/null
 +++ b/mt7996/mtk_debug.h
 @@ -0,0 +1,2286 @@
@@ -2715,7 +2645,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +#endif
 --- /dev/null
 +++ b/mt7996/mtk_debugfs.c
-@@ -0,0 +1,2505 @@
+@@ -0,0 +1,2435 @@
 +// SPDX-License-Identifier: ISC
 +/*
 + * Copyright (C) 2023 MediaTek Inc.
@@ -3064,19 +2994,19 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +		[MT7996_FEM_MIX] = "mixed FEM",
 +	};
 +
-+	seq_printf(s, "Version: 4.3.24.8\n");
++	//seq_printf(s, "Version: 4.3.24.8\n");
 +
 +	if (!test_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state))
 +		return 0;
 +
-+	seq_printf(s, "Rom Patch Build Time: %.16s\n", dev->patch_build_date);
-+	seq_printf(s, "WM Patch Build Time: %.15s, Mode: %s\n",
-+		   dev->ram_build_date[MT7996_RAM_TYPE_WM],
-+		   "Normal mode");
-+	seq_printf(s, "WA Patch Build Time: %.15s\n",
-+		   dev->ram_build_date[MT7996_RAM_TYPE_WA]);
-+	seq_printf(s, "DSP Patch Build Time: %.15s\n",
-+		   dev->ram_build_date[MT7996_RAM_TYPE_DSP]);
++	//seq_printf(s, "Rom Patch Build Time: %.16s\n", dev->patch_build_date);
++	//seq_printf(s, "WM Patch Build Time: %.15s, Mode: %s\n",
++	//	   dev->ram_build_date[MT7996_RAM_TYPE_WM],
++	//	   "Normal mode");
++	//seq_printf(s, "WA Patch Build Time: %.15s\n",
++	//	   dev->ram_build_date[MT7996_RAM_TYPE_WA]);
++	//seq_printf(s, "DSP Patch Build Time: %.15s\n",
++	//	   dev->ram_build_date[MT7996_RAM_TYPE_DSP]);
 +	for (adie_idx = 0; adie_idx < MAX_ADIE_NUM; adie_idx++) {
 +		mt7996_mcu_rf_regval(dev, MT_ADIE_CHIP_ID(adie_idx), &regval, false);
 +		adie_chip_id = FIELD_GET(MT_ADIE_CHIP_ID_MASK, regval);
@@ -3088,72 +3018,6 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +			seq_printf(s, "Adie %d: ID = N/A, Ver = N/A\n", adie_idx);
 +	}
 +	seq_printf(s, "FEM type: %s\n", fem_type[dev->var.fem]);
-+
-+	return 0;
-+}
-+
-+/* fw wm call trace info dump */
-+void mt7996_show_lp_history(struct seq_file *s, u32 type)
-+{
-+	struct mt7996_dev *dev = dev_get_drvdata(s->private);
-+	struct mt7996_crash_data *crash_data;
-+	struct mt7996_coredump *dump;
-+	u64 now = 0;
-+	int i = 0;
-+	u8 fw_type = !!type;
-+
-+	mutex_lock(&dev->dump_mutex);
-+
-+	crash_data = mt7996_coredump_new(dev, fw_type);
-+	if (!crash_data) {
-+		mutex_unlock(&dev->dump_mutex);
-+		seq_printf(s, "the coredump is disable!\n");
-+		return;
-+	}
-+	mutex_unlock(&dev->dump_mutex);
-+
-+	dump = mt7996_coredump_build(dev, fw_type, false);
-+	if (!dump) {
-+		seq_printf(s, "no call stack data found!\n");
-+		return;
-+	}
-+
-+	seq_printf(s, "\x1b[32m%s log output\x1b[0m\n", dump->fw_type);
-+	seq_printf(s, "\x1b[32mfw status: %s\n", dump->fw_state);
-+	/* PC log */
-+	now = jiffies;
-+	for (i = 0; i < 10; i++)
-+		seq_printf(s, "\tCurrent PC=%x\n", dump->pc_cur[i]);
-+
-+	seq_printf(s, "PC log contorl=0x%x(T=%llu)(latest PC index = 0x%x)\n",
-+		dump->pc_dbg_ctrl, now, dump->pc_cur_idx);
-+	for (i = 0; i < 32; i++)
-+		seq_printf(s, "\tPC log(%d)=0x%08x\n", i, dump->pc_stack[i]);
-+
-+	/* LR log */
-+	now = jiffies;
-+	seq_printf(s, "\nLR log contorl=0x%x(T=%llu)(latest LR index = 0x%x)\n",
-+		dump->lr_dbg_ctrl, now, dump->lr_cur_idx);
-+	for (i = 0; i < 32; i++)
-+		seq_printf(s, "\tLR log(%d)=0x%08x\n", i, dump->lr_stack[i]);
-+
-+	vfree(dump);
-+}
-+
-+static int mt7996_fw_wa_info_read(struct seq_file *s, void *data)
-+{
-+	seq_printf(s, "======[ShowPcLpHistory]======\n");
-+	mt7996_show_lp_history(s, MT7996_RAM_TYPE_WA);
-+	seq_printf(s, "======[End ShowPcLpHistory]==\n");
-+
-+	return 0;
-+}
-+
-+static int mt7996_fw_wm_info_read(struct seq_file *s, void *data)
-+{
-+	seq_printf(s, "======[ShowPcLpHistory]======\n");
-+	mt7996_show_lp_history(s, MT7996_RAM_TYPE_WM);
-+	seq_printf(s, "======[End ShowPcLpHistory]==\n");
 +
 +	return 0;
 +}
@@ -5192,10 +5056,6 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +	debugfs_create_file("fw_wa_set", 0600, dir, dev, &fops_wa_set);
 +	debugfs_create_devm_seqfile(dev->mt76.dev, "fw_version", dir,
 +				    mt7996_dump_version);
-+	debugfs_create_devm_seqfile(dev->mt76.dev, "fw_wa_info", dir,
-+				    mt7996_fw_wa_info_read);
-+	debugfs_create_devm_seqfile(dev->mt76.dev, "fw_wm_info", dir,
-+				    mt7996_fw_wm_info_read);
 +
 +	debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info0", dir,
 +				    mt7996_mibinfo_band0);

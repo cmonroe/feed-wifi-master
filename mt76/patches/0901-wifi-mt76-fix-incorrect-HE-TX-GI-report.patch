@@ -18,8 +18,8 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -298,12 +298,16 @@ struct mt76_queue_ops {
- 	void (*reset_q)(struct mt76_dev *dev, struct mt76_queue *q);
+@@ -315,12 +315,16 @@ struct mt76_queue_ops {
+ 			bool reset_idx);
  };
  
 +#define MT_PHY_TYPE_LEGACY	GENMASK(2, 0)
@@ -208,7 +208,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void mt7915_tx(struct ieee80211_hw *hw,
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3900,6 +3900,167 @@ out:
+@@ -3885,6 +3885,167 @@ out:
  	return ret;
  }
  

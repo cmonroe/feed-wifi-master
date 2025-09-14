@@ -185,7 +185,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	ieee80211_queue_delayed_work(dev->mphy.hw, &phy->mt76->mac_work,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4806,9 +4806,31 @@ int mt7996_mcu_set_sniffer_mode(struct m
+@@ -4793,9 +4793,31 @@ int mt7996_mcu_set_sniffer_mode(struct m
  				 sizeof(req), true);
  }
  
@@ -217,7 +217,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_phy *mphy = phy->mt76;
  	struct tx_power_limit_table_ctrl {
-@@ -4827,13 +4849,20 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4814,13 +4836,20 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -243,7 +243,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
-@@ -4863,6 +4892,34 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4850,6 +4879,34 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* padding */
  	skb_put_zero(skb, MT7996_SKU_PATH_NUM - MT7996_SKU_RATE_NUM);
  
@@ -280,7 +280,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  }
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -351,6 +351,9 @@ struct mt7996_phy {
+@@ -395,6 +395,9 @@ struct mt7996_phy {
  	u16 punct_bitmap;
  
  	struct mt7996_scs_ctrl scs_ctrl;
@@ -290,7 +290,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -841,6 +844,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -913,6 +916,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
@@ -301,7 +301,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2439,6 +2439,364 @@ mt7996_scs_enable_set(void *data, u64 va
+@@ -2373,6 +2373,364 @@ mt7996_scs_enable_set(void *data, u64 va
  DEFINE_DEBUGFS_ATTRIBUTE(fops_scs_enable, NULL,
  			 mt7996_scs_enable_set, "%lld\n");
  
@@ -666,7 +666,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir)
  {
  	struct ieee80211_hw *hw = mt76_hw(dev);
-@@ -2516,6 +2874,18 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2446,6 +2804,18 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  		snprintf(buf, sizeof(buf), "scs_enable%d", i);
  		debugfs_create_file(buf, 0200, dir, phy, &fops_scs_enable);
@@ -820,7 +820,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
-@@ -723,24 +723,29 @@ enum offs_rev {
+@@ -752,24 +752,29 @@ enum offs_rev {
  						 ((_wf) << 16) + (ofs))
  #define MT_WF_PHYRX_CSD_IRPI(_band, _wf)	MT_WF_PHYRX_CSD(_band, _wf, 0x1000)
  

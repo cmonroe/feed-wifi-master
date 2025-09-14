@@ -18,7 +18,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -961,6 +961,46 @@ DEFINE_DEBUGFS_ATTRIBUTE(fops_fw_debug_m
+@@ -945,6 +945,46 @@ DEFINE_DEBUGFS_ATTRIBUTE(fops_fw_debug_m
  			 mt7996_fw_debug_muru_disable_get,
  			 mt7996_fw_debug_muru_disable_set, "%lld\n");
  
@@ -65,7 +65,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_init_debugfs(struct mt7996_dev *dev)
  {
  	struct dentry *dir;
-@@ -987,6 +1027,7 @@ int mt7996_init_debugfs(struct mt7996_de
+@@ -971,6 +1011,7 @@ int mt7996_init_debugfs(struct mt7996_de
  	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
  				    mt7996_twt_stats);
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
