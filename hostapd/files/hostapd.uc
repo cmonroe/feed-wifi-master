@@ -1,8 +1,17 @@
 let libubus = require("ubus");
-import { open, readfile } from "fs";
+import { open, readfile, access } from "fs";
 import { wdev_remove, is_equal, vlist_new, phy_is_fullmac, phy_open, wdev_set_radio_mask, wdev_set_up } from "common";
 
 let ubus = libubus.connect(null, 60);
+
+function ex_handler(e)
+{
+	e = split(`${e}\n${e.stacktrace[0].context}`, '\n');
+	for (let line in e)
+		hostapd.printf(line);
+	return libubus.STATUS_UNKNOWN_ERROR;
+}
+libubus.guard(ex_handler);
 
 hostapd.data.config = {};
 hostapd.data.pending_config = {};
@@ -773,6 +782,10 @@ function bss_check_mld(phydev, iface_name, bss)
 
 	bss.mld_bssid = mld_data.macaddr;
 	mld_data.iface[iface_name] = true;
+
+	if (!access('/sys/class/net/' + iface_name, 'x'))
+		mld_data.has_wdev = false;
+
 	if (mld_data.has_wdev)
 		return true;
 
@@ -963,18 +976,6 @@ function iface_load_config(phy, radio, filename)
 	return config;
 }
 
-function ex_wrap(func) {
-	return (req) => {
-		try {
-			let ret = func(req);
-			return ret;
-		} catch(e) {
-			hostapd.printf(`Exception in ubus function: ${e}\n${e.stacktrace[0].context}`);
-		}
-		return libubus.STATUS_UNKNOWN_ERROR;
-	};
-}
-
 function phy_name(phy, radio)
 {
 	if (!phy)
@@ -1131,7 +1132,7 @@ let main_obj = {
 			phy: "",
 			radio: 0,
 		},
-		call: ex_wrap(function(req) {
+		call: function(req) {
 			let phy_list = req.args.phy ? [ phy_name(req.args.phy, req.args.radio) ] : keys(hostapd.data.config);
 			for (let phy_name in phy_list) {
 				let phy = hostapd.data.config[phy_name];
@@ -1140,7 +1141,7 @@ let main_obj = {
 			}
 
 			return 0;
-		})
+		}
 	},
 	apsta_state: {
 		args: {
@@ -1154,7 +1155,7 @@ let main_obj = {
 			csa: true,
 			csa_count: 0,
 		},
-		call: ex_wrap(function(req) {
+		call: function(req) {
 			let phy = phy_name(req.args.phy, req.args.radio);
 			if (req.args.up == null || !phy)
 				return libubus.STATUS_INVALID_ARGUMENT;
@@ -1195,14 +1196,14 @@ let main_obj = {
 				return libubus.STATUS_UNKNOWN_ERROR;
 
 			return 0;
-		})
+		}
 	},
 	config_get_macaddr_list: {
 		args: {
 			phy: "",
 			radio: 0,
 		},
-		call: ex_wrap(function(req) {
+		call: function(req) {
 			let phy = phy_name(req.args.phy, req.args.radio);
 			if (!phy)
 				return libubus.STATUS_INVALID_ARGUMENT;
@@ -1217,13 +1218,13 @@ let main_obj = {
 
 			ret.macaddr = map(config.bss, (bss) => bss.bssid);
 			return ret;
-		})
+		}
 	},
 	mld_set: {
 		args: {
 			config: {}
 		},
-		call: ex_wrap(function(req) {
+		call: function(req) {
 			if (!req.args.config)
 				return libubus.STATUS_INVALID_ARGUMENT;
 
@@ -1232,17 +1233,17 @@ let main_obj = {
 			return {
 				pid: hostapd.getpid()
 			};
-		})
+		}
 	},
 	config_reset: {
 		args: {
 		},
-		call: ex_wrap(function(req) {
+		call: function(req) {
 			for (let name in hostapd.data.config)
 				iface_set_config(name);
 			mld_set_config({});
 			return 0;
-		})
+		}
 	},
 	config_set: {
 		args: {
@@ -1251,7 +1252,7 @@ let main_obj = {
 			config: "",
 			prev_config: "",
 		},
-		call: ex_wrap(function(req) {
+		call: function(req) {
 			let phy = req.args.phy;
 			let radio = req.args.radio;
 			let name = phy_name(phy, radio);
@@ -1279,14 +1280,14 @@ let main_obj = {
 			return {
 				pid: hostapd.getpid()
 			};
-		})
+		}
 	},
 	config_add: {
 		args: {
 			iface: "",
 			config: "",
 		},
-		call: ex_wrap(function(req) {
+		call: function(req) {
 			if (!req.args.iface || !req.args.config)
 				return libubus.STATUS_INVALID_ARGUMENT;
 
@@ -1296,25 +1297,25 @@ let main_obj = {
 			return {
 				pid: hostapd.getpid()
 			};
-		})
+		}
 	},
 	config_remove: {
 		args: {
 			iface: ""
 		},
-		call: ex_wrap(function(req) {
+		call: function(req) {
 			if (!req.args.iface)
 				return libubus.STATUS_INVALID_ARGUMENT;
 
 			hostapd.remove_iface(req.args.iface);
 			return 0;
-		})
+		}
 	},
 	bss_info: {
 		args: {
 			iface: ""
 		},
-		call: ex_wrap(function(req) {
+		call: function(req) {
 			if (!req.args.iface)
 				return libubus.STATUS_INVALID_ARGUMENT;
 
@@ -1334,7 +1335,7 @@ let main_obj = {
 			}
 
 			return ret;
-		})
+		}
 	},
 };
 
