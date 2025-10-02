@@ -20,6 +20,7 @@ void wpas_ucode_add_bss(struct wpa_supplicant *wpa_s);
 void wpas_ucode_free_bss(struct wpa_supplicant *wpa_s);
 void wpas_ucode_update_state(struct wpa_supplicant *wpa_s);
 void wpas_ucode_event(struct wpa_supplicant *wpa_s, int event, union wpa_event_data *data);
+bool wpas_ucode_bss_allowed(struct wpa_supplicant *wpa_s, struct wpa_bss *bss);
 #else
 static inline int wpas_ucode_init(struct wpa_global *gl)
 {
@@ -42,6 +43,11 @@ static inline void wpas_ucode_update_state(struct wpa_supplicant *wpa_s)
 
 static inline void wpas_ucode_event(struct wpa_supplicant *wpa_s, int event, union wpa_event_data *data)
 {
+}
+
+static bool wpas_ucode_bss_allowed(struct wpa_supplicant *wpa_s, struct wpa_bss *bss)
+{
+	return false;
 }
 
 #endif
