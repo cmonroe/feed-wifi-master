@@ -16,7 +16,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
 
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -553,6 +553,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
+@@ -582,6 +582,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
  	struct hostapd_iface *iface = uc_fn_thisval("hostapd.iface");
  	int i;
  
@@ -26,7 +26,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	if (!iface)
  		return NULL;
  
-@@ -579,6 +582,9 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+@@ -608,6 +611,9 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  	uint64_t intval;
  	int i;
  
@@ -36,7 +36,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	if (!iface)
  		return NULL;
  
-@@ -601,7 +607,13 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+@@ -630,7 +636,13 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  	UPDATE_VAL(op_class, "op_class");
  	UPDATE_VAL(hw_mode, "hw_mode");
  	UPDATE_VAL(channel, "channel");
@@ -51,7 +51,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	if (!changed &&
  	    (iface->bss[0]->beacon_set_done ||
  	     iface->state == HAPD_IFACE_DFS))
-@@ -647,6 +659,15 @@ out:
+@@ -676,6 +688,15 @@ out:
  		return ucv_boolean_new(true);
  	}
  
@@ -67,7 +67,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
  		int ret;
-@@ -682,6 +703,7 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -711,6 +732,7 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	uint64_t intval;
  	int i, ret = 0;
  
@@ -75,7 +75,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	if (!iface || ucv_type(info) != UC_OBJECT)
  		return NULL;
  
-@@ -701,7 +723,8 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -730,7 +752,8 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	if (errno)
  		intval = hostapd_get_oper_chwidth(conf);
  	if (intval)
@@ -85,7 +85,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	else
  		csa.freq_params.bandwidth = csa.freq_params.sec_channel_offset ? 40 : 20;
  
-@@ -712,6 +735,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -741,6 +764,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	if ((intval = ucv_int64_get(ucv_object_get(info, "center_freq2", NULL))) && !errno)
  		csa.freq_params.center_freq2 = intval;
  
