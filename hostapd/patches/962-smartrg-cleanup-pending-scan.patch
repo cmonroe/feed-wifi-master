@@ -1,0 +1,12 @@
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -2339,6 +2339,11 @@ static void nl80211_destroy_bss(struct i
+
+ 	if (bss->nl_connect)
+ 		nl80211_destroy_eloop_handle(&bss->nl_connect, 1);
++
++	struct wpa_driver_nl80211_data *drv = bss->drv;
++	int pending_scan = eloop_cancel_timeout(wpa_driver_nl80211_scan_timeout, drv, bss->ctx);
++	if (pending_scan)
++		wpa_driver_nl80211_scan_timeout(drv, bss->ctx);
+ }
