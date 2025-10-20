@@ -28,7 +28,7 @@
  
  static int nl80211_fill_signal_cb(struct nl_msg *msg, void *arg)
  {
-@@ -3049,11 +3070,18 @@ static int nl80211_get_scanlist(const ch
+@@ -3061,11 +3082,18 @@ static int nl80211_get_scanlist(const ch
  	return -1;
  }
  
@@ -48,7 +48,7 @@
  	struct iwinfo_freqlist_entry *e;
  
  	struct nlattr **attr = nl80211_parse(msg);
-@@ -3067,6 +3095,11 @@ static int nl80211_get_freqlist_cb(struc
+@@ -3079,6 +3107,11 @@ static int nl80211_get_freqlist_cb(struc
  	if (attr[NL80211_ATTR_WIPHY_BANDS]) {
  		nla_for_each_nested(band, attr[NL80211_ATTR_WIPHY_BANDS], bands_remain)
  		{
@@ -60,7 +60,7 @@
  			nla_parse(bands, NL80211_BAND_ATTR_MAX,
  				  nla_data(band), nla_len(band), NULL);
  
-@@ -3119,18 +3152,22 @@ static int nl80211_get_freqlist_cb(struc
+@@ -3131,18 +3164,22 @@ static int nl80211_get_freqlist_cb(struc
  
  static int nl80211_get_freqlist(const char *ifname, char *buf, int *len)
  {
@@ -84,7 +84,7 @@
  		goto out;
  
  	*len = arr.count * sizeof(struct iwinfo_freqlist_entry);
-@@ -3191,6 +3228,7 @@ struct nl80211_modes
+@@ -3203,6 +3240,7 @@ struct nl80211_modes
  	uint32_t ht;
  
  	uint8_t bands;
@@ -92,7 +92,7 @@
  
  	uint16_t nl_ht;
  	uint32_t nl_vht;
-@@ -3289,6 +3327,11 @@ static int nl80211_get_modelist_cb(struc
+@@ -3301,6 +3339,11 @@ static int nl80211_get_modelist_cb(struc
  	{
  		nla_for_each_nested(band, attr[NL80211_ATTR_WIPHY_BANDS], bands_remain)
  		{
@@ -104,7 +104,7 @@
  			m->bands |= nl80211_get_band(band->nla_type);
  
  			nla_parse(bands, NL80211_BAND_ATTR_MAX,
-@@ -3348,6 +3391,8 @@ static int nl80211_get_hwmodelist(const
+@@ -3360,6 +3403,8 @@ static int nl80211_get_hwmodelist(const
  	uint32_t features = nl80211_get_protocol_features(ifname);
  	int flags;
  
@@ -113,7 +113,7 @@
  	flags = features & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP ? NLM_F_DUMP : 0;
  	cv = nl80211_msg(ifname, NL80211_CMD_GET_WIPHY, flags);
  	if (!cv)
-@@ -3483,6 +3528,8 @@ static int nl80211_get_htmodelist(const
+@@ -3495,6 +3540,8 @@ static int nl80211_get_htmodelist(const
  	uint32_t features = nl80211_get_protocol_features(ifname);
  	int flags;
  

@@ -45,11 +45,10 @@ static inline void wpas_ucode_event(struct wpa_supplicant *wpa_s, int event, uni
 {
 }
 
-static bool wpas_ucode_bss_allowed(struct wpa_supplicant *wpa_s, struct wpa_bss *bss)
+static inline bool wpas_ucode_bss_allowed(struct wpa_supplicant *wpa_s, struct wpa_bss *bss)
 {
-	return false;
+	return true;
 }
-
 #endif
 
 #endif

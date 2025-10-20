@@ -150,7 +150,7 @@
  		case UNI_ALL_STA_TXRX_MSDU_COUNT:
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1701,14 +1701,8 @@ static void mt7996_sta_statistics(struct
+@@ -1699,14 +1699,8 @@ static void mt7996_sta_statistics(struct
  				  struct ieee80211_sta *sta,
  				  struct station_info *sinfo)
  {
@@ -166,7 +166,7 @@
  
  	sinfo->txrate = msta_link->wcid.rate;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BITRATE);
-@@ -1739,9 +1733,6 @@ static void mt7996_sta_statistics(struct
+@@ -1737,9 +1731,6 @@ static void mt7996_sta_statistics(struct
  
  	sinfo->rx_packets = msta_link->wcid.stats.rx_packets;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_RX_PACKETS);

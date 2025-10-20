@@ -24,7 +24,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -375,12 +375,16 @@ struct mt76_sta_stats {
+@@ -378,12 +378,16 @@ struct mt76_sta_stats {
  	u32 tx_packets;		/* unit: MSDU */
  	u32 tx_retries;
  	u32 tx_failed;
@@ -41,7 +41,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  };
  
  enum mt76_wcid_flags {
-@@ -1446,6 +1450,22 @@ static inline int mt76_decr(int val, int
+@@ -1458,6 +1462,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -383,7 +383,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -4933,9 +5012,135 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -4936,9 +5015,135 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -521,7 +521,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -4946,7 +5151,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -4949,7 +5154,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  
@@ -589,7 +589,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  	int ack_signal;
  	struct ewma_avg_signal avg_ack_signal;
-@@ -374,6 +375,21 @@ struct mt7996_rro_queue_regs_emi {
+@@ -379,6 +380,21 @@ struct mt7996_rro_queue_regs_emi {
  	} ring[MT7996_MAX_RRO_RRS_RING];
  };
  
@@ -611,7 +611,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct mt7996_phy {
  	struct mt76_phy *mt76;
  	struct mt7996_dev *dev;
-@@ -561,6 +577,7 @@ struct mt7996_dev {
+@@ -566,6 +582,7 @@ struct mt7996_dev {
  		u32 fw_dbg_module;
  		u8 fw_dbg_lv;
  		u32 bcn_total_cnt[__MT_MAX_BAND];
@@ -619,7 +619,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	} dbg;
  	const struct mt7996_dbg_reg_desc *dbg_reg;
  #endif
-@@ -815,7 +832,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -820,7 +837,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);

@@ -58,7 +58,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -415,6 +415,8 @@ struct mt7996_phy {
+@@ -420,6 +420,8 @@ struct mt7996_phy {
  	s16 coverage_class;
  	u8 slottime;
  

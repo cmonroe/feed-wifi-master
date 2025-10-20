@@ -30,7 +30,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -349,6 +349,7 @@ struct mt76_sta_stats {
+@@ -352,6 +352,7 @@ struct mt76_sta_stats {
  	u64 tx_nss[4];		/* 1, 2, 3, 4 */
  	u64 tx_mcs[16];		/* mcs idx */
  	u64 tx_bytes;
@@ -38,7 +38,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	/* WED TX */
  	u32 tx_packets;		/* unit: MSDU */
  	u32 tx_retries;
-@@ -358,6 +359,7 @@ struct mt76_sta_stats {
+@@ -361,6 +362,7 @@ struct mt76_sta_stats {
  	u32 rx_packets;
  	u32 rx_errors;
  	u32 rx_drops;
@@ -58,7 +58,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_EXT_CMD_OFFCH_SCAN_CTRL = 0x9a,
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -1265,6 +1265,7 @@ int mt7915_register_device(struct mt7915
+@@ -1267,6 +1267,7 @@ int mt7915_register_device(struct mt7915
  	spin_lock_init(&dev->phy.stats_lock);
  	INIT_WORK(&dev->rc_work, mt7915_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7915_mac_work);
@@ -131,7 +131,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		mt76_connac_mcu_set_pm(&dev->mt76, dev->phy.mt76->band_idx, 1);
  		mt7915_mcu_set_mac(dev, dev->phy.mt76->band_idx, false, false);
  	}
-@@ -1786,11 +1799,16 @@ static void
+@@ -1834,11 +1847,16 @@ static void
  mt7915_reconfig_complete(struct ieee80211_hw *hw,
  			 enum ieee80211_reconfig_type reconfig_type)
  {
@@ -150,7 +150,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  const struct ieee80211_ops mt7915_ops = {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4626,3 +4626,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
+@@ -4637,3 +4637,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
  
  	return 0;
  }
@@ -274,7 +274,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -733,4 +733,8 @@ struct mt7915_mcu_rdd_ipi_scan {
+@@ -734,4 +734,8 @@ struct mt7915_mcu_rdd_ipi_scan {
  	u8 tx_assert_time;						/* unit: us */
  } __packed;
  
@@ -317,7 +317,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	struct list_head sta_rc_list;
  	struct list_head twt_list;
-@@ -738,6 +749,8 @@ int mt7915_mcu_get_edcca(struct mt7915_p
+@@ -748,6 +759,8 @@ int mt7915_mcu_get_edcca(struct mt7915_p
  int mt7915_mcu_ipi_hist_ctrl(struct mt7915_phy *phy, void *data, u8 cmd, bool wait_resp);
  int mt7915_mcu_ipi_hist_scan(struct mt7915_phy *phy, void *data, u8 mode, bool wait_resp);
  int mt7915_mcu_enable_obss_spr(struct mt7915_phy *phy, u8 action, u8 val);

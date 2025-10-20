@@ -109,7 +109,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF2_TX_PATH_BAND1		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1110,7 +1110,7 @@ static int mt7996_variant_type_init(stru
+@@ -1112,7 +1112,7 @@ static int mt7996_variant_type_init(stru
  		else if (u32_get_bits(val, MT_PAD_GPIO_ADIE_COMB_7992))
  			var_type = MT7992_VAR_TYPE_44;
  		else
@@ -170,7 +170,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
  
  enum mt7990_var_type {
-@@ -571,6 +580,9 @@ mt7996_band_valid(struct mt7996_dev *dev
+@@ -576,6 +585,9 @@ mt7996_band_valid(struct mt7996_dev *dev
  	if (!is_mt7996(&dev->mt76))
  		return band <= MT_BAND1;
  
@@ -180,7 +180,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	return band <= MT_BAND2;
  }
  
-@@ -648,6 +660,7 @@ int mt7996_init_tx_queues(struct mt7996_
+@@ -653,6 +665,7 @@ int mt7996_init_tx_queues(struct mt7996_
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);
  int mt7996_txbf_init(struct mt7996_dev *dev);

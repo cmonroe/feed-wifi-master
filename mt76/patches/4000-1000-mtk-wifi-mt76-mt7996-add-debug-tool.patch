@@ -83,14 +83,15 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 
 --- a/mt7996/Makefile
 +++ b/mt7996/Makefile
-@@ -1,4 +1,6 @@
- # SPDX-License-Identifier: ISC
+@@ -1,8 +1,13 @@
+ # SPDX-License-Identifier: BSD-3-Clause-Clear
+ 
 +EXTRA_CFLAGS += -DCONFIG_MT76_LEDS
 +EXTRA_CFLAGS += -DCONFIG_MTK_DEBUG
- 
++
  obj-$(CONFIG_MT7996E) += mt7996e.o
  
-@@ -6,3 +8,5 @@ mt7996e-y := pci.o init.o dma.o eeprom.o
+ mt7996e-y := pci.o init.o dma.o eeprom.o main.o mcu.o mac.o \
  	     debugfs.o mmio.o
  
  mt7996e-$(CONFIG_DEV_COREDUMP) += coredump.o
@@ -318,7 +319,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	 * compatible with 802.11 EAPOL frame, we do the translation by
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -484,6 +484,7 @@ struct mt7996_dev {
+@@ -489,6 +489,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -326,7 +327,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	struct dentry *debugfs_dir;
  	struct rchan *relay_fwlog;
-@@ -500,6 +501,17 @@ struct mt7996_dev {
+@@ -505,6 +506,17 @@ struct mt7996_dev {
  		u8 type:4;
  		u8 fem:4;
  	} var;
@@ -344,7 +345,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  };
  
  enum {
-@@ -881,7 +893,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -886,7 +898,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
  #ifdef CONFIG_MTK_DEBUG

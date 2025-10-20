@@ -25,8 +25,8 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt7996/Makefile
 +++ b/mt7996/Makefile
-@@ -1,11 +1,12 @@
- # SPDX-License-Identifier: ISC
+@@ -2,11 +2,12 @@
+ 
  EXTRA_CFLAGS += -DCONFIG_MT76_LEDS
  EXTRA_CFLAGS += -DCONFIG_MTK_DEBUG
 +EXTRA_CFLAGS += -DCONFIG_MTK_VENDOR
@@ -49,7 +49,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	if (phy->mt76->cap.has_2ghz) {
  		phy->mt76->sband_2g.sband.ht_cap.cap |=
-@@ -734,6 +735,10 @@ static int mt7996_register_phy(struct mt
+@@ -736,6 +737,10 @@ static int mt7996_register_phy(struct mt
  			goto error;
  	}
  
@@ -60,7 +60,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1692,6 +1697,10 @@ int mt7996_register_device(struct mt7996
+@@ -1694,6 +1699,10 @@ int mt7996_register_device(struct mt7996
  	if (ret)
  		return ret;
  
@@ -112,7 +112,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  		if (sta->mlo) {
  			mt7996_mcu_sta_mld_setup_tlv(dev, skb, link_conf->vif,
-@@ -5261,3 +5266,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -5264,3 +5269,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(SCS),
  				 &req, sizeof(req), false);
  }
@@ -176,7 +176,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	BF_HW_EN_UPDATE = 17,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -274,6 +274,9 @@ struct mt7996_vif {
+@@ -279,6 +279,9 @@ struct mt7996_vif {
  
  	u8 mld_group_idx;
  	u8 mld_remap_idx;
@@ -186,7 +186,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  /* crash-dump */
-@@ -398,6 +401,8 @@ struct mt7996_phy {
+@@ -403,6 +406,8 @@ struct mt7996_phy {
  
  	bool sku_limit_en;
  	bool sku_path_en;
@@ -195,7 +195,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -848,6 +853,15 @@ static inline bool mt7996_has_wa(struct
+@@ -853,6 +858,15 @@ static inline bool mt7996_has_wa(struct
  	return !is_mt7990(&dev->mt76);
  }
  
@@ -211,7 +211,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  void mt7996_mac_init(struct mt7996_dev *dev);
  u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
  bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
-@@ -916,9 +930,15 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -921,9 +935,15 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
