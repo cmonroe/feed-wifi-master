@@ -43,7 +43,7 @@
  };
  
  static struct nl_sock * nl_create_handle(struct nl_cb *cb, const char *dbg)
-@@ -15390,7 +15390,7 @@ wpa_driver_get_multi_hw_info(void *priv,
+@@ -15384,7 +15384,7 @@ wpa_driver_get_multi_hw_info(void *priv,
  
  
  static int nl80211_txpower_ctrl(void *priv, u8 lpi_psd, u8 sku_idx, u8 lpi_bcn_enhance,
@@ -52,7 +52,7 @@
  {
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-@@ -15420,7 +15420,8 @@ static int nl80211_txpower_ctrl(void *pr
+@@ -15414,7 +15414,8 @@ static int nl80211_txpower_ctrl(void *pr
  	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD, lpi_psd);
  	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX, sku_idx);
  	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE, lpi_bcn_enhance);
