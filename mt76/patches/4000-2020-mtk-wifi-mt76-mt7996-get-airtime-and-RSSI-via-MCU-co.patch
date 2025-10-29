@@ -41,7 +41,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  };
  
  enum mt76_wcid_flags {
-@@ -1458,6 +1462,22 @@ static inline int mt76_decr(int val, int
+@@ -1459,6 +1463,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
