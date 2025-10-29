@@ -269,7 +269,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  {
 --- a/net/wireless/core.h
 +++ b/net/wireless/core.h
-@@ -478,7 +478,8 @@ void cfg80211_set_dfs_state(struct wiphy
+@@ -479,7 +479,8 @@ void cfg80211_set_dfs_state(struct wiphy
  
  void cfg80211_dfs_channels_update_work(struct work_struct *work);
  void cfg80211_update_last_available(struct wiphy *wiphy,
