@@ -217,7 +217,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	}
  
  	ucv_put(wpa_ucode_call(4));
-@@ -239,26 +274,45 @@ out:
+@@ -297,26 +332,45 @@ out:
  }
  
  static void
@@ -276,7 +276,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  }
  
  static void
-@@ -294,7 +348,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -352,7 +406,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  
  	bss = wpa_s->current_bss;
  	if (bss)
@@ -285,7 +285,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  
  	if (wpa_s->valid_links) {
  		unsigned int valid_links = wpa_s->valid_links;
-@@ -311,7 +365,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -369,7 +423,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  				continue;
  
  			link = ucv_object_new(vm);
