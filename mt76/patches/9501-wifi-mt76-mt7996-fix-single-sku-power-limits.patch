@@ -220,7 +220,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +++ b/mt7996/mcu.c
 @@ -5380,7 +5380,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
- bool mt7996_is_psd_country(char *country)
+ static bool mt7996_is_psd_country(char *country)
  {
 -	char psd_country_list[][3] = {"US", "KR", "BR", "CL", "MY", ""};
 +	char psd_country_list[][3] = {"US", "CA", "KR", "BR", "CL", "MY", ""};

@@ -93,7 +93,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  				 &req, sizeof(req), false);
  }
 +
-+int mt7996_mcu_set_scs_stats(struct mt7996_phy *phy)
++static int mt7996_mcu_set_scs_stats(struct mt7996_phy *phy)
 +{
 +	struct mt7996_scs_ctrl ctrl = phy->scs_ctrl;
 +	struct {
@@ -118,7 +118,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +				 &req, sizeof(req), false);
 +}
 +
-+void mt7996_sta_rssi_work(void *data, struct ieee80211_sta *sta)
++static void mt7996_sta_rssi_work(void *data, struct ieee80211_sta *sta)
 +{
 +	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
 +	struct mt7996_sta_link *msta_link;

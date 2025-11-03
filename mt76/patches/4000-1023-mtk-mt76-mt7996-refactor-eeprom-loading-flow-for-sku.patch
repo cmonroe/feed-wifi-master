@@ -100,17 +100,6 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	dev->flash_mode = true;
  
  out:
---- a/mt7996/mcu.c
-+++ b/mt7996/mcu.c
-@@ -3772,7 +3772,7 @@ int mt7996_mcu_set_chan_info(struct mt79
- 				 &req, sizeof(req), true);
- }
- 
--static int mt7996_mcu_set_eeprom_flash(struct mt7996_dev *dev)
-+int mt7996_mcu_set_eeprom_flash(struct mt7996_dev *dev)
- {
- #define MAX_PAGE_IDX_MASK	GENMASK(7, 5)
- #define PAGE_IDX_MASK		GENMASK(4, 2)
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
 @@ -340,7 +340,6 @@ static int mt7996_dump_version(struct se

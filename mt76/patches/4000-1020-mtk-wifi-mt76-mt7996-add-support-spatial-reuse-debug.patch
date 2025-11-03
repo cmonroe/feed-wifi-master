@@ -235,7 +235,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
 +					 sizeof(req), false);
 +}
 +
-+void mt7996_mcu_rx_sr_swsd(struct mt7996_dev *dev, struct sk_buff *skb)
++static void mt7996_mcu_rx_sr_swsd(struct mt7996_dev *dev, struct sk_buff *skb)
 +{
 +#define SR_SCENE_DETECTION_TIMER_PERIOD_MS 500
 +	struct mt7996_mcu_sr_swsd_event *event;
@@ -271,7 +271,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
 +		 le32_to_cpu(event->tlv[idx].obss_airtime_ratio) % 10);
 +}
 +
-+void mt7996_mcu_rx_sr_hw_indicator(struct mt7996_dev *dev, struct sk_buff *skb)
++static void mt7996_mcu_rx_sr_hw_indicator(struct mt7996_dev *dev, struct sk_buff *skb)
 +{
 +	struct mt7996_mcu_sr_hw_ind_event *event;
 +

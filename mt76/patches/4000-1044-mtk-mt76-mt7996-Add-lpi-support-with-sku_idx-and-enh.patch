@@ -107,7 +107,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		mphy->txpower_cur = e2p_power_limit;
  }
  
-+bool mt7996_is_psd_country(char *country)
++static bool mt7996_is_psd_country(char *country)
 +{
 +	char psd_country_list[][3] = {"US", "KR", "BR", "CL", "MY", ""};
 +	int i;
