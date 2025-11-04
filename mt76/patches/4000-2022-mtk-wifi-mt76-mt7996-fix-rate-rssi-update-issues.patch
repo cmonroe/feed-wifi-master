@@ -218,7 +218,7 @@
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -583,11 +583,6 @@ mt7996_mac_init_band(struct mt7996_dev *
+@@ -581,11 +581,6 @@ mt7996_mac_init_band(struct mt7996_dev *
  	set = FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_MODE, 0) |
  	      FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_PARAM, 0x3);
  	mt76_rmw(dev, MT_WTBLOFF_RSCR(band), mask, set);
