@@ -27,8 +27,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 sku_idx;
  	u8 antenna_mask;
  	u16 chainmask;
-@@ -1039,6 +1037,10 @@ struct mt76_dev {
- 		bool offchannel;
+@@ -1041,6 +1039,10 @@ struct mt76_dev {
+ 		bool beacon_received;
  	} scan;
  
 +	bool lpi_psd;

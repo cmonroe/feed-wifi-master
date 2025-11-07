@@ -159,7 +159,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		msta_link = container_of(status->wcid, struct mt7996_sta_link,
  					 wcid);
  		msta = msta_link->sta;
-@@ -515,6 +514,13 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
+@@ -518,6 +517,13 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
  		status->chain_signal[2] = to_rssi(MT_PRXV_RCPI2, v3);
  		status->chain_signal[3] = to_rssi(MT_PRXV_RCPI3, v3);
  
@@ -173,7 +173,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		/* RXD Group 5 - C-RXV */
  		if (rxd1 & MT_RXD1_NORMAL_GROUP_5) {
  			rxd += 24;
-@@ -1294,25 +1300,24 @@ next:
+@@ -1297,25 +1303,24 @@ next:
  
  static bool
  mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
@@ -207,7 +207,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		skb = mt76_tx_status_skb_get(mdev, wcid, pid, &list);
  		if (skb) {
  			info = IEEE80211_SKB_CB(skb);
-@@ -1325,6 +1330,10 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1328,6 +1333,10 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  
  			info->status.rates[0].idx = -1;
  		}
@@ -218,7 +218,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	}
  
  	if (mtk_wed_device_active(&dev->mt76.mmio.wed) && wcid->sta) {
-@@ -1337,107 +1346,26 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1340,107 +1349,26 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  	}
  
  	txrate = FIELD_GET(MT_TXS0_TX_RATE, txs);
@@ -341,7 +341,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	mt76_tx_status_unlock(mdev, &list);
  
  	return !!skb;
-@@ -1445,13 +1373,13 @@ out:
+@@ -1448,13 +1376,13 @@ out:
  
  static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
  {
@@ -358,7 +358,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	pid = le32_get_bits(txs_data[3], MT_TXS3_PID);
  
  	if (pid < MT_PACKET_ID_NO_SKB)
-@@ -1463,14 +1391,16 @@ static void mt7996_mac_add_txs(struct mt
+@@ -1466,14 +1394,16 @@ static void mt7996_mac_add_txs(struct mt
  	if (!wcid)
  		goto out;
  
@@ -380,7 +380,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -2777,6 +2707,39 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2780,6 +2710,39 @@ void mt7996_mac_sta_rc_work(struct work_
  	spin_unlock_bh(&dev->mt76.sta_poll_lock);
  }
  
@@ -420,7 +420,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7996_mac_work(struct work_struct *work)
  {
  	struct mt76_phy *mphy = (struct mt76_phy *)container_of(work, struct mt76_phy,
-@@ -2801,11 +2764,12 @@ void mt7996_mac_work(struct work_struct
+@@ -2804,11 +2767,12 @@ void mt7996_mac_work(struct work_struct
  			if (i == mphy->band_idx) {
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_RATE);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_AIRTIME);

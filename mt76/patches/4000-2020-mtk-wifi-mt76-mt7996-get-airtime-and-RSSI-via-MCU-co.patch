@@ -41,7 +41,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  };
  
  enum mt76_wcid_flags {
-@@ -1459,6 +1463,22 @@ static inline int mt76_decr(int val, int
+@@ -1461,6 +1465,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -222,7 +222,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  /* The HW does not translate the mac header to 802.3 for mesh point */
  static int mt7996_reverse_frag0_hdr_trans(struct sk_buff *skb, u16 hdr_gap)
  {
-@@ -1396,8 +1281,6 @@ next:
+@@ -1399,8 +1284,6 @@ next:
  		}
  	}
  
@@ -231,7 +231,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -2896,31 +2779,42 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2899,31 +2782,42 @@ void mt7996_mac_sta_rc_work(struct work_
  
  void mt7996_mac_work(struct work_struct *work)
  {

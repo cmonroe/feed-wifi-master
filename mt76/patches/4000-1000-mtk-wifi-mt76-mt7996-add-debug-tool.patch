@@ -307,7 +307,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1056,6 +1056,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -1059,6 +1059,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
  	id = mt76_token_consume(mdev, &t);
  	if (id < 0)
  		return id;
