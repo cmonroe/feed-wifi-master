@@ -18,7 +18,7 @@ Tested-by: Piotr Kubik <piotr.kubik@adtran.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1001,6 +1001,8 @@ struct mt76_dev {
+@@ -1022,6 +1022,8 @@ struct mt76_dev {
  		struct mt76_phy *phy;
  		int chan_idx;
  		bool offchannel;
@@ -27,7 +27,7 @@ Tested-by: Piotr Kubik <piotr.kubik@adtran.com>
  	} scan;
  
  #ifdef CONFIG_NL80211_TESTMODE
-@@ -1587,6 +1589,7 @@ int mt76_get_rate(struct mt76_dev *dev,
+@@ -1608,6 +1610,7 @@ int mt76_get_rate(struct mt76_dev *dev,
  int mt76_hw_scan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  		 struct ieee80211_scan_request *hw_req);
  void mt76_cancel_hw_scan(struct ieee80211_hw *hw, struct ieee80211_vif *vif);

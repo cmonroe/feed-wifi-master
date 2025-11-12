@@ -148,7 +148,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1210,6 +1210,14 @@ struct mt76_power_limits {
+@@ -1231,6 +1231,14 @@ struct mt76_power_limits {
  	} path;
  };
  
@@ -163,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -1914,6 +1922,12 @@ static inline bool mt76_queue_is_rx(stru
+@@ -2038,6 +2046,12 @@ static inline bool mt76_queue_is_rx(stru
  	return false;
  }
  
@@ -218,7 +218,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5380,7 +5380,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -5397,7 +5397,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  static bool mt7996_is_psd_country(char *country)
  {
@@ -227,7 +227,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -5416,14 +5416,14 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5433,14 +5433,14 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -244,7 +244,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  							   &la, &la_path, txpower_limit);
  		mt7996_update_max_txpower_cur(phy, txpower_limit);
  	} else {
-@@ -5444,7 +5444,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5461,7 +5461,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	 * driver doesn't need to do it
  	 */
  	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
@@ -253,7 +253,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la.eht[3], sizeof(la.ofdm));
-@@ -5570,10 +5570,13 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -5587,10 +5587,13 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.band_idx = phy->mt76->band_idx,
  		.tag = cpu_to_le16(UNI_BAND_CONFIG_LPI_CTRL),
  		.len = cpu_to_le16(sizeof(req) - 4),

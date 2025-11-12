@@ -51,7 +51,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #define MT_CT_INFO_MGMT_FRAME		BIT(2)
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1006,6 +1006,10 @@ void mt7996_mac_write_txwi(struct mt7996
+@@ -1012,6 +1012,10 @@ void mt7996_mac_write_txwi(struct mt7996
  		val = FIELD_PREP(MT_TXD6_TX_RATE, idx) | MT_TXD6_FIXED_BW;
  		if (mcast)
  			val |= MT_TXD6_DIS_MAT;
@@ -64,7 +64,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	}
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -798,6 +798,7 @@ static u8
+@@ -787,6 +787,7 @@ static u8
  mt7996_get_rates_table(struct mt7996_phy *phy, struct ieee80211_bss_conf *conf,
  		       bool beacon, bool mcast)
  {
@@ -72,7 +72,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_vif_link *mvif = mt76_vif_conf_link(&dev->mt76, conf->vif, conf);
  	u16 rate;
-@@ -806,6 +807,11 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -795,6 +796,11 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -84,7 +84,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* odd index for driver, even index for firmware */
  		idx = MT7996_BEACON_RATES_TBL + 2 * phy->mt76->band_idx;
  		if (phy->beacon_rate != rate)
-@@ -1301,6 +1307,7 @@ mt7996_sta_state(struct ieee80211_hw *hw
+@@ -1300,6 +1306,7 @@ mt7996_sta_state(struct ieee80211_hw *hw
  		 struct ieee80211_sta *sta, enum ieee80211_sta_state old_state,
  		 enum ieee80211_sta_state new_state)
  {
@@ -94,7 +94,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4818,7 +4818,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -4835,7 +4835,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -103,7 +103,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -5014,6 +5014,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -5031,6 +5031,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -126,7 +126,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -5059,7 +5075,36 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5076,7 +5092,36 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &req, sizeof(req));
  	/* cck and ofdm */
  	skb_put_data(skb, &la.cck, sizeof(la.cck));
@@ -164,7 +164,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	/* ht20 */
  	skb_put_data(skb, &la.mcs[0], 8);
  	/* ht40 */
-@@ -5096,8 +5141,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5113,8 +5158,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la_path.cck, sizeof(la_path.cck));
@@ -208,7 +208,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -5111,6 +5189,31 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5128,6 +5206,31 @@ int mt7996_mcu_set_txpower_sku(struct mt
  				     MCU_WM_UNI_CMD(TXPOWER), true);
  }
  
@@ -252,7 +252,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  enum {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -962,6 +962,7 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -966,6 +966,7 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  #ifdef CONFIG_MTK_VENDOR
  void mt7996_set_wireless_vif(void *data, u8 *mac, struct ieee80211_vif *vif);
  void mt7996_vendor_register(struct mt7996_phy *phy);

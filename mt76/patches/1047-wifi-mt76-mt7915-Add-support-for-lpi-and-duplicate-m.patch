@@ -85,7 +85,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -906,6 +906,9 @@ struct mt76_phy {
+@@ -926,6 +926,9 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -95,7 +95,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1840,7 +1843,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
+@@ -1964,7 +1967,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
  void mt76_set_irq_mask(struct mt76_dev *dev, u32 addr, u32 clear, u32 set);
  
  struct device_node *
@@ -120,9 +120,9 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif /* __MT76_CONNAC2_MAC_H */
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -598,7 +598,8 @@ void mt76_connac2_mac_write_txwi(struct
- 		u16 rate = mt76_connac2_mac_tx_rate_val(mphy, &vif->bss_conf, beacon,
- 							multicast);
+@@ -601,7 +601,8 @@ void mt76_connac2_mac_write_txwi(struct
+ 							vif ? &vif->bss_conf : NULL,
+ 							beacon, multicast);
  		u32 val = MT_TXD6_FIXED_BW;
 -
 +		if (dev->phys[band_idx]->beacon_dup)
@@ -130,7 +130,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* hardware won't add HTC for mgmt/ctrl frame */
  		txwi[2] |= cpu_to_le32(MT_TXD2_HTC_VLD);
  
-@@ -611,7 +612,9 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -614,7 +615,9 @@ void mt76_connac2_mac_write_txwi(struct
  
  			if (!spe_idx)
  				spe_idx = 24 + phy_idx;
@@ -143,7 +143,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		txwi[7] &= ~cpu_to_le32(MT_TXD7_HW_AMSDU);
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1279,6 +1279,7 @@ enum {
+@@ -1280,6 +1280,7 @@ enum {
  	MCU_EXT_CMD_SWLNA_ACI_CTRL = 0xc0,
  	MCU_EXT_CMD_CSI_CTRL = 0xc2,
  	MCU_EXT_CMD_IPI_HIST_SCAN = 0xc5,
@@ -474,3 +474,30 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 +};
 +
  #endif
+--- a/mt7921/mcu.c
++++ b/mt7921/mcu.c
+@@ -1343,7 +1343,7 @@ int __mt7921_mcu_set_clc(struct mt792x_d
+ 
+ 	if (dev->phy.chip_cap & MT792x_CHIP_CAP_CLC_EVT_EN)
+ 		req.cap |= CLC_CAP_EVT_EN;
+-	if (mt76_find_power_limits_node(&dev->mt76))
++	if (mt76_find_power_limits_node(&dev->mphy))
+ 		req.cap |= CLC_CAP_DTS_EN;
+ 
+ 	buf_len = le32_to_cpu(clc->len) - sizeof(*clc);
+--- a/mt7921/init.c
++++ b/mt7921/init.c
+@@ -66,12 +66,11 @@ mt7921_regd_channel_update(struct wiphy
+ #define IS_UNII_INVALID(idx, sfreq, efreq) \
+ 	(!(dev->phy.clc_chan_conf & BIT(idx)) && (cfreq) >= (sfreq) && (cfreq) <= (efreq))
+ 	struct ieee80211_supported_band *sband;
+-	struct mt76_dev *mdev = &dev->mt76;
+ 	struct device_node *np, *band_np;
+ 	struct ieee80211_channel *ch;
+ 	int i, cfreq;
+ 
+-	np = mt76_find_power_limits_node(mdev);
++	np = mt76_find_power_limits_node(&dev->mphy);
+ 
+ 	sband = wiphy->bands[NL80211_BAND_5GHZ];
+ 	band_np = np ? of_get_child_by_name(np, "txpower-5g") : NULL;

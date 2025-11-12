@@ -185,7 +185,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	ieee80211_queue_delayed_work(dev->mphy.hw, &phy->mt76->mac_work,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4796,9 +4796,31 @@ int mt7996_mcu_set_sniffer_mode(struct m
+@@ -4813,9 +4813,31 @@ int mt7996_mcu_set_sniffer_mode(struct m
  				 sizeof(req), true);
  }
  
@@ -217,7 +217,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_phy *mphy = phy->mt76;
  	struct tx_power_limit_table_ctrl {
-@@ -4817,13 +4839,20 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4834,13 +4856,20 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -243,7 +243,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
-@@ -4853,6 +4882,34 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -4870,6 +4899,34 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* padding */
  	skb_put_zero(skb, MT7996_SKU_PATH_NUM - MT7996_SKU_RATE_NUM);
  
@@ -280,7 +280,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  }
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -400,6 +400,9 @@ struct mt7996_phy {
+@@ -401,6 +401,9 @@ struct mt7996_phy {
  	u16 punct_bitmap;
  
  	struct mt7996_scs_ctrl scs_ctrl;
@@ -290,7 +290,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -918,6 +921,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -922,6 +925,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif

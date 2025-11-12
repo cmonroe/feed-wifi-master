@@ -26,7 +26,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -830,8 +830,7 @@ mt7996_vif_cfg_changed(struct ieee80211_
+@@ -819,8 +819,7 @@ mt7996_vif_cfg_changed(struct ieee80211_
  						&link->mt76, &link->msta_link,
  						true);
  			mt7996_mcu_add_sta(dev, link_conf, NULL, link, NULL,
@@ -36,7 +36,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		}
  	}
  
-@@ -870,6 +869,9 @@ mt7996_link_info_changed(struct ieee8021
+@@ -859,6 +858,9 @@ mt7996_link_info_changed(struct ieee8021
  				   CONN_STATE_PORT_SECURE,
  				   !!(changed & BSS_CHANGED_BSSID));
  	}
@@ -46,7 +46,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	if (changed & BSS_CHANGED_ERP_SLOT) {
  		int slottime = info->use_short_slot ? 9 : 20;
-@@ -1095,6 +1097,12 @@ mt7996_mac_sta_add_links(struct mt7996_d
+@@ -1093,6 +1095,12 @@ mt7996_mac_sta_add_links(struct mt7996_d
  			goto error_unlink;
  		}
  

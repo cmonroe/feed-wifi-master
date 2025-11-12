@@ -122,7 +122,7 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  extern const struct ieee80211_channel dpd_6g_ch_list_bw160[];
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4014,7 +4014,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4031,7 +4031,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  		chan_list_size = mphy->sband_5g.sband.n_channels;
  		base_offset += dpd_size_2g;
  		if (bw == NL80211_CHAN_WIDTH_160) {
@@ -132,7 +132,7 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  			per_chan_size = DPD_PER_CH_GT_BW20_SIZE;
  			cal_id = RF_DPD_FLAT_5G_MEM_CAL;
  			chan_list = dpd_5g_ch_list_bw160;
-@@ -4023,6 +4024,9 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4040,6 +4041,9 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  			/* apply (center channel - 2)'s dpd cal data for bw 40/80 channels */
  			channel -= 2;
  		}
@@ -142,7 +142,7 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  		break;
  	case NL80211_BAND_6GHZ:
  		dpd_mask = MT_EE_WIFI_CAL_DPD_6G;
-@@ -4062,6 +4066,10 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4079,6 +4083,10 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	if (idx == chan_list_size)
  		return -EINVAL;
  

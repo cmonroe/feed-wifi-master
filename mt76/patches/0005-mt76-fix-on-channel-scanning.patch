@@ -14,7 +14,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1000,6 +1000,7 @@ struct mt76_dev {
+@@ -1021,6 +1021,7 @@ struct mt76_dev {
  		struct mt76_vif_link *mlink;
  		struct mt76_phy *phy;
  		int chan_idx;
