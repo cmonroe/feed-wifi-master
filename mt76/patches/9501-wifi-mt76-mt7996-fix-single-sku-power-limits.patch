@@ -148,7 +148,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1231,6 +1231,14 @@ struct mt76_power_limits {
+@@ -1235,6 +1235,14 @@ struct mt76_power_limits {
  	} path;
  };
  
@@ -163,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -2038,6 +2046,12 @@ static inline bool mt76_queue_is_rx(stru
+@@ -2042,6 +2050,12 @@ static inline bool mt76_queue_is_rx(stru
  	return false;
  }
  
@@ -317,7 +317,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2455,7 +2455,7 @@ mt7996_get_txpower_info(struct file *fil
+@@ -2437,7 +2437,7 @@ mt7996_get_txpower_info(struct file *fil
  	len += scnprintf(buf + len, size - len,
  			 "    Theraml Compensation Value: %d\n",
  			 basic_info->thermal_compensate_value);

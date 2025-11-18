@@ -91,7 +91,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -386,6 +386,9 @@ struct mt7996_phy {
+@@ -387,6 +387,9 @@ struct mt7996_phy {
  
  	bool has_aux_rx;
  	bool counter_reset;
@@ -101,7 +101,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -874,6 +877,7 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
+@@ -877,6 +880,7 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
  				     struct mt7996_vif_link *link,
  				     struct mt7996_sta_link *msta_link);
  int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode);

@@ -6,25 +6,13 @@ Subject: [PATCH 50/76] wifi: mt76: update debugfs knob to dump token pending
 
 Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 ---
- mt76.h               | 2 ++
- mt7915/mac.c         | 6 ++++++
- mt7915/mtk_debugfs.c | 6 ++----
- 3 files changed, 10 insertions(+), 4 deletions(-)
+ mt7915/mac.c         |    6 ++++++
+ mt7915/mtk_debugfs.c |    8 +++-----
+ 2 files changed, 9 insertions(+), 5 deletions(-)
 
---- a/mt76.h
-+++ b/mt76.h
-@@ -466,6 +466,8 @@ struct mt76_txwi_cache {
- 	struct list_head list;
- 	dma_addr_t dma_addr;
- 
-+	unsigned long jiffies;
-+
- 	union {
- 		struct sk_buff *skb;
- 		void *ptr;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -759,6 +759,8 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -760,6 +760,8 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	if (id < 0)
  		return id;
  
@@ -33,7 +21,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	pid = mt76_tx_status_skb_add(mdev, wcid, tx_info->skb);
  	mt7915_mac_write_txwi(mdev, txwi_ptr, tx_info->skb, wcid, pid, key,
  			      qid, 0);
-@@ -955,6 +957,8 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -956,6 +958,8 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  			if (!txwi)
  				continue;
  
@@ -42,7 +30,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  			mt76_connac2_txwi_free(mdev, txwi, sta, &free_list);
  		}
  	}
-@@ -987,6 +991,8 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
+@@ -988,6 +992,8 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
  		if (!txwi)
  			continue;
  

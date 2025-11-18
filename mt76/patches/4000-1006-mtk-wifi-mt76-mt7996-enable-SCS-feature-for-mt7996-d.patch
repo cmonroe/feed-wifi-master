@@ -41,7 +41,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2456,6 +2456,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2459,6 +2459,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  	cancel_work_sync(&dev->wed_rro.work);
  	mt7996_for_each_phy(dev, phy)
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
@@ -222,7 +222,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -302,6 +302,16 @@ struct mt7996_hif {
+@@ -303,6 +303,16 @@ struct mt7996_hif {
  	enum pcie_link_width width;
  };
  
@@ -239,7 +239,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define WED_RRO_ADDR_SIGNATURE_MASK	GENMASK(31, 24)
  #define WED_RRO_ADDR_COUNT_MASK		GENMASK(14, 4)
  #define WED_RRO_ADDR_HEAD_HIGH_MASK	GENMASK(3, 0)
-@@ -389,6 +399,8 @@ struct mt7996_phy {
+@@ -390,6 +400,8 @@ struct mt7996_phy {
  
  	u8 pp_mode;
  	u16 punct_bitmap;
@@ -248,7 +248,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -425,6 +437,7 @@ struct mt7996_dev {
+@@ -426,6 +438,7 @@ struct mt7996_dev {
  	struct work_struct rc_work;
  	struct work_struct dump_work;
  	struct work_struct reset_work;
@@ -256,7 +256,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -909,6 +922,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -912,6 +925,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
@@ -267,7 +267,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2363,8 +2363,19 @@ static int mt7996_token_read(struct seq_
+@@ -2345,8 +2345,19 @@ static int mt7996_sta_info(struct seq_fi
  	return 0;
  }
  
@@ -287,7 +287,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	u32 device_id = (dev->mt76.rev) >> 16;
  	int i = 0;
  	static const struct mt7996_dbg_reg_desc dbg_reg_s[] = {
-@@ -2429,6 +2440,14 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2409,6 +2420,14 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  

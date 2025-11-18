@@ -92,7 +92,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		/* get signal strength of resp frames (CTS/BA/ACK) */
  		addr = mt7915_mac_wtbl_lmac_addr(dev, idx, 30);
  		val = mt76_rr(dev, addr);
-@@ -911,6 +891,7 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -912,6 +892,7 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  		info = le32_to_cpu(*cur_info);
  		if (info & MT_TX_FREE_PAIR) {
  			struct mt7915_sta *msta;
@@ -100,7 +100,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  			u16 idx;
  
  			idx = FIELD_GET(MT_TX_FREE_WLAN_ID, info);
-@@ -921,6 +902,15 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -922,6 +903,15 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  
  			msta = container_of(wcid, struct mt7915_sta, wcid);
  			mt76_wcid_add_poll(&dev->mt76, &msta->wcid);
@@ -116,7 +116,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  			continue;
  		}
  
-@@ -999,6 +989,7 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
+@@ -1000,6 +990,7 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
  static void mt7915_mac_add_txs(struct mt7915_dev *dev, void *data)
  {
  	struct mt7915_sta *msta = NULL;
@@ -124,7 +124,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct mt76_wcid *wcid;
  	__le32 *txs_data = data;
  	u16 wcidx;
-@@ -1028,6 +1019,11 @@ static void mt7915_mac_add_txs(struct mt
+@@ -1029,6 +1020,11 @@ static void mt7915_mac_add_txs(struct mt
  
  	mt76_wcid_add_poll(&dev->mt76, &msta->wcid);
  
@@ -136,7 +136,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -1958,6 +1954,27 @@ static void mt7915_mac_severe_check(stru
+@@ -1959,6 +1955,27 @@ static void mt7915_mac_severe_check(stru
  	phy->trb_ts = trb;
  }
  
@@ -164,7 +164,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7915_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev, rc_work);
-@@ -2016,6 +2033,11 @@ void mt7915_mac_work(struct work_struct
+@@ -2017,6 +2034,11 @@ void mt7915_mac_work(struct work_struct
  			mt7915_mcu_muru_debug_get(phy);
  	}
  

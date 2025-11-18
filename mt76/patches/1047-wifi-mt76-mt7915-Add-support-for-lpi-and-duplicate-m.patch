@@ -85,7 +85,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -926,6 +926,9 @@ struct mt76_phy {
+@@ -927,6 +927,9 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -95,7 +95,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1964,7 +1967,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
+@@ -1968,7 +1971,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
  void mt76_set_irq_mask(struct mt76_dev *dev, u32 addr, u32 clear, u32 set);
  
  struct device_node *

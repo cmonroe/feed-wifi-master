@@ -252,7 +252,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  enum {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -966,6 +966,7 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -969,6 +969,7 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  #ifdef CONFIG_MTK_VENDOR
  void mt7996_set_wireless_vif(void *data, u8 *mac, struct ieee80211_vif *vif);
  void mt7996_vendor_register(struct mt7996_phy *phy);
@@ -262,7 +262,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mcu_edcca_enable(struct mt7996_phy *phy, bool enable);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2947,6 +2947,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2927,6 +2927,8 @@ int mt7996_mtk_init_debugfs(struct mt799
  		debugfs_create_file(buf, 0400, dir, phy, &mt7996_sr_scene_cond_fops);
  	}
  

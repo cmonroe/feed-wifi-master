@@ -110,7 +110,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		[MT7996_FEM_EXT] = "eFEM",
  		[MT7996_FEM_INT] = "iFEM",
  		[MT7996_FEM_MIX] = "mixed FEM",
-@@ -2760,7 +2759,7 @@ static int mt7996_show_eeprom_mode(struc
+@@ -2742,7 +2741,7 @@ static int mt7996_show_eeprom_mode(struc
  			seq_printf(s, "   flash mode\n");
  		break;
  	case BIN_FILE_MODE:

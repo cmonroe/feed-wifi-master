@@ -280,7 +280,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  }
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -401,6 +401,9 @@ struct mt7996_phy {
+@@ -402,6 +402,9 @@ struct mt7996_phy {
  	u16 punct_bitmap;
  
  	struct mt7996_scs_ctrl scs_ctrl;
@@ -290,7 +290,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -922,6 +925,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -925,6 +928,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
@@ -301,7 +301,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2373,6 +2373,364 @@ mt7996_scs_enable_set(void *data, u64 va
+@@ -2355,6 +2355,364 @@ mt7996_scs_enable_set(void *data, u64 va
  DEFINE_DEBUGFS_ATTRIBUTE(fops_scs_enable, NULL,
  			 mt7996_scs_enable_set, "%lld\n");
  
@@ -666,7 +666,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir)
  {
  	struct ieee80211_hw *hw = mt76_hw(dev);
-@@ -2446,6 +2804,18 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2426,6 +2784,18 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  		snprintf(buf, sizeof(buf), "scs_enable%d", i);
  		debugfs_create_file(buf, 0200, dir, phy, &fops_scs_enable);

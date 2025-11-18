@@ -176,7 +176,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	BF_HW_EN_UPDATE = 17,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -280,6 +280,9 @@ struct mt7996_vif {
+@@ -281,6 +281,9 @@ struct mt7996_vif {
  
  	u8 mld_group_idx;
  	u8 mld_remap_idx;
@@ -186,7 +186,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  /* crash-dump */
-@@ -404,6 +407,8 @@ struct mt7996_phy {
+@@ -405,6 +408,8 @@ struct mt7996_phy {
  
  	bool sku_limit_en;
  	bool sku_path_en;
@@ -195,7 +195,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -854,6 +859,15 @@ static inline bool mt7996_has_wa(struct
+@@ -857,6 +862,15 @@ static inline bool mt7996_has_wa(struct
  	return !is_mt7990(&dev->mt76);
  }
  
@@ -211,7 +211,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  void mt7996_mac_init(struct mt7996_dev *dev);
  u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
  bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
-@@ -925,9 +939,15 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -928,9 +942,15 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
