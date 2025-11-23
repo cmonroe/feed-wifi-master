@@ -78,7 +78,12 @@ Tested-by: Piotr Kubik <piotr.kubik@adtran.com>
  void mt76_scan_work(struct work_struct *work)
  {
  	struct mt76_dev *dev = container_of(work, struct mt76_dev,
-@@ -101,8 +123,12 @@ void mt76_scan_work(struct work_struct *
+@@ -97,12 +119,17 @@ void mt76_scan_work(struct work_struct *
+ 
+ 	if (dev->scan.chan && dev->scan.offchannel && phy->num_sta) {
+ 		dev->scan.chan = NULL;
++		dev->scan.beacon_received = false;
+ 		mt76_set_channel(phy, &phy->main_chandef, false);
  		goto out;
  	}
  
@@ -93,7 +98,7 @@ Tested-by: Piotr Kubik <piotr.kubik@adtran.com>
  	    phy->main_chandef.chan->center_freq == dev->scan.chan->center_freq)
  		onchannel = true;
  
-@@ -114,16 +140,23 @@ void mt76_scan_work(struct work_struct *
+@@ -114,16 +141,23 @@ void mt76_scan_work(struct work_struct *
  	dev->scan.offchannel = !onchannel;
  	mt76_set_channel(phy, &chandef, !onchannel);
  
