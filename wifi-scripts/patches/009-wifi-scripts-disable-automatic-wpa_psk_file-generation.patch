@@ -1,0 +1,25 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 24 Nov 2025 14:36:47 -0800
+Subject: [PATCH] wifi-scripts: disable automatic wpa_psk_file generation
+
+SmartOS doesn't persist per-STA PSK files.
+
+Fixes: OWRT-7681
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/lib/netifd/hostapd.sh |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/src/lib/netifd/hostapd.sh
++++ b/src/lib/netifd/hostapd.sh
+@@ -698,7 +698,8 @@ hostapd_set_bss_options() {
+ 				wireless_setup_vif_failed INVALID_WPA_PSK
+ 				return 1
+ 			fi
+-			[ -z "$wpa_psk_file" ] && set_default wpa_psk_file /var/run/hostapd-$ifname.psk
++			# Don't set the psk file in order to force use of single default key.
++			# [ -z "$wpa_psk_file" ] && set_default wpa_psk_file /var/run/hostapd-$ifname.psk
+ 			[ -n "$wpa_psk_file" ] && [ "$auth_type" = "psk" -o "$auth_type" = "psk-sae" ] && {
+ 				[ -e "$wpa_psk_file" ] || touch "$wpa_psk_file"
+ 				append bss_conf "wpa_psk_file=$wpa_psk_file" "$N"

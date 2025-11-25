@@ -1,0 +1,34 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 24 Nov 2025 14:31:51 -0800
+Subject: [PATCH] wifi-scripts: disable WPS button handlers
+
+WPS button handling conflicts with Intellifi.
+
+Fixes: OWRT-7681
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/etc/rc.wps/40-wps_ap  |    2 ++
+ src/etc/rc.wps/50-wps_sta |    3 +++
+ 2 files changed, 5 insertions(+)
+
+--- a/src/etc/rc.wps/40-wps_ap
++++ b/src/etc/rc.wps/40-wps_ap
+@@ -1,5 +1,7 @@
+ #!/bin/sh
+ 
++exit 0
++
+ [ "$SEEN" -ge 3 ] && exit 1
+ wps_done=0
+ ubusobjs="$( ubus -S list hostapd.* )"
+--- a/src/etc/rc.wps/50-wps_sta
++++ b/src/etc/rc.wps/50-wps_sta
+@@ -1,4 +1,7 @@
+ #!/bin/sh
++
++exit 0
++
+ [ "$SEEN" -lt 3 ] && exit 1
+ [ "$ACTION" = "released" ] || exit 1
+ 

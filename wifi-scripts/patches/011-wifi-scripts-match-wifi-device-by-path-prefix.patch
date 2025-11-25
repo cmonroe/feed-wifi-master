@@ -1,0 +1,35 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 24 Nov 2025 14:36:47 -0800
+Subject: [PATCH] wifi-scripts: match wifi-device by path prefix
+
+Prevents duplicate wifi-device objects during single wiphy migration
+by matching existing configs where the base path (before +X suffix)
+matches the newly calculated path.
+
+Fixes: SDG-2921
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/lib/wifi/mac80211.uc |   10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+--- a/src/lib/wifi/mac80211.uc
++++ b/src/lib/wifi/mac80211.uc
+@@ -18,8 +18,16 @@ function radio_exists(path, macaddr, phy
+ 	for (let name, s in config) {
+ 		if (s[".type"] != "wifi-device")
+ 			continue;
+-		if (radio != null && int(s.radio) != radio)
++		if (radio != null && int(s.radio) != radio) {
++			// on upgrade to single wiphy mode, don't generate new
++			// wifi-device objects if the base path (before +X) matches
++			// the newly calculated path.
++			if (s.path && path) {
++				if (substr(s.path, 0, length(path)) == path)
++					return true;
++			}
+ 			continue;
++		}
+ 		if (s.macaddr & lc(s.macaddr) == lc(macaddr))
+ 			return true;
+ 		if (s.phy == phy)

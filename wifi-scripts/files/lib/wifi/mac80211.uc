@@ -18,16 +18,8 @@ function radio_exists(path, macaddr, phy, radio) {
 	for (let name, s in config) {
 		if (s[".type"] != "wifi-device")
 			continue;
-		if (radio != null && int(s.radio) != radio) {
-			// on upgrade to single wiphy mode, don't generate new
-			// wifi-device objects if the base path (before +X) matches
-			// the newly calculated path.
-			if (s.path && path) {
-				if (substr(s.path, 0, length(path)) == path)
-					return true;
-			}
+		if (radio != null && int(s.radio) != radio)
 			continue;
-		}
 		if (s.macaddr & lc(s.macaddr) == lc(macaddr))
 			return true;
 		if (s.phy == phy)
@@ -64,12 +56,8 @@ for (let phy_name, phy in board.wlan) {
 		let width = band.max_width;
 		if (band_name == "2G")
 			width = 20;
-		else if (width > 80) {
-			if (band_name == "6G")
-				width = 160;
-			else
-				width = 80;
-		}
+		else if (width > 80)
+			width = 80;
 
 		let htmode = filter(htmode_order, (m) => band[lc(m)])[0];
 		if (htmode)

@@ -1,7 +1,5 @@
 #!/bin/sh
 
-exit 0
-
 [ "$SEEN" -ge 3 ] && exit 1
 wps_done=0
 ubusobjs="$( ubus -S list hostapd.* )"

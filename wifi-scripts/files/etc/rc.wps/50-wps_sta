@@ -1,7 +1,4 @@
 #!/bin/sh
-
-exit 0
-
 [ "$SEEN" -lt 3 ] && exit 1
 [ "$ACTION" = "released" ] || exit 1
 

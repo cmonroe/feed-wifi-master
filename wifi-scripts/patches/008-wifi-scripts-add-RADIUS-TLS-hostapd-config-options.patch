@@ -1,0 +1,51 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 24 Nov 2025 14:36:47 -0800
+Subject: [PATCH] wifi-scripts: add RADIUS TLS hostapd config options
+
+Support configuration of RADIUS TLS.
+
+Fixes: SDG-2276
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/lib/netifd/hostapd.sh |   15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
+
+--- a/src/lib/netifd/hostapd.sh
++++ b/src/lib/netifd/hostapd.sh
+@@ -410,6 +410,10 @@ hostapd_common_add_bss_config() {
+ 
+ 	config_add_int ocv
+ 
++	config_add_string auth_server_type
++	config_add_string auth_server_ca_cert auth_server_client_cert
++	config_add_string auth_server_private_key auth_server_private_key_passwd
++
+ 	config_add_boolean apup
+ 	config_add_string apup_peer_ifname_prefix
+ }
+@@ -530,7 +534,12 @@ append_auth_server() {
+ 	[ -n "$1" ] || return
+ 	append bss_conf "auth_server_addr=$1" "$N"
+ 	append bss_conf "auth_server_port=$auth_port" "$N"
+-	[ -n "$auth_secret" ] && append bss_conf "auth_server_shared_secret=$auth_secret" "$N"
++	[ -n "$auth_secret" ]                    && append bss_conf "auth_server_shared_secret=$auth_secret" "$N"
++	[ -n "$auth_server_type" ]               && append bss_conf "auth_server_type=$auth_server_type" "$N"
++	[ -n "$auth_server_ca_cert" ]            && append bss_conf "auth_server_ca_cert=$auth_server_ca_cert" "$N"
++	[ -n "$auth_server_client_cert" ]        && append bss_conf "auth_server_client_cert=$auth_server_client_cert" "$N"
++	[ -n "$auth_server_private_key" ]        && append bss_conf "auth_server_private_key=$auth_server_private_key" "$N"
++	[ -n "$auth_server_private_key_passwd" ] && append bss_conf "auth_server_private_key_passwd=$auth_server_private_key_passwd" "$N"
+ }
+ 
+ append_acct_server() {
+@@ -712,7 +721,9 @@ hostapd_set_bss_options() {
+ 				dynamic_ownip ownip radius_client_addr \
+ 				eap_reauth_period request_cui \
+ 				erp_domain mobility_domain \
+-				fils_realm fils_dhcp
++				fils_realm fils_dhcp \
++				auth_server_type auth_server_ca_cert auth_server_client_cert \
++				auth_server_private_key auth_server_private_key_passwd
+ 
+ 			# radius can provide VLAN ID for clients
+ 			vlan_possible=1

@@ -157,9 +157,7 @@ function wiphy_detect() {
 				eht_phy_cap |= ift.eht_cap_phy[0];
 			}
 
-			if (band_name == "6G" && (eht_phy_cap & 0x2))
-				band_info.max_width = 320;
-			else if (band_name != "2G" &&
+			if (band_name != "2G" &&
 			    (he_phy_cap & 0x18) || ((band.vht_capa >> 2) & 0x3))
 				band_info.max_width = 160;
 			else if (band_name != "2G" &&
