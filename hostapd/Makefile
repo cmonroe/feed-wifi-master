@@ -719,13 +719,13 @@ endif
 
 define Install/hostapd
 	$(INSTALL_DIR) $(1)/usr/sbin $(1)/usr/share/hostap
-	$(INSTALL_DATA) ./files/hostapd.uc $(1)/usr/share/hostap/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/openwrt/files/hostapd.uc $(1)/usr/share/hostap/
 	$(if $(findstring full,$(CONFIG_VARIANT)),$(Install/hostapd/full))
 endef
 
 define Install/supplicant
 	$(INSTALL_DIR) $(1)/usr/sbin $(1)/usr/share/hostap
-	$(INSTALL_DATA) ./files/wpa_supplicant.uc $(1)/usr/share/hostap/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/openwrt/files/wpa_supplicant.uc $(1)/usr/share/hostap/
 endef
 
 define Package/hostapd-common/install
