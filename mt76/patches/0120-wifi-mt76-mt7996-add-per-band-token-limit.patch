@@ -89,7 +89,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	idr_destroy(&dev->token);
 --- a/tx.c
 +++ b/tx.c
-@@ -842,18 +842,28 @@ void __mt76_set_tx_blocked(struct mt76_d
+@@ -843,18 +843,28 @@ void __mt76_set_tx_blocked(struct mt76_d
  }
  EXPORT_SYMBOL_GPL(__mt76_set_tx_blocked);
  
@@ -121,7 +121,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_NET_MEDIATEK_SOC_WED
  	if (mtk_wed_device_active(&dev->mmio.wed) &&
  	    token >= dev->mmio.wed.wlan.token_start)
-@@ -863,6 +873,7 @@ int mt76_token_consume(struct mt76_dev *
+@@ -864,6 +874,7 @@ int mt76_token_consume(struct mt76_dev *
  	if (dev->token_count >= dev->token_size - MT76_TOKEN_FREE_THR)
  		__mt76_set_tx_blocked(dev, true);
  
@@ -129,7 +129,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	spin_unlock_bh(&dev->token_lock);
  
  	return token;
-@@ -891,12 +902,16 @@ struct mt76_txwi_cache *
+@@ -892,12 +903,16 @@ struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake)
  {
  	struct mt76_txwi_cache *txwi;

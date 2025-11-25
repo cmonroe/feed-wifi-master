@@ -1,0 +1,38 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 25 Nov 2025 14:06:28 -0800
+Subject: [PATCH] wifi: mt76: fix queue assignment for EAPOL frames
+
+When running in AP mode and sending an EAPOL frame to a client that's
+in powersave mode, the frame can get stuck in a tx queue along with
+other buffered frames. This can fill up hardware queues with frames
+that are only released after the WTBL slot is reused for another client.
+
+Fix this by moving EAPOL frames to the ALTX queue. 
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ tx.c |   13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
+
+--- a/tx.c
++++ b/tx.c
+@@ -615,12 +615,13 @@ mt76_txq_schedule_pending_wcid(struct mt
+ 		int qid = skb_get_queue_mapping(skb);
+ 
+ 		if ((dev->drv->drv_flags & MT_DRV_HW_MGMT_TXQ) &&
+-		    !(info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP) &&
+-		    !ieee80211_is_data(hdr->frame_control) &&
+-		    (!ieee80211_is_bufferable_mmpdu(skb) ||
+-		     ieee80211_is_deauth(hdr->frame_control) ||
+-		     ieee80211_is_action(hdr->frame_control) ||
+-		     head == &wcid->tx_offchannel))
++		    (skb->protocol == cpu_to_be16(ETH_P_PAE) ||
++		     (!(info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP) &&
++		      !ieee80211_is_data(hdr->frame_control) &&
++		      (!ieee80211_is_bufferable_mmpdu(skb) ||
++		       ieee80211_is_deauth(hdr->frame_control) ||
++		       ieee80211_is_action(hdr->frame_control) ||
++		       head == &wcid->tx_offchannel))))
+ 			qid = MT_TXQ_PSD;
+ 
+ 		q = phy->q_tx[qid];
