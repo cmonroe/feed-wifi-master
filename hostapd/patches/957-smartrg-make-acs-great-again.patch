@@ -1,6 +1,16 @@
 --- a/src/ap/acs.c
 +++ b/src/ap/acs.c
-@@ -390,6 +390,9 @@ acs_survey_interference_factor(struct fr
+@@ -363,7 +363,8 @@ void acs_cleanup(struct hostapd_iface *i
+ 
+ static void acs_fail(struct hostapd_iface *iface)
+ {
+-	wpa_printf(MSG_ERROR, "ACS: Failed to start");
++	wpa_printf(MSG_ERROR, "ACS(%s): Failed to start",
++		   iface->conf->bss[0]->iface);
+ 	acs_cleanup(iface);
+ 	hostapd_disable_iface(iface);
+ }
+@@ -390,6 +391,9 @@ acs_survey_interference_factor(struct fr
  		total -= survey->channel_time_tx;
  	}
  
@@ -10,7 +20,7 @@
  	/* TODO: figure out the best multiplier for noise floor base */
  	factor = pow(10, survey->nf / 5.0L) +
  		(total ? (busy / total) : 0) *
-@@ -867,8 +870,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -867,8 +871,8 @@ acs_find_ideal_chan_mode(struct hostapd_
  		    iface->conf->ieee80211n &&
  		    !acs_usable_bw_chan(chan, ACS_BW40)) {
  			wpa_printf(MSG_WARNING,
@@ -21,7 +31,7 @@
  			continue;
  		}
  
-@@ -877,15 +880,15 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -877,15 +881,15 @@ acs_find_ideal_chan_mode(struct hostapd_
  		     iface->conf->ieee80211be)) {
  			if (bw == 80 && !acs_usable_bw_chan(chan, ACS_BW80)) {
  				wpa_printf(MSG_WARNING,
@@ -41,7 +51,7 @@
  				continue;
  			}
  		}
-@@ -896,8 +899,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -896,8 +900,8 @@ acs_find_ideal_chan_mode(struct hostapd_
  			    !acs_usable_bw320_chan(iface, chan,
  						   &bw320_offset)) {
  				wpa_printf(MSG_WARNING,
@@ -52,7 +62,7 @@
  				continue;
  			}
  		}
-@@ -1046,12 +1049,12 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -1046,12 +1050,12 @@ acs_find_ideal_chan_mode(struct hostapd_
  		if (bias) {
  			factor *= bias->bias;
  			wpa_printf(MSG_WARNING,
@@ -69,7 +79,7 @@
  		}
  
  		if (acs_usable_chan(chan) &&
-@@ -1129,7 +1132,9 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1129,7 +1133,9 @@ acs_find_ideal_chan(struct hostapd_iface
  		}
  	}
  
@@ -80,3 +90,185 @@
  	bw = num_chan_to_bw(n_chans);
  
  bw_selected:
+@@ -1256,15 +1262,18 @@ static void acs_adjust_center_freq(struc
+ 
+ static int acs_study_survey_based(struct hostapd_iface *iface)
+ {
+-	wpa_printf(MSG_DEBUG, "ACS: Trying survey-based ACS");
++	wpa_printf(MSG_DEBUG, "ACS(%s): Trying survey-based ACS",
++		   iface->conf->bss[0]->iface);
+ 
+ 	if (!iface->chans_surveyed) {
+-		wpa_printf(MSG_ERROR, "ACS: Unable to collect survey data");
++		wpa_printf(MSG_ERROR, "ACS(%s): Unable to collect survey data",
++			   iface->conf->bss[0]->iface);
+ 		return -1;
+ 	}
+ 
+ 	if (!acs_surveys_are_sufficient(iface)) {
+-		wpa_printf(MSG_ERROR, "ACS: Surveys have insufficient data");
++		wpa_printf(MSG_ERROR, "ACS(%s): Surveys have insufficient data",
++			   iface->conf->bss[0]->iface);
+ 		return -1;
+ 	}
+ 
+@@ -1278,11 +1287,13 @@ static int acs_study_bss_based(struct ho
+ 	struct wpa_scan_results *scan_res;
+ 	int j;
+ 
+-	wpa_printf(MSG_DEBUG, "ACS: Trying BSS-based ACS");
++	wpa_printf(MSG_DEBUG, "ACS(%s): Trying BSS-based ACS",
++		   iface->conf->bss[0]->iface);
+ 
+ 	scan_res = hostapd_driver_get_scan_results(iface->bss[0]);
+ 	if (!scan_res) {
+-		wpa_printf(MSG_INFO, "ACS: Scan request failed");
++		wpa_printf(MSG_INFO, "ACS(%s): Scan request failed",
++			   iface->conf->bss[0]->iface);
+ 		hostapd_setup_interface_complete(iface, 1);
+ 		return -1;
+ 	}
+@@ -1317,7 +1328,8 @@ static int acs_study_options(struct host
+ 	if (acs_study_survey_based(iface) == 0)
+ 		return 0;
+ 
+-	wpa_printf(MSG_INFO, "ACS: Survey based ACS failed");
++	wpa_printf(MSG_INFO, "ACS(%s): Survey based ACS failed",
++		   iface->conf->bss[0]->iface);
+ 	if (acs_study_bss_based(iface) == 0)
+ 		return 0;
+ 
+@@ -1332,13 +1344,15 @@ static void acs_study(struct hostapd_ifa
+ 
+ 	err = acs_study_options(iface);
+ 	if (err < 0) {
+-		wpa_printf(MSG_ERROR, "ACS: All study options have failed");
++		wpa_printf(MSG_ERROR, "ACS(%s): All study options have failed",
++			   iface->conf->bss[0]->iface);
+ 		goto fail;
+ 	}
+ 
+ 	ideal_chan = acs_find_ideal_chan(iface);
+ 	if (!ideal_chan) {
+-		wpa_printf(MSG_ERROR, "ACS: Failed to compute ideal channel");
++		wpa_printf(MSG_ERROR, "ACS(%s): Failed to compute ideal channel",
++			   iface->conf->bss[0]->iface);
+ 		err = -1;
+ 		goto fail;
+ 	}
+@@ -1377,7 +1391,8 @@ fail:
+ 
+ 	/* This can possibly happen if channel parameters (secondary
+ 	 * channel, center frequencies) are misconfigured */
+-	wpa_printf(MSG_ERROR, "ACS: Possibly channel configuration is invalid, please report this along with your config file.");
++	wpa_printf(MSG_ERROR, "ACS(%s): Possibly channel configuration is invalid, please report this along with your config file.",
++		   iface->conf->bss[0]->iface);
+ 	acs_fail(iface);
+ }
+ 
+@@ -1389,19 +1404,21 @@ static void acs_scan_complete(struct hos
+ 	iface->scan_cb = NULL;
+ 	iface->acs_num_retries = 0;
+ 
+-	wpa_printf(MSG_WARNING, "ACS: Using survey based algorithm (acs_num_scans=%d)",
+-		   iface->conf->acs_num_scans);
++	wpa_printf(MSG_WARNING, "ACS(%s): Using survey based algorithm (acs_num_scans=%d)",
++		   iface->conf->bss[0]->iface, iface->conf->acs_num_scans);
+ 
+ 	err = hostapd_drv_get_survey(iface->bss[0], 0);
+ 	if (err) {
+-		wpa_printf(MSG_ERROR, "ACS: Failed to get survey data");
++		wpa_printf(MSG_ERROR, "ACS(%s): Failed to get survey data",
++			   iface->conf->bss[0]->iface);
+ 		goto fail;
+ 	}
+ 
+ 	if (++iface->acs_num_completed_scans < iface->conf->acs_num_scans) {
+ 		err = acs_request_scan(iface);
+ 		if (err && err != -EBUSY) {
+-			wpa_printf(MSG_ERROR, "ACS: Failed to request scan");
++			wpa_printf(MSG_ERROR, "ACS(%s): Failed to request scan",
++				   iface->conf->bss[0]->iface);
+ 			goto fail;
+ 		}
+ 
+@@ -1481,18 +1498,21 @@ static int acs_request_scan(struct hosta
+ 	*freq = 0;
+ 
+ 	if (params.freqs == freq) {
+-		wpa_printf(MSG_ERROR, "ACS: No available channels found");
++		wpa_printf(MSG_ERROR, "ACS(%s): No available channels found",
++			   iface->conf->bss[0]->iface);
+ 		os_free(params.freqs);
+ 		return -1;
+ 	}
+ 
+ 	if (!iface->acs_num_retries)
+-		wpa_printf(MSG_WARNING, "ACS: Scanning %d / %d",
++		wpa_printf(MSG_WARNING, "ACS(%s): Scanning %d / %d",
++			   iface->conf->bss[0]->iface,
+ 			   iface->acs_num_completed_scans + 1,
+ 			   iface->conf->acs_num_scans);
+ 	else
+ 		wpa_printf(MSG_WARNING,
+-			   "ACS: Re-try scanning attempt %d (%d / %d)",
++			   "ACS(%s): Re-try scanning attempt %d (%d / %d)",
++			   iface->conf->bss[0]->iface,
+ 			   iface->acs_num_retries,
+ 			   iface->acs_num_completed_scans + 1,
+ 			   iface->conf->acs_num_scans);
+@@ -1504,14 +1524,16 @@ static int acs_request_scan(struct hosta
+ 		iface->acs_num_retries++;
+ 		if (iface->acs_num_retries >= ACS_SCAN_RETRY_MAX_COUNT) {
+ 			wpa_printf(MSG_ERROR,
+-				   "ACS: Failed to request initial scan (all re-attempts failed)");
++				   "ACS(%s): Failed to request initial scan (all re-attempts failed)",
++				   iface->conf->bss[0]->iface);
+ 			acs_fail(iface);
+ 			return -1;
+ 		}
+ 
+ 		wpa_printf(MSG_INFO,
+-			   "Failed to request acs scan ret=%d (%s) - try to scan after %d seconds",
+-			   ret, strerror(-ret), ACS_SCAN_RETRY_INTERVAL);
++			   "ACS(%s): Failed to request scan ret=%d (%s) - try again after %d seconds",
++			   iface->conf->bss[0]->iface, ret, strerror(-ret),
++			   ACS_SCAN_RETRY_INTERVAL);
+ 		eloop_cancel_timeout(acs_scan_retry, iface, NULL);
+ 		eloop_register_timeout(ACS_SCAN_RETRY_INTERVAL, 0,
+ 				       acs_scan_retry, iface, NULL);
+@@ -1519,7 +1541,8 @@ static int acs_request_scan(struct hosta
+ 	}
+ 
+ 	if (ret < 0) {
+-		wpa_printf(MSG_ERROR, "ACS: Failed to request initial scan");
++		wpa_printf(MSG_ERROR, "ACS(%s): Failed to request initial scan ret=%d (%s)",
++				iface->conf->bss[0]->iface, ret, strerror(-ret));
+ 		acs_cleanup(iface);
+ 		return -1;
+ 	}
+@@ -1536,7 +1559,8 @@ static void acs_scan_retry(void *eloop_d
+ 
+ 	if (acs_request_scan(iface)) {
+ 		wpa_printf(MSG_ERROR,
+-			   "ACS: Failed to request re-try of initial scan");
++			   "ACS(%s): Failed to request re-try of initial scan",
++			   iface->conf->bss[0]->iface);
+ 		acs_fail(iface);
+ 	}
+ }
+@@ -1546,10 +1570,12 @@ enum hostapd_chan_status acs_init(struct
+ {
+ 	int err;
+ 
+-	wpa_printf(MSG_INFO, "ACS: Automatic channel selection started, this may take a bit");
++	wpa_printf(MSG_INFO, "ACS(%s): Automatic channel selection started, this may take a bit",
++		   iface->conf->bss[0]->iface);
+ 
+ 	if (iface->drv_flags & WPA_DRIVER_FLAGS_ACS_OFFLOAD) {
+-		wpa_printf(MSG_INFO, "ACS: Offloading to driver");
++		wpa_printf(MSG_INFO, "ACS(%s): Offloading to driver",
++			   iface->conf->bss[0]->iface);
+ 
+ 		err = hostapd_drv_do_acs(iface->bss[0]);
+ 		if (err) {
