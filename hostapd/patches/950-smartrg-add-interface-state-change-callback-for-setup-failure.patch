@@ -1,0 +1,218 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 25 Nov 2025 10:22:00 -0800
+Subject: [PATCH] hostapd: add interface state change callback for setup failure
+
+Notify netifd when interface transitions to DISABLED from ACS, DFS, or
+HT_SCAN states. Allows netifd to retry setup in case of a transient failure.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ openwrt/files/hostapd.uc |   59 +++++++++++++++++++++++++++++++++++--
+ src/ap/hostapd.c         |    6 +++
+ src/ap/ucode.c           |   13 ++++++++
+ src/ap/ucode.h           |   11 ++++++
+ 4 files changed, 85 insertions(+), 4 deletions(-)
+
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -57,6 +57,7 @@
+ #include "airtime_policy.h"
+ #include "wpa_auth_kay.h"
+ #include "hw_features.h"
++#include "ucode.h"
+ 
+ 
+ static int hostapd_flush_old_stations(struct hostapd_data *hapd, u16 reason);
+@@ -4301,10 +4302,13 @@ const char * hostapd_state_text(enum hos
+ 
+ void hostapd_set_state(struct hostapd_iface *iface, enum hostapd_iface_state s)
+ {
++	enum hostapd_iface_state old_state = iface->state;
++
+ 	wpa_printf(MSG_INFO, "%s: interface state %s->%s",
+ 		   iface->conf ? iface->conf->bss[0]->iface : "N/A",
+-		   hostapd_state_text(iface->state), hostapd_state_text(s));
++		   hostapd_state_text(old_state), hostapd_state_text(s));
+ 	iface->state = s;
++	hostapd_ucode_iface_state_cb(iface, old_state, s);
+ }
+ 
+ 
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -1055,3 +1055,16 @@ void hostapd_ucode_apup_newpeer(struct h
+ 	ucv_put(val);
+ }
+ #endif // def CONFIG_APUP
++
++void hostapd_ucode_iface_state_cb(struct hostapd_iface *iface,
++				  enum hostapd_iface_state old_state,
++				  enum hostapd_iface_state new_state)
++{
++	if (wpa_ucode_call_prepare("iface_state"))
++		return;
++
++	uc_value_push(ucv_string_new(iface->phy));
++	uc_value_push(ucv_int64_new(old_state));
++	uc_value_push(ucv_int64_new(new_state));
++	ucv_put(wpa_ucode_call(3));
++}
+--- a/src/ap/ucode.h
++++ b/src/ap/ucode.h
+@@ -4,6 +4,8 @@
+ #include "utils/ucode.h"
+ 
+ struct hostapd_data;
++struct hostapd_iface;
++enum hostapd_iface_state;
+ 
+ struct hostapd_ucode_bss {
+ #ifdef UCODE_SUPPORT
+@@ -32,6 +34,10 @@ void hostapd_ucode_sta_connected(struct
+ void hostapd_ucode_apup_newpeer(struct hostapd_data *hapd, const char *ifname);
+ #endif // def CONFIG_APUP
+ 
++void hostapd_ucode_iface_state_cb(struct hostapd_iface *iface,
++				  enum hostapd_iface_state old_state,
++				  enum hostapd_iface_state new_state);
++
+ #else
+ 
+ static inline int hostapd_ucode_init(struct hapd_interfaces *ifaces)
+@@ -57,6 +63,11 @@ static inline void hostapd_ucode_sta_con
+ static inline void hostapd_ucode_free_bss(struct hostapd_data *hapd)
+ {
+ }
++static inline void hostapd_ucode_iface_state_cb(struct hostapd_iface *iface,
++						enum hostapd_iface_state old_state,
++						enum hostapd_iface_state new_state)
++{
++}
+ 
+ #endif
+ 
+--- a/openwrt/files/hostapd.uc
++++ b/openwrt/files/hostapd.uc
+@@ -61,6 +61,12 @@ hostapd.data.bss_info_fields = {
+ 
+ hostapd.data.mld = {};
+ 
++const HAPD_IFACE_DISABLED = 1;
++const HAPD_IFACE_ACS = 3;
++const HAPD_IFACE_HT_SCAN = 4;
++const HAPD_IFACE_DFS = 5;
++const NOTIFY_CMD_SETUP_FAILED = 5;
++
+ function iface_remove(cfg)
+ {
+ 	if (!cfg || !cfg.bss || !cfg.bss[0] || !cfg.bss[0].ifname)
+@@ -846,24 +852,30 @@ function iface_set_config(name, config)
+ 	let old_config = hostapd.data.config[name];
+ 
+ 	hostapd.data.config[name] = config;
++	hostapd.data.configuring = name;
+ 
+ 	let phy = config.phy;
+ 	let phydev = phy_open(phy, config.radio_idx);
+ 	if (!phydev) {
+ 		hostapd.printf(`Failed to open phy ${phy}`);
++		delete hostapd.data.configuring;
+ 		return false;
+ 	}
+ 
+ 	config.orig_bss = [ ...config.bss ];
+ 	iface_check_mld(phydev, name, config);
+-	if (!length(config.bss))
+-		return iface_config_remove(name, old_config);
++	if (!length(config.bss)) {
++		let ret = iface_config_remove(name, old_config);
++		delete hostapd.data.configuring;
++		return ret;
++	}
+ 
+ 	try {
+ 		let ret = iface_reload_config(name, phydev, config, old_config);
+ 		if (ret) {
+ 			iface_update_supplicant_macaddr(phydev, config);
+ 			hostapd.printf(`Reloaded settings for phy ${name}`);
++			delete hostapd.data.configuring;
+ 			return 0;
+ 		}
+ 	} catch (e) {
+@@ -873,6 +885,7 @@ function iface_set_config(name, config)
+ 	hostapd.printf(`Restart interface for phy ${name}`);
+ 	let ret = iface_restart(phydev, config, old_config);
+ 
++	delete hostapd.data.configuring;
+ 	return ret;
+ }
+ 
+@@ -1276,6 +1289,7 @@ let main_obj = {
+ 			radio: 0,
+ 			config: "",
+ 			prev_config: "",
++			device: "",
+ 		},
+ 		call: function(req) {
+ 			let phy = req.args.phy;
+@@ -1283,18 +1297,23 @@ let main_obj = {
+ 			let name = phy_name(phy, radio);
+ 			let file = req.args.config;
+ 			let prev_file = req.args.prev_config;
++			let device = req.args.device;
+ 
+ 			if (!phy)
+ 				return libubus.STATUS_INVALID_ARGUMENT;
+ 
+ 			if (prev_file && !hostapd.data.config[name]) {
+ 				let config = iface_load_config(phy, radio, prev_file);
+-				if (config)
++				if (config) {
+ 					config.radio.data = [];
++					config.device = device;
++				}
+ 				hostapd.data.config[name] = config;
+ 			}
+ 
+ 			let config = iface_load_config(phy, radio, file);
++			if (config && device)
++				config.device = device;
+ 
+ 			hostapd.printf(`Set new config for phy ${name}: ${file}`);
+ 			iface_set_config(name, config);
+@@ -1425,4 +1444,35 @@ return {
+ 			hostapd.data.auth_obj.notify("sta_connected", msg, data_cb, null, null, 1000);
+ 		return ret;
+ 	},
++	iface_state: function(phy, old_state, new_state) {
++		if (new_state != HAPD_IFACE_DISABLED)
++			return;
++
++		if (old_state != HAPD_IFACE_ACS &&
++		    old_state != HAPD_IFACE_DFS &&
++		    old_state != HAPD_IFACE_HT_SCAN)
++			return;
++
++		if (hostapd.data.configuring == phy)
++			return;
++
++		let cfg = hostapd.data.config[phy];
++		if (!cfg || !cfg.device)
++			return;
++
++		let reason;
++		if (old_state == HAPD_IFACE_ACS)
++			reason = "ACS_FAILED";
++		else if (old_state == HAPD_IFACE_DFS)
++			reason = "DFS_FAILED";
++		else
++			reason = "HT_SCAN_FAILED";
++
++		hostapd.printf(`Interface ${phy} setup failed: ${reason}`);
++		ubus.call("network.wireless", "notify", {
++			"command": NOTIFY_CMD_SETUP_FAILED,
++			"device": cfg.device,
++			"data": { "reason": reason }
++		});
++	},
+ };

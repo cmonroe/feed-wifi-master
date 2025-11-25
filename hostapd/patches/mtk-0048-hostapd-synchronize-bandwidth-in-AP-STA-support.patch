@@ -296,7 +296,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -103,6 +103,7 @@ start_disabled=1
+@@ -109,6 +109,7 @@ start_disabled=1
  function iface_freq_info(iface, config, params)
  {
  	let freq = params.frequency;
@@ -304,7 +304,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	if (!freq)
  		return null;
  
-@@ -111,25 +112,29 @@ function iface_freq_info(iface, config,
+@@ -117,25 +118,29 @@ function iface_freq_info(iface, config,
  		sec_offset = 0;
  
  	let width = 0;
@@ -346,7 +346,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  }
  
  function iface_add(phy, config, phy_status)
-@@ -1152,6 +1157,8 @@ let main_obj = {
+@@ -1165,6 +1170,8 @@ let main_obj = {
  			up: true,
  			frequency: 0,
  			sec_chan_offset: 0,
@@ -355,7 +355,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  			csa: true,
  			csa_count: 0,
  		},
-@@ -1160,6 +1167,9 @@ let main_obj = {
+@@ -1173,6 +1180,9 @@ let main_obj = {
  			if (req.args.up == null || !phy)
  				return libubus.STATUS_INVALID_ARGUMENT;
  
@@ -365,7 +365,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  			let config = hostapd.data.config[phy];
  			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)
  				return 0;
-@@ -1179,6 +1189,8 @@ let main_obj = {
+@@ -1192,6 +1202,8 @@ let main_obj = {
  				if (!freq_info)
  					return libubus.STATUS_UNKNOWN_ERROR;
  

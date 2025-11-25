@@ -1,0 +1,54 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 24 Nov 2025 15:05:37 -0800
+Subject: [PATCH] wifi-scripts: handle setup failure notification from hostapd
+
+When ACS, DFS, or HT40 coexistence scan fails, hostapd sends
+NOTIFY_CMD_SETUP_FAILED. Attempt to retry setup when this occurs so
+radios aren't left in a non-functional state.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/lib/netifd/wireless-device.uc   |   13 +++++++++++++
+ src/lib/netifd/wireless/mac80211.sh |    2 +-
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+--- a/src/lib/netifd/wireless-device.uc
++++ b/src/lib/netifd/wireless-device.uc
+@@ -8,6 +8,7 @@ const NOTIFY_CMD_UP = 0;
+ const NOTIFY_CMD_SET_DATA = 1;
+ const NOTIFY_CMD_PROCESS_ADD = 2;
+ const NOTIFY_CMD_SET_RETRY = 4;
++const NOTIFY_CMD_SETUP_FAILED = 5;
+ 
+ const DEFAULT_RETRY = 3;
+ const DEFAULT_SCRIPT_TIMEOUT = 30 * 1000;
+@@ -524,6 +525,18 @@ function notify(req)
+ 		else
+ 			this.retry = DEFAULT_RETRY;
+ 		return 0;
++	case NOTIFY_CMD_SETUP_FAILED:
++		if (this.state == "down" || this.state == "teardown")
++			return 0;
++
++		netifd.log(netifd.L_WARNING, `wireless: ${this.name}: setup failed: ${data?.reason ?? "unknown"}\n`);
++		if (this.retry > 0)
++			this.retry--;
++		else
++			this.retry_setup_failed = true;
++
++		this.teardown();
++		return 0;
+ 	default:
+ 		return ubus.STATUS_INVALID_ARGUMENT;
+ 	}
+--- a/src/lib/netifd/wireless/mac80211.sh
++++ b/src/lib/netifd/wireless/mac80211.sh
+@@ -998,7 +998,7 @@ hostapd_set_config() {
+ 	}
+ 
+ 	ubus wait_for hostapd
+-	local hostapd_res="$(ubus_call hostapd config_set "{ \"phy\": \"$phy\", \"radio\": $radio, \"config\":\"${hostapd_conf_file}\", \"prev_config\": \"${hostapd_conf_file}.prev\"}")"
++	local hostapd_res="$(ubus_call hostapd config_set "{ \"phy\": \"$phy\", \"radio\": $radio, \"config\":\"${hostapd_conf_file}\", \"prev_config\": \"${hostapd_conf_file}.prev\", \"device\": \"$__netifd_device\"}")"
+ 	ret="$?"
+ 	[ "$ret" != 0 -o -z "$hostapd_res" ] && {
+ 		wireless_setup_failed HOSTAPD_START_FAILED
