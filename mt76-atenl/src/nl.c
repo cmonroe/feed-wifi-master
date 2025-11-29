@@ -1390,7 +1390,6 @@ static int atenl_nl_precal_sync_from_driver_cb(struct nl_msg *msg, void *arg)
 	struct nlattr *attr, *cur;
 	int i, rem, prek_offset = nl_priv->attr;
 
-
 	attr = unl_find_attr(&nl_priv->unl, msg, NL80211_ATTR_TESTDATA);
 	if (!attr)
 		return NL_SKIP;
@@ -1526,7 +1525,7 @@ start:
 		}
 
 		ret = atenl_nl_precal_sync_partition(&nl_priv, MT76_TM_ATTR_PRECAL_INFO, 0, 0);
-		if (ret || !an->cal_info)
+		if (ret)
 			goto out;
 
 		group_size = an->cal_info[0];

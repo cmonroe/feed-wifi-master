@@ -1,6 +1,6 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=mt76-atenl
+PKG_NAME:=atenl
 PKG_RELEASE=1
 
 PKG_LICENSE:=GPLv2
@@ -15,7 +15,7 @@ include $(INCLUDE_DIR)/cmake.mk
 CMAKE_SOURCE_DIR:=$(PKG_BUILD_DIR)
 CMAKE_BINARY_DIR:=$(PKG_BUILD_DIR)
 
-define Package/mt76-atenl
+define Package/atenl
   SECTION:=MTK Properties
   CATEGORY:=MTK Properties
   TITLE:=testmode daemon for nl80211
@@ -26,7 +26,7 @@ endef
 TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include/libnl-tiny
 TARGET_CFLAGS += -lblkid
 
-define Package/mt76-atenl/install
+define Package/atenl/install
 	mkdir -p $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/atenl $(1)/usr/sbin
 	$(INSTALL_BIN) ./files/ated.sh $(1)/usr/sbin/ated
@@ -34,4 +34,4 @@ define Package/mt76-atenl/install
 	$(INSTALL_BIN) ./files/iwpriv.sh $(1)/usr/sbin/mwctl
 endef
 
-$(eval $(call BuildPackage,mt76-atenl))
+$(eval $(call BuildPackage,atenl))

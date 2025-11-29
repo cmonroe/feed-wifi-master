@@ -94,6 +94,20 @@
  * @MT76_TM_ATTR_FAST_CAL: perform a fast calibration for a channel switch speed boost
  *	(u8, see &enum mt76_testmode_fast_cal_type)
  *
+ * @MT76_TM_ATTR_FRAME_CONTROL: frame control field for the mac header of the TX packet (u16)
+ * @MT76_TM_ATTR_DURATION: duration field for the mac header of the TX packet (u16)
+ * @MT76_TM_ATTR_SEQ_IDX: sequence index for the TX packet (u16)
+ * @MT76_TM_ATTR_PAYLOAD_RULE: payload generating rule
+ *	(u8, see &enum mt76_testmode_payload_rule)
+ * @MT76_TM_ATTR_PAYLOAD: payload content for repeat mode (u8)
+ *
+ * @MT76_TM_ATTR_RU_STA_NUM: the number of RU STAs (u8)
+ * @MT76_TM_ATTR_RU_STA_IDX: the RU STA index to be configured (u8)
+ * @MT76_TM_ATTR_RU_SEG_IDX: indicate the bandwidth segment that a STA is located in (u8)
+ * @MT76_TM_ATTR_RU_SS_IDX: the starting spatial stream index for a RU STA (u8)
+ * @MT76_TM_ATTR_TB_INFO: trigger-based PPDU info for decoding
+ *	(nested, see &enum mt76_testmode_tb_info_attr)
+ *
  */
 enum mt76_testmode_attr {
 	MT76_TM_ATTR_UNSPEC,
@@ -172,24 +186,38 @@ enum mt76_testmode_attr {
 
 	MT76_TM_ATTR_FAST_CAL,
 
+	MT76_TM_ATTR_FRAME_CONTROL,
+	MT76_TM_ATTR_DURATION,
+	MT76_TM_ATTR_SEQ_IDX,
+	MT76_TM_ATTR_PAYLOAD_RULE,
+	MT76_TM_ATTR_PAYLOAD,
+
+	MT76_TM_ATTR_RU_STA_NUM,
+	MT76_TM_ATTR_RU_STA_IDX,
+	MT76_TM_ATTR_RU_SEG_IDX,
+	MT76_TM_ATTR_RU_SS_IDX,
+	MT76_TM_ATTR_TB_INFO,
+
 	/* keep last */
 	NUM_MT76_TM_ATTRS,
 	MT76_TM_ATTR_MAX = NUM_MT76_TM_ATTRS - 1,
 };
 
 /**
- * enum mt76_testmode_state - statistics attributes
+ * enum mt76_testmode_stats_attr - statistics attributes
  *
  * @MT76_TM_STATS_ATTR_TX_PENDING: pending tx frames (u32)
  * @MT76_TM_STATS_ATTR_TX_QUEUED: queued tx frames (u32)
  * @MT76_TM_STATS_ATTR_TX_DONE: completed tx frames (u32)
  *
- * @MT76_TM_STATS_ATTR_RX_PACKETS: number of rx packets (u64)
+ * @MT76_TM_STATS_ATTR_RX_PACKETS: number of rx mdrdy packets
+ *	with successfully parsed headers (u64)
  * @MT76_TM_STATS_ATTR_RX_FCS_ERROR: number of rx packets with FCS error (u64)
  * @MT76_TM_STATS_ATTR_LAST_RX: information about the last received packet
  *	see &enum mt76_testmode_rx_attr
  * @MT76_TM_STATS_ATTR_RX_LEN_MISMATCH: number of rx packets with length
  *	mismatch error (u64)
+ * @MT76_TM_STATS_ATTR_RX_SUCCESS: number of successfully rx packets (u64)
  */
 enum mt76_testmode_stats_attr {
 	MT76_TM_STATS_ATTR_UNSPEC,
@@ -203,6 +231,7 @@ enum mt76_testmode_stats_attr {
 	MT76_TM_STATS_ATTR_RX_FCS_ERROR,
 	MT76_TM_STATS_ATTR_LAST_RX,
 	MT76_TM_STATS_ATTR_RX_LEN_MISMATCH,
+	MT76_TM_STATS_ATTR_RX_SUCCESS,
 
 	/* keep last */
 	NUM_MT76_TM_STATS_ATTRS,
@@ -438,6 +467,47 @@ enum mt76_testmode_fast_cal_type {
 	/* keep last */
 	NUM_MT76_TM_FAST_CAL_TYPE,
 	MT76_TM_FAST_CAL_TYPE_MAX = NUM_MT76_TM_FAST_CAL_TYPE - 1,
+};
+
+/**
+ * enum mt76_testmode_payload_rule - rule to generate TX payload
+ *
+ * @MT76_TM_PAYLOAD_RULE_NORMAL: all-zero payload
+ * @MT76_TM_PAYLOAD_RULE_REPEAT: generate payload by repeating specified content
+ * @MT76_TM_PAYLOAD_RULE_RANDOM: generate random payload
+ */
+enum mt76_testmode_payload_rule {
+	MT76_TM_PAYLOAD_RULE_NORMAL,
+	MT76_TM_PAYLOAD_RULE_REPEAT,
+	MT76_TM_PAYLOAD_RULE_RANDOM,
+
+	/* keep last */
+	NUM_MT76_TM_PAYLOAD_RULE,
+	MT76_TM_PAYLOAD_RULE_MAX = NUM_MT76_TM_PAYLOAD_RULE - 1,
+};
+
+/**
+ * enum mt76_testmode_tb_info_attr - Trigger-based PPDU attributes
+ *
+ * @MT76_TM_TB_INFO_ATTR_A_FACTOR_INIT: Initial A-factor value for LDPC
+ * @MT76_TM_TB_INFO_ATTR_LDPC_EXTRA_SYM: LDPC extra symbol
+ * @MT76_TM_TB_INFO_ATTR_PKT_EXT_DISAMB: packet extension disambiguation
+ * @MT76_TM_TB_INFO_ATTR_TX_PKT_EXT: TX packet extension
+ * @MT76_TM_TB_INFO_ATTR_L_SIG_LEN: length of L-SIG field
+ *
+ */
+enum mt76_testmode_tb_info_attr {
+	MT76_TM_TB_INFO_ATTR_UNSPEC,
+
+	MT76_TM_TB_INFO_ATTR_A_FACTOR_INIT,
+	MT76_TM_TB_INFO_ATTR_LDPC_EXTRA_SYM,
+	MT76_TM_TB_INFO_ATTR_PKT_EXT_DISAMB,
+	MT76_TM_TB_INFO_ATTR_TX_PKT_EXT,
+	MT76_TM_TB_INFO_ATTR_L_SIG_LEN,
+
+	/* keep last */
+	NUM_MT76_TM_TB_INFO_ATTRS,
+	MT76_TM_TB_INFO_ATTR_MAX = NUM_MT76_TM_TB_INFO_ATTRS - 1,
 };
 
 #endif

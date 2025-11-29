@@ -432,7 +432,7 @@ int atenl_eeprom_update_precal(struct atenl *an, int write_offs, int size)
 	u32 offs = an->eeprom_prek_offs;
 	u8 cal_indicator, *eeprom, *pre_cal;
 
-	if (!an->cal && !an->cal_info)
+	if (!an->cal)
 		return 0;
 
 	eeprom = an->eeprom_data;
@@ -599,6 +599,58 @@ out:
 	return 0;
 }
 
+int atenl_eeprom_clear_flash(struct atenl *an)
+{
+	u32 size = EEPROM_PART_SIZE;
+	u32 flash_size, offs;
+	int fd, ret = 0;
+	u8 *buf;
+
+	/* flash_offset = -1 for binfile mode */
+	if (an->flash_part == NULL || !(~an->flash_offset)) {
+		atenl_err("Flash partition or offset is not specified\n");
+		return 0;
+	}
+
+	fd = atenl_mtd_open(an, O_RDWR | O_SYNC);
+	if (fd >= 0)
+		goto clear;
+
+	fd = atenl_mmc_open(an, O_RDWR | O_SYNC);
+	if (fd < 0)
+		goto fail;
+
+clear:
+	flash_size = lseek(fd, 0, SEEK_END);
+	if (size > flash_size)
+		size = flash_size;
+
+	ret = lseek(fd, 0, SEEK_SET);
+	if (ret < 0)
+		goto fail;
+
+	buf = (u8 *)calloc(size, sizeof(char));
+	if (!buf) {
+		perror("calloc");
+		goto fail;
+	}
+
+	ret = write(fd, buf, size);
+	if (ret < 0)
+		goto fail;
+
+	atenl_info("clear flash size 0x%x\n", size);
+	goto out;
+
+fail:
+	atenl_err("Failed to clear flash memory ret = %d\n", ret);
+
+out:
+	free(buf);
+	close(fd);
+	return 0;
+}
+
 /* Directly read values from driver's eeprom.
  * It's usally used to get calibrated data from driver.
  */
@@ -656,6 +708,8 @@ void atenl_eeprom_cmd_handler(struct atenl *an, u8 phy_idx, char *cmd)
 
 	if (!strncmp(cmd, "sync eeprom all", 15)) {
 		atenl_eeprom_write_flash(an);
+	} else if (!strncmp(cmd, "clear eeprom all", 16)) {
+		atenl_eeprom_clear_flash(an);
 	} else if (!strncmp(cmd, "eeprom", 6)) {
 		char *s = strchr(cmd, ' ');
 
