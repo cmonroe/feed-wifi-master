@@ -1,6 +1,6 @@
 --- a/include/iwinfo.h
 +++ b/include/iwinfo.h
-@@ -430,6 +430,8 @@ extern const struct iwinfo_ops madwifi_o
+@@ -438,6 +438,8 @@ extern const struct iwinfo_ops madwifi_o
  extern const struct iwinfo_ops nl80211_ops;
  extern const struct iwinfo_ops wl_ops;
  
@@ -19,7 +19,7 @@
  
  #include "iwinfo.h"
  
-@@ -887,6 +888,33 @@ static void print_htmodelist(const struc
+@@ -922,6 +923,33 @@ static void print_htmodelist(const struc
  	printf("\n");
  }
  
@@ -53,7 +53,7 @@
  static void lookup_phy(const struct iwinfo_ops *iw, const char *section)
  {
  	char buf[IWINFO_BUFSIZE];
-@@ -934,7 +962,7 @@ int main(int argc, char **argv)
+@@ -969,7 +997,7 @@ int main(int argc, char **argv)
  			"	iwinfo <device> freqlist\n"
  			"	iwinfo <device> assoclist\n"
  			"	iwinfo <device> countrylist\n"
@@ -62,7 +62,7 @@
  			"	iwinfo <backend> phyname <section>\n"
  		);
  
-@@ -965,7 +993,7 @@ int main(int argc, char **argv)
+@@ -1000,7 +1028,7 @@ int main(int argc, char **argv)
  		return 0;
  	}
  
@@ -71,7 +71,7 @@
  	{
  		iw = iwinfo_backend_by_name(argv[1]);
  
-@@ -991,6 +1019,30 @@ int main(int argc, char **argv)
+@@ -1026,6 +1054,30 @@ int main(int argc, char **argv)
  				rv = 1;
  			}
  		}
@@ -104,7 +104,7 @@
  	{
 --- a/iwinfo_nl80211.c
 +++ b/iwinfo_nl80211.c
-@@ -3563,6 +3563,35 @@ out:
+@@ -3626,6 +3626,35 @@ out:
  	return -1;
  }
  
