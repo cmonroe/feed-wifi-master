@@ -1,0 +1,87 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 02 Dec 2025 04:52:11 -0800
+Subject: [PATCH] hostapd: defer ACS in AP+STA mode
+
+When an AP with ACS shares a PHY with a STA interface, the AP must use
+the same channel as the STA. Defer ACS until the STA connects and use
+its channel instead of running ACS which may select a conflicting channel.
+
+Fixes: SDG-5649
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ openwrt/files/hostapd.uc |    7 ++++---
+ src/ap/hw_features.c     |   19 +++++++++++++++++++
+ src/ap/ucode.c           |    2 ++
+ 3 files changed, 25 insertions(+), 3 deletions(-)
+
+--- a/openwrt/files/hostapd.uc
++++ b/openwrt/files/hostapd.uc
+@@ -132,9 +132,9 @@ function iface_freq_info(iface, config,
+ 	return hostapd.freq_info(freq, sec_offset, width);
+ }
+ 
+-function iface_add(phy, config, phy_status)
++function iface_add(phy, config, phy_status, start_disabled)
+ {
+-	let config_inline = iface_gen_config(config, !!phy_status);
++	let config_inline = iface_gen_config(config, start_disabled ?? !!phy_status);
+ 
+ 	let bss = config.bss[0];
+ 	let ret = hostapd.add_iface(`bss_config=${phy}:${config_inline}`);
+@@ -216,6 +216,7 @@ function __iface_pending_next(pending, s
+ 		return "check_phy";
+ 	case "check_phy":
+ 		let phy_status = data;
++		pending.has_sta_iface = !!(phy_status && phy_status.state);
+ 		if (phy_status && phy_status.state == "COMPLETED") {
+ 			if (iface_add(phy, config, phy_status))
+ 				return "done";
+@@ -229,7 +230,7 @@ function __iface_pending_next(pending, s
+ 		});
+ 		return "wpas_stopped";
+ 	case "wpas_stopped":
+-		if (!iface_add(phy, config))
++		if (!iface_add(phy, config, null, pending.has_sta_iface))
+ 			hostapd.printf(`hostapd.add_iface failed for phy ${phy} ifname=${bss.ifname}`);
+ 		pending.call("wpa_supplicant", "phy_set_state", {
+ 			phy: phydev.phy,
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -1162,6 +1162,25 @@ hostapd_check_chans(struct hostapd_iface
+ 	 * which is used to trigger ACS.
+ 	 */
+ 
++	/*
++	 * If the first BSS has start_disabled=1, defer ACS instead of
++	 * starting a scan.  The interface will wait for channel info to
++	 * be provided via hostapd ucode iface.start() call.  This enables
++	 * AP+STA coexistence where the AP waits for the STA to connect
++	 * and provide channel information before starting.
++	 *
++	 * Return HOSTAPD_CHAN_ACS to signal setup should wait, but don't
++	 * change the interface state (stays in COUNTRY_UPDATE).  This
++	 * avoids triggering the ACS_FAILED notification when iface.start()
++	 * later disables and re-enables the interface with a real channel.
++	 */
++	if (iface->conf->num_bss > 0 &&
++	    iface->bss[0]->conf->start_disabled) {
++		wpa_printf(MSG_INFO,
++			   "ACS deferred: start_disabled=1, waiting for channel via iface.start()");
++		return HOSTAPD_CHAN_ACS;
++	}
++
+ 	switch (acs_init(iface)) {
+ 	case HOSTAPD_CHAN_ACS:
+ 		return HOSTAPD_CHAN_ACS;
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -672,6 +672,8 @@ out:
+ 		iface->freq = hostapd_hw_get_freq(iface->bss[0], conf->channel);
+ 
+ 	if (iface->state != HAPD_IFACE_ENABLED) {
++		for (i = 0; i < iface->num_bss; i++)
++			iface->bss[i]->conf->start_disabled = 0;
+ 		hostapd_enable_iface(iface);
+ 		return ucv_boolean_new(true);
+ 	}

@@ -51,7 +51,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	if (!changed &&
  	    (iface->bss[0]->beacon_set_done ||
  	     iface->state == HAPD_IFACE_DFS))
-@@ -676,6 +688,15 @@ out:
+@@ -678,6 +690,15 @@ out:
  		return ucv_boolean_new(true);
  	}
  
@@ -67,7 +67,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
  		int ret;
-@@ -711,6 +732,7 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -713,6 +734,7 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	uint64_t intval;
  	int i, ret = 0;
  
@@ -75,7 +75,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	if (!iface || ucv_type(info) != UC_OBJECT)
  		return NULL;
  
-@@ -730,7 +752,8 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -732,7 +754,8 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	if (errno)
  		intval = hostapd_get_oper_chwidth(conf);
  	if (intval)
@@ -85,7 +85,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	else
  		csa.freq_params.bandwidth = csa.freq_params.sec_channel_offset ? 40 : 20;
  
-@@ -741,6 +764,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -743,6 +766,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	if ((intval = ucv_int64_get(ucv_object_get(info, "center_freq2", NULL))) && !errno)
  		csa.freq_params.center_freq2 = intval;
  
@@ -345,8 +345,8 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
 +	return hostapd.freq_info(freq, sec_offset, width, bw320_offset);
  }
  
- function iface_add(phy, config, phy_status)
-@@ -1165,6 +1170,8 @@ let main_obj = {
+ function iface_add(phy, config, phy_status, start_disabled)
+@@ -1166,6 +1171,8 @@ let main_obj = {
  			up: true,
  			frequency: 0,
  			sec_chan_offset: 0,
@@ -355,7 +355,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  			csa: true,
  			csa_count: 0,
  		},
-@@ -1173,6 +1180,9 @@ let main_obj = {
+@@ -1174,6 +1181,9 @@ let main_obj = {
  			if (req.args.up == null || !phy)
  				return libubus.STATUS_INVALID_ARGUMENT;
  
@@ -365,7 +365,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  			let config = hostapd.data.config[phy];
  			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)
  				return 0;
-@@ -1192,6 +1202,8 @@ let main_obj = {
+@@ -1193,6 +1203,8 @@ let main_obj = {
  				if (!freq_info)
  					return libubus.STATUS_UNKNOWN_ERROR;
  

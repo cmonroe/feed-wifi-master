@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -1055,3 +1055,16 @@ void hostapd_ucode_apup_newpeer(struct h
+@@ -1057,3 +1057,16 @@ void hostapd_ucode_apup_newpeer(struct h
  	ucv_put(val);
  }
  #endif // def CONFIG_APUP
@@ -106,7 +106,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function iface_remove(cfg)
  {
  	if (!cfg || !cfg.bss || !cfg.bss[0] || !cfg.bss[0].ifname)
-@@ -846,24 +852,30 @@ function iface_set_config(name, config)
+@@ -847,24 +853,30 @@ function iface_set_config(name, config)
  	let old_config = hostapd.data.config[name];
  
  	hostapd.data.config[name] = config;
@@ -139,7 +139,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			return 0;
  		}
  	} catch (e) {
-@@ -873,6 +885,7 @@ function iface_set_config(name, config)
+@@ -874,6 +886,7 @@ function iface_set_config(name, config)
  	hostapd.printf(`Restart interface for phy ${name}`);
  	let ret = iface_restart(phydev, config, old_config);
  
@@ -147,7 +147,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return ret;
  }
  
-@@ -1276,6 +1289,7 @@ let main_obj = {
+@@ -1277,6 +1290,7 @@ let main_obj = {
  			radio: 0,
  			config: "",
  			prev_config: "",
@@ -155,7 +155,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
  		call: function(req) {
  			let phy = req.args.phy;
-@@ -1283,18 +1297,23 @@ let main_obj = {
+@@ -1284,18 +1298,23 @@ let main_obj = {
  			let name = phy_name(phy, radio);
  			let file = req.args.config;
  			let prev_file = req.args.prev_config;
@@ -180,7 +180,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			hostapd.printf(`Set new config for phy ${name}: ${file}`);
  			iface_set_config(name, config);
-@@ -1425,4 +1444,35 @@ return {
+@@ -1426,4 +1445,35 @@ return {
  			hostapd.data.auth_obj.notify("sta_connected", msg, data_cb, null, null, 1000);
  		return ret;
  	},
