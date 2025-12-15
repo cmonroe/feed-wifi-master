@@ -27,17 +27,17 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	MCU_UNI_CMD_PER_STA_INFO = 0x6d,
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -478,6 +478,10 @@ int mt7996_eeprom_init(struct mt7996_dev
+@@ -476,7 +476,9 @@ int mt7996_eeprom_init(struct mt7996_dev
+ 	if (ret)
+ 		return ret;
  
- 	mt7996_eeprom_load_precal(dev);
- 
+-	mt7996_eeprom_load_precal(dev);
 +	ret = mt7996_eeprom_load_precal(dev);
 +	if (ret)
 +		return ret;
-+
+ 
  	ret = mt7996_eeprom_parse_hw_cap(dev, &dev->phy);
  	if (ret < 0)
- 		return ret;
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
 @@ -24,6 +24,8 @@ enum mt7996_eeprom_field {
