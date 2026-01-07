@@ -222,7 +222,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_eeprom_init(struct mt7996_dev *dev)
  {
  	int ret;
-@@ -496,6 +636,10 @@ int mt7996_eeprom_init(struct mt7996_dev
+@@ -494,6 +634,10 @@ int mt7996_eeprom_init(struct mt7996_dev
  	if (ret)
  		return ret;
  
