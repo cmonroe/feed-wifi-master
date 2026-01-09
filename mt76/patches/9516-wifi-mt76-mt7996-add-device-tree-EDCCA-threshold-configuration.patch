@@ -9,10 +9,13 @@ unspecified bandwidths.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- eeprom.c      |   54 ++++++++++++++++++++++++++++++++++++++++++++++++
- mt76.h        |    8 +++++++
- mt7996/init.c |   50 ++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 112 insertions(+)
+ eeprom.c        |   54 ++++++++++++++++++++++++++++++++++++++++++++++
+ mt76.h          |    8 ++++++
+ mt7996/init.c   |   50 ++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mac.c    |    4 ++-
+ mt7996/main.c   |    3 ++
+ mt7996/mt7996.h |    1
+ 6 files changed, 119 insertions(+), 1 deletion(-)
 
 --- a/eeprom.c
 +++ b/eeprom.c
@@ -107,7 +110,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		__mt7996_init_txpower(phy, &phy->mt76->sband_6g.sband);
  }
  
-+static void mt7996_apply_edcca_limits(struct mt7996_phy *phy)
++void mt7996_apply_edcca_limits(struct mt7996_phy *phy)
 +{
 +	struct mt76_edcca_limits limits;
 +	struct ieee80211_channel *chan;
@@ -125,11 +128,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	if (ret || !limits.valid_mask)
 +		return;
 +
-+	dev_info(phy->dev->mt76.dev,
-+		 "EDCCA: band=%d valid_mask=0x%x threshold=[%02x,%02x,%02x,%02x]\n",
-+		 chan->band, limits.valid_mask,
-+		 limits.threshold[0], limits.threshold[1],
-+		 limits.threshold[2], limits.threshold[3]);
++	dev_dbg(phy->dev->mt76.dev,
++		"EDCCA: band=%d valid_mask=0x%x threshold=[%02x,%02x,%02x,%02x]\n",
++		chan->band, limits.valid_mask,
++		limits.threshold[0], limits.threshold[1],
++		limits.threshold[2], limits.threshold[3]);
 +
 +	ret = mt7996_mcu_edcca_enable(phy, true);
 +	if (ret) {
@@ -167,3 +170,39 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
  		mt7996_dfs_init_radar_detector(phy);
  	}
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2185,8 +2185,10 @@ mt7996_mac_restart(struct mt7996_dev *de
+ 		goto out;
+ 
+ 	mt7996_mac_init(dev);
+-	mt7996_for_each_phy(dev, phy)
++	mt7996_for_each_phy(dev, phy) {
+ 		mt7996_init_txpower(phy);
++		mt7996_apply_edcca_limits(phy);
++	}
+ 	ret = mt7996_txbf_init(dev);
+ 	if (ret)
+ 		goto out;
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -610,6 +610,9 @@ int mt7996_set_channel(struct mt76_phy *
+ 	if (ret)
+ 		goto out;
+ 
++	if (!mphy->offchannel)
++		mt7996_apply_edcca_limits(phy);
++
+ 	ret = mt7996_dfs_init_radar_detector(phy);
+ 	mt7996_mac_cca_stats_reset(phy);
+ 
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -761,6 +761,7 @@ void mt7996_dma_start(struct mt7996_dev
+ int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
+ 			  int n_desc, int ring_base, struct mtk_wed_device *wed);
+ void mt7996_init_txpower(struct mt7996_phy *phy);
++void mt7996_apply_edcca_limits(struct mt7996_phy *phy);
+ int mt7996_txbf_init(struct mt7996_dev *dev);
+ int mt7996_get_chip_sku(struct mt7996_dev *dev);
+ void mt7996_reset(struct mt7996_dev *dev);
