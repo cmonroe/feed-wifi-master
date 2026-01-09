@@ -316,7 +316,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  					   GFP_KERNEL, link_id);
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -1512,8 +1512,13 @@ static bool _cfg80211_reg_can_beacon(str
+@@ -1532,8 +1532,13 @@ static bool _cfg80211_reg_can_beacon(str
  	check_radar = dfs_required != 0;
  
  	if (dfs_required > 0 &&
@@ -332,7 +332,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		prohibited_flags &= ~IEEE80211_CHAN_NO_IR;
  		check_radar = false;
  	}
-@@ -1551,6 +1556,9 @@ bool cfg80211_reg_check_beaconing(struct
+@@ -1571,6 +1576,9 @@ bool cfg80211_reg_check_beaconing(struct
  							   chandef->chan);
  	}
  
@@ -342,7 +342,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (cfg->reg_power == IEEE80211_REG_VLP_AP)
  		permitting_flags |= IEEE80211_CHAN_ALLOW_6GHZ_VLP_AP;
  
-@@ -1566,6 +1574,51 @@ bool cfg80211_reg_check_beaconing(struct
+@@ -1586,6 +1594,51 @@ bool cfg80211_reg_check_beaconing(struct
  }
  EXPORT_SYMBOL(cfg80211_reg_check_beaconing);
  

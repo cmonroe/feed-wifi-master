@@ -184,7 +184,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  }
  
  static bool cfg80211_chandef_dfs_available(struct wiphy *wiphy,
-@@ -1602,6 +1609,82 @@ bool cfg80211_any_usable_channels(struct
+@@ -1622,6 +1629,82 @@ bool cfg80211_any_usable_channels(struct
  }
  EXPORT_SYMBOL(cfg80211_any_usable_channels);
  
