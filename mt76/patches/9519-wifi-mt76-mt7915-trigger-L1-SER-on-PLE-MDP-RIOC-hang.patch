@@ -1,0 +1,52 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 14 Jan 2026 17:10:41 -0800
+Subject: [PATCH] mt76: mt7915: trigger L1 SER on PLE MDP RIOC hang 
+
+WM firmware can enter a partial failure state where RX is hung.
+
+Detect this condition by monitoring SER_PLE_ERR_1 for MDP_RIOC_HANG_ERR
+and trigger L1 SER to restore operation.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7915/mac.c  |   11 ++++++++++-
+ mt7915/regs.h |    1 +
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -1905,7 +1905,7 @@ void mt7915_mac_update_stats(struct mt79
+ static void mt7915_mac_severe_check(struct mt7915_phy *phy)
+ {
+ 	struct mt7915_dev *dev = phy->dev;
+-	u32 trb;
++	u32 trb, ple_err;
+ 
+ 	if (!phy->omac_mask)
+ 		return;
+@@ -1925,6 +1925,15 @@ static void mt7915_mac_severe_check(stru
+ 				   phy->mt76->band_idx);
+ 
+ 	phy->trb_ts = trb;
++
++	ple_err = mt76_rr(dev, MT_SWDEF_PLE1_STATS);
++	if (ple_err & MT_SWDEF_PLE1_MDP_RIOC_HANG_ERR) {
++		dev_warn(dev->mt76.dev,
++			 "band%d: PLE error 0x%x detected, triggering L1 SER\n",
++			 phy->mt76->band_idx, ple_err);
++		mt7915_mcu_set_ser(dev, SER_RECOVER, SER_SET_RECOVER_L1,
++				   phy->mt76->band_idx);
++	}
+ }
+ 
+ static void mt7915_mac_sta_stats_work(struct mt7915_phy *phy)
+--- a/mt7915/regs.h
++++ b/mt7915/regs.h
+@@ -1058,6 +1058,7 @@ enum offs_rev {
+ #define MT_SWDEF_SER_STATS		MT_SWDEF(0x040)
+ #define MT_SWDEF_PLE_STATS		MT_SWDEF(0x044)
+ #define MT_SWDEF_PLE1_STATS		MT_SWDEF(0x048)
++#define MT_SWDEF_PLE1_MDP_RIOC_HANG_ERR	BIT(3)
+ #define MT_SWDEF_PLE_AMSDU_STATS	MT_SWDEF(0x04C)
+ #define MT_SWDEF_PSE_STATS		MT_SWDEF(0x050)
+ #define MT_SWDEF_PSE1_STATS		MT_SWDEF(0x054)
