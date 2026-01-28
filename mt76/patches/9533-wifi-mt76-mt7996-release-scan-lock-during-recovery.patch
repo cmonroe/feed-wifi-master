@@ -1,0 +1,50 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 27 Jan 2026 10:22:04 -0800
+Subject: [PATCH] wifi: mt76: mt7996: release scan lock during MCU recovery 
+
+MCU reset during an active scan leaves mac80211's scan lock held
+blocking all future scan requests.
+
+Also clear stale MCU reset bits when recovery returns to normal.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mac.c |   14 +++++++++++++-
+ scan.c       |    2 +-
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2359,8 +2359,20 @@ void mt7996_mac_reset_work(struct work_s
+ 		return;
+ 	}
+ 
+-	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
++	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA)) {
++		u32 state = READ_ONCE(dev->recovery.state);
++
++		if (test_bit(MT76_MCU_RESET, &dev->mphy.state) &&
++		    (state & MT_MCU_CMD_NORMAL_STATE)) {
++			clear_bit(MT76_MCU_RESET, &dev->mphy.state);
++			mt7996_for_each_phy(dev, phy)
++				clear_bit(MT76_RESET, &phy->mt76->state);
++			dev_info(dev->mt76.dev,
++				 "%s cleared stale MCU reset bit after recovery state normal (0x%08x)\n",
++				 wiphy_name(dev->mt76.hw->wiphy), state);
++		}
+ 		return;
++	}
+ 
+ 	dev_info(dev->mt76.dev,"==== %s L1 SER recovery start ====",
+ 		 wiphy_name(hw->wiphy));
+--- a/scan.c
++++ b/scan.c
+@@ -21,7 +21,7 @@ static void mt76_scan_complete(struct mt
+ 		mt76_set_channel(phy, &phy->main_chandef, false);
+ 	mt76_put_vif_phy_link(phy, dev->scan.vif, dev->scan.mlink);
+ 	memset(&dev->scan, 0, sizeof(dev->scan));
+-	if (!test_bit(MT76_MCU_RESET, &dev->phy.state))
++	if (!test_bit(MT76_MCU_RESET, &dev->phy.state) || abort)
+ 		ieee80211_scan_completed(phy->hw, &info);
+ }
+ 
