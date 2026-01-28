@@ -1,0 +1,57 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 26 Jan 2026 05:39:59 -0800
+Subject: [PATCH] wifi: mt76: mt7996: validate link_id before array access 
+
+During hardware restart, IEEE80211_LINK_UNSPECIFIED link_id used as
+array index causes out-of-bounds access and kernel panic.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c |    6 ++++++
+ mt7996/mcu.c  |    6 ++++++
+ 2 files changed, 12 insertions(+)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1785,6 +1785,9 @@ static void mt7996_sta_rate_ctrl_update(
+ 	struct mt7996_sta_link *msta_link;
+ 	u32 *changed = data;
+ 
++	if (msta->deflink_id >= IEEE80211_MLD_MAX_NUM_LINKS)
++		return;
++
+ 	msta_link = rcu_dereference(msta->link[msta->deflink_id]);
+ 	if (msta_link)
+ 		mt7996_link_rate_ctrl_update(&changed, msta_link);
+@@ -2268,6 +2271,9 @@ mt7996_net_fill_forward_path(struct ieee
+ 	struct mt7996_sta_link *msta_link;
+ 	struct mt7996_vif_link *link;
+ 
++	if (msta->deflink_id >= IEEE80211_MLD_MAX_NUM_LINKS)
++		return -EIO;
++
+ 	link = mt7996_vif_link(dev, vif, msta->deflink_id);
+ 	if (!link)
+ 		return -EIO;
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -2686,6 +2686,9 @@ mt7996_mcu_sta_mld_setup_tlv(struct mt79
+ 	unsigned int link_id;
+ 	struct tlv *tlv;
+ 
++	if (msta->deflink_id >= IEEE80211_MLD_MAX_NUM_LINKS)
++		return;
++
+ 	msta_link = mt76_dereference(msta->link[msta->deflink_id], &dev->mt76);
+ 	if (!msta_link)
+ 		return;
+@@ -2700,6 +2703,9 @@ mt7996_mcu_sta_mld_setup_tlv(struct mt79
+ 	mld_setup->primary_id = cpu_to_le16(msta_link->wcid.idx);
+ 
+ 	if (nlinks > 1) {
++		if (msta->seclink_id >= IEEE80211_MLD_MAX_NUM_LINKS)
++			return;
++
+ 		msta_link = mt76_dereference(msta->link[msta->seclink_id],
+ 					     &dev->mt76);
+ 		if (!msta_link)
