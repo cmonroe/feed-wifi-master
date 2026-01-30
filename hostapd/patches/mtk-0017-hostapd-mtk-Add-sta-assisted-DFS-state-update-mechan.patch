@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int hostapd_dfs_start_cac(struct hostapd_iface *iface, int freq,
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2334,6 +2334,24 @@ static void hostapd_event_dfs_cac_starte
+@@ -2339,6 +2339,24 @@ static void hostapd_event_dfs_cac_starte
  			      radar->cf1, radar->cf2);
  }
  
@@ -83,7 +83,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif /* NEED_AP_MLME */
  
  
-@@ -2833,6 +2851,16 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -2838,6 +2856,16 @@ void hostapd_wpa_event(void *ctx, enum w
  		hapd = switch_link_hapd(hapd, data->dfs_event.link_id);
  		hostapd_event_dfs_nop_finished(hapd, &data->dfs_event);
  		break;

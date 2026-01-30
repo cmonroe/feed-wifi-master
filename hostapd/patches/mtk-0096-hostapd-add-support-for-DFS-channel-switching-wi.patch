@@ -196,7 +196,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			break;
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2705,6 +2705,11 @@ static int __ieee802_11_set_beacon(struc
+@@ -2707,6 +2707,11 @@ static int __ieee802_11_set_beacon(struc
  	}
  #endif /* CONFIG_IEEE80211AX */
  
@@ -542,5 +542,5 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	}
 +
  	if (stype == WLAN_FC_STYPE_PROBE_REQ) {
- 		handle_probe_req(hapd, mgmt, len, ssi_signal);
+ 		handle_probe_req(hapd, mgmt, len, fi);
  		return 1;

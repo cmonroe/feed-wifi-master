@@ -1,0 +1,108 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 29 Jan 2026 20:12:58 -0800
+Subject: [PATCH] hostapd: fix ubus probe event duplication in single wiphy mode
+
+In single wiphy mode, broadcast frames are delivered to all BSS
+interfaces sharing the wiphy. This causes duplicate ubus probe
+events with incorrect frequencies.
+
+Filter by comparing frame rx frequency to BSS operating frequency.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/beacon.c        |    4 +++-
+ src/ap/beacon.h        |    3 ++-
+ src/ap/drv_callbacks.c |    5 +++++
+ src/ap/ieee802_11.c    |    2 +-
+ src/ap/ubus.c          |    2 +-
+ src/ap/ubus.h          |    1 +
+ 6 files changed, 13 insertions(+), 4 deletions(-)
+
+--- a/src/ap/beacon.c
++++ b/src/ap/beacon.c
+@@ -1421,7 +1421,7 @@ static bool parse_ml_probe_req(const str
+ 
+ void handle_probe_req(struct hostapd_data *hapd,
+ 		      const struct ieee80211_mgmt *mgmt, size_t len,
+-		      int ssi_signal)
++		      struct hostapd_frame_info *fi)
+ {
+ 	struct ieee802_11_elems elems;
+ 	const u8 *ie;
+@@ -1435,6 +1435,7 @@ void handle_probe_req(struct hostapd_dat
+ 	struct radius_sta rad_info;
+ 	struct probe_resp_params params;
+ 	char *hex = NULL;
++	int ssi_signal = fi ? fi->ssi_signal : 0;
+ #ifdef CONFIG_IEEE80211BE
+ 	int mld_id;
+ 	u16 links;
+@@ -1444,6 +1445,7 @@ void handle_probe_req(struct hostapd_dat
+ 		.mgmt_frame = mgmt,
+ 		.ssi_signal = ssi_signal,
+ 		.elems = &elems,
++		.freq = fi ? fi->freq : 0,
+ 	};
+ 
+ 	if (hapd->iconf->rssi_ignore_probe_request && ssi_signal &&
+--- a/src/ap/beacon.h
++++ b/src/ap/beacon.h
+@@ -11,10 +11,11 @@
+ #define BEACON_H
+ 
+ struct ieee80211_mgmt;
++struct hostapd_frame_info;
+ 
+ void handle_probe_req(struct hostapd_data *hapd,
+ 		      const struct ieee80211_mgmt *mgmt, size_t len,
+-		      int ssi_signal);
++		      struct hostapd_frame_info *fi);
+ void ieee802_11_set_beacon_per_bss_only(struct hostapd_data *hapd);
+ int ieee802_11_set_beacon(struct hostapd_data *hapd);
+ int ieee802_11_set_beacons(struct hostapd_iface *iface);
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -2026,6 +2026,11 @@ static int hostapd_mgmt_rx(struct hostap
+ 			    (iface->bss[i]->drv_priv != rx_mgmt->drv_priv))
+ 				continue;
+ 
++			/* single-wiphy: only process on matching frequency */
++			if (rx_mgmt->freq && iface->bss[i]->iface->freq &&
++			    rx_mgmt->freq != iface->bss[i]->iface->freq)
++				continue;
++
+ 			if (ieee802_11_mgmt(iface->bss[i], rx_mgmt->frame,
+ 					    rx_mgmt->frame_len, &fi) > 0)
+ 				ret = 1;
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -6789,7 +6789,7 @@ int ieee802_11_mgmt(struct hostapd_data
+ 	}
+ 
+ 	if (stype == WLAN_FC_STYPE_PROBE_REQ) {
+-		handle_probe_req(hapd, mgmt, len, ssi_signal);
++		handle_probe_req(hapd, mgmt, len, fi);
+ 		return 1;
+ 	}
+ 
+--- a/src/ap/ubus.c
++++ b/src/ap/ubus.c
+@@ -1875,7 +1875,7 @@ int hostapd_ubus_handle_event(struct hos
+ 		blobmsg_add_macaddr(&b, "target", req->mgmt_frame->da);
+ 	if (req->ssi_signal)
+ 		blobmsg_add_u32(&b, "signal", req->ssi_signal);
+-	blobmsg_add_u32(&b, "freq", hapd->iface->freq);
++	blobmsg_add_u32(&b, "freq", req->freq ? req->freq : hapd->iface->freq);
+ 
+ 	if (req->elems) {
+ 		if(req->elems->ht_capabilities)
+--- a/src/ap/ubus.h
++++ b/src/ap/ubus.h
+@@ -21,6 +21,7 @@ struct hostapd_ubus_request {
+ 	const struct ieee802_11_elems *elems;
+ 	int ssi_signal; /* dBm */
+ 	const u8 *addr;
++	unsigned int freq; /* frame rx frequency, 0 = use iface freq */
+ };
+ 
+ struct hostapd_iface;
