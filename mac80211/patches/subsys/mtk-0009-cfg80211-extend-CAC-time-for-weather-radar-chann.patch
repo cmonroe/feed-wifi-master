@@ -14,7 +14,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -164,6 +164,7 @@ enum ieee80211_channel_flags {
+@@ -161,6 +161,7 @@ enum ieee80211_channel_flags {
  	(IEEE80211_CHAN_NO_HT40PLUS | IEEE80211_CHAN_NO_HT40MINUS)
  
  #define IEEE80211_DFS_MIN_CAC_TIME_MS		60000
@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (t1 == INT_MAX && t2 == INT_MAX)
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -10218,6 +10218,9 @@ static int nl80211_start_radar_detection
+@@ -11203,6 +11203,9 @@ static int nl80211_start_radar_detection
  	if (WARN_ON(!cac_time_ms))
  		cac_time_ms = IEEE80211_DFS_MIN_CAC_TIME_MS;
  

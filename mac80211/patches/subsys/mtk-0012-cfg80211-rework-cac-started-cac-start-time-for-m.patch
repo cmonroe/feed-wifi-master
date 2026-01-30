@@ -33,7 +33,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -8839,6 +8839,7 @@ void cfg80211_sta_opmode_change_notify(s
+@@ -9224,6 +9224,7 @@ void cfg80211_sta_opmode_change_notify(s
  /**
   * cfg80211_cac_event - Channel availability check (CAC) event
   * @netdev: network device
@@ -43,7 +43,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
   * @gfp: context flags
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -5288,13 +5288,13 @@ ieee80211_skip_cac(struct wireless_dev *
+@@ -5556,13 +5556,13 @@ ieee80211_skip_cac(struct wireless_dev *
  
  	wiphy_delayed_work_cancel(sdata->local->hw.wiphy,
  				  &link->dfs_cac_timer_work);
@@ -64,7 +64,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/net/mac80211/iface.c
 +++ b/net/mac80211/iface.c
-@@ -463,6 +463,8 @@ static void ieee80211_do_stop(struct iee
+@@ -480,6 +480,8 @@ static void ieee80211_do_stop(struct iee
  	struct cfg80211_chan_def chandef;
  	bool cancel_scan;
  	struct cfg80211_nan_func *func;
@@ -73,7 +73,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	lockdep_assert_wiphy(local->hw.wiphy);
  
-@@ -547,13 +549,18 @@ static void ieee80211_do_stop(struct iee
+@@ -564,13 +566,18 @@ static void ieee80211_do_stop(struct iee
  	wiphy_delayed_work_cancel(local->hw.wiphy,
  				  &sdata->deflink.dfs_cac_timer_work);
  

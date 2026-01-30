@@ -1,7 +1,8 @@
-From 9c1106eb80f31723780a6eb098b5c146a33d45a2 Mon Sep 17 00:00:00 2001
+From b182fe680a7cd77d4a1d7d57e009997eabb77efb Mon Sep 17 00:00:00 2001
 From: "fancy.liu" <fancy.liu@mediatek.com>
 Date: Wed, 29 Nov 2023 13:51:13 +0800
-Subject: [PATCH 37/61] mac80211: mtk: ACS channel time is reset by ch_restore
+Subject: [PATCH 036/128] mtk: mac80211: ACS channel time is reset by
+ ch_restore
 
 Issue:
 There's a chance that the channel time for duty channel is zero in ACS
@@ -25,29 +26,29 @@ scan done and before restore to duty channel.
 Signed-off-by: fancy.liu <fancy.liu@mediatek.com>
 ---
  include/net/mac80211.h | 7 +++++++
- net/mac80211/util.c    | 9 +++++++++
- 2 files changed, 16 insertions(+)
+ net/mac80211/util.c    | 8 ++++++++
+ 2 files changed, 15 insertions(+)
 
 --- a/include/net/mac80211.h
 +++ b/include/net/mac80211.h
-@@ -7827,4 +7827,11 @@ int ieee80211_emulate_switch_vif_chanctx
- 					 int n_vifs,
- 					 enum ieee80211_chanctx_switch_mode mode);
- 
+@@ -7903,4 +7903,11 @@ int ieee80211_emulate_switch_vif_chanctx
+  * Return: %true iff the vif is a NAN interface and NAN is started
+  */
+ bool ieee80211_vif_nan_started(struct ieee80211_vif *vif);
++
 +/**
 + * ieee80211_get_scanning - get scanning bitmask
 + *
 + * @hw: pointer as obtained from ieee80211_alloc_hw()
 + */
 +unsigned long ieee80211_get_scanning(struct ieee80211_hw *hw);
-+
  #endif /* MAC80211_H */
 --- a/net/mac80211/util.c
 +++ b/net/mac80211/util.c
-@@ -4444,3 +4444,12 @@ void ieee80211_clear_tpe(struct ieee8021
- 		       sizeof(tpe->psd_reg_client[i].power));
- 	}
+@@ -4609,3 +4609,11 @@ bool ieee80211_vif_nan_started(struct ie
+ 	return vif->type == NL80211_IFTYPE_NAN && sdata->u.nan.started;
  }
+ EXPORT_SYMBOL_GPL(ieee80211_vif_nan_started);
 +
 +unsigned long ieee80211_get_scanning(struct ieee80211_hw *hw)
 +{
@@ -56,4 +57,3 @@ Signed-off-by: fancy.liu <fancy.liu@mediatek.com>
 +	return local->scanning;
 +}
 +EXPORT_SYMBOL(ieee80211_get_scanning);
-+

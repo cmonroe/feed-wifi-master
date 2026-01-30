@@ -21,7 +21,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -4980,6 +4980,7 @@ struct cfg80211_ops {
+@@ -5214,6 +5214,7 @@ struct cfg80211_ops {
  				   struct cfg80211_ml_reconf_req *req);
  	int	(*set_epcs)(struct wiphy *wiphy, struct net_device *dev,
  			    bool val);
@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /*
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -5274,6 +5274,30 @@ ieee80211_set_epcs(struct wiphy *wiphy,
+@@ -5542,6 +5542,30 @@ ieee80211_set_epcs(struct wiphy *wiphy,
  	return ieee80211_mgd_set_epcs(sdata, enable);
  }
  
@@ -62,7 +62,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  const struct cfg80211_ops mac80211_config_ops = {
  	.add_virtual_intf = ieee80211_add_iface,
  	.del_virtual_intf = ieee80211_del_iface,
-@@ -5390,4 +5414,5 @@ const struct cfg80211_ops mac80211_confi
+@@ -5658,4 +5682,5 @@ const struct cfg80211_ops mac80211_confi
  	.get_radio_mask = ieee80211_get_radio_mask,
  	.assoc_ml_reconf = ieee80211_assoc_ml_reconf,
  	.set_epcs = ieee80211_set_epcs,
@@ -70,7 +70,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
 --- a/net/wireless/core.h
 +++ b/net/wireless/core.h
-@@ -86,6 +86,9 @@ struct cfg80211_registered_device {
+@@ -93,6 +93,9 @@ struct cfg80211_registered_device {
  
  	struct wireless_dev *background_radar_wdev;
  	struct cfg80211_chan_def background_radar_chandef;
@@ -429,7 +429,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  struct debugfs_read_work {
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1180,13 +1180,16 @@ __cfg80211_background_cac_event(struct c
+@@ -1198,13 +1198,16 @@ __cfg80211_background_cac_event(struct c
  		queue_work(cfg80211_wq, &rdev->propagate_cac_done_wk);
  		cfg80211_sched_dfs_chan_update(rdev);
  		wdev = rdev->background_radar_wdev;
@@ -446,7 +446,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		break;
  	default:
  		return;
-@@ -1267,8 +1270,10 @@ cfg80211_start_background_radar_detectio
+@@ -1285,8 +1288,10 @@ cfg80211_start_background_radar_detectio
  	if (!cac_time_ms)
  		cac_time_ms = IEEE80211_DFS_MIN_CAC_TIME_MS;
  
@@ -459,7 +459,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  					NL80211_RADAR_CAC_STARTED);
 --- a/net/wireless/rdev-ops.h
 +++ b/net/wireless/rdev-ops.h
-@@ -1579,4 +1579,17 @@ rdev_set_epcs(struct cfg80211_registered
+@@ -1584,4 +1584,17 @@ rdev_set_epcs(struct cfg80211_registered
  	return ret;
  }
  
@@ -479,10 +479,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif /* __CFG80211_RDEV_OPS */
 --- a/net/wireless/trace.h
 +++ b/net/wireless/trace.h
-@@ -4189,6 +4189,19 @@ TRACE_EVENT(cfg80211_epcs_changed,
- 		  WDEV_PR_ARG, __entry->enabled)
+@@ -4226,6 +4226,20 @@ TRACE_EVENT(cfg80211_nan_cluster_joined,
+ 		  WDEV_PR_ARG, __entry->cluster_id,
+ 		  __entry->new_cluster ? " [new]" : "")
  );
- 
++
 +TRACE_EVENT(rdev_skip_cac,
 +	TP_PROTO(struct wireless_dev *wdev, unsigned int link_id),
 +	TP_ARGS(wdev, link_id),
