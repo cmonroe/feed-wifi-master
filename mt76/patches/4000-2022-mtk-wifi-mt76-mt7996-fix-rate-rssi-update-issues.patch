@@ -1,6 +1,6 @@
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -590,6 +590,9 @@ mt7996_mcu_update_rate(struct rate_info
+@@ -659,6 +659,9 @@ mt7996_mcu_update_rate(struct rate_info
  	case MT_PHY_TYPE_EHT_TRIG:
  	case MT_PHY_TYPE_EHT_MU:
  		tmp_rate.mcs = mcs & GENMASK(3, 0);
@@ -10,7 +10,7 @@
  		if (tmp_rate.mcs > 15 || gi > NL80211_RATE_INFO_EHT_GI_3_2)
  			return -EINVAL;
  
-@@ -632,11 +635,10 @@ mt7996_mcu_update_rate(struct rate_info
+@@ -701,11 +704,10 @@ mt7996_mcu_update_rate(struct rate_info
  }
  
  static int
@@ -25,7 +25,7 @@
  	struct ieee80211_supported_band *sband = NULL;
  	bool cck;
  	int ret;
-@@ -649,14 +651,14 @@ mt7996_mcu_update_trx_rates(struct mt76_
+@@ -718,14 +720,14 @@ mt7996_mcu_update_trx_rates(struct mt76_
  		cck = true;
  		fallthrough;
  	case MT_PHY_TYPE_OFDM:
@@ -45,7 +45,7 @@
  		break;
  	case MT_PHY_TYPE_HT:
  	case MT_PHY_TYPE_HT_GF:
-@@ -670,8 +672,13 @@ mt7996_mcu_update_trx_rates(struct mt76_
+@@ -739,8 +741,13 @@ mt7996_mcu_update_trx_rates(struct mt76_
  				     mcu_rate->tx_bw, mcu_rate->tx_mcs,
  				     mcu_rate->tx_nss, mcu_rate->tx_stbc,
  				     mcu_rate->tx_gi);
@@ -60,7 +60,7 @@
  
  	/* RX rate */
  	cck = false;
-@@ -681,14 +688,14 @@ mt7996_mcu_update_trx_rates(struct mt76_
+@@ -750,14 +757,14 @@ mt7996_mcu_update_trx_rates(struct mt76_
  		cck = true;
  		fallthrough;
  	case MT_PHY_TYPE_OFDM:
@@ -81,7 +81,7 @@
  		break;
  	default:
  		break;
-@@ -698,7 +705,16 @@ mt7996_mcu_update_trx_rates(struct mt76_
+@@ -767,7 +774,16 @@ mt7996_mcu_update_trx_rates(struct mt76_
  				     mcu_rate->rx_bw, mcu_rate->rx_rate,
  				     mcu_rate->rx_nsts + 1, mcu_rate->rx_stbc,
  				     mcu_rate->rx_gi);
@@ -99,7 +99,7 @@
  }
  
  static void
-@@ -713,6 +729,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -782,6 +798,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
  
  	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
  		u8 ac;
@@ -107,7 +107,7 @@
  		u16 wlan_idx;
  		bool clear;
  		struct mt76_wcid *wcid;
-@@ -727,21 +744,33 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -796,21 +813,33 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -150,7 +150,7 @@
  		case UNI_ALL_STA_TXRX_MSDU_COUNT:
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1698,14 +1698,8 @@ static void mt7996_sta_statistics(struct
+@@ -1798,14 +1798,8 @@ static void mt7996_sta_statistics(struct
  				  struct ieee80211_sta *sta,
  				  struct station_info *sinfo)
  {
@@ -166,7 +166,7 @@
  
  	sinfo->txrate = msta_link->wcid.rate;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BITRATE);
-@@ -1736,9 +1730,6 @@ static void mt7996_sta_statistics(struct
+@@ -1836,9 +1830,6 @@ static void mt7996_sta_statistics(struct
  
  	sinfo->rx_packets = msta_link->wcid.stats.rx_packets;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_RX_PACKETS);
@@ -178,7 +178,7 @@
  static void mt7996_link_rate_ctrl_update(void *data,
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -228,6 +228,8 @@ struct all_sta_trx_rate {
+@@ -226,6 +226,8 @@ struct all_sta_trx_rate {
  	u8 __rsv2;
  } __packed;
  
@@ -187,7 +187,7 @@
  struct mt7996_mcu_all_sta_info_event {
  	u8 rsv[4];
  	__le16 tag;
-@@ -244,7 +246,15 @@ struct mt7996_mcu_all_sta_info_event {
+@@ -242,7 +244,15 @@ struct mt7996_mcu_all_sta_info_event {
  			u8 rsv[2];
  			__le32 tx_bytes[IEEE80211_NUM_ACS];
  			__le32 rx_bytes[IEEE80211_NUM_ACS];
@@ -206,7 +206,7 @@
  			__le16 wlan_idx;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -89,6 +89,9 @@ static struct mt76_wcid *mt7996_rx_get_w
+@@ -50,6 +50,9 @@ static struct mt76_wcid *mt7996_rx_get_w
  		break;
  	}
  
@@ -218,7 +218,7 @@
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -581,11 +581,6 @@ mt7996_mac_init_band(struct mt7996_dev *
+@@ -597,11 +597,6 @@ mt7996_mac_init_band(struct mt7996_dev *
  	set = FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_MODE, 0) |
  	      FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_PARAM, 0x3);
  	mt76_rmw(dev, MT_WTBLOFF_RSCR(band), mask, set);

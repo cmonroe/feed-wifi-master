@@ -13,7 +13,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1785,6 +1785,9 @@ static void mt7996_sta_rate_ctrl_update(
+@@ -1885,6 +1885,9 @@ static void mt7996_sta_rate_ctrl_update(
  	struct mt7996_sta_link *msta_link;
  	u32 *changed = data;
  
@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	msta_link = rcu_dereference(msta->link[msta->deflink_id]);
  	if (msta_link)
  		mt7996_link_rate_ctrl_update(&changed, msta_link);
-@@ -2268,6 +2271,9 @@ mt7996_net_fill_forward_path(struct ieee
+@@ -2368,6 +2371,9 @@ mt7996_net_fill_forward_path(struct ieee
  	struct mt7996_sta_link *msta_link;
  	struct mt7996_vif_link *link;
  
@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return -EIO;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2686,6 +2686,9 @@ mt7996_mcu_sta_mld_setup_tlv(struct mt79
+@@ -2816,6 +2816,9 @@ mt7996_mcu_sta_mld_setup_tlv(struct mt79
  	unsigned int link_id;
  	struct tlv *tlv;
  
@@ -45,7 +45,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	msta_link = mt76_dereference(msta->link[msta->deflink_id], &dev->mt76);
  	if (!msta_link)
  		return;
-@@ -2700,6 +2703,9 @@ mt7996_mcu_sta_mld_setup_tlv(struct mt79
+@@ -2830,6 +2833,9 @@ mt7996_mcu_sta_mld_setup_tlv(struct mt79
  	mld_setup->primary_id = cpu_to_le16(msta_link->wcid.idx);
  
  	if (nlinks > 1) {

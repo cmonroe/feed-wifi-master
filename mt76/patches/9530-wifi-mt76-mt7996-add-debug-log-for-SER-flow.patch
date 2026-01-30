@@ -1,6 +1,6 @@
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2362,7 +2362,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2324,7 +2324,7 @@ void mt7996_mac_reset_work(struct work_s
  	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
  		return;
  
@@ -9,8 +9,8 @@
  		 wiphy_name(hw->wiphy));
  
  	if (mtk_wed_device_active(&dev->mt76.mmio.wed_hif2))
-@@ -2373,6 +2373,9 @@ void mt7996_mac_reset_work(struct work_s
- 
+@@ -2336,6 +2336,9 @@ void mt7996_mac_reset_work(struct work_s
+ 	mt7996_npu_hw_stop(dev);
  	ieee80211_stop_queues(mt76_hw(dev));
  
 +	dev_info(dev->mt76.dev,"%s L1 SER queue stop done",
@@ -19,7 +19,7 @@
  	set_bit(MT76_RESET, &dev->mphy.state);
  	set_bit(MT76_MCU_RESET, &dev->mphy.state);
  	mt76_abort_scan(&dev->mt76);
-@@ -2386,6 +2389,10 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2349,6 +2352,10 @@ void mt7996_mac_reset_work(struct work_s
  	}
  
  	mt76_worker_disable(&dev->mt76.tx_worker);
@@ -30,9 +30,9 @@
  	mt76_for_each_q_rx(&dev->mt76, i) {
  		if (mtk_wed_device_active(&dev->mt76.mmio.wed) &&
  		    mt76_queue_is_wed_rro(&dev->mt76.q_rx[i]))
-@@ -2399,14 +2406,30 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2367,14 +2374,30 @@ void mt7996_mac_reset_work(struct work_s
  
- 	mt7996_npu_hw_stop(dev);
+ 	mutex_lock(&dev->mt76.mutex);
  
 +	dev_info(dev->mt76.dev,"%s L1 SER napi disable done",
 +		 wiphy_name(dev->mt76.hw->wiphy));
@@ -61,9 +61,9 @@
  		mt76_wr(dev, MT_MCU_INT_EVENT, MT_MCU_INT_EVENT_DMA_INIT);
  		mt7996_wait_reset_state(dev, MT_MCU_CMD_RECOVERY_DONE);
  	}
-@@ -2437,6 +2460,9 @@ void mt7996_mac_reset_work(struct work_s
- 				     MT_INT_TX_RX_DONE_EXT);
- 	}
+@@ -2407,6 +2430,9 @@ void mt7996_mac_reset_work(struct work_s
+ 
+ 	__mt7996_npu_hw_init(dev);
  
 +	dev_info(dev->mt76.dev,"%s L1 SER dma start done",
 +		wiphy_name(dev->mt76.hw->wiphy));
@@ -71,7 +71,7 @@
  	clear_bit(MT76_MCU_RESET, &dev->mphy.state);
  	mt7996_for_each_phy(dev, phy)
  		clear_bit(MT76_RESET, &phy->mt76->state);
-@@ -2471,7 +2497,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2446,7 +2472,7 @@ void mt7996_mac_reset_work(struct work_s
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -80,7 +80,7 @@
  		 wiphy_name(dev->mt76.hw->wiphy));
  }
  
-@@ -2546,6 +2572,9 @@ skip_coredump:
+@@ -2521,6 +2547,9 @@ skip_coredump:
  
  void mt7996_reset(struct mt7996_dev *dev)
  {

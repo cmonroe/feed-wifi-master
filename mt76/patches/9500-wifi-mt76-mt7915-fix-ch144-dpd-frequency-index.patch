@@ -1,6 +1,6 @@
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3158,6 +3158,9 @@ static int mt7915_dpd_freq_idx(struct mt
+@@ -3160,6 +3160,9 @@ static int mt7915_dpd_freq_idx(struct mt
  			return idx;
  	}
  

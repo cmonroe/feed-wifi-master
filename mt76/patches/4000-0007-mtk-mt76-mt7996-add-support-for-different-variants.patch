@@ -109,7 +109,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF2_TX_PATH_BAND1		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1130,7 +1130,7 @@ static int mt7996_variant_type_init(stru
+@@ -1174,7 +1174,7 @@ static int mt7996_variant_type_init(stru
  		else if (u32_get_bits(val, MT_PAD_GPIO_ADIE_COMB_7992))
  			var_type = MT7992_VAR_TYPE_44;
  		else
@@ -132,7 +132,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		}						\
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -65,16 +65,23 @@
+@@ -69,16 +69,23 @@
  #define MT7990_FIRMWARE_DSP		""
  #define MT7990_ROM_PATCH		"mediatek/mt7996/mt7990_rom_patch.bin"
  
@@ -156,7 +156,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  #define MT7990_EEPROM_DEFAULT		"mediatek/mt7996/mt7990_eeprom.bin"
  #define MT7990_EEPROM_DEFAULT_INT	"mediatek/mt7996/mt7990_eeprom_2i5i.bin"
-@@ -149,11 +156,13 @@ enum mt7996_ram_type {
+@@ -153,11 +160,13 @@ enum mt7996_ram_type {
  enum mt7996_var_type {
  	MT7996_VAR_TYPE_444,
  	MT7996_VAR_TYPE_233,
@@ -170,7 +170,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
  
  enum mt7990_var_type {
-@@ -580,6 +589,9 @@ mt7996_band_valid(struct mt7996_dev *dev
+@@ -587,6 +596,9 @@ mt7996_band_valid(struct mt7996_dev *dev
  	if (!is_mt7996(&dev->mt76))
  		return band <= MT_BAND1;
  
@@ -180,7 +180,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	return band <= MT_BAND2;
  }
  
-@@ -657,6 +669,7 @@ int mt7996_init_tx_queues(struct mt7996_
+@@ -664,6 +676,7 @@ int mt7996_init_tx_queues(struct mt7996_
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);
  int mt7996_txbf_init(struct mt7996_dev *dev);

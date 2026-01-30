@@ -208,7 +208,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define RF_PRE_CAL				BIT(29)
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4000,13 +4000,11 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4184,13 +4184,11 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	enum nl80211_chan_width bw = chandef->width;
  	const struct ieee80211_channel *chan_list;
  	u32 cal_id, chan_list_size, base_offset = 0, offs = MT_EE_DO_PRE_CAL;
@@ -224,7 +224,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	switch (band) {
  	case NL80211_BAND_2GHZ:
-@@ -4022,27 +4020,35 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4206,27 +4204,35 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  			return 0;
  		cal_id = RF_DPD_FLAT_CAL;
  		chan_list = dpd_2g_ch_list_bw20;
@@ -266,7 +266,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			return 0;
  		break;
  	case NL80211_BAND_6GHZ:
-@@ -4050,20 +4056,27 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4234,20 +4240,27 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  		cal_id = RF_DPD_FLAT_6G_CAL;
  		chan_list = mphy->sband_6g.sband.channels;
  		chan_list_size = mphy->sband_6g.sband.n_channels;
@@ -299,7 +299,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		} else if (bw > NL80211_CHAN_WIDTH_20) {
  			/* apply (center channel - 2)'s dpd cal data for bw 40/80 channels */
  			channel -= 2;
-@@ -4083,9 +4096,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+@@ -4267,9 +4280,8 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
  	if (idx == chan_list_size)
  		return -EINVAL;
  
@@ -313,7 +313,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -249,6 +249,19 @@ struct mt7996_sta_link {
+@@ -253,6 +253,19 @@ struct mt7996_sta_link {
  	struct rcu_head rcu_head;
  };
  
@@ -333,7 +333,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  struct mt7996_sta {
  	struct mt7996_sta_link deflink; /* must be first */
  	struct mt7996_sta_link __rcu *link[IEEE80211_MLD_MAX_NUM_LINKS];
-@@ -531,6 +544,10 @@ struct mt7996_dev {
+@@ -538,6 +551,10 @@ struct mt7996_dev {
  
  	void *cal;
  	u32 cur_prek_offset;
@@ -344,7 +344,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	struct {
  		u16 table_mask;
-@@ -710,7 +727,6 @@ int mt7996_eeprom_get_target_power(struc
+@@ -717,7 +734,6 @@ int mt7996_eeprom_get_target_power(struc
  				   struct ieee80211_channel *chan);
  s8 mt7996_eeprom_get_power_delta(struct mt7996_dev *dev, int band);
  bool mt7996_eeprom_has_background_radar(struct mt7996_dev *dev);

@@ -27,7 +27,7 @@ scan done and before restore to duty channel.
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -1023,6 +1023,7 @@ int __mt76_set_channel(struct mt76_phy *
+@@ -1029,6 +1029,7 @@ int __mt76_set_channel(struct mt76_phy *
  {
  	struct mt76_dev *dev = phy->dev;
  	int timeout = HZ / 5;
@@ -35,7 +35,7 @@ scan done and before restore to duty channel.
  	int ret;
  
  	set_bit(MT76_RESET, &phy->state);
-@@ -1042,7 +1043,7 @@ int __mt76_set_channel(struct mt76_phy *
+@@ -1048,7 +1049,7 @@ int __mt76_set_channel(struct mt76_phy *
  	if (!offchannel)
  		phy->main_chandef = *chandef;
  

@@ -64,7 +64,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -2205,6 +2205,8 @@ int mt7915_dfs_init_radar_detector(struc
+@@ -2194,6 +2194,8 @@ int mt7915_dfs_init_radar_detector(struc
  	enum mt76_dfs_state dfs_state, prev_state;
  	int err, rdd_idx = mt7915_get_rdd_idx(phy, false);
  
@@ -75,7 +75,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -263,6 +263,8 @@ struct mt7915_phy {
+@@ -265,6 +265,8 @@ struct mt7915_phy {
  	s16 coverage_class;
  	u8 slottime;
  

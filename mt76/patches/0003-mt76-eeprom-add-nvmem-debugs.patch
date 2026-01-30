@@ -1,6 +1,6 @@
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -137,6 +137,8 @@ int mt76_get_of_data_from_nvmem(struct m
+@@ -144,6 +144,8 @@ int mt76_get_of_data_from_nvmem(struct m
  
  	memcpy(eep, data, len);
  

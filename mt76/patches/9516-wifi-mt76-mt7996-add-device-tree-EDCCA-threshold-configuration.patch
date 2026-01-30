@@ -19,7 +19,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -614,6 +614,60 @@ s8 mt76_mt7996_get_rate_power_limits(str
+@@ -676,6 +676,60 @@ s8 mt76_mt7996_get_rate_power_limits(str
  }
  EXPORT_SYMBOL_GPL(mt76_mt7996_get_rate_power_limits);
  
@@ -94,7 +94,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -2055,6 +2060,9 @@ s8 mt76_mt7996_get_rate_power_limits(str
+@@ -2066,6 +2071,9 @@ s8 mt76_mt7996_get_rate_power_limits(str
  			      struct mt76_power_limits *dest,
  			      struct mt76_mt7996_power_path_limits *dest_path,
  			      s8 target_power);
@@ -106,7 +106,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -391,6 +391,55 @@ void mt7996_init_txpower(struct mt7996_p
+@@ -405,6 +405,55 @@ void mt7996_init_txpower(struct mt7996_p
  		__mt7996_init_txpower(phy, &phy->mt76->sband_6g.sband);
  }
  
@@ -162,7 +162,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
  mt7996_regd_notifier(struct wiphy *wiphy,
  		     struct regulatory_request *request)
-@@ -407,6 +456,7 @@ mt7996_regd_notifier(struct wiphy *wiphy
+@@ -421,6 +470,7 @@ mt7996_regd_notifier(struct wiphy *wiphy
  			mt7996_mcu_rdd_background_enable(phy, NULL);
  
  		mt7996_init_txpower(phy);
@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2185,8 +2185,10 @@ mt7996_mac_restart(struct mt7996_dev *de
+@@ -2147,8 +2147,10 @@ mt7996_mac_restart(struct mt7996_dev *de
  		goto out;
  
  	mt7996_mac_init(dev);
@@ -186,7 +186,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		goto out;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -610,6 +610,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -626,6 +626,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
@@ -198,7 +198,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -761,6 +761,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -768,6 +768,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);

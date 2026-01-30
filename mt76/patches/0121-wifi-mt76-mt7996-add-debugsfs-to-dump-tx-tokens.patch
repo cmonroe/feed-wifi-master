@@ -12,7 +12,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -480,6 +480,8 @@ struct mt7996_dev {
+@@ -487,6 +487,8 @@ struct mt7996_dev {
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
  

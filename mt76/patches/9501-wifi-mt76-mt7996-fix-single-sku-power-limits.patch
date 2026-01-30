@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -501,6 +501,119 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -566,6 +566,116 @@ s8 mt76_get_rate_power_limits(struct mt7
  }
  EXPORT_SYMBOL_GPL(mt76_get_rate_power_limits);
  
@@ -40,17 +40,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	struct device_node *np;
 +	const s8 *val;
 +	char name[16];
-+	u32 mcs_rates = dev->drv->mcs_rates;
 +	char band;
 +	size_t len;
 +	s8 max_power = -127;
-+	s8 max_power_backoff = -127;
 +	s8 txs_delta;
 +	int n_chains = hweight16(phy->chainmask);
-+	s8 target_power_combine = target_power + mt76_tx_power_path_delta(n_chains);
-+
-+	if (!mcs_rates)
-+		mcs_rates = 12;
 +
 +	memset(dest, target_power, sizeof(*dest));
 +	if (dest_path != NULL)
@@ -89,55 +83,58 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	txs_delta = mt76_get_txs_delta(np, hweight16(phy->chainmask));
 +
 +	val = mt76_get_of_array_s8(np, "rates-cck", &len, ARRAY_SIZE(dest->cck));
-+	mt76_apply_array_limit(dest->cck, ARRAY_SIZE(dest->cck), val,
-+			       target_power, txs_delta, &max_power);
++	mt76_apply_array_limit(dev, dest->cck, ARRAY_SIZE(dest->cck), val,
++			       target_power, txs_delta, &max_power, n_chains, MT76_SKU_RATE);
 +
-+	val = mt76_get_of_array_s8(np, "rates-ofdm",
-+				&len, ARRAY_SIZE(dest->ofdm));
-+	mt76_apply_array_limit(dest->ofdm, ARRAY_SIZE(dest->ofdm), val,
-+			       target_power, txs_delta, &max_power);
++	val = mt76_get_of_array_s8(np, "rates-ofdm", &len, ARRAY_SIZE(dest->ofdm));
++	mt76_apply_array_limit(dev, dest->ofdm, ARRAY_SIZE(dest->ofdm), val,
++			       target_power, txs_delta, &max_power, n_chains, MT76_SKU_RATE);
 +
-+	val = mt76_get_of_array_s8(np, "rates-mcs", &len, mcs_rates + 1);
-+	mt76_apply_multi_array_limit(dest->mcs[0], ARRAY_SIZE(dest->mcs[0]),
-+				     ARRAY_SIZE(dest->mcs), val, len,
-+				     target_power, txs_delta, &max_power);
++	val = mt76_get_of_array_s8(np, "rates-mcs", &len,
++				   ARRAY_SIZE(dest->mcs[0]) + 1);
++	mt76_apply_multi_array_limit(dev, dest->mcs[0], ARRAY_SIZE(dest->mcs[0]),
++				     ARRAY_SIZE(dest->mcs), val, len, target_power,
++				     txs_delta, &max_power, n_chains, MT76_SKU_RATE);
 +
-+	val = mt76_get_of_array_s8(np, "rates-ru", &len, ARRAY_SIZE(dest->ru[0]) + 1);
-+	mt76_apply_multi_array_limit(dest->ru[0], ARRAY_SIZE(dest->ru[0]),
-+				     ARRAY_SIZE(dest->ru), val, len,
-+				     target_power, txs_delta, &max_power);
++	val = mt76_get_of_array_s8(np, "rates-ru", &len,
++				   ARRAY_SIZE(dest->ru[0]) + 1);
++	mt76_apply_multi_array_limit(dev, dest->ru[0], ARRAY_SIZE(dest->ru[0]),
++				     ARRAY_SIZE(dest->ru), val, len, target_power,
++				     txs_delta, &max_power, n_chains, MT76_SKU_RATE);
 +
-+	val = mt76_get_of_array_s8(np, "rates-eht", &len, ARRAY_SIZE(dest->eht[0]) + 1);
-+	mt76_apply_multi_array_limit(dest->eht[0], ARRAY_SIZE(dest->eht[0]),
-+				     ARRAY_SIZE(dest->eht), val, len,
-+				     target_power, txs_delta, &max_power);
++	val = mt76_get_of_array_s8(np, "rates-eht", &len,
++				   ARRAY_SIZE(dest->eht[0]) + 1);
++	mt76_apply_multi_array_limit(dev, dest->eht[0], ARRAY_SIZE(dest->eht[0]),
++				     ARRAY_SIZE(dest->eht), val, len, target_power,
++				     txs_delta, &max_power, n_chains, MT76_SKU_RATE);
 +
-+	if (dest_path == NULL)
-+		return max_power;
++	val = mt76_get_of_array_s8(np, "paths-cck", &len,
++				   ARRAY_SIZE(dest_path->cck));
++	mt76_apply_array_limit(dev, dest_path->cck, ARRAY_SIZE(dest_path->cck), val,
++			       target_power, txs_delta, &max_power, n_chains, MT76_SKU_BACKOFF);
 +
-+	max_power_backoff = max_power;
++	val = mt76_get_of_array_s8(np, "paths-ofdm", &len,
++				   ARRAY_SIZE(dest_path->ofdm));
++	mt76_apply_array_limit(dev, dest_path->ofdm, ARRAY_SIZE(dest_path->ofdm), val,
++			       target_power, txs_delta, &max_power, n_chains, MT76_SKU_BACKOFF);
 +
-+	val = mt76_get_of_array_s8(np, "paths-cck", &len, ARRAY_SIZE(dest_path->cck));
-+	mt76_apply_array_limit(dest_path->cck, ARRAY_SIZE(dest_path->cck), val,
-+			       target_power_combine, txs_delta, &max_power_backoff);
++	val = mt76_get_of_array_s8(np, "paths-ofdm-bf", &len,
++				   ARRAY_SIZE(dest_path->ofdm_bf));
++	mt76_apply_array_limit(dev, dest_path->ofdm_bf, ARRAY_SIZE(dest_path->ofdm_bf), val,
++			       target_power, txs_delta, &max_power, n_chains,
++			       MT76_SKU_BACKOFF_BF_OFFSET);
 +
-+	val = mt76_get_of_array_s8(np, "paths-ofdm", &len, ARRAY_SIZE(dest_path->ofdm));
-+	mt76_apply_array_limit(dest_path->ofdm, ARRAY_SIZE(dest_path->ofdm), val,
-+			       target_power_combine, txs_delta, &max_power_backoff);
++	val = mt76_get_of_array_s8(np, "paths-ru", &len,
++				   ARRAY_SIZE(dest_path->ru[0]) + 1);
++	mt76_apply_multi_array_limit(dev, dest_path->ru[0], ARRAY_SIZE(dest_path->ru[0]),
++				     ARRAY_SIZE(dest_path->ru), val, len, target_power,
++				     txs_delta, &max_power, n_chains, MT76_SKU_BACKOFF);
 +
-+	val = mt76_get_of_array_s8(np, "paths-ofdm-bf", &len, ARRAY_SIZE(dest_path->ofdm_bf));
-+	mt76_apply_array_limit(dest_path->ofdm_bf, ARRAY_SIZE(dest_path->ofdm_bf), val,
-+			       target_power_combine, txs_delta, &max_power_backoff);
-+
-+	val = mt76_get_of_array_s8(np, "paths-ru", &len, ARRAY_SIZE(dest_path->ru[0]) + 1);
-+	mt76_apply_multi_array_limit(dest_path->ru[0], ARRAY_SIZE(dest_path->ru[0]),
-+				     ARRAY_SIZE(dest_path->ru), val, len,
-+				     target_power_combine, txs_delta, &max_power_backoff);
-+
-+	val = mt76_get_of_array_s8(np, "paths-ru-bf", &len, ARRAY_SIZE(dest_path->ru_bf[0]) + 1);
-+	mt76_apply_multi_array_limit(dest_path->ru_bf[0], ARRAY_SIZE(dest_path->ru_bf[0]),
-+				     ARRAY_SIZE(dest_path->ru_bf), val, len,
-+				     target_power_combine, txs_delta, &max_power_backoff);
++	val = mt76_get_of_array_s8(np, "paths-ru-bf", &len,
++				   ARRAY_SIZE(dest_path->ru_bf[0]) + 1);
++	mt76_apply_multi_array_limit(dev, dest_path->ru_bf[0], ARRAY_SIZE(dest_path->ru_bf[0]),
++				     ARRAY_SIZE(dest_path->ru_bf), val, len, target_power,
++				     txs_delta, &max_power, n_chains, MT76_SKU_BACKOFF);
 +
 +	return max_power;
 +}
@@ -163,7 +160,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -2042,6 +2050,12 @@ static inline bool mt76_queue_is_rx(stru
+@@ -2053,6 +2061,12 @@ static inline bool mt76_queue_is_rx(stru
  	return false;
  }
  
@@ -178,7 +175,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return (q->flags & MT_QFLAG_WED) &&
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -988,9 +988,34 @@ enum {
+@@ -1007,9 +1007,34 @@ enum {
  	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
  };
  
@@ -218,7 +215,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5397,7 +5397,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -5609,7 +5609,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  static bool mt7996_is_psd_country(char *country)
  {
@@ -227,7 +224,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -5433,14 +5433,14 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5645,14 +5645,14 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.band_idx = phy->mt76->band_idx,
  	};
  	struct mt76_power_limits la = {};
@@ -244,7 +241,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  							   &la, &la_path, txpower_limit);
  		mt7996_update_max_txpower_cur(phy, txpower_limit);
  	} else {
-@@ -5461,7 +5461,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5673,7 +5673,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	 * driver doesn't need to do it
  	 */
  	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
@@ -253,7 +250,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la.eht[3], sizeof(la.ofdm));
-@@ -5587,10 +5587,13 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -5799,10 +5799,13 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.band_idx = phy->mt76->band_idx,
  		.tag = cpu_to_le16(UNI_BAND_CONFIG_LPI_CTRL),
  		.len = cpu_to_le16(sizeof(req) - 4),
@@ -270,7 +267,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -348,23 +348,23 @@ static void __mt7996_init_txpower(struct
+@@ -362,23 +362,23 @@ static void __mt7996_init_txpower(struct
  	int path_delta = mt76_tx_power_path_delta(n_chains);
  	int pwr_delta = mt7996_eeprom_get_power_delta(dev, sband->band);
  	struct mt76_power_limits limits;

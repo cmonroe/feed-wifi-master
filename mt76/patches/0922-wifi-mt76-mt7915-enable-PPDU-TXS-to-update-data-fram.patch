@@ -83,7 +83,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -740,17 +740,6 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -727,17 +727,6 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	if (!wcid)
  		wcid = &dev->mt76.global_wcid;
  
@@ -101,7 +101,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
  	t->wcid = wcid->idx;
-@@ -1011,7 +1000,7 @@ static void mt7915_mac_add_txs(struct mt
+@@ -998,7 +987,7 @@ static void mt7915_mac_add_txs(struct mt
  	msta = container_of(wcid, struct mt7915_sta, wcid);
  
  	if (le32_get_bits(txs_data[0], MT_TXS0_TXS_FORMAT) == MT_TXS_PPDU_FMT)
@@ -112,7 +112,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -145,7 +145,6 @@ struct mt7915_sta {
+@@ -147,7 +147,6 @@ struct mt7915_sta {
  	struct ewma_avg_signal avg_ack_signal;
  
  	unsigned long changed;
@@ -136,7 +136,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		return MT_PACKET_ID_NO_SKB;
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -788,7 +788,6 @@ int mt7915_mac_sta_add(struct mt76_dev *
+@@ -790,7 +790,6 @@ int mt7915_mac_sta_add(struct mt76_dev *
  	msta->wcid.sta_disabled = 1;
  	msta->wcid.idx = idx;
  	msta->wcid.phy_idx = ext_phy;
