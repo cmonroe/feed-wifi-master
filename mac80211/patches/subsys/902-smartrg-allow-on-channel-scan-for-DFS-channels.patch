@@ -1,0 +1,39 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 02 Feb 2026 10:06:14 -0800
+Subject: [PATCH] mac80211: allow on-channel scan for DFS channels
+
+On-channel scans don't require leaving the channel, so DFS radar
+restrictions should not apply.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/mac80211/chan.c |    4 ++++
+ net/mac80211/scan.c |    5 +++--
+ 2 files changed, 7 insertions(+), 2 deletions(-)
+
+--- a/net/mac80211/chan.c
++++ b/net/mac80211/chan.c
+@@ -663,6 +663,9 @@ bool ieee80211_is_radar_required(struct
+ 			continue;
+ 
+ 		chan = link->conf->chanreq.oper.chan;
++
++		if (req->n_channels == 1 && req->channels[0] == chan)
++			continue;
+ 		radio_idx = cfg80211_get_radio_idx_by_chan(wiphy, chan);
+ 
+ 		if (ieee80211_is_radio_idx_in_scan_req(wiphy, req,
+--- a/net/mac80211/scan.c
++++ b/net/mac80211/scan.c
+@@ -1274,8 +1274,9 @@ int ieee80211_request_ibss_scan(struct i
+ 				struct ieee80211_channel *tmp_ch =
+ 				    &local->hw.wiphy->bands[band]->channels[i];
+ 
+-				if (tmp_ch->flags & (IEEE80211_CHAN_NO_IR |
+-						     IEEE80211_CHAN_DISABLED) ||
++				if ((tmp_ch->flags & (IEEE80211_CHAN_NO_IR |
++						      IEEE80211_CHAN_DISABLED) &&
++				     tmp_ch != local->hw.conf.chandef.chan) ||
+ 				    !cfg80211_wdev_channel_allowed(&sdata->wdev,
+ 								   tmp_ch))
+ 					continue;
