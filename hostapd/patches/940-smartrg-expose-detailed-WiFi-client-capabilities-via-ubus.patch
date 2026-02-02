@@ -1,15 +1,35 @@
+From: Gaylon Buckelew <gaylon.buckelew@adtran.com>
+Date: Fri, 29 Sep 2023 00:00:00 +0000
+Subject: [PATCH] hostapd: expose detailed WiFi client capabilities via ubus
+
+Extend the ubus interface to report comprehensive client capabilities
+including HT, VHT, HE, and EHT parameters. Adds get_client_caps method
+for capabilities-only queries and vendor IE collection.
+
+Co-developed-by: Vitali Klotschko <vitali.klotschko@adtran.com>
+Signed-off-by: Vitali Klotschko <vitali.klotschko@adtran.com>
+Co-developed-by: Matthew Cather <matthew.cather@adtran.com>
+Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
+Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
+---
+ src/ap/ieee802_11.c            |    4 
+ src/ap/ieee802_11_eht.c        |    3 
+ src/ap/sta_info.c              |    1 
+ src/ap/sta_info.h              |    2 
+ src/ap/ubus.c                  |  714 +++++++++++++++++++++++++++++--
+ src/common/ieee802_11_common.c |   27 +
+ src/common/ieee802_11_common.h |    1 
+ 7 files changed, 710 insertions(+), 42 deletions(-)
+
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4811,6 +4811,13 @@ skip_wpa_ies:
+@@ -4811,6 +4811,10 @@ skip_wpa_ies:
  		hostapd_wfa_capab(hapd, sta, elems->wfa_capab,
  				  elems->wfa_capab + elems->wfa_capab_len);
  
 +	wpabuf_free(sta->vendors_ie);
-+	if (ies && ies_len) {
-+		sta->vendors_ie = ieee802_11_all_vendor_ie_concat(ies, ies_len);
-+	} else {
-+		sta->vendors_ie = 0;
-+	}
++	sta->vendors_ie = (ies && ies_len) ?
++		ieee802_11_all_vendor_ie_concat(ies, ies_len) : NULL;
 +
  	return WLAN_STATUS_SUCCESS;
  }
@@ -43,27 +63,27 @@
  
 +struct wpabuf * ieee802_11_all_vendor_ie_concat(const u8 *ies, size_t ies_len)
 +{
-+	struct wpabuf *buf = 0;
++	struct wpabuf *buf;
 +	const struct element *elem;
-+	size_t e_len = 0;
++	size_t total_len = 0;
 +
 +	for_each_element_id(elem, WLAN_EID_VENDOR_SPECIFIC, ies, ies_len) {
-+		if (elem->datalen >= 4) {
-+			e_len += elem->datalen + 2;
-+		}
++		if (elem->datalen >= 4)
++			total_len += elem->datalen + 2;
 +	}
 +
-+	if (e_len > 0 && (buf = wpabuf_alloc(e_len)) != NULL) {
-+		/*
-+		* There may be multiple vendor IEs in the message, so need to
-+		* concatenate their data fields.
-+		*/
-+		for_each_element_id(elem, WLAN_EID_VENDOR_SPECIFIC, ies, ies_len) {
-+			if (elem->datalen >= 4)	{
-+				wpabuf_put_data(buf, &elem->id, elem->datalen + 2);
-+			}
-+		}
++	if (total_len == 0)
++		return NULL;
++
++	buf = wpabuf_alloc(total_len);
++	if (!buf)
++		return NULL;
++
++	for_each_element_id(elem, WLAN_EID_VENDOR_SPECIFIC, ies, ies_len) {
++		if (elem->datalen >= 4)
++			wpabuf_put_data(buf, &elem->id, elem->datalen + 2);
 +	}
++
 +	return buf;
 +}
 +
@@ -83,41 +103,59 @@
  
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -24,6 +24,9 @@
+@@ -11,6 +11,7 @@
+ #include "utils/eloop.h"
+ #include "utils/wpabuf.h"
+ #include "common/ieee802_11_defs.h"
++#include "common/ieee802_11_common.h"
+ #include "common/hw_features_common.h"
+ #include "hostapd.h"
+ #include "neighbor_db.h"
+@@ -24,6 +25,19 @@
  #include "taxonomy.h"
  #include "airtime_policy.h"
  #include "hw_features.h"
-+#include <stdlib.h>     /* qsort */
++#include <stdlib.h>
++
++#define MCS_NSS_MAP_BASE		7
++#define MCS_NSS_NOT_SUPPORTED		(-1)
++#define HT_MCS_32			32
++#define HT_MAX_SPATIAL_STREAMS		4
++#define HT_TX_MCS_SET_DEFINED_BIT	96
++#define HT_TX_RX_MCS_NOT_EQUAL_BIT	97
++#define HT_TX_MAX_NSS_BIT		98
++#define HT_TX_UEQM_BIT			100
++#define VHT_CAP_EXTENDED_NSS_BW_SHIFT	30
 +
 +u16 smartrg_eht_ppet_size(u16 ppe_thres_hdr, const u8 *phy_cap_info);
  
  static struct ubus_context *ctx;
  static struct blob_buf b;
-@@ -168,7 +171,7 @@ hostapd_bss_reload(struct ubus_context *
+@@ -168,77 +182,650 @@ hostapd_bss_reload(struct ubus_context *
  
  
  static void
 -hostapd_parse_vht_map_blobmsg(uint16_t map)
-+hostapd_parse_map_blobmsg(uint16_t map, u32 flags)
++mcs_nss_map_add(uint16_t map, u32 flags)
  {
- 	char label[4];
- 	int16_t val;
-@@ -177,14 +180,33 @@ hostapd_parse_vht_map_blobmsg(uint16_t m
- 	for (i = 0; i < 8; i++) {
- 		snprintf(label, 4, "%dss", i + 1);
+-	char label[4];
+-	int16_t val;
+-	int i;
++	bool is_vht = (flags & WLAN_STA_VHT) != 0;
++	int mult = is_vht ? 1 : 2;
++	int16_t unsupported_val = 3 * mult + MCS_NSS_MAP_BASE;
+ 
+-	for (i = 0; i < 8; i++) {
+-		snprintf(label, 4, "%dss", i + 1);
++	for (int i = 0; i < VHT_RX_NSS_MAX_STREAMS; i++, map >>= 2) {
++		char label[4];
++		int16_t val = (map & 0x3) * mult + MCS_NSS_MAP_BASE;
  
 -		val = (map & (BIT(1) | BIT(0))) + 7;
 -		blobmsg_add_u16(&b, label, val == 10 ? -1 : val);
 -		map = map >> 2;
-+		if (flags & WLAN_STA_VHT) {
-+			val = (map & (BIT(1) | BIT(0))) + 7;
-+			blobmsg_add_u16(&b, label, val == 10 ? -1 : val);
-+			map = map >> 2;
-+		} else if (flags & WLAN_STA_HE) {
-+			val = (map & (BIT(1) | BIT(0))) * 2 + 7;
-+			blobmsg_add_u16(&b, label, val == 13 ? -1 : val);
-+			map = map >> 2;
-+		}
++		snprintf(label, sizeof(label), "%dss", i + 1);
++		blobmsg_add_u16(&b, label, val == unsupported_val ? MCS_NSS_NOT_SUPPORTED : val);
  	}
  }
  
@@ -136,14 +174,17 @@
 +
  static void
 -hostapd_parse_vht_capab_blobmsg(struct ieee80211_vht_capabilities *vhtc)
-+hostapd_parse_vht_capab_blobmsg(struct ieee80211_vht_capabilities *vhtc, bool filter_false)
++vht_capab_add(struct ieee80211_vht_capabilities *vhtc, bool filter_false)
  {
- 	void *supported_mcs;
- 	void *map;
-@@ -194,31 +216,569 @@ hostapd_parse_vht_capab_blobmsg(struct i
+-	void *supported_mcs;
+-	void *map;
+-	int i;
+-
+ 	static const struct {
  		const char *name;
  		uint32_t flag;
- 	} vht_capas[] = {
+-	} vht_capas[] = {
++	} flags[] = {
 +		{ "rx_ldpc", VHT_CAP_RXLDPC },
 +		{ "short_gi_80MHz_tvht_mode_4c", VHT_CAP_SHORT_GI_80 },
 +		{ "short_gi_160_80_80MHz", VHT_CAP_SHORT_GI_160 },
@@ -164,159 +205,135 @@
 +		const char *name;
 +		uint32_t mask;
 +		uint32_t shift;
-+	} vht_capas_value[] = {
++	} values[] = {
 +		{ "max_mpdu_length", VHT_CAP_MAX_MPDU_LENGTH_MASK, 0 },
 +		{ "channel_width_set", VHT_OPMODE_CHANNEL_WIDTH_MASK, VHT_CAP_SUPP_CHAN_WIDTH_MASK_SHIFT },
 +		{ "rx_stbc", VHT_CAP_RXSTBC_MASK, VHT_CAP_RXSTBC_MASK_SHIFT },
 +		{ "beamformee_sts_max", VHT_CAP_BEAMFORMEE_STS_MAX, VHT_CAP_BEAMFORMEE_STS_MAX_SHIFT },
 +		{ "sounding_dimension_max", VHT_CAP_SOUNDING_DIMENSION_MAX, VHT_CAP_SOUNDING_DIMENSION_MAX_SHIFT },
 +		{ "max_a_mpdu_length_exponent", VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX, VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX_SHIFT },
-+		{ "extended_nss_bw", ((u8) BIT(30) | BIT(31)), 30 },
- 	};
- 
- 	for (i = 0; i < ARRAY_SIZE(vht_capas); i++)
--		blobmsg_add_u8(&b, vht_capas[i].name,
--				!!(vhtc->vht_capabilities_info & vht_capas[i].flag));
-+	{
-+		uint8_t flag_val = !!(vhtc->vht_capabilities_info & vht_capas[i].flag);
-+		if (!filter_false || flag_val)
-+		{
-+			blobmsg_add_u8(&b, vht_capas[i].name, flag_val);
-+		}
++		{ "extended_nss_bw", VHT_CAP_EXTENDED_NSS_BW_SUPPORT_MASK, VHT_CAP_EXTENDED_NSS_BW_SHIFT },
++	};
++
++	uint32_t cap_info = vhtc->vht_capabilities_info;
++	void *mcs_table, *map;
++
++	for (int i = 0; i < ARRAY_SIZE(flags); i++) {
++		uint8_t val = !!(cap_info & flags[i].flag);
++		if (filter_false && !val)
++			continue;
++		blobmsg_add_u8(&b, flags[i].name, val);
 +	}
 +
-+	for (i = 0; i < ARRAY_SIZE(vht_capas_value); i++)
-+	{
-+		uint16_t value = (vhtc->vht_capabilities_info & vht_capas_value[i].mask) >> vht_capas_value[i].shift;
-+		blobmsg_add_u32(&b, vht_capas_value[i].name, value);
++	for (int i = 0; i < ARRAY_SIZE(values); i++) {
++		uint16_t val = (cap_info & values[i].mask) >> values[i].shift;
++		blobmsg_add_u32(&b, values[i].name, val);
 +	}
 +
-+	supported_mcs = blobmsg_open_table(&b, "mcs_map");
++	mcs_table = blobmsg_open_table(&b, "mcs_map");
 +
-+	/* RX map */
 +	map = blobmsg_open_table(&b, "rx");
-+	hostapd_parse_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map), WLAN_STA_VHT);
++	mcs_nss_map_add(le_to_host16(vhtc->vht_supported_mcs_set.rx_map), WLAN_STA_VHT);
 +	blobmsg_close_table(&b, map);
 +
-+	/* TX map */
 +	map = blobmsg_open_table(&b, "tx");
-+	hostapd_parse_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map), WLAN_STA_VHT);
++	mcs_nss_map_add(le_to_host16(vhtc->vht_supported_mcs_set.tx_map), WLAN_STA_VHT);
 +	blobmsg_close_table(&b, map);
 +
-+	blobmsg_close_table(&b, supported_mcs);
++	blobmsg_close_table(&b, mcs_table);
 +}
 +
-+static uint16_t get_value_from_bitfield(uint8_t *databuf, uint8_t bitstart, uint8_t bitcount)
++static uint16_t bitfield_value_get(uint8_t *data, uint8_t bit_start, uint8_t bit_count)
 +{
-+	uint16_t value=0;
-+	uint8_t bitend = bitstart + bitcount - 1;
-+	uint8_t byte = bitend / 8;
-+	uint8_t bit  = 1 << (bitend % 8);
-+	while (bitcount > 0)
-+	{
-+		value = value << 1;
-+		value += (databuf[byte] & bit) ? 1 : 0;
-+		bitcount--;
-+		bit = (bit >> 1) & 0x7f;
-+		if (bit == 0)
-+		{
-+			bit = 0x80;
-+			byte--;
++	uint16_t value = 0;
++	uint8_t bit_end = bit_start + bit_count - 1;
++	uint8_t byte_idx = bit_end / 8;
++	uint8_t bit_mask = 1 << (bit_end % 8);
++
++	while (bit_count--) {
++		value = (value << 1) | !!(data[byte_idx] & bit_mask);
++		bit_mask = (bit_mask >> 1) & 0x7f;
++		if (!bit_mask) {
++			bit_mask = 0x80;
++			byte_idx--;
 +		}
 +	}
 +	return value;
 +}
 +
 +static void
-+hostapd_add_capab_table(const char *table_name, const bitfield_descriptor *capas, const uint8_t capas_len, uint8_t *databuf, bool filter_false)
++capab_table_add(const char *table_name, const bitfield_descriptor *capas,
++		uint8_t capas_len, uint8_t *data, bool filter_false)
 +{
-+	void *new_table;
-+	uint32_t value;
-+	uint8_t byte, bit, bitval;
-+	int i;
++	void *table = table_name ? blobmsg_open_table(&b, table_name) : NULL;
 +
-+	if (table_name) // open new table, if name is not null
-+		new_table = blobmsg_open_table(&b, table_name);
-+
-+	for (i = 0; i < capas_len; i++)
-+	{
-+		if (capas[i].bitcount > 1)
-+		{
-+			value = get_value_from_bitfield(databuf, capas[i].bitstart, capas[i].bitcount);
-+			blobmsg_add_u32(&b, capas[i].name, value);
++	for (int i = 0; i < capas_len; i++) {
++		if (capas[i].bitcount > 1) {
++			uint32_t val = bitfield_value_get(data, capas[i].bitstart, capas[i].bitcount);
++			blobmsg_add_u32(&b, capas[i].name, val);
++			continue;
 +		}
-+		else
-+		{
-+			byte = capas[i].bitstart / 8;
-+			bit  = 1 << (capas[i].bitstart % 8);
 +
-+			bitval = !!(databuf[byte] & bit);
-+			if (!filter_false || bitval)
-+			{
-+				blobmsg_add_u8(&b, capas[i].name, bitval);
-+			}
-+		}
++		uint8_t byte_idx = capas[i].bitstart / 8;
++		uint8_t bit_mask = 1 << (capas[i].bitstart % 8);
++		uint8_t bit_val = !!(data[byte_idx] & bit_mask);
++
++		if (filter_false && !bit_val)
++			continue;
++
++		blobmsg_add_u8(&b, capas[i].name, bit_val);
 +	}
-+	if (table_name)
-+		blobmsg_close_table(&b, new_table);
 +
++	if (table_name)
++		blobmsg_close_table(&b, table);
 +}
 +
 +static void
-+hostapd_parse_ht_map_blob_msg(uint8_t *rx_mcs_bitmask, uint8_t nss, bool ueqm ) {
++ht_mcs_map_add(uint8_t *mcs_bitmask, uint8_t nss, bool ueqm)
++{
 +	static const ht_mcs_t ht_mcs[] = {
-+		// EQM
 +		{ "1ss",  0,  7 },
 +		{ "2ss",  8, 15 },
 +		{ "3ss", 16, 23 },
 +		{ "4ss", 24, 31 },
-+		// UEQM
 +		{ "1ss",  0,  7 },
 +		{ "2ss", 33, 38 },
 +		{ "3ss", 39, 52 },
 +		{ "4ss", 53, 76 },
-+		// MCS 32 format
 +		{ "1ss", 32, 32 }
 +	};
-+	static const uint8_t HT_MCS_RX_1SS = 0;
-+	static const uint8_t HT_MCS_TX_UEQM = 4;
++	int mcs_idx = ueqm ? 4 : 0;
 +
-+	uint8_t ht_mcs_index = HT_MCS_RX_1SS;
-+	int i,j, value;
++	for (int i = 0; i < nss; i++, mcs_idx++) {
++		const ht_mcs_t *mcs = &ht_mcs[mcs_idx];
++		uint8_t byte_idx = mcs->max_mcs / 8;
++		uint8_t bit_mask = 1 << (mcs->max_mcs % 8);
++		int value = -1;
 +
-+	if (ueqm)
-+		ht_mcs_index = HT_MCS_TX_UEQM;
-+	for (i=0; i < nss ; i++) {
-+		value = -1;
-+		// start with max possible MCS bit
-+		uint8_t byte = ht_mcs[ht_mcs_index].max_mcs / 8;
-+		uint8_t bit  = 1 << (ht_mcs[ht_mcs_index].max_mcs % 8);
-+		// go through all bits
-+		for (j=ht_mcs[ht_mcs_index].max_mcs; j >= ht_mcs[ht_mcs_index].min_mcs; j--) {
-+			// if the bit is set, the bit number is the MCS set id
-+			if (rx_mcs_bitmask[byte] & bit)	{
++		for (int j = mcs->max_mcs; j >= mcs->min_mcs; j--) {
++			if (mcs_bitmask[byte_idx] & bit_mask) {
 +				value = j;
 +				break;
 +			}
-+			// go to the lower bit, or change to highest bit in previous byte
-+			bit = ( bit >> 1 ) & 0x7F;
-+			if (bit == 0) {
-+				bit = 0x80;
-+				byte--;
++			bit_mask = (bit_mask >> 1) & 0x7f;
++			if (!bit_mask) {
++				bit_mask = 0x80;
++				byte_idx--;
 +			}
 +		}
-+		if ( ( i == 0) && ( rx_mcs_bitmask[4] & 0x01 ) ) //check if 1ss has MCS 32
-+			value = 32;
-+		blobmsg_add_u16(&b, ht_mcs[ht_mcs_index].name, value);
-+		ht_mcs_index++;
++
++		if (i == 0 && (mcs_bitmask[4] & 0x01))
++			value = HT_MCS_32;
++
++		blobmsg_add_u16(&b, mcs->name, value);
 +	}
 +}
 +
 +static void
-+hostapd_parse_ht_capab_blobmsg(struct ieee80211_ht_capabilities *htc, bool filter_false)
++ht_capab_add(struct ieee80211_ht_capabilities *htc, bool filter_false)
 +{
 +	// HT capabilities fields from IEEE 802.11
-+	// field values are written in JSON by hostapd_add_capab_table()
++	// field values are written in JSON by capab_table_add()
 +	// commented out fields are ignored or processed in this function separately
 +	static const struct bitfield_descriptor ht_capabilities_info[] = {
 +		{ "ldpc_coding", 0, 1 },
@@ -389,72 +406,68 @@
 +		{ "tx_sounding_ppdus", 6, 1 }
 +		// { "reserved", 7, 1 },
 +	};
-+	void *new_table, *map;
-+	int i;
++	void *mcs_table, *map;
 +	char str[32];
-+	bool tx_mcs_set_defined = false, tx_rx_mcs_set_not_equal = false, tx_unequal_modulation = false;
-+	uint8_t tx_max_n_spatial_streams = 0;
++	uint8_t *mcs_set = htc->supported_mcs_set;
++	bool tx_defined = bitfield_value_get(mcs_set, HT_TX_MCS_SET_DEFINED_BIT, 1) != 0;
++	bool tx_rx_not_equal = tx_defined && bitfield_value_get(mcs_set, HT_TX_RX_MCS_NOT_EQUAL_BIT, 1) != 0;
++	bool tx_ueqm = tx_rx_not_equal && bitfield_value_get(mcs_set, HT_TX_UEQM_BIT, 1) != 0;
++	uint8_t tx_nss = tx_rx_not_equal ? bitfield_value_get(mcs_set, HT_TX_MAX_NSS_BIT, 2) : HT_MAX_SPATIAL_STREAMS - 1;
 +
-+	hostapd_add_capab_table("ht_capabilities_info", ht_capabilities_info, ARRAY_SIZE(ht_capabilities_info), (uint8_t *) &htc->ht_capabilities_info, filter_false);
-+	hostapd_add_capab_table("a_mpdu_params", a_mpdu_params, ARRAY_SIZE(a_mpdu_params), &htc->a_mpdu_params, filter_false);
++	capab_table_add("ht_capabilities_info", ht_capabilities_info,
++			ARRAY_SIZE(ht_capabilities_info),
++			(uint8_t *)&htc->ht_capabilities_info, filter_false);
++	capab_table_add("a_mpdu_params", a_mpdu_params,
++			ARRAY_SIZE(a_mpdu_params), &htc->a_mpdu_params, filter_false);
 +
-+	new_table = blobmsg_open_table(&b, "supported_mcs_set");
++	mcs_table = blobmsg_open_table(&b, "supported_mcs_set");
 +
-+	/* 77 first bits (+ 3 reserved bits) */
-+	wpa_snprintf_hex(str, sizeof(str), htc->supported_mcs_set, 10);
++	wpa_snprintf_hex(str, sizeof(str), mcs_set, IEEE80211_HT_MCS_MASK_LEN);
 +	blobmsg_add_string(&b, "rx_mcs_bitmask", str);
 +
-+	// the TX fields are added depending on its values
-+	tx_mcs_set_defined = get_value_from_bitfield(&htc->supported_mcs_set[0], 96, 1) != 0; // { "tx_mcs_set_defined", 96, 1 }
-+	if ( tx_mcs_set_defined ) {
-+		blobmsg_add_u8(&b, "tx_mcs_set_defined", 1 );
-+		tx_rx_mcs_set_not_equal = get_value_from_bitfield(&htc->supported_mcs_set[0], 97, 1) != 0; // { "tx_rx_mcs_set_not_equal", 97, 1 }
-+		if ( tx_rx_mcs_set_not_equal ) {
-+			blobmsg_add_u8(&b, "tx_rx_mcs_set_not_equal", 1 );
-+			tx_max_n_spatial_streams = get_value_from_bitfield(&htc->supported_mcs_set[0], 98, 2); // { "tx_max_n_spatial_streams", 98, 2 }
-+			blobmsg_add_u32(&b, "tx_max_n_spatial_streams", tx_max_n_spatial_streams + 1 );
-+			tx_unequal_modulation = get_value_from_bitfield(&htc->supported_mcs_set[0], 100, 1) != 0; // { "tx_unequal_modulation", 100, 1 }
-+			if ( tx_unequal_modulation ) {
-+				blobmsg_add_u8(&b, "tx_unequal_modulation", 1 );
-+			}
-+		} else {
-+			tx_max_n_spatial_streams = 3; // to generate TX table later
++	if (tx_defined) {
++		blobmsg_add_u8(&b, "tx_mcs_set_defined", 1);
++		if (tx_rx_not_equal) {
++			blobmsg_add_u8(&b, "tx_rx_mcs_set_not_equal", 1);
++			blobmsg_add_u32(&b, "tx_max_n_spatial_streams", tx_nss + 1);
++			if (tx_ueqm)
++				blobmsg_add_u8(&b, "tx_unequal_modulation", 1);
 +		}
 +	}
-+	// add MCS sets based on rx_mcs_bitmask
++
 +	map = blobmsg_open_table(&b, "rx");
-+	hostapd_parse_ht_map_blob_msg(  &htc->supported_mcs_set[0], 4, false); // add RX MCS sets ( 4 sets, ueqm=false )
++	ht_mcs_map_add(mcs_set, HT_MAX_SPATIAL_STREAMS, false);
 +	blobmsg_close_table(&b, map);
 +
-+	if (tx_mcs_set_defined) {
++	if (tx_defined) {
 +		map = blobmsg_open_table(&b, "tx");
-+		if (tx_rx_mcs_set_not_equal)
-+			hostapd_parse_ht_map_blob_msg(  &htc->supported_mcs_set[0], tx_max_n_spatial_streams+1, tx_unequal_modulation); // add TX MCS sets
-+		else
-+			hostapd_parse_ht_map_blob_msg(  &htc->supported_mcs_set[0], 4, false); // add TX MCS sets, which are equal to RX MCS sets
++		ht_mcs_map_add(mcs_set, tx_nss + 1, tx_ueqm);
 +		blobmsg_close_table(&b, map);
 +	}
 +
-+	// add fields from supported_mcs_set[] into existing table
-+	hostapd_add_capab_table( 0, supported_mcs_set, ARRAY_SIZE(supported_mcs_set), &htc->supported_mcs_set[0], filter_false);
++	capab_table_add(NULL, supported_mcs_set, ARRAY_SIZE(supported_mcs_set),
++			mcs_set, filter_false);
++	blobmsg_close_table(&b, mcs_table);
 +
-+	blobmsg_close_table(&b, new_table);
-+
-+	hostapd_add_capab_table("ht_extended_capabilities", ht_ext_capabilities, ARRAY_SIZE(ht_ext_capabilities), (uint8_t *) &htc->ht_extended_capabilities, filter_false);
-+	hostapd_add_capab_table("tx_bf_capability_info", tx_bf_capability_info, ARRAY_SIZE(tx_bf_capability_info), (uint8_t *) &htc->tx_bf_capability_info, filter_false);
-+	hostapd_add_capab_table("asel_capabilities", asel_capabilities, ARRAY_SIZE(asel_capabilities), &htc->asel_capabilities, filter_false);
++	capab_table_add("ht_extended_capabilities", ht_ext_capabilities,
++			ARRAY_SIZE(ht_ext_capabilities),
++			(uint8_t *)&htc->ht_extended_capabilities, filter_false);
++	capab_table_add("tx_bf_capability_info", tx_bf_capability_info,
++			ARRAY_SIZE(tx_bf_capability_info),
++			(uint8_t *)&htc->tx_bf_capability_info, filter_false);
++	capab_table_add("asel_capabilities", asel_capabilities,
++			ARRAY_SIZE(asel_capabilities),
++			&htc->asel_capabilities, filter_false);
 +}
 +
 +static void
-+hostapd_parse_eht_capab_blobmsg(struct ieee80211_eht_capabilities *ehtc, struct ieee80211_he_capabilities *hec, int freq, bool filter_false)
++eht_capab_add(struct ieee80211_eht_capabilities *ehtc,
++	      struct ieee80211_he_capabilities *hec, int freq, bool filter_false)
 +{
-+	void *new_table;
++	void *mcs_table;
 +	u8 *ptr;
-+	char str[2 + EHT_PPE_THRESH_CAPAB_LEN + 1]; // 0x + EHT_PPE_THRESH_CAPAB_LEN + \0
++	char str[2 + EHT_PPE_THRESH_CAPAB_LEN + 1];
 +
-+	// EHT capabilities fields from IEEE P802.11be™/D6.0, May 2024
-+	// field values are written in JSON by hostapd_add_capab_table()
-+	// commented out fields are ignored or processed in this function separately
 +	static const struct bitfield_descriptor mac_capas[] = {
 +		{ "epcs_priority_access", 0, 1 },
 +		{ "eht_om_control", 1, 1 },
@@ -520,67 +533,72 @@
 +		{ "20mhz-only_mu_beamforming", 67, 1 },
 +		{ "20mhz-only_mru_support", 68, 1 }
 +		// { "reserved", 69, 3 }
-+	};
-+
-+	hostapd_add_capab_table("mac_capabilities", mac_capas, ARRAY_SIZE(mac_capas), (uint8_t *) &ehtc->mac_cap, filter_false);
-+	hostapd_add_capab_table("phy_capabilities", phy_capas, ARRAY_SIZE(phy_capas), (uint8_t *) &ehtc->phy_cap, filter_false);
+ 	};
+ 
+-	for (i = 0; i < ARRAY_SIZE(vht_capas); i++)
+-		blobmsg_add_u8(&b, vht_capas[i].name,
+-				!!(vhtc->vht_capabilities_info & vht_capas[i].flag));
++	u8 *he_phy = hec->he_phy_capab_info;
++	u16 ppet_size;
+ 
+-	supported_mcs = blobmsg_open_table(&b, "mcs_map");
++	capab_table_add("mac_capabilities", mac_capas, ARRAY_SIZE(mac_capas),
++			(uint8_t *)&ehtc->mac_cap, filter_false);
++	capab_table_add("phy_capabilities", phy_capas, ARRAY_SIZE(phy_capas),
++			(uint8_t *)&ehtc->phy_cap, filter_false);
 +
 +	ptr = ehtc->optional;
 +	strcpy(str, "0x");
-+	new_table = blobmsg_open_table(&b, "supported_mcs_set");
-+	// he_phy_capab_info[0]: bit0 -reserved, bits1-7 - channel_width_set
-+	// Based off of 'Table 35-7—Indication of supported channel widths by an EHT STA'
-+	if (freq < 4000 ) { // 2.4 Ghz
-+		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 1, 1) == 0)  { // HE PHY "channel_width_set" B0=0 means 20 MHz only
-+			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 4);
-+			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
-+			ptr += 4;
-+		}
-+		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 1, 1) != 0)  { // HE PHY "channel_width_set" B0=1 means <=80 MHz
-+			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 3);
-+			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
-+			ptr += 3;
-+		}
-+	} else { // 5 or 6 Ghz
-+		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 1, 3) == 0)  { // HE PHY "channel_width_set" B0+B1+B2=0 means 20 MHz only
-+			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 4);
-+			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
-+			ptr += 4;
-+		}
-+		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 2, 1) != 0)  { // HE PHY "channel_width_set" B1=1 means <=80 MHz
-+			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 3);
-+			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
-+			ptr += 3;
-+		}
-+		if (get_value_from_bitfield(&hec->he_phy_capab_info[0], 3, 1) != 0)  { // HE PHY "channel_width_set" B2=1 means 160 MHz
-+			wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 3);
-+			blobmsg_add_string(&b, "eht-mcs_map_160mhz", str);
-+			ptr += 3;
-+		}
-+	}
-+	if (get_value_from_bitfield(&ehtc->phy_cap[0], 1, 1) != 0)  { // EHT PHY { "320mhz_in_6ghz", 1, 1 },
-+		wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, 3);
-+		blobmsg_add_string(&b, "eht-mcs_map_320mhz", str);
-+		ptr += 3;
-+	}
-+	blobmsg_close_table(&b, new_table);
++	mcs_table = blobmsg_open_table(&b, "supported_mcs_set");
 +
-+	// add EHT PPE thresholds
-+	u16 ppet_size = smartrg_eht_ppet_size(*(u16*)ptr, &(ehtc->phy_cap[0]));
-+	if (ppet_size != 0) {
-+		wpa_snprintf_hex(str+2, sizeof(str)-2, ptr, ppet_size);
++	if (!IS_5GHZ(freq)) {
++		bool wide_bw = bitfield_value_get(he_phy, 1, 1) != 0;
++		if (wide_bw) {
++			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
++			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
++			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
++		} else {
++			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
++			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
++			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY;
++		}
++	} else {
++		if (bitfield_value_get(he_phy, 1, 3) == 0) {
++			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
++			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
++			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY;
++		}
++		if (bitfield_value_get(he_phy, 2, 1)) {
++			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
++			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
++			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
++		}
++		if (bitfield_value_get(he_phy, 3, 1)) {
++			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
++			blobmsg_add_string(&b, "eht-mcs_map_160mhz", str);
++			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
++		}
++	}
++
++	if (bitfield_value_get(ehtc->phy_cap, 1, 1)) {
++		wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
++		blobmsg_add_string(&b, "eht-mcs_map_320mhz", str);
++		ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
++	}
++	blobmsg_close_table(&b, mcs_table);
++
++	ppet_size = smartrg_eht_ppet_size(*(u16 *)ptr, ehtc->phy_cap);
++	if (ppet_size) {
++		wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, ppet_size);
 +		blobmsg_add_string(&b, "eht_ppe_thresholds", str);
 +	}
 +}
 +
 +static void
-+hostapd_parse_he_capab_blobmsg(struct ieee80211_he_capabilities *hec, bool filter_false)
++he_capab_add(struct ieee80211_he_capabilities *hec, bool filter_false)
 +{
-+	void *supported_mcs;
-+	void *map;
-+	int i;
++	void *mcs_table, *map;
 +
-+	// HE capabilities fields from IEEE 802.11ax-2021
 +	static const struct bitfield_descriptor mac_capas[] = {
 +		{ "htc_he", 0, 1 },
 +		{ "twt_requester", 1, 1 },
@@ -689,102 +707,106 @@
 +		// { "reserved", 81, 7 },
 +	};
 +
-+	hostapd_add_capab_table("mac_capabilities", mac_capas, ARRAY_SIZE(mac_capas), (uint8_t *) &hec->he_mac_capab_info, filter_false);
-+	hostapd_add_capab_table("phy_capabilities", phy_capas, ARRAY_SIZE(phy_capas), (uint8_t *) &hec->he_phy_capab_info, filter_false);
++	capab_table_add("mac_capabilities", mac_capas, ARRAY_SIZE(mac_capas),
++			(uint8_t *)&hec->he_mac_capab_info, filter_false);
++	capab_table_add("phy_capabilities", phy_capas, ARRAY_SIZE(phy_capas),
++			(uint8_t *)&hec->he_phy_capab_info, filter_false);
++
++	mcs_table = blobmsg_open_table(&b, "mcs_map");
  
- 	supported_mcs = blobmsg_open_table(&b, "mcs_map");
- 
- 	/* RX map */
+-	/* RX map */
  	map = blobmsg_open_table(&b, "rx");
 -	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map));
-+	hostapd_parse_map_blobmsg(le_to_host16(*((le16 *)&hec->optional[0])), WLAN_STA_HE);
++	mcs_nss_map_add(le_to_host16(*((le16 *)&hec->optional[0])), WLAN_STA_HE);
  	blobmsg_close_table(&b, map);
  
- 	/* TX map */
+-	/* TX map */
  	map = blobmsg_open_table(&b, "tx");
 -	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map));
-+	hostapd_parse_map_blobmsg(le_to_host16(*((le16 *)&hec->optional[2])), WLAN_STA_HE);
++	mcs_nss_map_add(le_to_host16(*((le16 *)&hec->optional[2])), WLAN_STA_HE);
  	blobmsg_close_table(&b, map);
  
- 	blobmsg_close_table(&b, supported_mcs);
+-	blobmsg_close_table(&b, supported_mcs);
++	blobmsg_close_table(&b, mcs_table);
  }
  
  static void
 -hostapd_parse_capab_blobmsg(struct sta_info *sta)
-+hostapd_parse_capab_blobmsg(struct sta_info *sta, int freq, bool filter_false)
++sta_capab_add(struct sta_info *sta, int freq, bool filter_false)
  {
- 	void *r, *v;
+-	void *r, *v;
++	void *table, *capab;
  
-@@ -226,19 +786,74 @@ hostapd_parse_capab_blobmsg(struct sta_i
+-	v = blobmsg_open_table(&b, "capabilities");
++	capab = blobmsg_open_table(&b, "capabilities");
  
  	if (sta->vht_capabilities) {
- 		r = blobmsg_open_table(&b, "vht");
+-		r = blobmsg_open_table(&b, "vht");
 -		hostapd_parse_vht_capab_blobmsg(sta->vht_capabilities);
-+		hostapd_parse_vht_capab_blobmsg(sta->vht_capabilities, filter_false);
- 		blobmsg_close_table(&b, r);
+-		blobmsg_close_table(&b, r);
++		table = blobmsg_open_table(&b, "vht");
++		vht_capab_add(sta->vht_capabilities, filter_false);
++		blobmsg_close_table(&b, table);
++	}
++
++	if (sta->he_capab) {
++		table = blobmsg_open_table(&b, "he");
++		he_capab_add(sta->he_capab, filter_false);
++		blobmsg_close_table(&b, table);
  	}
  
 -	/* ToDo: Add HT / HE capability parsing */
-+	if (sta->he_capab) {
-+		r = blobmsg_open_table(&b, "he");
-+		hostapd_parse_he_capab_blobmsg(sta->he_capab, filter_false);
-+		blobmsg_close_table(&b, r);
-+	}
-+
 +	if (sta->ht_capabilities) {
-+		r = blobmsg_open_table(&b, "ht");
-+		hostapd_parse_ht_capab_blobmsg(sta->ht_capabilities, filter_false);
-+		blobmsg_close_table(&b, r);
++		table = blobmsg_open_table(&b, "ht");
++		ht_capab_add(sta->ht_capabilities, filter_false);
++		blobmsg_close_table(&b, table);
 +	}
 +
 +	if (sta->eht_capab) {
-+		r = blobmsg_open_table(&b, "eht");
-+		hostapd_parse_eht_capab_blobmsg(sta->eht_capab, sta->he_capab, freq, filter_false);
-+		blobmsg_close_table(&b, r);
++		table = blobmsg_open_table(&b, "eht");
++		eht_capab_add(sta->eht_capab, sta->he_capab, freq, filter_false);
++		blobmsg_close_table(&b, table);
 +	}
  
- 	blobmsg_close_table(&b, v);
- }
- 
-+struct vendor_specific_info {
-+	u8 oui[3];
-+	u8 data;
-+};
+-	blobmsg_close_table(&b, v);
++	blobmsg_close_table(&b, capab);
++}
 +
 +static void
-+hostapd_parse_vendors(struct sta_info *sta)
++sta_vendors_add(struct sta_info *sta)
 +{
-+	void *vendors;
++	void *table = blobmsg_open_table(&b, "vendors");
++	const struct element *elem;
++	const u8 *ie_buf;
 +
-+	vendors = blobmsg_open_table(&b, "vendors");
++	if (!sta->vendors_ie)
++		goto out;
 +
-+	if (sta->vendors_ie) {
-+ 		const struct element *elem;
-+		const u8 *iebuf = wpabuf_head_u8(sta->vendors_ie);
++	ie_buf = wpabuf_head_u8(sta->vendors_ie);
++	for_each_element(elem, ie_buf, sta->vendors_ie->used) {
++		const u8 *oui = elem->data;
++		const u8 *ie_data = elem->data + 3;
++		int data_len = elem->datalen - 3;
++		char oui_str[16];
++		char *out;
 +
-+		for_each_element(elem, iebuf, sta->vendors_ie->used) {
-+			const struct vendor_specific_info *info = (struct vendor_specific_info *)elem->data;
-+			char oui[25];
-+			char *data;
-+			char *idata=(char *)&info->data;
++		snprintf(oui_str, sizeof(oui_str), "%02x:%02x:%02x",
++			 oui[0], oui[1], oui[2]);
++		out = blobmsg_alloc_string_buffer(&b, oui_str, data_len * 2 + 1);
++		for (int i = 0; i < data_len; i++, out += 2)
++			sprintf(out, "%02x", ie_data[i]);
++		blobmsg_add_string_buffer(&b);
++	}
 +
-+			sprintf(oui, "%02x:%02x:%02x", info->oui[0], info->oui[1], info->oui[2]);
-+			data = blobmsg_alloc_string_buffer(&b, oui, elem->datalen * 2 + 25);
-+			for(int i=0; i < elem->datalen - 3; ++i) {
-+				sprintf(data, "%02x", idata[i]);
-+				data += 2;
-+			}
-+			blobmsg_add_string_buffer(&b);
-+		}
-+ 	}
-+	blobmsg_close_table(&b, vendors);
++out:
++	blobmsg_close_table(&b, table);
 +}
 +
-+int compare_char(const void * a, const void * b)
++static int compare_char(const void *a, const void *b)
 +{
-+	return *(char*)a - *(char*)b;
-+}
-+
++	return *(char *)a - *(char *)b;
+ }
+ 
  static int
 -hostapd_bss_get_clients(struct ubus_context *ctx, struct ubus_object *obj,
 +hostapd_bss_get_client_info(struct ubus_context *ctx, struct ubus_object *obj,
@@ -794,7 +816,7 @@
  {
  	struct hostapd_data *hapd = container_of(obj, struct hostapd_data, ubus.obj);
  	struct hostap_sta_driver_data sta_driver_data;
-@@ -258,12 +873,16 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -258,14 +845,18 @@ hostapd_bss_get_clients(struct ubus_cont
  		{ "ht", WLAN_STA_HT },
  		{ "vht", WLAN_STA_VHT },
  		{ "he", WLAN_STA_HE },
@@ -806,85 +828,90 @@
  	blob_buf_init(&b, 0);
 -	blobmsg_add_u32(&b, "freq", hapd->iface->freq);
 +	if (!caps_only)
-+	{
 +		blobmsg_add_u32(&b, "freq", hapd->iface->freq);
-+	}
++
  	list = blobmsg_open_table(&b, "clients");
  	for (sta = hapd->sta_list; sta; sta = sta->next) {
++		const char *highest_standard;
  		void *r;
-@@ -275,13 +894,50 @@ hostapd_bss_get_clients(struct ubus_cont
+ 		int i;
+ 
+@@ -275,21 +866,43 @@ hostapd_bss_get_clients(struct ubus_cont
  			blobmsg_add_u8(&b, sta_flags[i].name,
  				       !!(sta->flags & sta_flags[i].flag));
  
 +		if (sta->flags & WLAN_STA_EHT)
-+		{
-+			blobmsg_add_string(&b, "highest_standard", "802.11be");
-+		}
++			highest_standard = "802.11be";
 +		else if (sta->flags & WLAN_STA_HE)
-+		{
-+			blobmsg_add_string(&b, "highest_standard", "802.11ax");
-+		}
++			highest_standard = "802.11ax";
 +		else if (sta->flags & WLAN_STA_VHT)
-+		{
-+			blobmsg_add_string(&b, "highest_standard", "802.11ac");
-+		}
++			highest_standard = "802.11ac";
 +		else if (sta->flags & WLAN_STA_HT)
-+		{
-+			blobmsg_add_string(&b, "highest_standard", "802.11n");
-+		}
++			highest_standard = "802.11n";
 +		else
-+		{
-+			blobmsg_add_string(&b, "highest_standard", "802.11b/g");
-+		}
++			highest_standard = "802.11b/g";
++		blobmsg_add_string(&b, "highest_standard", highest_standard);
 +
  #ifdef CONFIG_MBO
  		blobmsg_add_u8(&b, "mbo", !!(sta->cell_capa));
  #endif
  
 +		r = blobmsg_open_array(&b, "supported_rates");
-+		/* Check if client advertises supported rates */
-+		uint16_t rates_len = sta->supported_rates_len;
-+		if (sta->supported_rates && rates_len > 0) {
++		if (sta->supported_rates && sta->supported_rates_len > 0) {
++			uint16_t rates_len = sta->supported_rates_len;
 +			uint8_t *rate_array = malloc(rates_len);
 +			memcpy(rate_array, sta->supported_rates, rates_len);
 +			qsort(rate_array, rates_len, sizeof(char), compare_char);
-+			for (i = 0; i < rates_len; i++) {
-+				// OWRT-9263 mask the BSSBasicRateSet bit and convert speed from units of 500kbps to units of 1Mbps
-+				blobmsg_add_u32(&b, "", ( rate_array[i] & 0x7f) >> 1 );
-+			}
++			for (i = 0; i < rates_len; i++)
++				blobmsg_add_u32(&b, "", (rate_array[i] & 0x7f) >> 1);
 +			free(rate_array);
 +		}
 +		blobmsg_close_array(&b, r);
 +
  		r = blobmsg_open_array(&b, "rrm");
--		for (i = 0; i < ARRAY_SIZE(sta->rrm_enabled_capa); i++)
-+		for (i = 0; i < ARRAY_SIZE(sta->rrm_enabled_capa); i++) {
+ 		for (i = 0; i < ARRAY_SIZE(sta->rrm_enabled_capa); i++)
  			blobmsg_add_u32(&b, "", sta->rrm_enabled_capa[i]);
-+		}
  		blobmsg_close_array(&b, r);
  
  		r = blobmsg_open_array(&b, "extended_capabilities");
-@@ -301,7 +957,8 @@ hostapd_bss_get_clients(struct ubus_cont
+-		/* Check if client advertises extended capabilities */
+ 		if (sta->ext_capability && sta->ext_capability[0] > 0) {
+-			for (i = 0; i < sta->ext_capability[0]; i++) {
++			for (i = 0; i < sta->ext_capability[0]; i++)
+ 				blobmsg_add_u32(&b, "", sta->ext_capability[1 + i]);
+-			}
+ 		}
+ 		blobmsg_close_array(&b, r);
+ 
+@@ -300,8 +913,8 @@ hostapd_bss_get_clients(struct ubus_cont
+ 			blobmsg_add_string_buffer(&b);
  #endif
  
- 		/* Driver information */
+-		/* Driver information */
 -		if (hostapd_drv_read_sta_data(hapd, &sta_driver_data, sta->addr) >= 0) {
-+		if ( (hostapd_drv_read_sta_data(hapd, &sta_driver_data, sta->addr) >= 0) && (!caps_only) )
-+		{
++		if (!caps_only &&
++		    hostapd_drv_read_sta_data(hapd, &sta_driver_data, sta->addr) >= 0) {
  			r = blobmsg_open_table(&b, "bytes");
  			blobmsg_add_u64(&b, "rx", sta_driver_data.rx_bytes);
  			blobmsg_add_u64(&b, "tx", sta_driver_data.tx_bytes);
-@@ -322,7 +979,8 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -315,14 +928,14 @@ hostapd_bss_get_clients(struct ubus_cont
+ 			blobmsg_add_u32(&b, "tx", sta_driver_data.tx_packets);
+ 			blobmsg_close_table(&b, r);
+ 			r = blobmsg_open_table(&b, "rate");
+-			/* Rate in kbits */
+ 			blobmsg_add_u32(&b, "rx", sta_driver_data.current_rx_rate * 100);
+ 			blobmsg_add_u32(&b, "tx", sta_driver_data.current_tx_rate * 100);
+ 			blobmsg_close_table(&b, r);
  			blobmsg_add_u32(&b, "signal", sta_driver_data.signal);
  		}
  
 -		hostapd_parse_capab_blobmsg(sta);
-+		hostapd_parse_capab_blobmsg(sta, hapd->iface->freq, filter_false);
-+		hostapd_parse_vendors(sta);
++		sta_capab_add(sta, hapd->iface->freq, filter_false);
++		sta_vendors_add(sta);
  
  		blobmsg_close_table(&b, c);
  	}
-@@ -333,6 +991,22 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -333,6 +946,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -907,7 +934,7 @@
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -1618,6 +2292,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1618,6 +2247,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),
