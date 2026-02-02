@@ -177,7 +177,7 @@ function iface_update_supplicant_macaddr(phydev, config)
 	for (let bss in config.bss)
 		push(macaddr_list, bss.bssid);
 	ubus.defer("wpa_supplicant", "phy_set_macaddr_list", {
-		phy: phydev.name,
+		phy: phydev.phy,
 		radio: phydev.radio ?? -1,
 		macaddr: macaddr_list
 	});
@@ -1360,6 +1360,55 @@ let main_obj = {
 			}
 
 			return ret;
+		}
+	},
+	status: {
+		args: {},
+		call: function(req) {
+			let interfaces = {};
+
+			for (let phy_name, config in hostapd.data.config) {
+				if (!config || !config.bss)
+					continue;
+
+				let is_pending = !!hostapd.data.pending_config[phy_name];
+				let iface = hostapd.interfaces[phy_name];
+				let is_running = iface && iface.state() == "ENABLED" && !is_pending;
+
+				for (let bss in config.bss) {
+					let ifname = bss.ifname;
+					let entry = interfaces[ifname];
+
+					if (bss.mld_ap) {
+						if (!entry) {
+							let mld = hostapd.data.mld[ifname];
+							entry = interfaces[ifname] = {
+								wiphy: config.phy,
+								macaddr: mld ? mld.macaddr : bss.mld_bssid,
+								links: {},
+							};
+						}
+						entry.links[config.radio_idx ?? 0] = {
+							radio: config.radio_idx ?? 0,
+							macaddr: bss.bssid,
+							running: is_running,
+							pending: is_pending,
+						};
+					} else {
+						entry = {
+							wiphy: config.phy,
+							macaddr: bss.bssid,
+							running: is_running,
+							pending: is_pending,
+						};
+						if (config.radio_idx != null && config.radio_idx >= 0)
+							entry.radio = config.radio_idx;
+						interfaces[ifname] = entry;
+					}
+				}
+			}
+
+			return { interfaces };
 		}
 	},
 };

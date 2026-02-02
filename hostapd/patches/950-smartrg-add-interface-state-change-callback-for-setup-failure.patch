@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -1057,3 +1057,16 @@ void hostapd_ucode_apup_newpeer(struct h
+@@ -1059,3 +1059,16 @@ void hostapd_ucode_apup_newpeer(struct h
  	ucv_put(val);
  }
  #endif // def CONFIG_APUP
@@ -180,7 +180,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			hostapd.printf(`Set new config for phy ${name}: ${file}`);
  			iface_set_config(name, config);
-@@ -1426,4 +1445,35 @@ return {
+@@ -1475,4 +1494,35 @@ return {
  			hostapd.data.auth_obj.notify("sta_connected", msg, data_cb, null, null, 1000);
  		return ret;
  	},

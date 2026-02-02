@@ -532,7 +532,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif /* DFS_H */
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6793,6 +6793,11 @@ int ieee802_11_mgmt(struct hostapd_data
+@@ -6794,6 +6794,11 @@ int ieee802_11_mgmt(struct hostapd_data
  		return 1;
  	}
  

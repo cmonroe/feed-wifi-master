@@ -76,8 +76,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return HOSTAPD_CHAN_ACS;
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -672,6 +672,8 @@ out:
- 		iface->freq = hostapd_hw_get_freq(iface->bss[0], conf->channel);
+@@ -675,6 +675,8 @@ out:
+ 		iface->bss[i]->conf->start_disabled = 0;
  
  	if (iface->state != HAPD_IFACE_ENABLED) {
 +		for (i = 0; i < iface->num_bss; i++)

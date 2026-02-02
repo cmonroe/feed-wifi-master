@@ -51,7 +51,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	if (!changed &&
  	    (iface->bss[0]->beacon_set_done ||
  	     iface->state == HAPD_IFACE_DFS))
-@@ -678,6 +690,15 @@ out:
+@@ -681,6 +693,15 @@ out:
  		return ucv_boolean_new(true);
  	}
  
@@ -67,7 +67,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
  		int ret;
-@@ -713,6 +734,7 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -715,6 +736,7 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	uint64_t intval;
  	int i, ret = 0;
  
@@ -75,7 +75,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	if (!iface || ucv_type(info) != UC_OBJECT)
  		return NULL;
  
-@@ -732,7 +754,8 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -734,7 +756,8 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	if (errno)
  		intval = hostapd_get_oper_chwidth(conf);
  	if (intval)
@@ -85,7 +85,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	else
  		csa.freq_params.bandwidth = csa.freq_params.sec_channel_offset ? 40 : 20;
  
-@@ -743,6 +766,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -745,6 +768,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	if ((intval = ucv_int64_get(ucv_object_get(info, "center_freq2", NULL))) && !errno)
  		csa.freq_params.center_freq2 = intval;
  
@@ -217,7 +217,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	}
  
  	ucv_put(wpa_ucode_call(4));
-@@ -297,26 +332,45 @@ out:
+@@ -318,26 +353,45 @@ out:
  }
  
  static void
@@ -276,7 +276,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  }
  
  static void
-@@ -352,7 +406,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -373,7 +427,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  
  	bss = wpa_s->current_bss;
  	if (bss)
@@ -285,7 +285,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  
  	if (wpa_s->valid_links) {
  		unsigned int valid_links = wpa_s->valid_links;
-@@ -369,7 +423,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -390,7 +444,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  				continue;
  
  			link = ucv_object_new(vm);
@@ -376,7 +376,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  					let ret = iface.switch_channel(freq_info);
 --- a/openwrt/files/wpa_supplicant.uc
 +++ b/openwrt/files/wpa_supplicant.uc
-@@ -657,6 +657,8 @@ function iface_hostapd_notify(ifname, if
+@@ -713,6 +713,8 @@ function iface_hostapd_notify(ifname, if
  		if (!mld) {
  			msg.frequency = status.frequency;
  			msg.sec_chan_offset = status.sec_chan_offset;
@@ -385,7 +385,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  		}
  		break;
  	default:
-@@ -701,6 +703,8 @@ function iface_channel_switch(ifname, if
+@@ -757,6 +759,8 @@ function iface_channel_switch(ifname, if
  		csa_count: info.csa_count ? info.csa_count - 1 : 0,
  		frequency: info.frequency,
  		sec_chan_offset: info.sec_chan_offset,

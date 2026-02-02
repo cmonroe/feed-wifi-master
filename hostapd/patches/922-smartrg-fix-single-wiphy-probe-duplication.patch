@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				ret = 1;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6789,7 +6789,7 @@ int ieee802_11_mgmt(struct hostapd_data
+@@ -6790,7 +6790,7 @@ int ieee802_11_mgmt(struct hostapd_data
  	}
  
  	if (stype == WLAN_FC_STYPE_PROBE_REQ) {
@@ -87,7 +87,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1875,7 +1875,7 @@ int hostapd_ubus_handle_event(struct hos
+@@ -1903,7 +1903,7 @@ int hostapd_ubus_handle_event(struct hos
  		blobmsg_add_macaddr(&b, "target", req->mgmt_frame->da);
  	if (req->ssi_signal)
  		blobmsg_add_u32(&b, "signal", req->ssi_signal);
