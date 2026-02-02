@@ -30,6 +30,6 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +			}
  			continue;
 +		}
- 		if (s.macaddr & lc(s.macaddr) == lc(macaddr))
+ 		if (s.macaddr && lc(s.macaddr) == lc(macaddr))
  			return true;
  		if (s.phy == phy)

@@ -13,7 +13,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/netifd/hostapd.sh
 +++ b/src/lib/netifd/hostapd.sh
-@@ -698,7 +698,8 @@ hostapd_set_bss_options() {
+@@ -710,7 +710,8 @@ hostapd_set_bss_options() {
  				wireless_setup_vif_failed INVALID_WPA_PSK
  				return 1
  			fi

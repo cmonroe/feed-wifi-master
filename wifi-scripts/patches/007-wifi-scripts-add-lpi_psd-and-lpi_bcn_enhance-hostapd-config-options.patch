@@ -14,7 +14,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/netifd/hostapd.sh
 +++ b/src/lib/netifd/hostapd.sh
-@@ -132,6 +132,8 @@ hostapd_common_add_device_config() {
+@@ -133,6 +133,8 @@ hostapd_common_add_device_config() {
  	config_add_boolean stationary_ap
  	config_add_int acs_num_scans
  	config_add_boolean acs_exclude_6ghz_non_psc
@@ -23,17 +23,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	config_add_string acs_chan_bias
  	config_add_array hostapd_options
-@@ -151,7 +153,8 @@ hostapd_prepare_device_config() {
+@@ -152,7 +154,8 @@ hostapd_prepare_device_config() {
  	json_get_vars country country3 country_ie beacon_int:100 doth require_mode legacy_rates \
  		acs_chan_bias local_pwr_constraint spectrum_mgmt_required airtime_mode cell_density \
- 		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_ignore_probe_request maxassoc \
--		mbssid:0 band reg_power_type stationary_ap acs_num_scans acs_exclude_6ghz_non_psc
-+		mbssid:0 band reg_power_type stationary_ap acs_num_scans acs_exclude_6ghz_non_psc \
+ 		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_reject_assoc_timeout rssi_ignore_probe_request \
+-		maxassoc mbssid:0 band reg_power_type stationary_ap acs_num_scans acs_exclude_6ghz_non_psc
++		maxassoc mbssid:0 band reg_power_type stationary_ap acs_num_scans acs_exclude_6ghz_non_psc \
 +		lpi_psd lpi_bcn_enhance
  
  	hostapd_set_log_options base_cfg
  
-@@ -178,6 +181,9 @@ hostapd_prepare_device_config() {
+@@ -179,6 +182,9 @@ hostapd_prepare_device_config() {
  	[ -n "$acs_num_scans" ] && append base_cfg "acs_num_scans=$acs_num_scans" "$N"
  	[ "$acs_exclude_6ghz_non_psc" -eq "1" ] && append base_cfg "acs_exclude_6ghz_non_psc=1" "$N"
  

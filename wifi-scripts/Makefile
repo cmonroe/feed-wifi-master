@@ -51,6 +51,9 @@ endef
 define Package/wifi-scripts/install
 	$(INSTALL_DIR) $(1)
 	$(CP) $(PKG_BUILD_DIR)/src/* $(1)/
+ifeq ($(CONFIG_WIFI_SCRIPTS_UCODE),y)
+	$(CP) ./files-ucode/* $(1)/
+endif
 endef
 
 $(eval $(call BuildPackage,wifi-scripts))

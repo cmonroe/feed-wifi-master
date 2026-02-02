@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  const DEFAULT_RETRY = 3;
  const DEFAULT_SCRIPT_TIMEOUT = 30 * 1000;
-@@ -524,6 +525,18 @@ function notify(req)
+@@ -528,6 +529,18 @@ function notify(req)
  		else
  			this.retry = DEFAULT_RETRY;
  		return 0;

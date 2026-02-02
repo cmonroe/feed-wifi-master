@@ -150,8 +150,10 @@ function device_htmode_append(config) {
 	/* 802.11n */
 	config.ieee80211n = 0;
 	if (config.band != '6g') {
-		if (config.htmode in [ 'VHT20', 'HT20', 'HE20', 'EHT20' ])
+		if (config.htmode in [ 'VHT20', 'HT20', 'HE20', 'EHT20' ]) {
 			config.ieee80211n = 1;
+			config.ht_capab = '';
+		}
 		if (config.htmode in [ 'HT40', 'HT40+', 'HT40-', 'VHT40', 'VHT80', 'VHT160', 'HE40', 'HE80', 'HE160', 'EHT40', 'EHT80', 'EHT160' ]) {
 			config.ieee80211n = 1;
 			if (!config.channel)
@@ -281,6 +283,17 @@ function device_htmode_append(config) {
 				}
 			config.op_class = 137;
 			config.eht_oper_chwidth = 7;
+
+			/*
+			 * Set HE operation values for 160MHz backward compatibility
+			 * with WiFi 6E clients. Pick the 160MHz half that contains
+			 * the primary channel.
+			 */
+			config.he_oper_chwidth = 3;
+			if (config.channel < config.eht_oper_centr_freq_seg0_idx)
+				config.he_oper_centr_freq_seg0_idx = config.eht_oper_centr_freq_seg0_idx - 16;
+			else
+				config.he_oper_centr_freq_seg0_idx = config.eht_oper_centr_freq_seg0_idx + 16;
 			break;
 
 		case 'HE40':
@@ -303,7 +316,7 @@ function device_htmode_append(config) {
 			config.short_gi_160 = 0;
 		}
 
-		config.tx_queue_data2_burst = '2.0';
+		set_default(config, 'tx_queue_data2_burst', '2.0');
 
 		let vht_capab = phy_capabilities.vht_capa;
 		
@@ -381,8 +394,20 @@ function device_htmode_append(config) {
 		config.ieee80211ax = true;
 
 		if (config.hw_mode == 'a') {
-			config.he_oper_chwidth = config.vht_oper_chwidth;
-			config.he_oper_centr_freq_seg0_idx = config.vht_oper_centr_freq_seg0_idx;
+			/*
+			 * Only set HE values from VHT if not already set.
+			 * For 6GHz 320MHz, these are pre-set for 160MHz backward
+			 * compatibility with WiFi 6E clients.
+			 */
+			if (!config.he_oper_chwidth)
+				config.he_oper_chwidth = config.vht_oper_chwidth;
+			if (!config.he_oper_centr_freq_seg0_idx)
+				config.he_oper_centr_freq_seg0_idx = config.vht_oper_centr_freq_seg0_idx;
+		}
+
+		if (config.band == "6g") {
+			config.stationary_ap = true;
+			append_vars(config, [ 'he_6ghz_reg_pwr_type', ]);
 		}
 
 		if (config.he_bss_color_enabled) {
@@ -425,11 +450,6 @@ function device_htmode_append(config) {
 
 		if (config.hw_mode == 'a')
 			append_vars(config, [ 'eht_oper_chwidth', 'eht_oper_centr_freq_seg0_idx' ]);
-
-		if (config.band == "6g") {
-			config.stationary_ap = true;
-			append_vars(config, [ 'he_6ghz_reg_pwr_type', ]);
-		}
 	}
 
 	append_vars(config, [ 'tx_queue_data2_burst', 'stationary_ap' ]);
@@ -487,7 +507,7 @@ function generate(config) {
 		append_vars(config, [ 'airtime_mode' ]);
 
 	/* assoc/thresholds */
-	append_vars(config, [ 'rssi_reject_assoc_rssi', 'rssi_ignore_probe_request', 'iface_max_num_sta', 'no_probe_resp_if_max_sta' ]);
+	append_vars(config, [ 'rssi_reject_assoc_rssi', 'rssi_reject_assoc_timeout', 'rssi_ignore_probe_request', 'iface_max_num_sta' ]);
 
 	/* ACS / Radar*/
 	if (!phy_features.radar_background || config.band != '5g')
@@ -571,10 +591,12 @@ export function setup(data) {
 		config: has_ap ? file_name : "",
 		prev_config: file_name + '.prev'
 	};
+	if (!global.ubus.list('hostapd'))
+		system('ubus wait_for hostapd');
 	let ret = global.ubus.call('hostapd', 'config_set', msg);
 
 	if (ret)
 		netifd.add_process('/usr/sbin/hostapd', ret.pid, true, true);
-	else if (fs.access('/usr/sbin/hostapd', 'x'))
+	else
 		netifd.setup_failed('HOSTAPD_START_FAILED');
 };

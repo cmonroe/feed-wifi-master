@@ -50,6 +50,38 @@ function supplicant_update_mlo()
 	wpad_update_mlo("wpa_supplicant", "sta");
 }
 
+function mlo_vif_create(config, radio_config, vif_idx, mlo_vifs)
+{
+	let mlo_config = { ...config };
+
+	if (config.wds)
+		mlo_config['4addr'] = config.wds;
+	mlo_config.radio_config = radio_config;
+
+	let ifname = config.ifname;
+	if (!ifname) {
+		let idx = vif_idx[config.mode] ?? 0;
+		vif_idx[config.mode] = idx + 1;
+		ifname = config.mode + "-mld" + idx;
+	}
+
+	mlo_vifs[ifname] = mlo_config;
+	return ifname;
+}
+
+function mlo_vif_macaddr(config, dev_names, dev_name)
+{
+	if (dev_name != dev_names[0])
+		delete config.macaddr;
+	if (!config.radio_macaddr)
+		return;
+
+	let idx = index(dev_names, dev_name);
+	let macaddr = idx >= 0 ? config.radio_macaddr[idx] : null;
+	if (macaddr)
+		config.macaddr = macaddr;
+}
+
 function update_config(new_devices, mlo_vifs)
 {
 	wireless.mlo = mlo_vifs;
@@ -135,6 +167,7 @@ function config_init(uci)
 		radios = filter(radios, (v) => v != null);
 		let radio_config = map(dev_names, (v) => devices[v].config);
 		let ifname;
+		let mlo_created = false;
 
 		for (let dev_name in dev_names) {
 			let dev = devices[dev_name];
@@ -148,30 +181,14 @@ function config_init(uci)
 			let config = parse_attribute_list(data, handler.iface);
 			config.radios = radios;
 
-			if (mlo_vif && dev_name == dev_names[0]) {
-				let mlo_config = { ...config };
-
-				mlo_config.radio_config = radio_config;
-				ifname = config.ifname;
-				if (!ifname) {
-					let idx = vif_idx[config.mode] ?? 0;
-					vif_idx[config.mode] = idx + 1;
-					ifname = config.mode + "-mld" + idx;
-				}
-
-				mlo_vifs[ifname] = mlo_config;
+			if (mlo_vif && !mlo_created) {
+				ifname = mlo_vif_create(config, radio_config, vif_idx, mlo_vifs);
+				mlo_created = true;
 			}
 
 			if (ifname)
 				config.ifname = ifname;
-			if (dev_name != dev_names[0])
-				delete config.macaddr;
-			if (config.radio_macaddr) {
-				let idx = index(dev_names, dev_name);
-				let macaddr = idx >= 0 ? config.radio_macaddr[idx] : null;
-				if (macaddr)
-					config.macaddr = macaddr;
-			}
+			mlo_vif_macaddr(config, dev_names, dev_name);
 
 			let vif = {
 				name, config,
@@ -188,8 +205,9 @@ function config_init(uci)
 	}
 
 	for (let name, data in sections.vlan) {
+		let ifaces = parse_array(data.iface);
 		for (let iface, iface_vifs in vifs) {
-			if (data.iface && data.iface != iface)
+			if (length(ifaces) && index(ifaces, iface) < 0)
 				continue;
 
 			for (let vif in iface_vifs) {
@@ -210,22 +228,25 @@ function config_init(uci)
 	}
 
 	for (let name, data in sections.station) {
-		if (!data.iface || !vifs[data.iface])
-			continue;
-
-		for (let vif in vifs[data.iface]) {
-			let dev = devices[vif.device];
-			let handler = handlers[vif.device];
-			if (!dev || !handler)
+		let ifaces = parse_array(data.iface);
+		for (let iface, iface_vifs in vifs) {
+			if (length(ifaces) && index(ifaces, iface) < 0)
 				continue;
 
-			let config = parse_attribute_list(data, handler.station);
+			for (let vif in iface_vifs) {
+				let dev = devices[vif.device];
+				let handler = handlers[vif.device];
+				if (!dev || !handler)
+					continue;
 
-			let sta = {
-				name,
-				config
-			};
-			push(vif.sta, sta);
+				let config = parse_attribute_list(data, handler.station);
+
+				let sta = {
+					name,
+					config
+				};
+				push(vif.sta, sta);
+			}
 		}
 	}
 
@@ -288,13 +309,30 @@ function config_init(uci)
 						let config = vif.config;
 						if (!config)
 							continue;
+
+						let mlo_vif = parse_bool(config.mlo);
+						let radios = map(devs, (v) => radio_idx[v]);
+						radios = filter(radios, (v) => v != null);
+						let radio_config = map(devs, (v) => devices[v]?.config);
+						radio_config = filter(radio_config, (v) => v != null);
+						let ifname;
+
+						if (mlo_vif) {
+							ifname = mlo_vif_create(config, radio_config, vif_idx, mlo_vifs);
+							mlo_vifs[ifname].radios = radios;
+						}
+
 						for (let device in devs) {
 							let dev = devices[device];
 							if (!dev)
 								continue;
 
+							let vif_config = ifname ? { ...config, ifname, radios } : config;
+							if (ifname)
+								mlo_vif_macaddr(vif_config, devs, device);
+
 							let vif_data = {
-								name, device, config,
+								name, device, config: vif_config,
 								vlan: [],
 								sta: []
 							};
@@ -302,8 +340,6 @@ function config_init(uci)
 								vif_data.vlans = vif.vlans;
 							if (vif.stations)
 								vif_data.sta = vif.stations;
-							vifs[name] ??= [];
-							push(vifs[name], vif_data);
 							push(dev.vif, vif_data);
 						}
 					}

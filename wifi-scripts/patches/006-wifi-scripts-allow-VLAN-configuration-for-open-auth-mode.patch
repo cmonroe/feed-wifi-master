@@ -13,7 +13,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/netifd/hostapd.sh
 +++ b/src/lib/netifd/hostapd.sh
-@@ -660,6 +660,8 @@ hostapd_set_bss_options() {
+@@ -672,6 +672,8 @@ hostapd_set_bss_options() {
  			[ -n "$owe_transition_bssid" ] && append bss_conf "owe_transition_bssid=$owe_transition_bssid" "$N"
  			[ -n "$owe_transition_ifname" ] && append bss_conf "owe_transition_ifname=$owe_transition_ifname" "$N"
  

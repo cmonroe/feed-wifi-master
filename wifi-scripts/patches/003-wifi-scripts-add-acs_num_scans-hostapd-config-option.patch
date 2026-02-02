@@ -13,7 +13,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/netifd/hostapd.sh
 +++ b/src/lib/netifd/hostapd.sh
-@@ -130,6 +130,7 @@ hostapd_common_add_device_config() {
+@@ -131,6 +131,7 @@ hostapd_common_add_device_config() {
  	config_add_int maxassoc
  	config_add_int reg_power_type
  	config_add_boolean stationary_ap
@@ -21,16 +21,16 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	config_add_string acs_chan_bias
  	config_add_array hostapd_options
-@@ -149,7 +150,7 @@ hostapd_prepare_device_config() {
+@@ -150,7 +151,7 @@ hostapd_prepare_device_config() {
  	json_get_vars country country3 country_ie beacon_int:100 doth require_mode legacy_rates \
  		acs_chan_bias local_pwr_constraint spectrum_mgmt_required airtime_mode cell_density \
- 		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_ignore_probe_request maxassoc \
--		mbssid:0 band reg_power_type stationary_ap
-+		mbssid:0 band reg_power_type stationary_ap acs_num_scans
+ 		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_reject_assoc_timeout rssi_ignore_probe_request \
+-		maxassoc mbssid:0 band reg_power_type stationary_ap
++		maxassoc mbssid:0 band reg_power_type stationary_ap acs_num_scans
  
  	hostapd_set_log_options base_cfg
  
-@@ -173,6 +174,7 @@ hostapd_prepare_device_config() {
+@@ -174,6 +175,7 @@ hostapd_prepare_device_config() {
  	}
  
  	[ -n "$acs_chan_bias" ] && append base_cfg "acs_chan_bias=$acs_chan_bias" "$N"
