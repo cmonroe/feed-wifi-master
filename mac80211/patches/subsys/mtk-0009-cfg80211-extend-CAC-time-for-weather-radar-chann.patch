@@ -24,7 +24,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /**
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -1078,6 +1078,26 @@ static bool cfg80211_chandef_dfs_availab
+@@ -1091,6 +1091,26 @@ static bool cfg80211_chandef_dfs_availab
  	return true;
  }
  
@@ -51,7 +51,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  unsigned int
  cfg80211_chandef_dfs_cac_time(struct wiphy *wiphy,
  			      const struct cfg80211_chan_def *chandef)
-@@ -1111,6 +1131,12 @@ cfg80211_chandef_dfs_cac_time(struct wip
+@@ -1124,6 +1144,12 @@ cfg80211_chandef_dfs_cac_time(struct wip
  
  		if (cf == 2 && c->dfs_cac_ms > t2)
  			t2 = c->dfs_cac_ms;
@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (t1 == INT_MAX && t2 == INT_MAX)
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -11203,6 +11203,9 @@ static int nl80211_start_radar_detection
+@@ -11205,6 +11205,9 @@ static int nl80211_start_radar_detection
  	if (WARN_ON(!cac_time_ms))
  		cac_time_ms = IEEE80211_DFS_MIN_CAC_TIME_MS;
  

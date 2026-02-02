@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	 * timestamp field of the last beacon/probe received for this BSS.
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -11650,6 +11650,7 @@ static int nl80211_dump_scan(struct sk_b
+@@ -11652,6 +11652,7 @@ static int nl80211_dump_scan(struct sk_b
  	struct nlattr **attrbuf;
  	int start = cb->args[2], idx = 0;
  	bool dump_include_use_data;
@@ -34,7 +34,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int err;
  
  	attrbuf = kcalloc(NUM_NL80211_ATTR, sizeof(*attrbuf), GFP_KERNEL);
-@@ -11668,6 +11669,14 @@ static int nl80211_dump_scan(struct sk_b
+@@ -11670,6 +11671,14 @@ static int nl80211_dump_scan(struct sk_b
  		attrbuf[NL80211_ATTR_BSS_DUMP_INCLUDE_USE_DATA];
  	kfree(attrbuf);
  
@@ -49,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	spin_lock_bh(&rdev->bss_lock);
  
  	/*
-@@ -11682,6 +11691,10 @@ static int nl80211_dump_scan(struct sk_b
+@@ -11684,6 +11693,10 @@ static int nl80211_dump_scan(struct sk_b
  	cb->seq = rdev->bss_generation;
  
  	list_for_each_entry(scan, &rdev->bss_list, list) {
