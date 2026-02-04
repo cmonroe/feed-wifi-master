@@ -5,13 +5,16 @@ Subject: [PATCH] mt76: mt7915: trigger L1 SER on PLE MDP RIOC hang
 WM firmware can enter a partial failure state where RX is hung.
 
 Detect this condition by monitoring SER_PLE_ERR_1 for MDP_RIOC_HANG_ERR
-and trigger L1 SER to restore operation.
+and trigger L1 SER to restore operation. Use transition detection on the
+error bit to fire only once per new occurrence, preventing an infinite
+SER loop when the bit remains set across checks.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7915/mac.c  |   11 ++++++++++-
- mt7915/regs.h |    1 +
- 2 files changed, 11 insertions(+), 1 deletion(-)
+ mt7915/mac.c    |   12 +++++++++++-
+ mt7915/mt7915.h |    1 +
+ mt7915/regs.h   |    1 +
+ 3 files changed, 13 insertions(+), 1 deletion(-)
 
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
@@ -24,19 +27,21 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (!phy->omac_mask)
  		return;
-@@ -1914,6 +1914,15 @@ static void mt7915_mac_severe_check(stru
+@@ -1914,6 +1914,17 @@ static void mt7915_mac_severe_check(stru
  				   phy->mt76->band_idx);
  
  	phy->trb_ts = trb;
 +
 +	ple_err = mt76_rr(dev, MT_SWDEF_PLE1_STATS);
-+	if (ple_err & MT_SWDEF_PLE1_MDP_RIOC_HANG_ERR) {
++	if ((ple_err & MT_SWDEF_PLE1_MDP_RIOC_HANG_ERR) &&
++	    !(dev->ple1_sts & MT_SWDEF_PLE1_MDP_RIOC_HANG_ERR)) {
 +		dev_warn(dev->mt76.dev,
 +			 "band%d: PLE error 0x%x detected, triggering L1 SER\n",
 +			 phy->mt76->band_idx, ple_err);
 +		mt7915_mcu_set_ser(dev, SER_RECOVER, SER_SET_RECOVER_L1,
 +				   phy->mt76->band_idx);
 +	}
++	dev->ple1_sts = ple_err;
  }
  
  static void mt7915_mac_sta_stats_work(struct mt7915_phy *phy)
@@ -50,3 +55,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT_SWDEF_PLE_AMSDU_STATS	MT_SWDEF(0x04C)
  #define MT_SWDEF_PSE_STATS		MT_SWDEF(0x050)
  #define MT_SWDEF_PSE1_STATS		MT_SWDEF(0x054)
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -376,6 +376,7 @@ struct mt7915_dev {
+ 	spinlock_t reg_lock;
+ 
+ 	u32 hw_pattern;
++	u32 ple1_sts;
+ 
+ 	bool limited_wtbl_size;
+ 	bool dbdc_support;
