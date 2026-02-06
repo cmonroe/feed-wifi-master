@@ -1,0 +1,21 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 05 Feb 2026 18:45:48 -0800
+Subject: [PATCH] wifi-scripts: don't set default country for 6G 
+
+SmartOS will fill in the correct value but only if not already set.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/lib/wifi/mac80211.uc |    1 -
+ 1 file changed, 1 deletion(-)
+
+--- a/src/lib/wifi/mac80211.uc
++++ b/src/lib/wifi/mac80211.uc
+@@ -92,7 +92,6 @@ for (let phy_name, phy in board.wlan) {
+ 
+ 		let country, encryption, defaults, num_global_macaddr;
+ 		if (band_name == '6g') {
+-			country = '00';
+ 			encryption = 'owe';
+ 		} else {
+ 			encryption = 'open';
