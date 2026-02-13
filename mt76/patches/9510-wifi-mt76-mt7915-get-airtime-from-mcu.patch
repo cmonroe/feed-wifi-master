@@ -65,10 +65,10 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  	LIST_HEAD(sta_poll_list);
 -	int i;
  
- 	spin_lock_bh(&dev->mt76.sta_poll_lock);
- 	list_splice_init(&dev->mt76.sta_poll_list, &sta_poll_list);
-@@ -109,7 +100,6 @@ static void mt7915_mac_sta_poll(struct m
  	rcu_read_lock();
+ 
+@@ -109,7 +100,6 @@ static void mt7915_mac_sta_poll(struct m
+ 	spin_unlock_bh(&dev->mt76.sta_poll_lock);
  
  	while (true) {
 -		bool clear = false;
