@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -1059,3 +1059,16 @@ void hostapd_ucode_apup_newpeer(struct h
+@@ -1303,3 +1303,16 @@ void hostapd_ucode_apup_newpeer(struct h
  	ucv_put(val);
  }
  #endif // def CONFIG_APUP
@@ -68,9 +68,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  struct hostapd_ucode_bss {
  #ifdef UCODE_SUPPORT
-@@ -32,6 +34,10 @@ void hostapd_ucode_sta_connected(struct
- void hostapd_ucode_apup_newpeer(struct hostapd_data *hapd, const char *ifname);
- #endif // def CONFIG_APUP
+@@ -45,6 +47,10 @@ struct wpabuf *hostapd_ucode_dpp_gas_req
+ 					 const u8 *query, size_t query_len);
+ #endif /* CONFIG_DPP */
  
 +void hostapd_ucode_iface_state_cb(struct hostapd_iface *iface,
 +				  enum hostapd_iface_state old_state,
@@ -79,8 +79,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #else
  
  static inline int hostapd_ucode_init(struct hapd_interfaces *ifaces)
-@@ -57,6 +63,11 @@ static inline void hostapd_ucode_sta_con
- static inline void hostapd_ucode_free_bss(struct hostapd_data *hapd)
+@@ -77,6 +83,11 @@ static inline void hostapd_ucode_wps_m7_
+ 					    int *skip_cred)
  {
  }
 +static inline void hostapd_ucode_iface_state_cb(struct hostapd_iface *iface,
@@ -89,13 +89,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +{
 +}
  
- #endif
- 
+ #ifdef CONFIG_DPP
+ static inline int hostapd_ucode_dpp_rx_action(struct hostapd_data *hapd,
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -61,6 +61,12 @@ hostapd.data.bss_info_fields = {
- 
+@@ -62,6 +62,12 @@ hostapd.data.bss_info_fields = {
  hostapd.data.mld = {};
+ hostapd.data.dpp_hooks = {};
  
 +const HAPD_IFACE_DISABLED = 1;
 +const HAPD_IFACE_ACS = 3;
@@ -106,7 +106,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function iface_remove(cfg)
  {
  	if (!cfg || !cfg.bss || !cfg.bss[0] || !cfg.bss[0].ifname)
-@@ -847,24 +853,30 @@ function iface_set_config(name, config)
+@@ -848,24 +854,30 @@ function iface_set_config(name, config)
  	let old_config = hostapd.data.config[name];
  
  	hostapd.data.config[name] = config;
@@ -139,7 +139,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			return 0;
  		}
  	} catch (e) {
-@@ -874,6 +886,7 @@ function iface_set_config(name, config)
+@@ -875,6 +887,7 @@ function iface_set_config(name, config)
  	hostapd.printf(`Restart interface for phy ${name}`);
  	let ret = iface_restart(phydev, config, old_config);
  
@@ -147,7 +147,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return ret;
  }
  
-@@ -1277,6 +1290,7 @@ let main_obj = {
+@@ -1375,6 +1388,7 @@ let main_obj = {
  			radio: 0,
  			config: "",
  			prev_config: "",
@@ -155,7 +155,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
  		call: function(req) {
  			let phy = req.args.phy;
-@@ -1284,18 +1298,23 @@ let main_obj = {
+@@ -1382,18 +1396,23 @@ let main_obj = {
  			let name = phy_name(phy, radio);
  			let file = req.args.config;
  			let prev_file = req.args.prev_config;
@@ -180,9 +180,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			hostapd.printf(`Set new config for phy ${name}: ${file}`);
  			iface_set_config(name, config);
-@@ -1475,4 +1494,35 @@ return {
- 			hostapd.data.auth_obj.notify("sta_connected", msg, data_cb, null, null, 1000);
- 		return ret;
+@@ -1612,4 +1631,35 @@ return {
+ 			return null;
+ 		return response;
  	},
 +	iface_state: function(phy, old_state, new_state) {
 +		if (new_state != HAPD_IFACE_DISABLED)

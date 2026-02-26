@@ -13,7 +13,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/netifd/hostapd.sh
 +++ b/src/lib/netifd/hostapd.sh
-@@ -1248,7 +1248,7 @@ _wpa_supplicant_common() {
+@@ -1273,7 +1273,7 @@ _wpa_supplicant_common() {
  
  wpa_supplicant_teardown_interface() {
  	_wpa_supplicant_common "$1"

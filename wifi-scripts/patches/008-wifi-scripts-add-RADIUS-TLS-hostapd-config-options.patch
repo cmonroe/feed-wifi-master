@@ -13,7 +13,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/netifd/hostapd.sh
 +++ b/src/lib/netifd/hostapd.sh
-@@ -413,6 +413,10 @@ hostapd_common_add_bss_config() {
+@@ -422,6 +422,10 @@ hostapd_common_add_bss_config() {
  	config_add_int ocv
  	config_add_boolean beacon_prot spp_amsdu
  
@@ -24,7 +24,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	config_add_boolean apup
  	config_add_string apup_peer_ifname_prefix
  }
-@@ -539,7 +543,12 @@ append_auth_server() {
+@@ -548,7 +552,12 @@ append_auth_server() {
  	[ -n "$1" ] || return
  	append bss_conf "auth_server_addr=$1" "$N"
  	append bss_conf "auth_server_port=$auth_port" "$N"
@@ -38,7 +38,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  append_acct_server() {
-@@ -724,7 +733,9 @@ hostapd_set_bss_options() {
+@@ -741,7 +750,9 @@ hostapd_set_bss_options() {
  				dynamic_ownip ownip radius_client_addr \
  				eap_reauth_period request_cui \
  				erp_domain mobility_domain \

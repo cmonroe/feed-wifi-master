@@ -18,4 +18,4 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -			country = '00';
  			encryption = 'owe';
  		} else {
- 			encryption = 'open';
+ 			encryption = 'none';
