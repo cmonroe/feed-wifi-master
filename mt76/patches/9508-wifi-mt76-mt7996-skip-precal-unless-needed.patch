@@ -1,11 +1,11 @@
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -465,7 +465,13 @@ static int mt7996_eeprom_load_precal(str
+@@ -475,7 +475,13 @@ static int mt7996_eeprom_load_precal(str
  
  	mt7996_eeprom_init_precal(dev);
  
--	if (!dev->flash_mode || !val)
-+	if (!dev->flash_mode)
+-	if (dev->eeprom_mode != EEPROM_MODE_FLASH || !val)
++	if (dev->eeprom_mode != EEPROM_MODE_FLASH)
 +		return 0;
 +
 +	/* if only bit 6 is set for OOB emission workaround there's no
@@ -15,7 +15,7 @@
  		return 0;
  
  	size = MT_EE_CAL_GROUP_SIZE + MT_EE_CAL_DPD_SIZE;
-@@ -481,7 +487,15 @@ static int mt7996_eeprom_load_precal(str
+@@ -491,7 +497,15 @@ static int mt7996_eeprom_load_precal(str
  	if (!ret)
   		return ret;
  
@@ -31,4 +31,4 @@
 +	return ret;
  }
  
- static int mt7996_apply_cal_free_data(struct mt7996_dev *dev)
+ int mt7996_eeprom_init(struct mt7996_dev *dev)

@@ -24,7 +24,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76_connac_mcu.c
 +++ b/mt76_connac_mcu.c
-@@ -956,7 +956,7 @@ void mt76_connac_mcu_wtbl_smps_tlv(struc
+@@ -957,7 +957,7 @@ void mt76_connac_mcu_wtbl_smps_tlv(struc
  	tlv = mt76_connac_mcu_add_nested_tlv(skb, WTBL_SMPS, sizeof(*smps),
  					     wtbl_tlv, sta_wtbl);
  	smps = (struct wtbl_smps *)tlv;
@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1354,9 +1354,8 @@ mt7915_mcu_get_mmps_mode(enum ieee80211_
+@@ -1382,9 +1382,8 @@ mt7915_mcu_get_mmps_mode(enum ieee80211_
  	case IEEE80211_SMPS_OFF:
  		return MCU_MMPS_DISABLE;
  	case IEEE80211_SMPS_STATIC:
@@ -48,7 +48,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2081,9 +2081,8 @@ mt7996_mcu_get_mmps_mode(enum ieee80211_
+@@ -2138,9 +2138,8 @@ mt7996_mcu_get_mmps_mode(enum ieee80211_
  	case IEEE80211_SMPS_OFF:
  		return MCU_MMPS_DISABLE;
  	case IEEE80211_SMPS_STATIC:

@@ -20,7 +20,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 
 --- a/mt76_connac.h
 +++ b/mt76_connac.h
-@@ -435,7 +435,7 @@ u16 mt76_connac2_mac_tx_rate_val(struct
+@@ -442,7 +442,7 @@ u16 mt76_connac2_mac_tx_rate_val(struct
  				 struct ieee80211_bss_conf *conf,
  				 bool beacon, bool mcast);
  bool mt76_connac2_mac_fill_txs(struct mt76_dev *dev, struct mt76_wcid *wcid,

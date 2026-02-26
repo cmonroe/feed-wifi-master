@@ -82,7 +82,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_SKB_HEAD_LEN		256
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1062,9 +1062,11 @@ enum {
+@@ -1071,9 +1071,11 @@ enum {
  	MCU_UNI_EVENT_RDD_REPORT = 0x11,
  	MCU_UNI_EVENT_ROC = 0x27,
  	MCU_UNI_EVENT_TX_DONE = 0x2d,
@@ -139,7 +139,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int mt7996_check_eeprom(struct mt7996_dev *dev)
  {
  	u8 *eeprom = dev->mt76.eeprom.data;
-@@ -152,6 +188,36 @@ static bool mt7996_eeprom_variant_valid(
+@@ -133,6 +169,36 @@ static bool mt7996_eeprom_variant_valid(
  	return true;
  }
  
@@ -186,9 +186,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	MT_EE_MAC_ADDR3 =	0x2c0,
  	MT_EE_RATE_DELTA_2G =	0x1400,
  	MT_EE_RATE_DELTA_5G =	0x147d,
-@@ -31,6 +32,52 @@ enum mt7996_eeprom_field {
+@@ -30,6 +31,52 @@ enum mt7996_eeprom_field {
+ #define MT_EE_WIFI_CONF1_BAND_SEL		GENMASK(5, 3)
  #define MT_EE_WIFI_CONF2_BAND_SEL		GENMASK(2, 0)
- #define MT_EE_WIFI_PA_LNA_CONFIG		GENMASK(1, 0)
  
 +#define MT_EE_WIFI_CAL_GROUP_2G			BIT(0)
 +#define MT_EE_WIFI_CAL_GROUP_5G			BIT(1)
@@ -241,7 +241,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF2_TX_PATH_BAND2		GENMASK(5, 3)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -505,6 +505,9 @@ struct mt7996_dev {
+@@ -516,6 +516,9 @@ struct mt7996_dev {
  	struct dentry *debugfs_dir;
  	struct rchan *relay_fwlog;
  
@@ -251,7 +251,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	struct {
  		u16 table_mask;
  		u8 n_agrt;
-@@ -682,6 +685,7 @@ int mt7996_eeprom_get_target_power(struc
+@@ -709,6 +712,7 @@ int mt7996_eeprom_get_target_power(struc
  				   struct ieee80211_channel *chan);
  s8 mt7996_eeprom_get_power_delta(struct mt7996_dev *dev, int band);
  bool mt7996_eeprom_has_background_radar(struct mt7996_dev *dev);

@@ -308,7 +308,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -498,6 +498,7 @@ struct mt7996_dev {
+@@ -509,6 +509,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -316,7 +316,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	u32 token_debug_idx;
  
-@@ -516,6 +517,17 @@ struct mt7996_dev {
+@@ -527,6 +528,17 @@ struct mt7996_dev {
  		u8 type:4;
  		u8 fem:4;
  	} var;
@@ -334,7 +334,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  };
  
  enum {
-@@ -907,7 +919,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -943,7 +955,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
  #ifdef CONFIG_MTK_DEBUG
@@ -2635,7 +2635,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +#endif
 --- /dev/null
 +++ b/mt7996/mtk_debugfs.c
-@@ -0,0 +1,2415 @@
+@@ -0,0 +1,2414 @@
 +// SPDX-License-Identifier: ISC
 +/*
 + * Copyright (C) 2023 MediaTek Inc.
@@ -2978,7 +2978,6 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 +	u16 adie_chip_id, adie_chip_ver;
 +	int adie_idx;
 +	static const char * const fem_type[] = {
-+		[MT7996_FEM_UNSET] = "N/A",
 +		[MT7996_FEM_EXT] = "eFEM",
 +		[MT7996_FEM_INT] = "iFEM",
 +		[MT7996_FEM_MIX] = "mixed FEM",

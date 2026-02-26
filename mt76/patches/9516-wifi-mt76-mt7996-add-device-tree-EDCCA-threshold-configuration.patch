@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2147,8 +2147,10 @@ mt7996_mac_restart(struct mt7996_dev *de
+@@ -2149,8 +2149,10 @@ mt7996_mac_restart(struct mt7996_dev *de
  		goto out;
  
  	mt7996_mac_init(dev);
@@ -186,7 +186,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		goto out;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -626,6 +626,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -627,6 +627,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
@@ -198,11 +198,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -768,6 +768,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -794,6 +794,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);
 +void mt7996_apply_edcca_limits(struct mt7996_phy *phy);
  int mt7996_txbf_init(struct mt7996_dev *dev);
- int mt7996_get_chip_sku(struct mt7996_dev *dev);
  void mt7996_reset(struct mt7996_dev *dev);
+ int mt7996_run(struct mt7996_phy *phy);

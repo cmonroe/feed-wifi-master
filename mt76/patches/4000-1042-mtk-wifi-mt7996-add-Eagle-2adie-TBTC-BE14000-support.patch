@@ -19,7 +19,7 @@ Change-Id: I53479ad22aec81ba3f3028aa0aada86b175379f8
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -436,6 +436,8 @@ static void mt7996_eeprom_init_precal(st
+@@ -446,6 +446,8 @@ static void mt7996_eeprom_init_precal(st
  	switch (mt76_chip(&dev->mt76)) {
  	case 0x7990:
  		dev->prek.rev = mt7996_prek_rev;
@@ -28,27 +28,9 @@ Change-Id: I53479ad22aec81ba3f3028aa0aada86b175379f8
  		/* 5g & 6g bw 80 dpd channel list is not used */
  		dev->prek.dpd_ch_num[DPD_CH_NUM_BW320_6G] = ARRAY_SIZE(dpd_6g_ch_list_bw320);
  		break;
-@@ -539,7 +541,7 @@ static int mt7996_apply_cal_free_data(st
- 	case 0x7990:
- 		adie_base = adie_base_7996;
- 		/* adie 0 */
--		if (dev->var.fem == MT7996_FEM_INT)
-+		if (dev->var.fem == MT7996_FEM_INT && dev->var.type != MT7996_VAR_TYPE_233)
- 			adie_id = ADIE_7975;
- 		else
- 			adie_id = ADIE_7976;
-@@ -547,7 +549,7 @@ static int mt7996_apply_cal_free_data(st
- 		eep_offs[0] = eep_offs_list[adie_id];
- 
- 		/* adie 1 */
--		if (dev->var.type != MT7996_VAR_TYPE_404) {
-+		if (dev->var.type == MT7996_VAR_TYPE_444) {
- 			adie_offs[1] = adie_offs_list[ADIE_7977];
- 			eep_offs[1] = eep_offs_list[ADIE_7977];
- 		}
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
-@@ -69,6 +69,18 @@ static const u32 mt7996_prek_rev[] = {
+@@ -68,6 +68,18 @@ static const u32 mt7996_prek_rev[] = {
  	[DPD_OTFG0_SIZE] =			2 * MT_EE_CAL_UNIT,
  };
  

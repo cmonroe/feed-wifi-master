@@ -16,7 +16,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/tx.c
 +++ b/tx.c
-@@ -619,6 +619,7 @@ mt76_txq_schedule_pending_wcid(struct mt
+@@ -635,6 +635,7 @@ mt76_txq_schedule_pending_wcid(struct mt
  		    !ieee80211_is_data(hdr->frame_control) &&
  		    (!ieee80211_is_bufferable_mmpdu(skb) ||
  		     ieee80211_is_deauth(hdr->frame_control) ||

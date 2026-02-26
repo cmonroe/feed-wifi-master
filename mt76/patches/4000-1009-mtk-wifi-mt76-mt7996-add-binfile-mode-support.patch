@@ -26,7 +26,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -77,8 +77,11 @@ static int mt7996_check_eeprom(struct mt
+@@ -60,8 +60,11 @@ static int mt7996_check_eeprom(struct mt
  	}
  }
  
@@ -39,7 +39,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	switch (mt76_chip(&dev->mt76)) {
  	case MT7992_DEVICE_ID:
  		switch (dev->var.type) {
-@@ -230,7 +233,10 @@ mt7996_eeprom_check_or_use_default(struc
+@@ -211,7 +214,10 @@ mt7996_eeprom_check_or_use_default(struc
  		return ret;
  
  	if (!fw || !fw->data) {
@@ -51,37 +51,35 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		ret = -EINVAL;
  		goto out;
  	}
-@@ -259,6 +265,7 @@ static int mt7996_eeprom_load(struct mt7
+@@ -221,6 +227,7 @@ mt7996_eeprom_check_or_use_default(struc
  
- 	if (ret && !mt7996_check_eeprom(dev)) {
- 		dev->flash_mode = true;
-+		dev->eeprom_mode = dev->bin_file_mode ? BIN_FILE_MODE : FLASH_MODE;
- 		goto out;
- 	}
+ 	dev_warn(dev->mt76.dev, "eeprom load fail, use default bin\n");
+ 	memcpy(eeprom, fw->data, MT7996_EEPROM_SIZE);
++	dev->bin_file_mode = false;
+ 	dev->eeprom_mode = EEPROM_MODE_DEFAULT_BIN;
  
-@@ -299,6 +306,7 @@ static int mt7996_eeprom_load(struct mt7
- 				goto out;
- 			}
+ out:
+@@ -287,6 +294,7 @@ static int mt7996_eeprom_load(struct mt7
+ 			use_default = true;
+ 			goto out;
  		}
 +		dev->eeprom_mode = EFUSE_MODE;
  	}
  
  out:
-@@ -408,18 +416,68 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -396,14 +404,68 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  	return mt7996_eeprom_parse_band_config(phy);
  }
  
--int mt7996_eeprom_init(struct mt7996_dev *dev)
 +static int mt7996_eeprom_load_precal_binfile(struct mt7996_dev *dev, u32 offs, u32 size)
- {
- 	int ret;
++{
++	int ret;
 +	const struct firmware *fw = NULL;
- 
--	ret = mt7996_get_chip_sku(dev);
++
 +	ret = request_firmware(&fw, dev->mt76.bin_file_name, dev->mt76.dev);
- 	if (ret)
- 		return ret;
- 
++	if (ret)
++		return ret;
++
 +	if (!fw || !fw->data) {
 +		dev_err(dev->mt76.dev, "Invalid bin (bin file mode), load precal fail\n");
 +		ret = -EINVAL;
@@ -106,7 +104,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
 +	mt7996_eeprom_init_precal(dev);
 +
-+	if (!dev->flash_mode || !val)
++	if (dev->eeprom_mode != EEPROM_MODE_FLASH || !val)
 +		return 0;
 +
 +	size = MT_EE_CAL_GROUP_SIZE + MT_EE_CAL_DPD_SIZE;
@@ -125,10 +123,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	return mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
 +}
 +
-+int mt7996_eeprom_init(struct mt7996_dev *dev)
-+{
-+	int ret;
-+
+ int mt7996_eeprom_init(struct mt7996_dev *dev)
+ {
+ 	int ret;
+ 
  	ret = mt7996_eeprom_load(dev);
 -	if (ret < 0)
 +	if (ret)
@@ -141,7 +139,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		return ret;
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
-@@ -101,6 +101,13 @@ enum mt7996_eeprom_band {
+@@ -100,6 +100,13 @@ enum mt7996_eeprom_band {
  	MT_EE_BAND_SEL_6GHZ,
  };
  
@@ -157,17 +155,16 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -509,6 +509,9 @@ struct mt7996_dev {
+@@ -520,6 +520,8 @@ struct mt7996_dev {
  
  	dma_addr_t npu_txd_addr[2 * MT7996_NPU_TXD_SIZE];
  
 +	bool bin_file_mode;
-+	u8 eeprom_mode;
 +
  	bool ibf;
  	u8 fw_debug_wm;
  	u8 fw_debug_wa;
-@@ -695,6 +698,7 @@ int mt7996_vif_link_add(struct mt76_phy
+@@ -722,6 +724,7 @@ int mt7996_vif_link_add(struct mt76_phy
  void mt7996_vif_link_remove(struct mt76_phy *mphy, struct ieee80211_vif *vif,
  			    struct ieee80211_bss_conf *link_conf,
  			    struct mt76_vif_link *mlink);
@@ -177,7 +174,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2713,6 +2713,44 @@ static const struct file_operations mt79
+@@ -2712,6 +2712,44 @@ static const struct file_operations mt79
  	.llseek = default_llseek,
  };
  
@@ -222,7 +219,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir)
  {
  	struct ieee80211_hw *hw = mt76_hw(dev);
-@@ -2773,6 +2811,9 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2772,6 +2810,9 @@ int mt7996_mtk_init_debugfs(struct mt799
  	debugfs_create_devm_seqfile(dev->mt76.dev, "tr_info", dir,
  				    mt7996_trinfo_read);
  

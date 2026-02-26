@@ -16,7 +16,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/tx.c
 +++ b/tx.c
-@@ -615,12 +615,13 @@ mt76_txq_schedule_pending_wcid(struct mt
+@@ -631,12 +631,13 @@ mt76_txq_schedule_pending_wcid(struct mt
  		int qid = skb_get_queue_mapping(skb);
  
  		if ((dev->drv->drv_flags & MT_DRV_HW_MGMT_TXQ) &&

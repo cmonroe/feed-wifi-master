@@ -11,7 +11,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/eeprom.h
 +++ b/mt7996/eeprom.h
-@@ -72,7 +72,7 @@ static const u32 mt7996_prek_rev[] = {
+@@ -73,7 +73,7 @@ static const u32 mt7996_prek_rev[] = {
  static const u32 mt7996_prek_rev_233[] = {
  	[GROUP_SIZE_2G] =			4 * MT_EE_CAL_UNIT,
  	[GROUP_SIZE_5G] =			44 * MT_EE_CAL_UNIT,

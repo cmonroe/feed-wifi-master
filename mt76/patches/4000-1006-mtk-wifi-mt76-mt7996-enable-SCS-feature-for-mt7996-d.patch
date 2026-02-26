@@ -21,7 +21,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1309,6 +1309,7 @@ enum {
+@@ -1318,6 +1318,7 @@ enum {
  	MCU_UNI_CMD_GET_STAT_INFO = 0x23,
  	MCU_UNI_CMD_SNIFFER = 0x24,
  	MCU_UNI_CMD_SR = 0x25,
@@ -31,7 +31,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TXPOWER = 0x2b,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1715,6 +1715,7 @@ int mt7996_register_device(struct mt7996
+@@ -1716,6 +1716,7 @@ int mt7996_register_device(struct mt7996
  	dev->mt76.phy.priv = &dev->phy;
  	INIT_WORK(&dev->rc_work, mt7996_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7996_mac_work);
@@ -41,7 +41,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2419,6 +2419,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2421,6 +2421,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  	cancel_work_sync(&dev->wed_rro.work);
  	mt7996_for_each_phy(dev, phy)
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
@@ -77,7 +77,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -2373,6 +2380,8 @@ mt7996_reconfig_complete(struct ieee8021
+@@ -2374,6 +2381,8 @@ mt7996_reconfig_complete(struct ieee8021
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -85,10 +85,10 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +	ieee80211_queue_delayed_work(hw, &dev->scs_work, HZ);
  }
  
- const struct ieee80211_ops mt7996_ops = {
+ static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5180,3 +5180,116 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -5389,3 +5389,116 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
@@ -207,7 +207,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -972,6 +972,12 @@ enum pp_mode {
+@@ -1013,6 +1013,12 @@ enum pp_mode {
  	PP_USR_MODE,
  };
  
@@ -222,7 +222,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -307,6 +307,16 @@ struct mt7996_hif {
+@@ -318,6 +318,16 @@ struct mt7996_hif {
  	enum pcie_link_width width;
  };
  
@@ -239,7 +239,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define WED_RRO_ADDR_SIGNATURE_MASK	GENMASK(31, 24)
  #define WED_RRO_ADDR_COUNT_MASK		GENMASK(14, 4)
  #define WED_RRO_ADDR_HEAD_HIGH_MASK	GENMASK(3, 0)
-@@ -395,6 +405,8 @@ struct mt7996_phy {
+@@ -406,6 +416,8 @@ struct mt7996_phy {
  
  	u8 pp_mode;
  	u16 punct_bitmap;
@@ -248,7 +248,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -431,6 +443,7 @@ struct mt7996_dev {
+@@ -442,6 +454,7 @@ struct mt7996_dev {
  	struct work_struct rc_work;
  	struct work_struct dump_work;
  	struct work_struct reset_work;
@@ -256,7 +256,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -926,6 +939,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -962,6 +975,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
@@ -267,7 +267,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  void mt7996_dma_rro_start(struct mt7996_dev *dev);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2345,8 +2345,19 @@ static int mt7996_sta_info(struct seq_fi
+@@ -2344,8 +2344,19 @@ static int mt7996_sta_info(struct seq_fi
  	return 0;
  }
  
@@ -287,7 +287,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	u32 device_id = (dev->mt76.rev) >> 16;
  	int i = 0;
  	static const struct mt7996_dbg_reg_desc dbg_reg_s[] = {
-@@ -2409,6 +2420,14 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2408,6 +2419,14 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  

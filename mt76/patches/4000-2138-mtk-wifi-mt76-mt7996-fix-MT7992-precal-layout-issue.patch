@@ -1,0 +1,49 @@
+From 48dc51237fc2884d14b47a05cbdfdc8ca764b083 Mon Sep 17 00:00:00 2001
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Tue, 30 Dec 2025 14:50:36 +0800
+Subject: [PATCH 1/7] mtk: mt76: mt7996: fix MT7992 precal layout issue
+
+Align the layout of MT7992 precal with logan
+In order to be compatible with MT7992 2+6 sku, the layout reserves the
+partition of 6G group precal
+
+Also, add wait_on_prek_offs in group precal, as the firmware return size
+is not same as group_size.
+Firmware returns 2+5G data or 2+6G data with a size of GROUP_SIZE_2G +
+max(GROUP_SIZE_5G, GROUP_SIZE_6G)
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+---
+ mt7996/eeprom.h   | 11 +++++++----
+ mt7996/testmode.c | 29 ++++++++++++++++++++++++-----
+ 2 files changed, 31 insertions(+), 9 deletions(-)
+
+--- a/mt7996/eeprom.h
++++ b/mt7996/eeprom.h
+@@ -48,6 +48,8 @@ enum mt7996_prek_rev {
+ 	GROUP_SIZE_2G,
+ 	GROUP_SIZE_5G,
+ 	GROUP_SIZE_6G,
++	GROUP_SIZE_2G_V2,
++	GROUP_SIZE_ABAND_V2,
+ 	ADCDCOC_SIZE_2G,
+ 	ADCDCOC_SIZE_5G,
+ 	ADCDCOC_SIZE_6G,
+@@ -80,14 +82,13 @@ static const u32 mt7996_prek_rev_233[] =
+ 	[DPD_OTFG0_SIZE] =			2 * MT_EE_CAL_UNIT,
+ };
+ 
+-/* kite 2/5g config */
+ static const u32 mt7992_prek_rev[] = {
+ 	[GROUP_SIZE_2G] =			4 * MT_EE_CAL_UNIT,
+-	[GROUP_SIZE_5G] =			110 * MT_EE_CAL_UNIT,
+-	[GROUP_SIZE_6G] =			0,
++	[GROUP_SIZE_5G] =			45 * MT_EE_CAL_UNIT,
++	[GROUP_SIZE_6G] =			110 * MT_EE_CAL_UNIT,
+ 	[ADCDCOC_SIZE_2G] =			4 * 4,
+ 	[ADCDCOC_SIZE_5G] =			4 * 5,
+-	[ADCDCOC_SIZE_6G] =			0,
++	[ADCDCOC_SIZE_6G] =			4 * 5,
+ 	[DPD_LEGACY_SIZE] =			5 * MT_EE_CAL_UNIT,
+ 	[DPD_MEM_SIZE] =			16 * MT_EE_CAL_UNIT,
+ 	[DPD_OTFG0_SIZE] =			2 * MT_EE_CAL_UNIT,
