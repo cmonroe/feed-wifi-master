@@ -1,0 +1,53 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 26 Feb 2026 11:41:58 -0800
+Subject: [PATCH] wifi: mt76: fix NULL deref race in scan abort
+
+mt76_scan_rx_beacon() in softirq can re-queue scan_work after
+cancel_delayed_work_sync() returns in mt76_abort_scan(), racing with
+the memset() in mt76_scan_complete(). mt76_scan_send_probe() then
+re-reads dev->scan.phy as NULL and dereferences phy->hw.
+
+Clear beacon_wait before cancel to prevent re-queues, add a second
+cancel after memset for the remaining window, and pass phy/vif as
+parameters to eliminate the TOCTOU re-read.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ scan.c |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+--- a/scan.c
++++ b/scan.c
+@@ -27,19 +27,20 @@ static void mt76_scan_complete(struct mt
+ 
+ void mt76_abort_scan(struct mt76_dev *dev)
+ {
++	WRITE_ONCE(dev->scan.beacon_wait, false);
+ 	cancel_delayed_work_sync(&dev->scan_work);
+ 	mt76_scan_complete(dev, true);
++	cancel_delayed_work_sync(&dev->scan_work);
+ }
+ EXPORT_SYMBOL_GPL(mt76_abort_scan);
+ 
+ static void
+-mt76_scan_send_probe(struct mt76_dev *dev, struct cfg80211_ssid *ssid)
++mt76_scan_send_probe(struct mt76_dev *dev, struct mt76_phy *phy,
++		     struct ieee80211_vif *vif, struct cfg80211_ssid *ssid)
+ {
+ 	struct cfg80211_scan_request *req = dev->scan.req;
+-	struct ieee80211_vif *vif = dev->scan.vif;
+ 	struct mt76_vif_link *mvif = dev->scan.mlink;
+ 	enum nl80211_band band = dev->scan.chan->band;
+-	struct mt76_phy *phy = dev->scan.phy;
+ 	struct ieee80211_tx_info *info;
+ 	struct sk_buff *skb;
+ 
+@@ -150,7 +151,7 @@ probe:
+ 		duration = HZ / 16; /* ~60 ms */
+ 	local_bh_disable();
+ 	for (i = 0; i < req->n_ssids; i++)
+-		mt76_scan_send_probe(dev, &req->ssids[i]);
++		mt76_scan_send_probe(dev, phy, dev->scan.vif, &req->ssids[i]);
+ 	local_bh_enable();
+ 
+ out:
