@@ -1,0 +1,67 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 27 Feb 2026 11:11:10 -0800
+Subject: [PATCH] wifi-scripts: suppress channel-only reconfig with active STA
+
+When a STA interface is connected, the operating channel is determined
+by the upstream AP. Tearing down the device for a channel-only config
+change would unnecessarily disrupt the connection.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/lib/netifd/wireless-device.uc |   40 ++++++++++++++++++++++++++++
+ 1 file changed, 40 insertions(+)
+
+--- a/src/lib/netifd/wireless-device.uc
++++ b/src/lib/netifd/wireless-device.uc
+@@ -376,11 +376,51 @@ function wdev_reset(wdev)
+ 	delete wdev.retry_setup_failed;
+ }
+ 
++function wdev_channel_only_change(old_data, new_data)
++{
++	let old_config = { ...old_data.config };
++	let new_config = { ...new_data.config };
++	delete old_config.channel;
++	delete new_config.channel;
++
++	if (!is_equal(old_config, new_config))
++		return false;
++
++	return is_equal(old_data.vif, new_data.vif);
++}
++
++function wdev_has_connected_sta(wdev)
++{
++	for (let key, data in wdev.handler_data) {
++		if (data.config?.mode != "sta" || !data.ifname)
++			continue;
++
++		let status = ubus.call({
++			object: "wpa_supplicant",
++			method: "iface_status",
++			data: { name: data.ifname },
++		});
++
++		if (status?.state == "COMPLETED")
++			return true;
++	}
++
++	return false;
++}
++
+ function update(data)
+ {
+ 	if (is_equal(this.data, data))
+ 		return;
+ 
++	if (this.state == "up" && data && this.data &&
++	    wdev_channel_only_change(this.data, data) &&
++	    wdev_has_connected_sta(this)) {
++		this.dbg("suppressing channel-only config change (STA connected)");
++		this.data = data;
++		return;
++	}
++
+ 	if (data) {
+ 		this.data = data;
+ 		this.ifindex_cache = {};
