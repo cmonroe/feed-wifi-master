@@ -1,0 +1,49 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 25 Feb 2026 19:07:10 -0800
+Subject: [PATCH] wifi-scripts: disable background radar in AP+STA mode
+
+In AP+STA mode the AP must follow the STA's channel. Background radar
+CAC can trigger a channel switch to a DFS-cleared channel that the STA
+can't follow, causing tear down of colocated VAPs.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/lib/netifd/wireless/mac80211.sh |    8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+--- a/src/lib/netifd/wireless/mac80211.sh
++++ b/src/lib/netifd/wireless/mac80211.sh
+@@ -288,7 +288,7 @@ mac80211_hostapd_setup_base() {
+ 	[ "$band" = "5g" ] && {
+ 		json_get_vars background_radar:0
+ 
+-		[ "$background_radar" -eq 1 ] && append base_cfg "enable_background_radar=1" "$N"
++		[ "$background_radar" -eq 1 ] && [ -z "$has_sta" ] && append base_cfg "enable_background_radar=1" "$N"
+ 	}
+ 
+ 	eht_oper_chwidth=$vht_oper_chwidth
+@@ -1114,6 +1114,10 @@ mac80211_set_noscan() {
+ 	hostapd_noscan=1
+ }
+ 
++mac80211_check_sta() {
++	has_sta=1
++}
++
+ drv_mac80211_cleanup() {
+ 	:
+ }
+@@ -1204,11 +1208,13 @@ drv_mac80211_setup() {
+ 	[ -n "$rts" ] && iw phy "$phy" set rts "${rts%%.*}"
+ 
+ 	has_ap=
++	has_sta=
+ 	hostapd_ctrl=
+ 	ap_ifname=
+ 	hostapd_noscan=
+ 	wpa_supp_init=
+ 	for_each_interface "ap" mac80211_check_ap
++	for_each_interface "sta" mac80211_check_sta
+ 
+ 	[ -f "$hostapd_conf_file" ] && mv "$hostapd_conf_file" "$hostapd_conf_file.prev"
+ 
