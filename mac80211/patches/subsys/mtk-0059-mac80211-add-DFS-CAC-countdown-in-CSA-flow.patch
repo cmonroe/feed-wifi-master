@@ -281,7 +281,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  void ieee80211_color_change_finalize_work(struct wiphy *wiphy,
 --- a/net/mac80211/mlme.c
 +++ b/net/mac80211/mlme.c
-@@ -3505,7 +3505,14 @@ void ieee80211_dfs_cac_timer_work(struct
+@@ -3506,7 +3506,14 @@ void ieee80211_dfs_cac_timer_work(struct
  	lockdep_assert_wiphy(sdata->local->hw.wiphy);
  
  	if (sdata->wdev.links[link->link_id].cac_started) {

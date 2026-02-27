@@ -1,0 +1,47 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 26 Feb 2026 12:40:43 -0800
+Subject: [PATCH] mac80211: fix STA CSA abort WARN_ON and stale auth blocking
+
+ieee80211_sta_abort_chanswitch() unconditionally calls unreserve when a
+chanctx_conf exists, but the OTHER_LINK CSA disappearance path can reach
+abort with no reservation, hitting WARN_ON(!ctx). Guard the unreserve
+call with a reserved_chanctx check.
+
+After AP CSA completes, 1-2 beacons leak with stale CSA IEs due to
+two-phase finalization. ieee80211_mgd_csa_present() only ignores
+same-channel CSA when mode==0, but APs typically use mode==1, so STAs
+caching these beacons are permanently blocked from authenticating. Drop
+the mode check since the STA has not transmitted anything yet.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/mac80211/mlme.c |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+--- a/net/mac80211/mlme.c
++++ b/net/mac80211/mlme.c
+@@ -2613,7 +2613,8 @@ ieee80211_sta_abort_chanswitch(struct ie
+ 	if (!local->ops->abort_channel_switch)
+ 		return;
+ 
+-	if (rcu_access_pointer(link->conf->chanctx_conf))
++	if (rcu_access_pointer(link->conf->chanctx_conf) &&
++	    link->reserved_chanctx)
+ 		ieee80211_link_unreserve_chanctx(link);
+ 
+ 	ieee80211_vif_unblock_queues_csa(sdata);
+@@ -9099,12 +9100,12 @@ static bool ieee80211_mgd_csa_present(st
+ 
+ 	if (csa && csa->count == 0)
+ 		csa = NULL;
+-	if (csa && !csa->mode && csa->new_ch_num == cur_channel)
++	if (csa && csa->new_ch_num == cur_channel)
+ 		csa = NULL;
+ 
+ 	if (ecsa && ecsa->count == 0)
+ 		ecsa = NULL;
+-	if (ecsa && !ecsa->mode && ecsa->new_ch_num == cur_channel)
++	if (ecsa && ecsa->new_ch_num == cur_channel)
+ 		ecsa = NULL;
+ 
+ 	if (ignore_ecsa && ecsa) {
