@@ -1,0 +1,32 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 26 Feb 2026 03:28:20 -0800
+Subject: [PATCH] hostapd: report configured-but-not-started STA in phy_status
+
+In AP+STA mode, hostapd's startup state machine queries phy_status
+before wpa_supplicant has started the STA interface (deferred via
+config_set defer=1). The NOT_FOUND response causes hostapd to
+conclude no STA exists and skip setting start_disabled on the AP,
+which then enters DFS/ACS and conflicts with the STA starting
+shortly after, creating a teardown/retry loop.
+
+Return a NOT_STARTED state when interfaces are configured in phy.data
+but not yet present in wpas.interfaces, so hostapd correctly sets
+start_disabled=1 and waits for the STA to connect.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ openwrt/files/wpa_supplicant.uc |    3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/openwrt/files/wpa_supplicant.uc
++++ b/openwrt/files/wpa_supplicant.uc
+@@ -632,6 +632,9 @@ let main_obj = {
+ 				}
+ 			}
+ 
++			if (length(ifnames) > 0)
++				return { state: "NOT_STARTED" };
++
+ 			return libubus.STATUS_NOT_FOUND;
+ 		}
+ 	},
