@@ -367,7 +367,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  			let config = hostapd.data.config[phy];
  			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)
  				return 0;
-@@ -1291,6 +1301,8 @@ let main_obj = {
+@@ -1293,6 +1303,8 @@ let main_obj = {
  				if (!freq_info)
  					return libubus.STATUS_UNKNOWN_ERROR;
  

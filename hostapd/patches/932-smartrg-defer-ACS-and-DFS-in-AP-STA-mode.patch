@@ -1,19 +1,23 @@
 From: Chad Monroe <chad@monroe.io>
 Date: Tue, 02 Dec 2025 04:52:11 -0800
-Subject: [PATCH] hostapd: defer ACS in AP+STA mode
+Subject: [PATCH] hostapd: defer ACS and DFS in AP+STA mode
 
-When an AP with ACS shares a PHY with a STA interface, the AP must use
-the same channel as the STA. Defer ACS until the STA connects and use
-its channel instead of running ACS which may select a conflicting channel.
+When an AP shares a PHY with a STA interface, the AP must use the same
+channel as the STA. Defer both ACS and DFS CAC until the STA connects
+and provides channel information via iface.start().
 
-Fixes: SDG-5649
+ACS deferral prevents selecting a conflicting channel. DFS CAC deferral
+prevents locking the radio for radar detection before the STA can
+connect, which otherwise causes a DFS_FAILED loop when the mesh state
+machine times out and disables wireless.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  openwrt/files/hostapd.uc |    7 ++++---
+ src/ap/dfs.c             |   16 ++++++++++++++++
  src/ap/hw_features.c     |   19 +++++++++++++++++++
  src/ap/ucode.c           |    2 ++
- 3 files changed, 25 insertions(+), 3 deletions(-)
+ 4 files changed, 41 insertions(+), 3 deletions(-)
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
@@ -85,3 +89,28 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_enable_iface(iface);
  		return ucv_boolean_new(true);
  	}
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -869,6 +869,22 @@ int hostapd_handle_dfs(struct hostapd_if
+ 		return 1;
+ 	}
+ 
++	/*
++	 * If the first BSS has start_disabled=1, defer DFS CAC.
++	 * Same rationale as ACS deferral in hw_features.c: the AP
++	 * waits for the STA to connect and provide channel info via
++	 * iface.start() before starting radar detection.
++	 *
++	 * Return 0 to pause setup without changing interface state
++	 * or starting CAC.
++	 */
++	if (iface->conf->num_bss > 0 &&
++	    iface->bss[0]->conf->start_disabled) {
++		wpa_printf(MSG_INFO,
++			   "DFS deferred: start_disabled=1, waiting for channel via iface.start()");
++		return 0;
++	}
++
+ 	iface->cac_started = 0;
+ 
+ 	do {

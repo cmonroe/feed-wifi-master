@@ -92,7 +92,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  enum edcca_mode {
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1354,6 +1354,11 @@ hostapd_dfs_background_start_channel_swi
+@@ -1370,6 +1370,11 @@ hostapd_dfs_background_start_channel_swi
  		   __func__, iface->radar_background.cac_started ? "yes" : "no",
  		   hostapd_csa_in_progress(iface) ? "yes" : "no");
  
@@ -104,7 +104,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	/* Check if CSA in progress */
  	if (hostapd_csa_in_progress(iface))
  		return 0;
-@@ -1402,6 +1407,11 @@ static int hostapd_dfs_start_channel_swi
+@@ -1418,6 +1423,11 @@ static int hostapd_dfs_start_channel_swi
  		   __func__, iface->cac_started ? "yes" : "no",
  		   hostapd_csa_in_progress(iface) ? "yes" : "no");
  
