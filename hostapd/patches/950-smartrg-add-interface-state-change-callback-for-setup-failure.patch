@@ -5,6 +5,11 @@ Subject: [PATCH] hostapd: add interface state change callback for setup failure
 Notify netifd when interface transitions to DISABLED from ACS, DFS, or
 HT_SCAN states. Allows netifd to retry setup in case of a transient failure.
 
+Suppress failure notification when the transition is caused by an
+intentional AP-STA coordination stop (apsta_state down). Without this
+guard, STA disconnect on a DFS channel triggers DFS_FAILED, causing
+netifd to teardown and restart the radio in a loop.
+
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  openwrt/files/hostapd.uc |   59 +++++++++++++++++++++++++++++++++++--
@@ -147,7 +152,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return ret;
  }
  
-@@ -1375,6 +1388,7 @@ let main_obj = {
+@@ -1268,7 +1281,9 @@ let main_obj = {
+ 				return 0;
+ 
+ 			if (!req.args.up) {
++				hostapd.data.apsta_stopping = phy;
+ 				iface.stop();
++				delete hostapd.data.apsta_stopping;
+ 				return 0;
+ 			}
+ 
+@@ -1375,6 +1390,7 @@ let main_obj = {
  			radio: 0,
  			config: "",
  			prev_config: "",
@@ -155,7 +170,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
  		call: function(req) {
  			let phy = req.args.phy;
-@@ -1382,18 +1396,23 @@ let main_obj = {
+@@ -1382,18 +1398,23 @@ let main_obj = {
  			let name = phy_name(phy, radio);
  			let file = req.args.config;
  			let prev_file = req.args.prev_config;
@@ -180,7 +195,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			hostapd.printf(`Set new config for phy ${name}: ${file}`);
  			iface_set_config(name, config);
-@@ -1612,4 +1631,35 @@ return {
+@@ -1612,4 +1633,38 @@ return {
  			return null;
  		return response;
  	},
@@ -194,6 +209,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +			return;
 +
 +		if (hostapd.data.configuring == phy)
++			return;
++
++		if (hostapd.data.apsta_stopping == phy)
 +			return;
 +
 +		let cfg = hostapd.data.config[phy];
