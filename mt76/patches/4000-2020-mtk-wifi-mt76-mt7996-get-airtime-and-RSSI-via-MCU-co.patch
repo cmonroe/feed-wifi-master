@@ -222,7 +222,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  /* The HW does not translate the mac header to 802.3 for mesh point */
  static int mt7996_reverse_frag0_hdr_trans(struct sk_buff *skb, u16 hdr_gap)
  {
-@@ -1394,8 +1279,6 @@ next:
+@@ -1395,8 +1280,6 @@ next:
  		}
  	}
  
@@ -231,7 +231,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -2922,31 +2805,42 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2923,31 +2806,42 @@ void mt7996_mac_sta_rc_work(struct work_
  
  void mt7996_mac_work(struct work_struct *work)
  {

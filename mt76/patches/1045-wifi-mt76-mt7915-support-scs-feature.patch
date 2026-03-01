@@ -131,7 +131,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		mt76_connac_mcu_set_pm(&dev->mt76, dev->phy.mt76->band_idx, 1);
  		mt7915_mcu_set_mac(dev, dev->phy.mt76->band_idx, false, false);
  	}
-@@ -1838,11 +1851,16 @@ static void
+@@ -1840,11 +1853,16 @@ static void
  mt7915_reconfig_complete(struct ieee80211_hw *hw,
  			 enum ieee80211_reconfig_type reconfig_type)
  {
