@@ -1,0 +1,61 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 04 Mar 2026 05:25:48 -0800
+Subject: [PATCH] wifi: mt76: route additional frame types to ALTX queue
+
+Route null/QoS null frames, disassoc, and action frames in the spectrum
+management, block ack, and public categories to the ALTX queue.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ tx.c |   33 +++++++++++++++++++++++++++++----
+ 1 file changed, 29 insertions(+), 4 deletions(-)
+
+--- a/tx.c
++++ b/tx.c
+@@ -614,6 +614,27 @@ void mt76_txq_schedule(struct mt76_phy *
+ }
+ EXPORT_SYMBOL_GPL(mt76_txq_schedule);
+ 
++static bool
++mt76_is_altx_action(struct sk_buff *skb)
++{
++	struct ieee80211_mgmt *mgmt = (void *)skb->data;
++
++	if (!ieee80211_is_action(mgmt->frame_control))
++		return false;
++
++	if (skb->len < offsetofend(struct ieee80211_mgmt, u.action.category))
++		return false;
++
++	switch (mgmt->u.action.category) {
++	case WLAN_CATEGORY_SPECTRUM_MGMT:
++	case WLAN_CATEGORY_BACK:
++	case WLAN_CATEGORY_PUBLIC:
++		return true;
++	default:
++		return false;
++	}
++}
++
+ static int
+ mt76_txq_schedule_pending_wcid(struct mt76_phy *phy, struct mt76_wcid *wcid,
+ 			       struct sk_buff_head *head)
+@@ -632,10 +653,14 @@ mt76_txq_schedule_pending_wcid(struct mt
+ 
+ 		if ((dev->drv->drv_flags & MT_DRV_HW_MGMT_TXQ) &&
+ 		    !(info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP) &&
+-		    !ieee80211_is_data(hdr->frame_control) &&
+-		    (!ieee80211_is_bufferable_mmpdu(skb) ||
+-		     ieee80211_is_deauth(hdr->frame_control) ||
+-		     head == &wcid->tx_offchannel))
++		    (ieee80211_is_nullfunc(hdr->frame_control) ||
++		     ieee80211_is_qos_nullfunc(hdr->frame_control) ||
++		     (!ieee80211_is_data(hdr->frame_control) &&
++		      (!ieee80211_is_bufferable_mmpdu(skb) ||
++		       ieee80211_is_deauth(hdr->frame_control) ||
++		       ieee80211_is_disassoc(hdr->frame_control) ||
++		       mt76_is_altx_action(skb) ||
++		       head == &wcid->tx_offchannel))))
+ 			qid = MT_TXQ_PSD;
+ 
+ 		q = phy->q_tx[qid];

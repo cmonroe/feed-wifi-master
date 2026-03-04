@@ -103,7 +103,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	if (link_sta->vht_cap.vht_supported)
  		muru->mimo_dl.vht_mu_bfee =
-@@ -2694,7 +2699,7 @@ int mt7996_mcu_add_sta(struct mt7996_dev
+@@ -2695,7 +2700,7 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  		/* starec eht */
  		mt7996_mcu_sta_eht_tlv(skb, link_sta);
  		/* starec muru */
@@ -112,7 +112,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  		if (sta->mlo) {
  			mt7996_mcu_sta_mld_setup_tlv(dev, skb, link_conf->vif,
-@@ -5725,3 +5730,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -5726,3 +5731,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(SCS),
  				 &req, sizeof(req), false);
  }

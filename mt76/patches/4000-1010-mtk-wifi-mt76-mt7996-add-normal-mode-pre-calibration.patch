@@ -81,7 +81,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4309,6 +4309,172 @@ int mt7996_mcu_get_efuse_free_block(stru
+@@ -4310,6 +4310,172 @@ int mt7996_mcu_get_efuse_free_block(stru
  	return 0;
  }
  
