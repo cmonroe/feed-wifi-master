@@ -1,0 +1,123 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 05 Mar 2026 14:20:14 -0800
+Subject: [PATCH] mac80211: defer ADDBA until station exits power save
+
+When a TX BA session is started for a sleeping station, the ADDBA request
+can be queued in the power-save buffer while mac80211 immediately arms the
+1 second response timer. The timer then expires before the frame is
+transmitted and the failed attempt is counted against addba_req_num, which
+can lock out BA setup for the rest of the association.
+
+Defer sending ADDBA until the station is no longer in station, driver, or
+delivery power save, and re-run the BA worker after wakeup so the existing
+setup flow resumes once the request can go out immediately.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/mac80211/agg-tx.c      |   12 ++++++++++--
+ net/mac80211/ht.c          |   15 ++++++++++++++-
+ net/mac80211/ieee80211_i.h |    2 ++
+ net/mac80211/sta_info.c    |    2 ++
+ 4 files changed, 28 insertions(+), 3 deletions(-)
+
+--- a/net/mac80211/agg-tx.c
++++ b/net/mac80211/agg-tx.c
+@@ -441,8 +441,8 @@ static void sta_addba_resp_timer_expired
+ 	ieee80211_stop_tx_ba_session(&sta->sta, tid);
+ }
+ 
+-static void ieee80211_send_addba_with_timeout(struct sta_info *sta,
+-					      struct tid_ampdu_tx *tid_tx)
++void ieee80211_send_addba_with_timeout(struct sta_info *sta,
++				       struct tid_ampdu_tx *tid_tx)
+ {
+ 	struct ieee80211_sub_if_data *sdata = sta->sdata;
+ 	struct ieee80211_local *local = sta->local;
+@@ -455,6 +455,14 @@ static void ieee80211_send_addba_with_ti
+ 
+ 	lockdep_assert_wiphy(sta->local->hw.wiphy);
+ 
++	if (test_sta_flag(sta, WLAN_STA_PS_STA) ||
++	    test_sta_flag(sta, WLAN_STA_PS_DRIVER) ||
++	    test_sta_flag(sta, WLAN_STA_PS_DELIVER)) {
++		ht_dbg(sdata, "defer addBA request on %pM tid %d while STA in PS\n",
++		       sta->sta.addr, tid);
++		return;
++	}
++
+ 	/* activate the timer for the recipient's addBA response */
+ 	mod_timer(&tid_tx->addba_resp_timer, jiffies + ADDBA_RESP_INTERVAL);
+ 	ht_dbg(sdata, "activated addBA response timer on %pM tid %d\n",
+--- a/net/mac80211/ht.c
++++ b/net/mac80211/ht.c
+@@ -355,12 +355,16 @@ void ieee80211_ba_session_work(struct wi
+ 		container_of(work, struct sta_info, ampdu_mlme.work);
+ 	struct tid_ampdu_tx *tid_tx;
+ 	bool blocked;
++	bool in_ps;
+ 	int tid;
+ 
+ 	lockdep_assert_wiphy(sta->local->hw.wiphy);
+ 
+ 	/* When this flag is set, new sessions should be blocked. */
+ 	blocked = test_sta_flag(sta, WLAN_STA_BLOCK_BA);
++	in_ps = test_sta_flag(sta, WLAN_STA_PS_STA) ||
++		test_sta_flag(sta, WLAN_STA_PS_DRIVER) ||
++		test_sta_flag(sta, WLAN_STA_PS_DELIVER);
+ 
+ 	for (tid = 0; tid < IEEE80211_NUM_TIDS; tid++) {
+ 		if (test_and_clear_bit(tid, sta->ampdu_mlme.tid_rx_timer_expired))
+@@ -390,7 +394,7 @@ void ieee80211_ba_session_work(struct wi
+ 		spin_lock_bh(&sta->lock);
+ 
+ 		tid_tx = sta->ampdu_mlme.tid_start_tx[tid];
+-		if (!blocked && tid_tx) {
++		if (!blocked && !in_ps && tid_tx) {
+ 			struct txq_info *txqi = to_txq_info(sta->sta.txq[tid]);
+ 			struct ieee80211_sub_if_data *sdata =
+ 				vif_to_sdata(txqi->txq.vif);
+@@ -445,6 +449,15 @@ void ieee80211_ba_session_work(struct wi
+ 		if (!blocked &&
+ 		    test_and_clear_bit(HT_AGG_STATE_START_CB, &tid_tx->state))
+ 			ieee80211_start_tx_ba_cb(sta, tid, tid_tx);
++		if (!blocked && !in_ps &&
++		    test_bit(HT_AGG_STATE_DRV_READY, &tid_tx->state) &&
++		    !test_bit(HT_AGG_STATE_SENT_ADDBA, &tid_tx->state) &&
++		    !test_bit(HT_AGG_STATE_RESPONSE_RECEIVED, &tid_tx->state) &&
++		    !test_bit(HT_AGG_STATE_STOPPING, &tid_tx->state) &&
++		    !test_bit(HT_AGG_STATE_WANT_STOP, &tid_tx->state)) {
++			ieee80211_send_addba_with_timeout(sta, tid_tx);
++			continue;
++		}
+ 		if (test_and_clear_bit(HT_AGG_STATE_WANT_STOP, &tid_tx->state))
+ 			__ieee80211_stop_tx_ba_session(sta, tid,
+ 						       AGG_STOP_LOCAL_REQUEST);
+--- a/net/mac80211/sta_info.c
++++ b/net/mac80211/sta_info.c
+@@ -1845,6 +1845,7 @@ void ieee80211_sta_ps_deliver_wakeup(str
+ 	       sta->sta.addr, sta->sta.aid, filtered, buffered);
+ 
+ 	ieee80211_check_fast_xmit(sta);
++	wiphy_work_queue(local->hw.wiphy, &sta->ampdu_mlme.work);
+ }
+ 
+ static void ieee80211_send_null_response(struct sta_info *sta, int tid,
+@@ -2302,6 +2303,7 @@ void ieee80211_sta_block_awake(struct ie
+ 	} else {
+ 		clear_sta_flag(sta, WLAN_STA_PS_DRIVER);
+ 		ieee80211_check_fast_xmit(sta);
++		wiphy_work_queue(hw->wiphy, &sta->ampdu_mlme.work);
+ 	}
+ }
+ EXPORT_SYMBOL(ieee80211_sta_block_awake);
+--- a/net/mac80211/ieee80211_i.h
++++ b/net/mac80211/ieee80211_i.h
+@@ -2256,6 +2256,8 @@ void ieee80211_start_tx_ba_cb(struct sta
+ 			      struct tid_ampdu_tx *tid_tx);
+ void ieee80211_stop_tx_ba_cb(struct sta_info *sta, int tid,
+ 			     struct tid_ampdu_tx *tid_tx);
++void ieee80211_send_addba_with_timeout(struct sta_info *sta,
++				       struct tid_ampdu_tx *tid_tx);
+ void ieee80211_ba_session_work(struct wiphy *wiphy, struct wiphy_work *work);
+ void ieee80211_tx_ba_session_handle_start(struct sta_info *sta, int tid);
+ void ieee80211_release_reorder_timeout(struct sta_info *sta, int tid);
