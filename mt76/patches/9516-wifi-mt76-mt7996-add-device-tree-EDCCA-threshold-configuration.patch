@@ -82,7 +82,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1243,6 +1243,11 @@ struct mt76_mt7996_power_path_limits {
+@@ -1249,6 +1249,11 @@ struct mt76_mt7996_power_path_limits {
  	s8 ru_bf[16][15];
  };
  
@@ -94,7 +94,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -2066,6 +2071,9 @@ s8 mt76_mt7996_get_rate_power_limits(str
+@@ -2088,6 +2093,9 @@ s8 mt76_mt7996_get_rate_power_limits(str
  			      struct mt76_power_limits *dest,
  			      struct mt76_mt7996_power_path_limits *dest_path,
  			      s8 target_power);
@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2150,8 +2150,10 @@ mt7996_mac_restart(struct mt7996_dev *de
+@@ -2155,8 +2155,10 @@ mt7996_mac_restart(struct mt7996_dev *de
  		goto out;
  
  	mt7996_mac_init(dev);
@@ -186,7 +186,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		goto out;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -627,6 +627,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -638,6 +638,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  

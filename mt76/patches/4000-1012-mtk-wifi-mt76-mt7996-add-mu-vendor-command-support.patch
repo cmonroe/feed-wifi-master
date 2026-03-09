@@ -49,7 +49,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	if (phy->mt76->cap.has_2ghz) {
  		phy->mt76->sband_2g.sband.ht_cap.cap |=
-@@ -763,6 +764,10 @@ static int mt7996_register_phy(struct mt
+@@ -764,6 +765,10 @@ static int mt7996_register_phy(struct mt
  			goto error;
  	}
  
@@ -60,7 +60,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1763,6 +1768,10 @@ int mt7996_register_device(struct mt7996
+@@ -1764,6 +1769,10 @@ int mt7996_register_device(struct mt7996
  
  	mt7996_dma_rro_start(dev);
  
@@ -384,7 +384,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +#endif
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -542,6 +542,9 @@ static int mt7996_add_interface(struct i
+@@ -553,6 +553,9 @@ static int mt7996_add_interface(struct i
  	vif->offload_flags |= IEEE80211_OFFLOAD_ENCAP_4ADDR;
  	mvif->mt76.deflink_id = IEEE80211_LINK_UNSPECIFIED;
  

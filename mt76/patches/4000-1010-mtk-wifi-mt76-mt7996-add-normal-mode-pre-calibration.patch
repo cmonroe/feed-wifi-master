@@ -51,7 +51,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF0_TX_PATH		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1283,6 +1283,12 @@ static int mt7996_init_hardware(struct m
+@@ -1284,6 +1284,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -594,6 +594,12 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -605,6 +605,12 @@ int mt7996_set_channel(struct mt76_phy *
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
  

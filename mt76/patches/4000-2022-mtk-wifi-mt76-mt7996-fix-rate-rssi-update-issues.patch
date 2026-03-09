@@ -150,7 +150,7 @@
  		case UNI_ALL_STA_TXRX_MSDU_COUNT:
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1799,14 +1799,8 @@ static void mt7996_sta_statistics(struct
+@@ -1831,14 +1831,8 @@ static void mt7996_sta_statistics(struct
  				  struct ieee80211_sta *sta,
  				  struct station_info *sinfo)
  {
@@ -166,7 +166,7 @@
  
  	sinfo->txrate = msta_link->wcid.rate;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BITRATE);
-@@ -1837,9 +1831,6 @@ static void mt7996_sta_statistics(struct
+@@ -1869,9 +1863,6 @@ static void mt7996_sta_statistics(struct
  
  	sinfo->rx_packets = msta_link->wcid.stats.rx_packets;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_RX_PACKETS);
@@ -218,7 +218,7 @@
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -597,11 +597,6 @@ mt7996_mac_init_band(struct mt7996_dev *
+@@ -598,11 +598,6 @@ mt7996_mac_init_band(struct mt7996_dev *
  	set = FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_MODE, 0) |
  	      FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_PARAM, 0x3);
  	mt76_rmw(dev, MT_WTBLOFF_RSCR(band), mask, set);

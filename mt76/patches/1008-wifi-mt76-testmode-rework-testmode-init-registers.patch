@@ -18,7 +18,7 @@ Subject: [PATCH 20/76] wifi: mt76: testmode: rework testmode init registers
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -951,7 +951,8 @@ void mt76_rx(struct mt76_dev *dev, enum
+@@ -952,7 +952,8 @@ void mt76_rx(struct mt76_dev *dev, enum
  	}
  
  #ifdef CONFIG_NL80211_TESTMODE
@@ -30,7 +30,7 @@ Subject: [PATCH 20/76] wifi: mt76: testmode: rework testmode init registers
  			phy->test.rx_stats.fcs_error[q]++;
 --- a/mt76.h
 +++ b/mt76.h
-@@ -806,6 +806,8 @@ struct mt76_testmode_ops {
+@@ -807,6 +807,8 @@ struct mt76_testmode_ops {
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
  };
  
@@ -39,7 +39,7 @@ Subject: [PATCH 20/76] wifi: mt76: testmode: rework testmode init registers
  struct mt76_testmode_data {
  	enum mt76_testmode_state state;
  
-@@ -837,6 +839,8 @@ struct mt76_testmode_data {
+@@ -838,6 +840,8 @@ struct mt76_testmode_data {
  
  	u8 addr[3][ETH_ALEN];
  
@@ -48,7 +48,7 @@ Subject: [PATCH 20/76] wifi: mt76: testmode: rework testmode init registers
  	u32 tx_pending;
  	u32 tx_queued;
  	u16 tx_queued_limit;
-@@ -844,6 +848,7 @@ struct mt76_testmode_data {
+@@ -845,6 +849,7 @@ struct mt76_testmode_data {
  	struct {
  		u64 packets[__MT_RXQ_MAX];
  		u64 fcs_error[__MT_RXQ_MAX];
