@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -997,6 +997,71 @@ mt7996_mcu_rx_thermal_notify(struct mt79
+@@ -997,6 +997,77 @@ mt7996_mcu_rx_thermal_notify(struct mt79
  }
  
  static void
@@ -57,7 +57,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	if (!sta)
 +		return;
 +
++	if (ps)
++		set_bit(MT_WCID_FLAG_PS, &wcid->flags);
++
 +	ieee80211_sta_ps_transition_ni(sta, ps);
++
++	if (!ps)
++		clear_bit(MT_WCID_FLAG_PS, &wcid->flags);
 +}
 +
 +static void
@@ -112,7 +118,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7996_mcu_rx_ext_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
  	struct mt7996_mcu_rxd *rxd = (struct mt7996_mcu_rxd *)skb->data;
-@@ -1110,6 +1175,9 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -1110,6 +1181,9 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_ALL_STA_INFO:
  		mt7996_mcu_rx_all_sta_info_event(dev, skb);
  		break;
