@@ -37,7 +37,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	MT_PHY_TYPE_HE_TB,
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -698,6 +698,8 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -697,6 +697,8 @@ mt7915_register_ext_phy(struct mt7915_de
  	struct mt76_phy *mphy = phy->mt76;
  	int ret;
  
@@ -46,7 +46,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	INIT_DELAYED_WORK(&mphy->mac_work, mt7915_mac_work);
  
  	mt7915_eeprom_parse_hw_cap(dev, phy);
-@@ -1234,6 +1236,8 @@ int mt7915_register_device(struct mt7915
+@@ -1233,6 +1235,8 @@ int mt7915_register_device(struct mt7915
  	dev->phy.dev = dev;
  	dev->phy.mt76 = &dev->mt76.phy;
  	dev->mt76.phy.priv = &dev->phy;
@@ -92,7 +92,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		/* get signal strength of resp frames (CTS/BA/ACK) */
  		addr = mt7915_mac_wtbl_lmac_addr(dev, idx, 30);
  		val = mt76_rr(dev, addr);
-@@ -899,6 +879,7 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -888,6 +868,7 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  		info = le32_to_cpu(*cur_info);
  		if (info & MT_TX_FREE_PAIR) {
  			struct mt7915_sta *msta;
@@ -100,7 +100,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  			u16 idx;
  
  			idx = FIELD_GET(MT_TX_FREE_WLAN_ID, info);
-@@ -909,6 +890,15 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -898,6 +879,15 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  
  			msta = container_of(wcid, struct mt7915_sta, wcid);
  			mt76_wcid_add_poll(&dev->mt76, &msta->wcid);
@@ -116,7 +116,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  			continue;
  		}
  
-@@ -987,6 +977,7 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
+@@ -967,6 +957,7 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
  static void mt7915_mac_add_txs(struct mt7915_dev *dev, void *data)
  {
  	struct mt7915_sta *msta = NULL;
@@ -124,7 +124,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct mt76_wcid *wcid;
  	__le32 *txs_data = data;
  	u16 wcidx;
-@@ -1016,6 +1007,11 @@ static void mt7915_mac_add_txs(struct mt
+@@ -1005,6 +996,11 @@ static void mt7915_mac_add_txs(struct mt
  
  	mt76_wcid_add_poll(&dev->mt76, &msta->wcid);
  
@@ -136,7 +136,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -1948,6 +1944,27 @@ static void mt7915_mac_severe_check(stru
+@@ -1937,6 +1933,27 @@ static void mt7915_mac_severe_check(stru
  	phy->trb_ts = trb;
  }
  
@@ -164,7 +164,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7915_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev, rc_work);
-@@ -2006,6 +2023,11 @@ void mt7915_mac_work(struct work_struct
+@@ -1995,6 +2012,11 @@ void mt7915_mac_work(struct work_struct
  			mt7915_mcu_muru_debug_get(phy);
  	}
  
@@ -186,7 +186,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	msta->vif = mvif;
  	msta->wcid.sta_disabled = 1;
  	msta->wcid.idx = idx;
-@@ -878,6 +879,7 @@ void mt7915_mac_sta_remove(struct mt76_d
+@@ -877,6 +878,7 @@ void mt7915_mac_sta_remove(struct mt76_d
  {
  	struct mt7915_dev *dev = container_of(mdev, struct mt7915_dev, mt76);
  	struct mt7915_sta *msta = (struct mt7915_sta *)sta->drv_priv;
@@ -194,7 +194,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  	mt7915_mac_wtbl_update(dev, msta->wcid.idx,
  			       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
-@@ -888,6 +890,11 @@ void mt7915_mac_sta_remove(struct mt76_d
+@@ -887,6 +889,11 @@ void mt7915_mac_sta_remove(struct mt76_d
  	if (!list_empty(&msta->rc_list))
  		list_del_init(&msta->rc_list);
  	spin_unlock_bh(&mdev->sta_poll_lock);
@@ -458,7 +458,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	u32 airtime_ac[8];
  
  	int ack_signal;
-@@ -230,6 +231,10 @@ struct mt7915_phy {
+@@ -229,6 +230,10 @@ struct mt7915_phy {
  	bool sku_limit_en:1;
  	bool sku_path_en:1;
  
@@ -469,7 +469,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  #ifdef CONFIG_NL80211_TESTMODE
  	struct {
  		u32 *reg_backup;
-@@ -531,6 +536,7 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -530,6 +535,7 @@ int mt7915_mcu_get_chan_mib_info(struct
  int mt7915_mcu_get_temperature(struct mt7915_phy *phy);
  int mt7915_mcu_set_thermal_throttling(struct mt7915_phy *phy, u8 state);
  int mt7915_mcu_set_thermal_protect(struct mt7915_phy *phy);

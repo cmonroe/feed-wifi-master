@@ -1,6 +1,6 @@
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2332,7 +2332,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2330,7 +2330,7 @@ void mt7996_mac_reset_work(struct work_s
  	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
  		return;
  
@@ -9,7 +9,7 @@
  		 wiphy_name(hw->wiphy));
  
  	if (mtk_wed_device_active(&dev->mt76.mmio.wed_hif2))
-@@ -2344,6 +2344,9 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2342,6 +2342,9 @@ void mt7996_mac_reset_work(struct work_s
  	mt7996_npu_hw_stop(dev);
  	ieee80211_stop_queues(mt76_hw(dev));
  
@@ -19,7 +19,7 @@
  	set_bit(MT76_RESET, &dev->mphy.state);
  	set_bit(MT76_MCU_RESET, &dev->mphy.state);
  	mt76_abort_scan(&dev->mt76);
-@@ -2357,6 +2360,10 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2355,6 +2358,10 @@ void mt7996_mac_reset_work(struct work_s
  	}
  
  	mt76_worker_disable(&dev->mt76.tx_worker);
@@ -30,7 +30,7 @@
  	mt76_for_each_q_rx(&dev->mt76, i) {
  		if (mtk_wed_device_active(&dev->mt76.mmio.wed) &&
  		    mt76_queue_is_wed_rro(&dev->mt76.q_rx[i]))
-@@ -2375,14 +2382,30 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2373,14 +2380,30 @@ void mt7996_mac_reset_work(struct work_s
  
  	mutex_lock(&dev->mt76.mutex);
  
@@ -61,7 +61,7 @@
  		mt76_wr(dev, MT_MCU_INT_EVENT, MT_MCU_INT_EVENT_DMA_INIT);
  		mt7996_wait_reset_state(dev, MT_MCU_CMD_RECOVERY_DONE);
  	}
-@@ -2415,6 +2438,9 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2413,6 +2436,9 @@ void mt7996_mac_reset_work(struct work_s
  
  	__mt7996_npu_hw_init(dev);
  
@@ -71,7 +71,7 @@
  	clear_bit(MT76_MCU_RESET, &dev->mphy.state);
  	mt7996_for_each_phy(dev, phy)
  		clear_bit(MT76_RESET, &phy->mt76->state);
-@@ -2454,7 +2480,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2452,7 +2478,7 @@ void mt7996_mac_reset_work(struct work_s
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -80,7 +80,7 @@
  		 wiphy_name(dev->mt76.hw->wiphy));
  }
  
-@@ -2529,6 +2555,9 @@ skip_coredump:
+@@ -2527,6 +2553,9 @@ skip_coredump:
  
  void mt7996_reset(struct mt7996_dev *dev)
  {
