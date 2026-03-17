@@ -74,19 +74,19 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -426,6 +426,11 @@ struct mt7996_phy {
- 	bool sku_path_en;
+@@ -422,6 +422,11 @@ struct mt7996_phy {
  
  	u8 muru_onoff;
-+
+ 
 +#ifdef CONFIG_MTK_VENDOR
 +	bool sr_enable:1;
 +	bool enhanced_sr_enable:1;
 +#endif
- };
++
+ 	u8 pp_mode;
+ 	u16 punct_bitmap;
  
- struct mt7996_dev {
-@@ -1011,6 +1016,8 @@ enum edcca_bw_id {
+@@ -1009,6 +1014,8 @@ enum edcca_bw_id {
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  int mt7996_mcu_set_muru_cfg(struct mt7996_dev *dev, void *data);

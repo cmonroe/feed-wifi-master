@@ -15,7 +15,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2243,8 +2243,14 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2244,8 +2244,14 @@ mt7996_mac_full_reset(struct mt7996_dev
  	ieee80211_stop_queues(hw);
  
  	cancel_work_sync(&dev->wed_rro.work);

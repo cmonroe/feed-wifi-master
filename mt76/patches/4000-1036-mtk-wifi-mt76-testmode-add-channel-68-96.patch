@@ -69,7 +69,7 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  	else
  		dpd_size = mphy->sband_6g.sband.n_channels * DPD_PER_CH_BW20_SIZE +
  			   (dpd_6g_bw160_ch_num + dpd_6g_bw320_ch_num) * DPD_PER_CH_GT_BW20_SIZE;
-@@ -427,6 +439,39 @@ out:
+@@ -426,6 +438,39 @@ out:
  	return ret;
  }
  

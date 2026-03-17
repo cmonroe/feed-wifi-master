@@ -19,9 +19,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -676,6 +676,60 @@ s8 mt76_mt7996_get_rate_power_limits(str
+@@ -581,6 +581,60 @@ s8 mt76_get_rate_power_limits(struct mt7
  }
- EXPORT_SYMBOL_GPL(mt76_mt7996_get_rate_power_limits);
+ EXPORT_SYMBOL_GPL(mt76_get_rate_power_limits);
  
 +int mt76_get_edcca_limits(struct mt76_phy *phy,
 +			  struct ieee80211_channel *chan,
@@ -82,8 +82,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1249,6 +1249,11 @@ struct mt76_mt7996_power_path_limits {
- 	s8 ru_bf[16][15];
+@@ -1248,6 +1248,11 @@ struct mt76_power_limits {
+ 	} path;
  };
  
 +struct mt76_edcca_limits {
@@ -94,19 +94,19 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -2088,6 +2093,9 @@ s8 mt76_mt7996_get_rate_power_limits(str
+@@ -2069,6 +2074,9 @@ s8 mt76_get_rate_power_limits(struct mt7
+ 			      struct ieee80211_channel *chan,
  			      struct mt76_power_limits *dest,
- 			      struct mt76_mt7996_power_path_limits *dest_path,
  			      s8 target_power);
 +int mt76_get_edcca_limits(struct mt76_phy *phy,
 +			  struct ieee80211_channel *chan,
 +			  struct mt76_edcca_limits *dest);
  
- static inline bool mt76_queue_is_wed_tx_free(struct mt76_queue *q)
+ static inline bool mt76_queue_is_rx(struct mt76_dev *dev, struct mt76_queue *q)
  {
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -405,6 +405,55 @@ void mt7996_init_txpower(struct mt7996_p
+@@ -410,6 +410,55 @@ void mt7996_init_txpower(struct mt7996_p
  		__mt7996_init_txpower(phy, &phy->mt76->sband_6g.sband);
  }
  
@@ -162,7 +162,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
  mt7996_regd_notifier(struct wiphy *wiphy,
  		     struct regulatory_request *request)
-@@ -421,6 +470,7 @@ mt7996_regd_notifier(struct wiphy *wiphy
+@@ -426,6 +475,7 @@ mt7996_regd_notifier(struct wiphy *wiphy
  			mt7996_mcu_rdd_background_enable(phy, NULL);
  
  		mt7996_init_txpower(phy);
@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2155,8 +2155,10 @@ mt7996_mac_restart(struct mt7996_dev *de
+@@ -2156,8 +2156,10 @@ mt7996_mac_restart(struct mt7996_dev *de
  		goto out;
  
  	mt7996_mac_init(dev);
@@ -186,7 +186,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		goto out;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -638,6 +638,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -649,6 +649,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
@@ -198,7 +198,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -794,6 +794,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -792,6 +792,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);

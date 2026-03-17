@@ -27,7 +27,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	MCU_UNI_CMD_PER_STA_INFO = 0x6d,
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -464,7 +464,9 @@ int mt7996_eeprom_init(struct mt7996_dev
+@@ -463,7 +463,9 @@ int mt7996_eeprom_init(struct mt7996_dev
  	if (ret)
  		return ret;
  
@@ -51,7 +51,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF0_TX_PATH		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1284,6 +1284,12 @@ static int mt7996_init_hardware(struct m
+@@ -1288,6 +1288,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -256,7 +256,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define UNI_EVENT_CHIP_CONFIG_EFUSE_VERSION	0x21
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -983,6 +983,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+@@ -981,6 +981,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
  #endif
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);

@@ -241,7 +241,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF2_TX_PATH_BAND2		GENMASK(5, 3)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -516,6 +516,9 @@ struct mt7996_dev {
+@@ -517,6 +517,9 @@ struct mt7996_dev {
  	struct dentry *debugfs_dir;
  	struct rchan *relay_fwlog;
  
@@ -251,7 +251,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	struct {
  		u16 table_mask;
  		u8 n_agrt;
-@@ -709,6 +712,7 @@ int mt7996_eeprom_get_target_power(struc
+@@ -710,6 +713,7 @@ int mt7996_eeprom_get_target_power(struc
  				   struct ieee80211_channel *chan);
  s8 mt7996_eeprom_get_power_delta(struct mt7996_dev *dev, int band);
  bool mt7996_eeprom_has_background_radar(struct mt7996_dev *dev);
