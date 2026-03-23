@@ -380,7 +380,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -2810,6 +2740,39 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2815,6 +2745,39 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -420,7 +420,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7996_mac_work(struct work_struct *work)
  {
  	struct mt76_phy *mphy = (struct mt76_phy *)container_of(work, struct mt76_phy,
-@@ -2834,11 +2797,12 @@ void mt7996_mac_work(struct work_struct
+@@ -2839,11 +2802,12 @@ void mt7996_mac_work(struct work_struct
  			if (i == mphy->band_idx) {
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_RATE);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_AIRTIME);
@@ -440,7 +440,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  				break;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1833,27 +1833,19 @@ static void mt7996_sta_statistics(struct
+@@ -1839,27 +1839,19 @@ static void mt7996_sta_statistics(struct
  {
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
@@ -478,7 +478,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	sinfo->tx_failed = msta_link->wcid.stats.tx_failed;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_FAILED);
  
-@@ -1863,23 +1855,23 @@ static void mt7996_sta_statistics(struct
+@@ -1869,23 +1861,23 @@ static void mt7996_sta_statistics(struct
  	sinfo->ack_signal = (s8)msta_link->ack_signal;
  	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL);
  
@@ -519,7 +519,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -607,42 +607,168 @@ out:
+@@ -615,42 +615,168 @@ out:
  }
  
  static int
@@ -698,7 +698,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void
  mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
-@@ -669,8 +795,8 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -677,8 +803,8 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -709,7 +709,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  			break;
  		case UNI_ALL_STA_TXRX_ADM_STAT:
  			wlan_idx = le16_to_cpu(res->adm_stat[i].wlan_idx);
-@@ -774,6 +900,34 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -782,6 +908,34 @@ mt7996_mcu_rx_all_sta_info_event(struct
  						       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
  			}
  			break;
@@ -744,7 +744,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -5455,14 +5609,14 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5489,14 +5643,14 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  }
  
  int mt7996_mcu_get_per_sta_info(struct mt76_dev *dev, u16 tag,
@@ -762,7 +762,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 __rsv1;
  		u8 unsolicit;
-@@ -5501,27 +5655,52 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5535,27 +5689,52 @@ int mt7996_mcu_get_per_sta_info(struct m
  	switch (tag) {
  	case UNI_PER_STA_RSSI:
  		for (i = 0; i < sta_num; ++i) {
@@ -830,7 +830,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	default:
  		ret = -EINVAL;
  		dev_err(dev->dev, "Unknown UNI_PER_STA_INFO_TAG: %d\n", tag);
-@@ -5532,55 +5711,6 @@ out:
+@@ -5566,55 +5745,6 @@ out:
  	return ret;
  }
  
@@ -965,7 +965,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	unsigned long changed;
  
  	struct mt76_connac_sta_key_conf bip;
-@@ -881,7 +887,6 @@ void mt7996_mcu_rx_event(struct mt7996_d
+@@ -879,7 +885,6 @@ void mt7996_mcu_rx_event(struct mt7996_d
  void mt7996_mcu_exit(struct mt7996_dev *dev);
  int mt7996_mcu_get_per_sta_info(struct mt76_dev *dev, u16 tag,
  	                        u16 sta_num, u16 *sta_list);

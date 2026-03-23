@@ -231,7 +231,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -2929,32 +2812,43 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2934,32 +2817,43 @@ void mt7996_mac_sta_rc_work(struct work_
  
  void mt7996_mac_work(struct work_struct *work)
  {
@@ -290,7 +290,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -656,7 +656,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -664,7 +664,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
  	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
  		u8 ac;
  		u16 wlan_idx;
@@ -301,7 +301,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -695,6 +698,82 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -703,6 +706,82 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			wcid->stats.rx_packets +=
  				le32_to_cpu(res->msdu_cnt[i].rx_msdu_cnt);
  			break;
@@ -384,7 +384,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		default:
  			break;
  		}
-@@ -5375,9 +5454,135 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5409,9 +5488,135 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -522,7 +522,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -5388,7 +5593,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -5422,7 +5627,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  
@@ -590,7 +590,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  	int ack_signal;
  	struct ewma_avg_signal avg_ack_signal;
-@@ -396,6 +397,21 @@ struct mt7996_rro_queue_regs_emi {
+@@ -394,6 +395,21 @@ struct mt7996_rro_queue_regs_emi {
  	} ring[MT7996_MAX_RRO_RRS_RING];
  };
  
@@ -612,7 +612,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct mt7996_phy {
  	struct mt76_phy *mt76;
  	struct mt7996_dev *dev;
-@@ -585,6 +601,7 @@ struct mt7996_dev {
+@@ -583,6 +599,7 @@ struct mt7996_dev {
  		u32 fw_dbg_module;
  		u8 fw_dbg_lv;
  		u32 bcn_total_cnt[__MT_MAX_BAND];
@@ -620,7 +620,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	} dbg;
  	const struct mt7996_dbg_reg_desc *dbg_reg;
  #endif
-@@ -862,7 +879,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -860,7 +877,10 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);

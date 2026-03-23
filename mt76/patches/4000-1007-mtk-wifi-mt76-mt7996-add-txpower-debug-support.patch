@@ -139,7 +139,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	ieee80211_queue_delayed_work(dev->mphy.hw, &phy->mt76->mac_work,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -976,6 +976,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -974,6 +974,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
@@ -669,7 +669,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
-@@ -755,24 +755,29 @@ enum offs_rev {
+@@ -763,24 +763,29 @@ enum offs_rev {
  						 ((_wf) << 16) + (ofs))
  #define MT_WF_PHYRX_CSD_IRPI(_band, _wf)	MT_WF_PHYRX_CSD(_band, _wf, 0x1000)
  

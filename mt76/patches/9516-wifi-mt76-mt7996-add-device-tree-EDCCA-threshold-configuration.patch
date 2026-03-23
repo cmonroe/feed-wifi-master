@@ -106,7 +106,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -410,6 +410,55 @@ void mt7996_init_txpower(struct mt7996_p
+@@ -411,6 +411,55 @@ void mt7996_init_txpower(struct mt7996_p
  		__mt7996_init_txpower(phy, &phy->mt76->sband_6g.sband);
  }
  
@@ -162,7 +162,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
  mt7996_regd_notifier(struct wiphy *wiphy,
  		     struct regulatory_request *request)
-@@ -426,6 +475,7 @@ mt7996_regd_notifier(struct wiphy *wiphy
+@@ -427,6 +476,7 @@ mt7996_regd_notifier(struct wiphy *wiphy
  			mt7996_mcu_rdd_background_enable(phy, NULL);
  
  		mt7996_init_txpower(phy);
@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2156,8 +2156,10 @@ mt7996_mac_restart(struct mt7996_dev *de
+@@ -2161,8 +2161,10 @@ mt7996_mac_restart(struct mt7996_dev *de
  		goto out;
  
  	mt7996_mac_init(dev);
@@ -186,7 +186,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		goto out;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -649,6 +649,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -648,6 +648,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
@@ -198,7 +198,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -792,6 +792,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -790,6 +790,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);

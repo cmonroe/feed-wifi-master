@@ -12,7 +12,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -507,6 +507,8 @@ struct mt7996_dev {
+@@ -505,6 +505,8 @@ struct mt7996_dev {
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
  
@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -851,6 +851,59 @@ static int mt7996_token_read(struct seq_
+@@ -870,6 +870,59 @@ static int mt7996_token_read(struct seq_
  	return 0;
  }
  
@@ -83,7 +83,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /* The index of RF registers use the generic regidx, combined with two parts:
   * WF selection [31:24] and offset [23:0].
   */
-@@ -909,6 +962,9 @@ int mt7996_init_debugfs(struct mt7996_de
+@@ -928,6 +981,9 @@ int mt7996_init_debugfs(struct mt7996_de
  				    mt7996_twt_stats);
  	debugfs_create_devm_seqfile(dev->mt76.dev, "token", dir,
  				    mt7996_token_read);

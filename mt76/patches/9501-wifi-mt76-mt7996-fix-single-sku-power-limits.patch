@@ -65,7 +65,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5819,7 +5819,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -5853,7 +5853,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  static bool mt7996_is_psd_country(char *country)
  {
@@ -74,7 +74,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -5872,7 +5872,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5906,7 +5906,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	if (txpower_setting == INT_MIN || txpower_setting > 127)
  		txpower_setting = 127;
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -5887,6 +5893,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5921,6 +5927,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		return 0;
  	}
  
@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
  	if (!skb) {
-@@ -5901,7 +5910,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5935,7 +5944,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	 * driver doesn't need to do it
  	 */
  	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
@@ -107,7 +107,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->eht[3], 8);
-@@ -6036,6 +6045,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -6070,6 +6079,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.psd_limit = enable ? mt7996_is_psd_country(dev->mt76.alpha2) : 0,
  	};
  
@@ -124,7 +124,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	phy->enhanced_sr_enable = true;
  
 +	/* needed to re-apply power tables after SER */
-+	{
++	if (phy->mt76->chanctx) {
 +		u8 delta;
 +		int current_txpower;
 +
@@ -139,7 +139,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
  
-@@ -610,6 +623,8 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -609,6 +622,8 @@ int mt7996_set_channel(struct mt76_phy *
  {
  	struct mt7996_phy *phy = mphy->priv;
  	int ret;
@@ -148,7 +148,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
-@@ -628,7 +643,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -627,7 +642,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
@@ -325,7 +325,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -369,7 +369,7 @@ static void __mt7996_init_txpower(struct
+@@ -370,7 +370,7 @@ static void __mt7996_init_txpower(struct
  		return;
  
  	phy->sku_limit_en = true;
@@ -334,7 +334,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	np = mt76_find_power_limits_node(phy->mt76);
  	for (i = 0; i < sband->n_channels; i++) {
  		struct ieee80211_channel *chan = &sband->channels[i];
-@@ -379,8 +379,10 @@ static void __mt7996_init_txpower(struct
+@@ -380,8 +380,10 @@ static void __mt7996_init_txpower(struct
  		target_power = mt76_get_rate_power_limits(phy->mt76, chan,
  							  limits,
  							  target_power);

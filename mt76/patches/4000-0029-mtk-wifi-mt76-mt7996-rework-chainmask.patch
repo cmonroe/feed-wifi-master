@@ -86,7 +86,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  }
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -463,10 +463,11 @@ mt7996_init_wiphy_band(struct ieee80211_
+@@ -464,10 +464,11 @@ mt7996_init_wiphy_band(struct ieee80211_
  	radio->n_freq_range = 1;
  	radio->iface_combinations = &if_comb;
  	radio->n_iface_combinations = 1;
@@ -102,7 +102,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	mt7996_set_stream_vht_txbf_caps(phy);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1740,33 +1740,36 @@ mt7996_set_antenna(struct ieee80211_hw *
+@@ -1743,33 +1743,36 @@ mt7996_set_antenna(struct ieee80211_hw *
  		   u32 tx_ant, u32 rx_ant)
  {
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
@@ -151,7 +151,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	mutex_unlock(&dev->mt76.mutex);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -3981,7 +3981,7 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -4014,7 +4014,7 @@ int mt7996_mcu_set_chan_info(struct mt79
  		.center_ch = ieee80211_frequency_to_channel(freq1),
  		.bw = mt76_connac_chan_bw(chandef),
  		.tx_path_num = hweight16(phy->mt76->chainmask),
@@ -162,7 +162,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	};
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -434,8 +434,6 @@ struct mt7996_dev {
+@@ -432,8 +432,6 @@ struct mt7996_dev {
  	struct cfg80211_chan_def rdd2_chandef;
  	struct mt7996_phy *rdd2_phy;
  
