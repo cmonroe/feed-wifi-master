@@ -1,0 +1,86 @@
+From 58ac8d0be8729ca48c5b85c2fddefd6a6b1f871b Mon Sep 17 00:00:00 2001
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Fri, 17 May 2024 14:49:50 +0800
+Subject: [PATCH 56/89] mtk: mt76: mt7996: trigger channel calibration for DFS
+
+Trigger channel calibration (set channel with switch reason = NORMAL)
+for DFS link after STA is associated.
+Without this patch, 5G link might have high PER during T.P. test
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+---
+ mt7996/main.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -26,6 +26,11 @@ int mt7996_run(struct mt7996_phy *phy)
+ 	if (ret)
+ 		return ret;
+ 
++	/* set a parking channel */
++	ret = mt7996_mcu_set_chan_info(phy, UNI_CHANNEL_SWITCH);
++	if (ret)
++		return ret;
++
+ 	ret = mt7996_mcu_set_thermal_throttling(phy, MT7996_THERMAL_THROTTLE_MAX);
+ 	if (ret)
+ 		return ret;
+@@ -2510,6 +2515,49 @@ mt7996_set_eml_op_mode(struct ieee80211_
+ 	return ret;
+ }
+ 
++static void
++mt7996_event_callback(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
++		      const struct ieee80211_event *event)
++{
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	unsigned long valid_links;
++	unsigned int link_id;
++
++	switch (event->type) {
++	case MLME_EVENT:
++		if (event->u.mlme.data != ASSOC_EVENT ||
++		    event->u.mlme.status != MLME_SUCCESS)
++			break;
++
++		valid_links = vif->valid_links ?: BIT(0);
++
++		ieee80211_stop_queues(hw);
++		mutex_lock(&dev->mt76.mutex);
++		for_each_set_bit(link_id, &valid_links, IEEE80211_MLD_MAX_NUM_LINKS) {
++			struct mt7996_vif_link *mconf;
++			struct mt7996_phy *phy;
++
++			mconf = mt7996_vif_link(dev, vif, link_id);
++			if (!mconf)
++				continue;
++
++			phy = mt7996_vif_link_phy(mconf);
++			if (!phy)
++				continue;
++
++			if (!cfg80211_reg_can_beacon(hw->wiphy,
++						     &phy->mt76->chandef,
++						     NL80211_IFTYPE_AP))
++				mt7996_set_channel(phy->mt76);
++		}
++		mutex_unlock(&dev->mt76.mutex);
++		ieee80211_wake_queues(hw);
++		break;
++	default:
++		break;
++	}
++}
++
+ const struct ieee80211_ops mt7996_ops = {
+ 	.add_chanctx = mt76_add_chanctx,
+ 	.remove_chanctx = mt76_remove_chanctx,
+@@ -2542,6 +2590,7 @@ const struct ieee80211_ops mt7996_ops =
+ 	.get_txpower = mt7996_get_txpower,
+ 	.channel_switch_beacon = mt7996_channel_switch_beacon,
+ 	.post_channel_switch = mt7996_post_channel_switch,
++	.event_callback = mt7996_event_callback,
+ 	.get_stats = mt7996_get_stats,
+ 	.get_et_sset_count = mt7996_get_et_sset_count,
+ 	.get_et_stats = mt7996_get_et_stats,

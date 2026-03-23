@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1980,11 +1980,6 @@ static void mt7996_link_sta_statistics(s
+@@ -2009,11 +2009,6 @@ static void mt7996_link_sta_statistics(s
  	link_sinfo->fcs_err_count = stats->rx_fcs_err;
  	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_FCS_ERROR_COUNT);
  
@@ -125,3 +125,27 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
  		case UNI_ALL_STA_RX_MPDU_COUNT:
  			wlan_idx = le16_to_cpu(res->rx_mpdu_cnt[i].wlan_idx);
+--- a/mt7996/debugfs.c
++++ b/mt7996/debugfs.c
+@@ -1468,7 +1468,9 @@ mt7996_link_sta_info_show(struct seq_fil
+ 		   stats->tx_mpdus ? stats->tx_failed * 1000 / stats->tx_mpdus / 10 : 0,
+ 		   stats->tx_mpdus ? stats->tx_failed * 1000 / stats->tx_mpdus % 10 : 0);
+ 	seq_printf(file, "\t\tMPDU Retries: %u\n", stats->tx_retries);
+-	seq_printf(file, "\t\tAirtime: %llu (unit: 1.024 us)\n", stats->tx_airtime);
++	seq_printf(file, "\t\tAirtime (unit: 1.024 us):\n");
++	for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac)
++		seq_printf(file, "\t\t\t%s: %u\n", ac_to_str(ac), stats->tx_airtime[ac]);
+ 	seq_printf(file, "\t\tNumber of non-AQL packets: %u (Max: %u)\n",
+ 		   atomic_read(&wcid->non_aql_packets), MT_MAX_NON_AQL_PKT);
+ 	seq_printf(file, "\tRX:\n");
+@@ -1479,7 +1481,9 @@ mt7996_link_sta_info_show(struct seq_fil
+ 	seq_printf(file, "\t\tMPDU FCS Errors: %u (PER: %u.%u%%)\n", stats->rx_fcs_err,
+ 		   stats->rx_mpdus ? stats->rx_fcs_err * 1000 / stats->rx_mpdus / 10 : 0,
+ 		   stats->rx_mpdus ? stats->rx_fcs_err * 1000 / stats->rx_mpdus % 10 : 0);
+-	seq_printf(file, "\t\tAirtime: %llu (unit: 1.024 us)\n", stats->rx_airtime);
++	seq_printf(file, "\t\tAirtime (unit: 1.024 us):\n");
++	for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac)
++		seq_printf(file, "\t\t\t%s: %u\n", ac_to_str(ac), stats->rx_airtime[ac]);
+ 
+ 	seq_printf(file, "\tWCID flags:\n");
+ 	for (flag = 0; flag < NUM_MT76_WCID_FLAGS; flag++) {

@@ -17,7 +17,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1252,18 +1252,16 @@ next:
+@@ -1301,18 +1301,16 @@ next:
  				cur_info++;
  			continue;
  		} else if (info & MT_TXFREE_INFO_HEADER) {
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			continue;
  		}
  
-@@ -2799,7 +2797,6 @@ void mt7996_mac_work(struct work_struct
+@@ -2925,7 +2923,6 @@ void mt7996_mac_work(struct work_struct
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_MSDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_RX_MPDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TX_STAT);

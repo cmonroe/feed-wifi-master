@@ -60,7 +60,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1786,6 +1791,10 @@ int mt7996_register_device(struct mt7996
+@@ -1788,6 +1793,10 @@ int mt7996_register_device(struct mt7996
  
  	mt7996_dma_rro_start(dev);
  
@@ -73,7 +73,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	if (ret)
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1873,8 +1873,10 @@ mt7996_mcu_sta_amsdu_tlv(struct mt7996_d
+@@ -2015,8 +2015,10 @@ mt7996_mcu_sta_amsdu_tlv(struct mt7996_d
  static void
  mt7996_mcu_sta_muru_tlv(struct mt7996_dev *dev, struct sk_buff *skb,
  			struct ieee80211_bss_conf *link_conf,
@@ -85,7 +85,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	struct ieee80211_he_cap_elem *elem = &link_sta->he_cap.he_cap_elem;
  	struct sta_rec_muru *muru;
  	struct tlv *tlv;
-@@ -1886,11 +1888,14 @@ mt7996_mcu_sta_muru_tlv(struct mt7996_de
+@@ -2028,11 +2030,14 @@ mt7996_mcu_sta_muru_tlv(struct mt7996_de
  	tlv = mt76_connac_mcu_add_tlv(skb, STA_REC_MURU, sizeof(*muru));
  
  	muru = (struct sta_rec_muru *)tlv;
@@ -103,7 +103,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	if (link_sta->vht_cap.vht_supported)
  		muru->mimo_dl.vht_mu_bfee =
-@@ -2920,7 +2925,7 @@ int mt7996_mcu_add_sta(struct mt7996_dev
+@@ -3062,7 +3067,7 @@ int mt7996_mcu_add_sta(struct mt7996_dev
  		/* starec eht */
  		mt7996_mcu_sta_eht_tlv(skb, link_sta);
  		/* starec muru */
@@ -112,7 +112,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  		if (sta->mlo) {
  			mt7996_mcu_sta_mld_setup_tlv(dev, skb, link_conf->vif,
-@@ -6093,3 +6098,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -6236,3 +6241,37 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(SCS),
  				 &req, sizeof(req), false);
  }
@@ -152,7 +152,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +#endif
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -887,8 +887,21 @@ enum {
+@@ -903,8 +903,21 @@ enum {
  	RATE_PARAM_FIXED_MCS,
  	RATE_PARAM_FIXED_GI = 11,
  	RATE_PARAM_AUTO = 20,
@@ -176,7 +176,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	BF_HW_EN_UPDATE = 17,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -305,6 +305,9 @@ struct mt7996_vif {
+@@ -309,6 +309,9 @@ struct mt7996_vif {
  
  	u8 mld_group_idx;
  	u8 mld_remap_idx;
@@ -186,7 +186,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  /* crash-dump */
-@@ -426,6 +429,8 @@ struct mt7996_phy {
+@@ -431,6 +434,8 @@ struct mt7996_phy {
  	bool sku_limit_en;
  	bool sku_path_en;
  
@@ -195,7 +195,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	u8 pp_mode;
  	u16 punct_bitmap;
  
-@@ -911,6 +916,15 @@ static inline bool mt7996_has_ext_eeprom
+@@ -916,6 +921,15 @@ static inline bool mt7996_has_ext_eeprom
  	return !is_mt7996(&dev->mt76);
  }
  
@@ -211,9 +211,9 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  void mt7996_mac_init(struct mt7996_dev *dev);
  u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
  bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
-@@ -986,9 +1000,15 @@ int mt7996_mmio_wed_init(struct mt7996_d
- 			 bool hif2, int *irq);
- u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
+@@ -993,9 +1007,15 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+ int mt7996_mcu_ba_trigger_enable(struct mt7996_dev *dev, u8 enable);
+ void mt7996_mac_ba_trigger(struct mt7996_dev *dev, u16 wlan_idx, u8 tid);
  
 +#ifdef CONFIG_MTK_VENDOR
 +void mt7996_set_wireless_vif(void *data, u8 *mac, struct ieee80211_vif *vif);
@@ -384,7 +384,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +#endif
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -552,6 +552,9 @@ static int mt7996_add_interface(struct i
+@@ -557,6 +557,9 @@ static int mt7996_add_interface(struct i
  	vif->offload_flags |= IEEE80211_OFFLOAD_ENCAP_4ADDR;
  	mvif->mt76.deflink_id = IEEE80211_LINK_UNSPECIFIED;
  

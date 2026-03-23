@@ -115,7 +115,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -38,6 +38,21 @@ int mt7996_run(struct mt7996_phy *phy)
+@@ -43,6 +43,21 @@ int mt7996_run(struct mt7996_phy *phy)
  	if (ret)
  		return ret;
  
@@ -139,7 +139,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	ieee80211_queue_delayed_work(dev->mphy.hw, &phy->mt76->mac_work,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -987,6 +987,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -994,6 +994,8 @@ void mt7996_mac_ba_trigger(struct mt7996
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif

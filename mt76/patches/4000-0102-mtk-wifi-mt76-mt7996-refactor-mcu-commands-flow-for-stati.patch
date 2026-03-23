@@ -26,7 +26,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -855,8 +855,7 @@ mt7996_vif_cfg_changed(struct ieee80211_
+@@ -860,8 +860,7 @@ mt7996_vif_cfg_changed(struct ieee80211_
  						&link->mt76, &link->msta_link,
  						true);
  			mt7996_mcu_add_sta(dev, link_conf, NULL, link, NULL,
@@ -36,7 +36,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		}
  	}
  
-@@ -909,6 +908,9 @@ mt7996_link_info_changed(struct ieee8021
+@@ -914,6 +913,9 @@ mt7996_link_info_changed(struct ieee8021
  				   CONN_STATE_PORT_SECURE,
  				   !!(changed & BSS_CHANGED_BSSID));
  	}
@@ -46,7 +46,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	if (changed & BSS_CHANGED_HT || changed & BSS_CHANGED_ERP_CTS_PROT)
  		mt7996_mcu_set_protection(phy, link, info->ht_operation_mode,
-@@ -1195,6 +1197,7 @@ mt7996_mac_sta_add_links(struct mt7996_d
+@@ -1200,6 +1202,7 @@ mt7996_mac_sta_add_links(struct mt7996_d
  		struct ieee80211_bss_conf *link_conf;
  		struct ieee80211_link_sta *link_sta;
  		struct mt7996_vif_link *link;
@@ -54,7 +54,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		struct mt76_phy *mphy;
  
  		if (rcu_access_pointer(msta->link[link_id]))
-@@ -1224,6 +1227,14 @@ mt7996_mac_sta_add_links(struct mt7996_d
+@@ -1229,6 +1232,14 @@ mt7996_mac_sta_add_links(struct mt7996_d
  			goto error_unlink;
  		}
  
