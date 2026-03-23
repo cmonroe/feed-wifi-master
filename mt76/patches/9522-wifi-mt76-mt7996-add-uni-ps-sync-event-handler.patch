@@ -30,7 +30,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	MCU_UNI_EVENT_SR = 0x25,
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2570,6 +2570,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2666,6 +2666,7 @@ const struct ieee80211_ops mt7996_ops =
  	.cancel_hw_scan = mt76_cancel_hw_scan,
  	.remain_on_channel = mt76_remain_on_channel,
  	.cancel_remain_on_channel = mt76_cancel_remain_on_channel,
@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1005,6 +1005,77 @@ mt7996_mcu_rx_thermal_notify(struct mt79
+@@ -979,6 +979,77 @@ mt7996_mcu_rx_thermal_notify(struct mt79
  }
  
  static void
@@ -118,7 +118,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7996_mcu_rx_ext_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
  	struct mt7996_mcu_rxd *rxd = (struct mt7996_mcu_rxd *)skb->data;
-@@ -1118,6 +1189,9 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -1092,6 +1163,9 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_ALL_STA_INFO:
  		mt7996_mcu_rx_all_sta_info_event(dev, skb);
  		break;

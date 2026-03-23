@@ -17,7 +17,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1259,18 +1259,16 @@ next:
+@@ -1252,18 +1252,16 @@ next:
  				cur_info++;
  			continue;
  		} else if (info & MT_TXFREE_INFO_HEADER) {
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			continue;
  		}
  
-@@ -2812,7 +2810,6 @@ void mt7996_mac_work(struct work_struct
+@@ -2799,7 +2797,6 @@ void mt7996_mac_work(struct work_struct
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_MSDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_RX_MPDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TX_STAT);
@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				break;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -968,16 +968,6 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -942,16 +942,6 @@ mt7996_mcu_rx_all_sta_info_event(struct
  				break;
  
  			wcid->stats.tx_mpdus += le32_to_cpu(res->tx_mpdu_stat[i].total);
@@ -60,7 +60,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -		/* Multiple retries of a single MPDU only increase the counter by 1 */
 -		case UNI_ALL_STA_DATA_TX_RETRY_COUNT:
 -			wlan_idx = le16_to_cpu(res->tx_mpdu_retry_cnt[i].wlan_idx);
--			wcid = rcu_dereference(dev->mt76.wcid[wlan_idx]);
+-			wcid = mt76_wcid_ptr(dev, wlan_idx);
 -			if (!wcid)
 -				break;
 -

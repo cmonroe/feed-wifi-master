@@ -55,7 +55,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -435,6 +435,8 @@ struct mt7996_phy {
+@@ -424,6 +424,8 @@ struct mt7996_phy {
  	s16 coverage_class;
  	u8 slottime;
  
@@ -66,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 rx_ampdu_ts;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2882,6 +2882,8 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -2869,6 +2869,8 @@ int mt7996_dfs_init_radar_detector(struc
  	enum mt76_dfs_state dfs_state, prev_state;
  	int err, rdd_idx = mt7996_get_rdd_idx(phy, false);
  
