@@ -308,7 +308,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -524,6 +524,7 @@ struct mt7996_dev {
+@@ -529,6 +529,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -316,7 +316,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	u32 token_debug_idx;
  
-@@ -542,6 +543,17 @@ struct mt7996_dev {
+@@ -547,6 +548,17 @@ struct mt7996_dev {
  		u8 type:4;
  		u8 fem:4;
  	} var;
@@ -334,7 +334,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  };
  
  enum {
-@@ -962,7 +974,8 @@ int mt7996_mcu_ba_trigger_enable(struct
+@@ -969,7 +981,8 @@ int mt7996_mcu_ba_trigger_enable(struct
  void mt7996_mac_ba_trigger(struct mt7996_dev *dev, u16 wlan_idx, u8 tid);
  
  #ifdef CONFIG_MTK_DEBUG

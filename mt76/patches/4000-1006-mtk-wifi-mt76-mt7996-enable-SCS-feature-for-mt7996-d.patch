@@ -41,7 +41,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2355,6 +2355,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2374,6 +2374,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  	cancel_work_sync(&dev->wed_rro.work);
  	mt7996_for_each_phy(dev, phy)
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
@@ -88,7 +88,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5957,3 +5957,116 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -5993,3 +5993,116 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
@@ -207,7 +207,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1101,6 +1101,12 @@ enum pp_mode {
+@@ -1102,6 +1102,12 @@ enum pp_mode {
  	PP_USR_MODE,
  };
  
@@ -222,7 +222,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -331,6 +331,16 @@ struct mt7996_hif {
+@@ -336,6 +336,16 @@ struct mt7996_hif {
  	enum pcie_link_width width;
  };
  
@@ -239,7 +239,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define WED_RRO_ADDR_SIGNATURE_MASK	GENMASK(31, 24)
  #define WED_RRO_ADDR_COUNT_MASK		GENMASK(14, 4)
  #define WED_RRO_ADDR_HEAD_HIGH_MASK	GENMASK(3, 0)
-@@ -423,6 +433,8 @@ struct mt7996_phy {
+@@ -428,6 +438,8 @@ struct mt7996_phy {
  
  	u8 pp_mode;
  	u16 punct_bitmap;
@@ -248,7 +248,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -457,6 +469,7 @@ struct mt7996_dev {
+@@ -462,6 +474,7 @@ struct mt7996_dev {
  	struct work_struct rc_work;
  	struct work_struct dump_work;
  	struct work_struct reset_work;
@@ -256,7 +256,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -981,6 +994,8 @@ void mt7996_mac_ba_trigger(struct mt7996
+@@ -988,6 +1001,8 @@ void mt7996_mac_ba_trigger(struct mt7996
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif

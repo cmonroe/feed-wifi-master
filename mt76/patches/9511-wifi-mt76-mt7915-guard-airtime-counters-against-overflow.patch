@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 last_rx_bytes;
  };
  
-@@ -1067,6 +1067,7 @@ struct mt76_dev {
+@@ -1071,6 +1071,7 @@ struct mt76_dev {
  
  	struct list_head sta_poll_list;
  	spinlock_t sta_poll_lock;
@@ -48,7 +48,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	u32 rev;
  
-@@ -1525,6 +1526,28 @@ mt76_ac_to_tid(u8 ac)
+@@ -1529,6 +1530,28 @@ mt76_ac_to_tid(u8 ac)
  	return ac_to_tid[ac];
  }
  

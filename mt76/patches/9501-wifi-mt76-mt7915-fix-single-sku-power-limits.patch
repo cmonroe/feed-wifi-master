@@ -251,7 +251,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	err = mt7915_mcu_set_txpower_sku(phy);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1226,6 +1226,11 @@ struct mt76_mib_stats {
+@@ -1230,6 +1230,11 @@ struct mt76_mib_stats {
  	u32 ul_hetrig_4mu_cnt;
  };
  

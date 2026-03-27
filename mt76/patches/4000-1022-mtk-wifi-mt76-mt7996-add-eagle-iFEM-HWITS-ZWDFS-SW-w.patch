@@ -199,7 +199,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  						GFP_ATOMIC);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -544,6 +544,8 @@ struct mt7996_dev {
+@@ -549,6 +549,8 @@ struct mt7996_dev {
  
  	bool bin_file_mode;
  

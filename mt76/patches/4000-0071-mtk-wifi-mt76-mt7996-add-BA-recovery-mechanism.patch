@@ -73,7 +73,7 @@ sync BA part
  void mt7996_wfsys_reset(struct mt7996_dev *dev)
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1114,41 +1114,55 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -1118,41 +1118,55 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  
  static void
  mt7996_tx_check_aggr(struct ieee80211_link_sta *link_sta,
@@ -152,7 +152,7 @@ sync BA part
  }
  
  static void
-@@ -1173,7 +1187,7 @@ mt7996_txwi_free(struct mt7996_dev *dev,
+@@ -1192,7 +1206,7 @@ mt7996_txwi_free(struct mt7996_dev *dev,
  			/* AMPDU state is stored in the primary link */
  			msta = (void *)link_sta->sta->drv_priv;
  			mt7996_tx_check_aggr(link_sta, &msta->deflink.wcid,
@@ -161,7 +161,7 @@ sync BA part
  		}
  	} else {
  		wcid_idx = le32_get_bits(txwi[9], MT_TXD9_WLAN_IDX);
-@@ -1424,6 +1438,73 @@ out:
+@@ -1443,6 +1457,73 @@ out:
  	rcu_read_unlock();
  }
  
@@ -235,7 +235,7 @@ sync BA part
  bool mt7996_rx_check(struct mt76_dev *mdev, void *data, int len)
  {
  	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
-@@ -1444,6 +1525,9 @@ bool mt7996_rx_check(struct mt76_dev *md
+@@ -1463,6 +1544,9 @@ bool mt7996_rx_check(struct mt76_dev *md
  	case PKT_TYPE_TXRX_NOTIFY:
  		mt7996_mac_tx_free(dev, data, len);
  		return false;
@@ -245,7 +245,7 @@ sync BA part
  	case PKT_TYPE_TXS:
  		for (rxd += MT_TXS_HDR_SIZE; rxd + MT_TXS_SIZE <= end; rxd += MT_TXS_SIZE)
  			mt7996_mac_add_txs(dev, rxd);
-@@ -1487,6 +1571,9 @@ void mt7996_queue_rx_skb(struct mt76_dev
+@@ -1506,6 +1590,9 @@ void mt7996_queue_rx_skb(struct mt76_dev
  	case PKT_TYPE_RX_EVENT:
  		mt7996_mcu_rx_event(dev, skb);
  		break;
@@ -504,7 +504,7 @@ sync BA part
  struct sta_rec_eht {
  	__le16 tag;
  	__le16 len;
-@@ -1064,6 +1080,7 @@ enum {
+@@ -1065,6 +1081,7 @@ enum {
  enum {
  	UNI_CMD_SDO_SET = 1,
  	UNI_CMD_SDO_QUERY,
@@ -514,7 +514,7 @@ sync BA part
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -113,6 +113,8 @@
+@@ -118,6 +118,8 @@
  #define MT7996_MIN_TWT_DUR		64
  #define MT7996_MAX_QUEUE		(__MT_RXQ_MAX +	__MT_MCUQ_MAX + 3)
  
@@ -523,7 +523,7 @@ sync BA part
  /* NOTE: used to map mt76_rates. idx may change if firmware expands table */
  #define MT7996_BASIC_RATES_TBL		31
  #define MT7996_BEACON_RATES_TBL		25
-@@ -282,6 +284,8 @@ struct mt7996_sta {
+@@ -287,6 +289,8 @@ struct mt7996_sta {
  	u8 seclink_id;
  
  	struct mt7996_vif *vif;
@@ -532,7 +532,7 @@ sync BA part
  };
  
  struct mt7996_vif_link {
-@@ -954,6 +958,8 @@ void mt7996_link_sta_add_debugfs(struct
+@@ -961,6 +965,8 @@ void mt7996_link_sta_add_debugfs(struct
  int mt7996_mmio_wed_init(struct mt7996_dev *dev, void *pdev_ptr,
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);

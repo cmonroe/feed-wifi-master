@@ -34,7 +34,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  #define MT76_N_WCIDS 1088
-@@ -770,25 +772,19 @@ struct mt76_mmio {
+@@ -774,25 +776,19 @@ struct mt76_mmio {
  	int npu_type;
  };
  
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 flag;
  	u8 enc_flags;
  	u8 encoding:3, bw:4;
-@@ -803,14 +799,13 @@ struct mt76_rx_status {
+@@ -807,14 +803,13 @@ struct mt76_rx_status {
  			u8 gi:2;
  		} eht;
  	};
@@ -387,7 +387,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rxd += 24;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5471,6 +5471,7 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5507,6 +5507,7 @@ int mt7996_mcu_get_per_sta_info(struct m
  				msta_link->chain_signal_wf4 = to_rssi(MT_PRXV_RCPI0,
  								      rssi->rcpi_wf4);
  				msta_link->chain_ack_signal[4] = msta_link->chain_signal_wf4;
@@ -397,7 +397,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			msta_link->ack_signal = mt76_rx_signal(rx_mask,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -410,6 +410,7 @@ struct mt7996_phy {
+@@ -415,6 +415,7 @@ struct mt7996_phy {
  	u16 orig_antenna_mask;
  
  	bool has_aux_rx;

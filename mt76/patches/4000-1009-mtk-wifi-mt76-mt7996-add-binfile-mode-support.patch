@@ -155,7 +155,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -532,6 +532,8 @@ struct mt7996_dev {
+@@ -537,6 +537,8 @@ struct mt7996_dev {
  
  	dma_addr_t npu_txd_addr[2 * MT7996_NPU_TXD_SIZE];
  
@@ -164,7 +164,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	bool ibf;
  	u8 fw_debug_wm;
  	u8 fw_debug_wa;
-@@ -734,6 +736,7 @@ int mt7996_vif_link_add(struct mt76_phy
+@@ -739,6 +741,7 @@ int mt7996_vif_link_add(struct mt76_phy
  void mt7996_vif_link_remove(struct mt76_phy *mphy, struct ieee80211_vif *vif,
  			    struct ieee80211_bss_conf *link_conf,
  			    struct mt76_vif_link *mlink);
