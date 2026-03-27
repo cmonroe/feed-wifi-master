@@ -1,15 +1,19 @@
-From 156034144c64198c0a417926fa3867d635affbb4 Mon Sep 17 00:00:00 2001
 From: TomLiu <tomml.liu@mediatek.com>
 Date: Fri, 12 Apr 2024 17:07:00 +0000
-Subject: [PATCH] [mt76] mt7915 MCU event airtime
+Subject: [PATCH] wifi: mt76: mt7915: get airtime from MCU event
 
+Retrieve per-STA airtime via a single MCU event instead of polling
+individual WTBL registers per station.
+
+Signed-off-by: TomLiu <tomml.liu@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt76_connac_mcu.h |   12 ++++++++++++
- mt7915/mac.c      |    7 +++++++
- mt7915/mcu.c      |   81 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- mt7915/mcu.h      |   16 ++++++++++++++++
- mt7915/mt7915.h   |    1 +
- 5 files changed, 117 insertions(+)
+ mt76_connac_mcu.h |   12 ++++++++
+ mt7915/mac.c      |   66 +++-----------------------------------------
+ mt7915/mcu.c      |   58 ++++++++++++++++++++++++++++++++++++++
+ mt7915/mcu.h      |   16 ++++++++++
+ mt7915/mt7915.h   |    1 
+ 5 files changed, 92 insertions(+), 61 deletions(-)
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
@@ -159,7 +163,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  	if (++phy->stats_work_count == 10) {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -488,6 +488,104 @@ out:
+@@ -488,6 +488,47 @@ out:
  }
  
  static void
@@ -172,16 +176,14 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
 +	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
 +		u8 ac;
 +		u16 wlan_idx;
-+		bool clear;
 +		struct mt76_wcid *wcid;
 +		struct ieee80211_sta *sta;
-+		u32 prev_tx_airtime, prev_rx_airtime, diff_tx_airtime, diff_rx_airtime;
++		u32 tx_airtime, rx_airtime;
 +
 +		switch (res->tag) {
 +		case MCU_PHY_PER_STA_TXRX_AIR_TIME:
 +			wlan_idx = le16_to_cpu(res->airtime[i].wlan_idx);
 +			wcid = rcu_dereference(dev->mt76.wcid[wlan_idx]);
-+			clear = false;
 +
 +			sta = wcid_to_sta(wcid);
 +			if (!sta)
@@ -190,68 +192,13 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
 +			for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac) {
 +				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
 +
-+				prev_tx_airtime = wcid->stats.tx_airtime[ac];
-+				prev_rx_airtime = wcid->stats.rx_airtime[ac];
-+				wcid->stats.tx_airtime[ac] = le32_to_cpu(res->airtime[i].tx[lmac_ac]);
-+				wcid->stats.rx_airtime[ac] = le32_to_cpu(res->airtime[i].rx[lmac_ac]);
++				tx_airtime = le32_to_cpu(res->airtime[i].tx[lmac_ac]);
++				rx_airtime = le32_to_cpu(res->airtime[i].rx[lmac_ac]);
 +
-+				if (wcid->stats.tx_airtime[ac] >= prev_tx_airtime) {
-+					diff_tx_airtime = wcid->stats.tx_airtime[ac] - prev_tx_airtime;
-+				} else {
-+					diff_tx_airtime = wcid->stats.tx_airtime[ac];
-+				}
-+
-+				if (wcid->stats.rx_airtime[ac] >= prev_rx_airtime) {
-+					diff_rx_airtime = wcid->stats.rx_airtime[ac] - prev_rx_airtime;
-+				} else {
-+					diff_rx_airtime = wcid->stats.rx_airtime[ac];
-+				}
-+
-+				if ((wcid->stats.tx_airtime[ac] | wcid->stats.rx_airtime[ac]) & BIT(30)) {
-+						clear = true;
-+
-+						dev_dbg(dev->mt76.dev,
-+							"sta: %02X:%02X:%02X:%02X:%02X:%02X ac: %u tx_read: %u rx_read: %u tx_time: %u rx_time: %u tx_prev: %u rx_prev: %u tx_diff: %u rx_diff: %u clear: %d\n",
-+							sta->addr[0], sta->addr[1], sta->addr[2], sta->addr[3], sta->addr[4], sta->addr[5],
-+							ac,
-+							le32_to_cpu(res->airtime[i].tx[lmac_ac]),
-+							le32_to_cpu(res->airtime[i].rx[lmac_ac]),
-+							wcid->stats.tx_airtime[ac],
-+							wcid->stats.rx_airtime[ac],
-+							prev_tx_airtime, prev_rx_airtime,
-+							diff_tx_airtime, diff_rx_airtime,
-+							clear);
-+				}
-+
-+				if ((diff_tx_airtime > 600000) || (diff_rx_airtime > 600000)) {
-+					dev_dbg(dev->mt76.dev,
-+						"sta: %02X:%02X:%02X:%02X:%02X:%02X ac: %u tx_read: %u rx_read: %u tx_time: %u rx_time: %u tx_prev: %u rx_prev: %u tx_diff: %u rx_diff: %u\n",
-+						sta->addr[0], sta->addr[1], sta->addr[2], sta->addr[3], sta->addr[4], sta->addr[5],
-+						ac,
-+						le32_to_cpu(res->airtime[i].tx[lmac_ac]),
-+						le32_to_cpu(res->airtime[i].rx[lmac_ac]),
-+						wcid->stats.tx_airtime[ac],
-+						wcid->stats.rx_airtime[ac],
-+						prev_tx_airtime, prev_rx_airtime,
-+						diff_tx_airtime, diff_rx_airtime);
-+
-+					if (diff_tx_airtime > 600000)
-+						diff_tx_airtime = 0;
-+					if (diff_rx_airtime > 600000)
-+						diff_rx_airtime = 0;
-+				}
-+
++				wcid->stats.tx_airtime += tx_airtime;
++				wcid->stats.rx_airtime += rx_airtime;
 +				ieee80211_sta_register_airtime(sta, mt76_ac_to_tid(ac),
-+					diff_tx_airtime, diff_rx_airtime);
-+			}
-+
-+			if (clear) {
-+				dev_dbg(dev->mt76.dev,
-+					"sta: %02X:%02X:%02X:%02X:%02X:%02X reset airtime counters\n",
-+					sta->addr[0], sta->addr[1], sta->addr[2], sta->addr[3], sta->addr[4], sta->addr[5]);
-+
-+				mt7915_mac_wtbl_update(dev, wcid->idx,
-+						       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
++							       tx_airtime, rx_airtime);
 +			}
 +			break;
 +		default:
@@ -264,7 +211,7 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  mt7915_mcu_rx_ext_event(struct mt7915_dev *dev, struct sk_buff *skb)
  {
  	struct mt76_connac2_mcu_rxd *rxd;
-@@ -517,6 +615,9 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
+@@ -517,6 +558,9 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
  	case MCU_EXT_EVENT_PS_SYNC:
  		mt7915_mcu_rx_ps_sync(dev, skb);
  		break;
@@ -274,15 +221,15 @@ Subject: [PATCH] [mt76] mt7915 MCU event airtime
  	default:
  		break;
  	}
-@@ -548,6 +649,7 @@ void mt7915_mcu_rx_event(struct mt7915_d
+@@ -548,6 +592,7 @@ void mt7915_mcu_rx_event(struct mt7915_d
  	     rxd->ext_eid == MCU_EXT_EVENT_ASSERT_DUMP ||
  	     rxd->ext_eid == MCU_EXT_EVENT_PS_SYNC ||
  	     rxd->ext_eid == MCU_EXT_EVENT_BCC_NOTIFY ||
-+		 rxd->ext_eid == MCU_EXT_EVENT_GET_ALL_STA_STATS ||
++	     rxd->ext_eid == MCU_EXT_EVENT_GET_ALL_STA_STATS ||
  	     !rxd->seq) &&
  	     !(rxd->eid == MCU_CMD_EXT_CID &&
  	       rxd->ext_eid == MCU_EXT_EVENT_WA_TX_STAT))
-@@ -4997,3 +5099,16 @@ int mt7915_mcu_thermal_debug(struct mt79
+@@ -4997,3 +5042,16 @@ int mt7915_mcu_thermal_debug(struct mt79
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(THERMAL_DEBUG), &req,
  				 sizeof(req), true);
  }

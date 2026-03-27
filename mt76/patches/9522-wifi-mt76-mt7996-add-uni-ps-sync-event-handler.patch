@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1021,6 +1021,77 @@ static void mt7996_mcu_rx_ba_trigger(str
+@@ -994,6 +994,77 @@ static void mt7996_mcu_rx_ba_trigger(str
  }
  
  static void
@@ -118,7 +118,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7996_mcu_rx_ext_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
  	struct mt7996_mcu_rxd *rxd = (struct mt7996_mcu_rxd *)skb->data;
-@@ -1137,6 +1208,9 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -1110,6 +1181,9 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_ALL_STA_INFO:
  		mt7996_mcu_rx_all_sta_info_event(dev, skb);
  		break;

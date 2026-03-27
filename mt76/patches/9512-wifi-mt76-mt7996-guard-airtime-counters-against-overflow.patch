@@ -1,0 +1,121 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 25 Mar 2026 21:01:17 -0700
+Subject: [PATCH] wifi: mt76: mt7996: guard airtime counters against overflow
+
+Apply elapsed monotonic time clamping to mt7996 per-STA and channel
+MIB airtime counters, using the shared mt76_airtime_clamp() and
+mt76_chan_mib_delta() helpers.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mcu.c    |   68 +++++++++++++++++++++++++++++++++++-----------
+ mt7996/mt7996.h |    1 
+ 2 files changed, 53 insertions(+), 16 deletions(-)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -793,12 +793,20 @@ static void
+ mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
+ {
+ 	struct mt7996_mcu_all_sta_info_event *res;
++	u32 elapsed_us = 0;
+ 	u16 i;
+ 
+ 	skb_pull(skb, sizeof(struct mt7996_mcu_rxd));
+ 
+ 	res = (struct mt7996_mcu_all_sta_info_event *)skb->data;
+ 
++	if (le16_to_cpu(res->tag) == UNI_ALL_STA_TXRX_AIR_TIME) {
++		unsigned long now = jiffies;
++
++		elapsed_us = jiffies_to_usecs(now - dev->mt76.airtime_last_poll);
++		dev->mt76.airtime_last_poll = now;
++	}
++
+ 	rcu_read_lock();
+ 	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
+ 		u8 ac;
+@@ -807,7 +815,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ 		struct mt76_wcid *wcid;
+ 		struct mt76_phy *mphy;
+ 		struct ieee80211_sta *sta;
+-		u32 tx_bytes, rx_bytes, tx_bytes_failed = 0, tx_airtime, rx_airtime,
++		u32 tx_bytes, rx_bytes, tx_bytes_failed = 0,
+ 		    tx_packets, rx_packets;
+ 
+ 		switch (le16_to_cpu(res->tag)) {
+@@ -877,13 +885,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ 
+ 			for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac) {
+ 				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
+-				tx_airtime = le32_to_cpu(res->airtime[i].tx[lmac_ac]);
+-				rx_airtime = le32_to_cpu(res->airtime[i].rx[lmac_ac]);
++				u32 tx = mt76_airtime_clamp(
++						le32_to_cpu(res->airtime[i].tx[lmac_ac]),
++						elapsed_us);
++				u32 rx = mt76_airtime_clamp(
++						le32_to_cpu(res->airtime[i].rx[lmac_ac]),
++						elapsed_us);
+ 
+-				wcid->stats.tx_airtime[ac] += tx_airtime;
+-				wcid->stats.rx_airtime[ac] += rx_airtime;
++				wcid->stats.tx_airtime[ac] += tx;
++				wcid->stats.rx_airtime[ac] += rx;
+ 				ieee80211_sta_register_airtime(sta, mt76_ac_to_tid(ac),
+-							       tx_airtime, rx_airtime);
++							       tx, rx);
+ 			}
+ 			break;
+ 		case UNI_ALL_STA_RX_MPDU_COUNT:
+@@ -4978,6 +4990,8 @@ int mt7996_mcu_get_chan_mib_info(struct
+ 	struct mt7996_dev *dev = phy->dev;
+ 	struct mt7996_mcu_mib *res;
+ 	struct sk_buff *skb;
++	unsigned long now;
++	u32 elapsed_us;
+ 	int i, ret;
+ 
+ 	for (i = 0; i < IDX_NUM; i++) {
+@@ -4999,16 +5013,22 @@ int mt7996_mcu_get_chan_mib_info(struct
+ 		goto out;
+ 
+ #define __res_u64(s) le64_to_cpu(res[s].data)
+-	state->cc_tx += __res_u64(IDX_TX_TIME) - state_ts->cc_tx;
+-	state->cc_bss_rx += __res_u64(IDX_RX_TIME) - state_ts->cc_bss_rx;
+-	state->cc_rx += __res_u64(IDX_RX_TIME) +
+-			__res_u64(IDX_OBSS_AIRTIME) -
+-			state_ts->cc_rx;
+-	state->cc_busy += __res_u64(IDX_TX_TIME) +
+-			  __res_u64(IDX_RX_TIME) +
+-			  __res_u64(IDX_OBSS_AIRTIME) +
+-			  __res_u64(IDX_NON_WIFI_TIME) -
+-			  state_ts->cc_busy;
++	now = jiffies;
++	elapsed_us = jiffies_to_usecs(now - phy->chan_mib_last_poll);
++	phy->chan_mib_last_poll = now;
++
++	state->cc_tx += mt76_chan_mib_delta(__res_u64(IDX_TX_TIME),
++					    state_ts->cc_tx, elapsed_us);
++	state->cc_bss_rx += mt76_chan_mib_delta(__res_u64(IDX_RX_TIME),
++						state_ts->cc_bss_rx, elapsed_us);
++	state->cc_rx += mt76_chan_mib_delta(__res_u64(IDX_RX_TIME) +
++					    __res_u64(IDX_OBSS_AIRTIME),
++					    state_ts->cc_rx, elapsed_us);
++	state->cc_busy += mt76_chan_mib_delta(__res_u64(IDX_TX_TIME) +
++					      __res_u64(IDX_RX_TIME) +
++					      __res_u64(IDX_OBSS_AIRTIME) +
++					      __res_u64(IDX_NON_WIFI_TIME),
++					      state_ts->cc_busy, elapsed_us);
+ out:
+ 	state_ts->cc_tx = __res_u64(IDX_TX_TIME);
+ 	state_ts->cc_bss_rx = __res_u64(IDX_RX_TIME);
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -438,6 +438,7 @@ struct mt7996_phy {
+ 
+ 	struct mt76_mib_stats mib;
+ 	struct mt76_channel_state state_ts;
++	unsigned long chan_mib_last_poll;
+ 
+ 	u16 orig_chainmask;
+ 	u16 orig_antenna_mask;
