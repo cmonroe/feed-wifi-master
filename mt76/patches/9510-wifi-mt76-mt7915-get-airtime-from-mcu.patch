@@ -163,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (++phy->stats_work_count == 10) {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -488,6 +488,47 @@ out:
+@@ -458,6 +458,47 @@ mt7915_mcu_rx_bcc_notify(struct mt7915_d
  }
  
  static void
@@ -211,9 +211,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7915_mcu_rx_ext_event(struct mt7915_dev *dev, struct sk_buff *skb)
  {
  	struct mt76_connac2_mcu_rxd *rxd;
-@@ -517,6 +558,9 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
- 	case MCU_EXT_EVENT_PS_SYNC:
- 		mt7915_mcu_rx_ps_sync(dev, skb);
+@@ -484,6 +525,9 @@ mt7915_mcu_rx_ext_event(struct mt7915_de
+ 	case MCU_EXT_EVENT_BCC_NOTIFY:
+ 		mt7915_mcu_rx_bcc_notify(dev, skb);
  		break;
 +	case MCU_EXT_EVENT_GET_ALL_STA_STATS:
 +		mt7915_mcu_rx_all_sta_info_event(dev, skb);
@@ -221,7 +221,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	default:
  		break;
  	}
-@@ -548,6 +592,7 @@ void mt7915_mcu_rx_event(struct mt7915_d
+@@ -515,6 +559,7 @@ void mt7915_mcu_rx_event(struct mt7915_d
  	     rxd->ext_eid == MCU_EXT_EVENT_ASSERT_DUMP ||
  	     rxd->ext_eid == MCU_EXT_EVENT_PS_SYNC ||
  	     rxd->ext_eid == MCU_EXT_EVENT_BCC_NOTIFY ||
@@ -229,7 +229,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	     !rxd->seq) &&
  	     !(rxd->eid == MCU_CMD_EXT_CID &&
  	       rxd->ext_eid == MCU_EXT_EVENT_WA_TX_STAT))
-@@ -4997,3 +5042,16 @@ int mt7915_mcu_thermal_debug(struct mt79
+@@ -4964,3 +5009,16 @@ int mt7915_mcu_thermal_debug(struct mt79
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(THERMAL_DEBUG), &req,
  				 sizeof(req), true);
  }
@@ -248,7 +248,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +}
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -587,6 +587,22 @@ enum {
+@@ -578,6 +578,22 @@ enum {
  	SER_RECOVER
  };
  

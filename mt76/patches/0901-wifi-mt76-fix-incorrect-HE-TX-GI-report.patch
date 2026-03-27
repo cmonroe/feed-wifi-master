@@ -208,7 +208,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void mt7915_tx(struct ieee80211_hw *hw,
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4100,6 +4100,167 @@ int mt7915_mcu_set_protection(struct mt7
+@@ -4067,6 +4067,167 @@ int mt7915_mcu_set_protection(struct mt7
  				     MCU_EXT_CMD(BSS_INFO_UPDATE), true);
  }
  
@@ -378,7 +378,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  {
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -161,6 +161,61 @@ struct mt7915_mcu_eeprom_info {
+@@ -152,6 +152,61 @@ struct mt7915_mcu_eeprom_info {
  	u8 data[16];
  } __packed;
  
@@ -440,7 +440,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  struct mt7915_mcu_phy_rx_info {
  	u8 category;
  	u8 rate;
-@@ -542,4 +597,7 @@ enum {
+@@ -533,4 +588,7 @@ enum {
  					 sizeof(struct bss_info_bmc_rate) +\
  					 sizeof(struct bss_info_ext_bss))
  

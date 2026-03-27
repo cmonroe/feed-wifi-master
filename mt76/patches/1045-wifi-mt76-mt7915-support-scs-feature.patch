@@ -150,7 +150,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  const struct ieee80211_ops mt7915_ops = {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4735,3 +4735,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
+@@ -4702,3 +4702,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
  
  	return 0;
  }
@@ -274,7 +274,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -754,4 +754,8 @@ struct mt7915_mcu_rdd_ipi_scan {
+@@ -745,4 +745,8 @@ struct mt7915_mcu_rdd_ipi_scan {
  	u8 tx_assert_time;						/* unit: us */
  } __packed;
  
