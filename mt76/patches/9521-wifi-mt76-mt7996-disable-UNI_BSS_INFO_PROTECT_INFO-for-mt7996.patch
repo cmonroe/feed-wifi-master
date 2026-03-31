@@ -17,7 +17,7 @@ v2 - add a comment to describe why this check is required.
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1552,6 +1552,10 @@ int mt7996_mcu_set_protection(struct mt7
+@@ -1507,6 +1507,10 @@ int mt7996_mcu_set_protection(struct mt7
  		PROT_NONGF_STA	 = BIT(7),
  	};
  

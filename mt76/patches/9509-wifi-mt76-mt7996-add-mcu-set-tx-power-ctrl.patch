@@ -1,6 +1,6 @@
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -891,6 +891,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -887,6 +887,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  int mt7996_mcu_wed_rro_reset_sessions(struct mt7996_dev *dev, u16 id);
  int mt7996_mcu_set_sniffer_mode(struct mt7996_phy *phy, bool enabled);
  int mt7996_mcu_set_dup_wtbl(struct mt7996_dev *dev);
@@ -10,7 +10,7 @@
  {
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6443,6 +6443,40 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -6301,6 +6301,40 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  				 &req, sizeof(req), false);
  }
  

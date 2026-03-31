@@ -28,7 +28,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1071,6 +1071,7 @@ enum {
+@@ -1069,6 +1069,7 @@ enum {
  	MCU_UNI_EVENT_BSS_BEACON_LOSS = 0x0c,
  	MCU_UNI_EVENT_SCAN_DONE = 0x0e,
  	MCU_UNI_EVENT_RDD_REPORT = 0x11,
@@ -60,7 +60,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1095,6 +1095,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -1050,6 +1050,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_WED_RRO:
  		mt7996_mcu_wed_rro_event(dev, skb);
  		break;
@@ -74,7 +74,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -441,6 +441,11 @@ struct mt7996_phy {
+@@ -437,6 +437,11 @@ struct mt7996_phy {
  
  	u8 muru_onoff;
  
@@ -86,7 +86,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  	u8 pp_mode;
  	u16 punct_bitmap;
  
-@@ -1034,6 +1039,8 @@ enum edcca_bw_id {
+@@ -1028,6 +1033,8 @@ enum edcca_bw_id {
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  int mt7996_mcu_set_muru_cfg(struct mt7996_dev *dev, void *data);
