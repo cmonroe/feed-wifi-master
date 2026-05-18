@@ -84,7 +84,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		mt76_tx_power_path_delta(hweight16(mphy->chainmask)));
 +
  	txpower_limit = mt7996_get_power_bound(phy, txpower_setting);
-+	txpower_limit += mt76_tx_power_path_delta(hweight16(mphy->chainmask));
++	//txpower_limit += mt76_tx_power_path_delta(hweight16(mphy->chainmask));
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
