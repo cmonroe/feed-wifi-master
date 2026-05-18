@@ -1,0 +1,37 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 05 May 2026 16:40:56 -0700
+Subject: [PATCH] wifi: mt76: mt7996: allow SW fast path when WED is disabled
+
+mt7996_net_fill_forward_path() currently returns -ENODEV when neither
+WED nor NPU is active, which kills net_fill_forward_path() at the wifi
+hop. With WED off this prevents nft_flow_offload and xt_FLOWOFFLOAD
+from learning the eth->wifi bridged flow, so every packet traverses
+the full bridge ingress and conntrack path on the host CPU.
+
+The trailing block already gracefully falls back to band_idx when WED
+and NPU are inactive, so the early return is the only barrier. Drop
+it and let the function fill in path->type and path->dev so the SW
+flow offload path can stitch the bridge ports together.
+
+Based on Peter Chiu's MTK feed patch
+0024-mtk-mt76-mt7996-support-sw-fast-path-when-wed-is-dis.patch,
+adapted for this tree where path->type is already set unconditionally.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c |    4 ----
+ 1 file changed, 4 deletions(-)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -2583,10 +2583,6 @@ mt7996_net_fill_forward_path(struct ieee
+ 	     (is_mt7992(&dev->mt76) && msta_link->wcid.phy_idx == MT_BAND1)))
+ 		wed = &dev->mt76.mmio.wed_hif2;
+ 
+-	if (!mtk_wed_device_active(wed) &&
+-	    !mt76_npu_device_active(&dev->mt76))
+-		return -ENODEV;
+-
+ 	path->type = DEV_PATH_MTK_WDMA;
+ 	path->dev = ctx->dev;
+ #ifdef CONFIG_NET_MEDIATEK_SOC_WED
