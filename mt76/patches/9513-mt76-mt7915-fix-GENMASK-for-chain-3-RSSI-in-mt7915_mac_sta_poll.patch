@@ -1,0 +1,40 @@
+From dda490f9aa1dd8b93bc4d2daaae50d436882005e Mon Sep 17 00:00:00 2001
+From: Ankit Dange <ankitdange37@gmail.com>
+Date: Wed, 29 Apr 2026 00:52:28 +0530
+Subject: [PATCH] wifi: mt76: mt7915: fix GENMASK for chain 3 RSSI in
+ mt7915_mac_sta_poll()
+
+The RCPI values of response frames are stored as four consecutive
+bytes in WTBL DW30. The bitmask for extracting chain 3 RCPI uses
+GENMASK(31, 14) which is an 18-bit field overlapping with chains 1
+and 2. Fix it to GENMASK(31, 24) to correctly extract the 8-bit
+RCPI value for chain 3.
+
+On devices with fewer than 4 antenna chains this bug is masked
+because mt76_rx_signal() skips chains not present in antenna_mask.
+On 4x4 configurations the corrupted chain 3 value feeds into the
+combined ACK signal strength calculation.
+
+Tested on Yuncore AX820 (MT7915, 2x2) by reading raw DW30 register
+values and comparing FIELD_GET results for both masks. With
+GENMASK(31, 14), chain 3 produces garbage values (e.g., -112 dBm
+from a register value of 0xFFFF4248 where the correct result is
++17, indicating an unused chain). No regression on 2x2 operation.
+
+Fixes: 94b335fa88e1 ("wifi: mt76: mt7915: add ack signal support")
+Signed-off-by: Ankit Dange <ankitdange37@gmail.com>
+---
+ mt7915/mac.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -140,7 +140,7 @@ static void mt7915_mac_sta_poll(struct m
+ 		rssi[0] = to_rssi(GENMASK(7, 0), val);
+ 		rssi[1] = to_rssi(GENMASK(15, 8), val);
+ 		rssi[2] = to_rssi(GENMASK(23, 16), val);
+-		rssi[3] = to_rssi(GENMASK(31, 14), val);
++		rssi[3] = to_rssi(GENMASK(31, 24), val);
+ 
+ 		msta->ack_signal =
+ 			mt76_rx_signal(msta->vif->phy->mt76->antenna_mask, rssi);
