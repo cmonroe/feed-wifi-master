@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /*
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -5542,6 +5542,30 @@ ieee80211_set_epcs(struct wiphy *wiphy,
+@@ -5548,6 +5548,30 @@ ieee80211_set_epcs(struct wiphy *wiphy,
  	return ieee80211_mgd_set_epcs(sdata, enable);
  }
  
@@ -62,7 +62,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  const struct cfg80211_ops mac80211_config_ops = {
  	.add_virtual_intf = ieee80211_add_iface,
  	.del_virtual_intf = ieee80211_del_iface,
-@@ -5658,4 +5682,5 @@ const struct cfg80211_ops mac80211_confi
+@@ -5664,4 +5688,5 @@ const struct cfg80211_ops mac80211_confi
  	.get_radio_mask = ieee80211_get_radio_mask,
  	.assoc_ml_reconf = ieee80211_assoc_ml_reconf,
  	.set_epcs = ieee80211_set_epcs,

@@ -94,7 +94,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  						       AGG_STOP_LOCAL_REQUEST);
 --- a/net/mac80211/sta_info.c
 +++ b/net/mac80211/sta_info.c
-@@ -1845,6 +1845,7 @@ void ieee80211_sta_ps_deliver_wakeup(str
+@@ -1850,6 +1850,7 @@ void ieee80211_sta_ps_deliver_wakeup(str
  	       sta->sta.addr, sta->sta.aid, filtered, buffered);
  
  	ieee80211_check_fast_xmit(sta);
@@ -102,7 +102,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static void ieee80211_send_null_response(struct sta_info *sta, int tid,
-@@ -2302,6 +2303,7 @@ void ieee80211_sta_block_awake(struct ie
+@@ -2307,6 +2308,7 @@ void ieee80211_sta_block_awake(struct ie
  	} else {
  		clear_sta_flag(sta, WLAN_STA_PS_DRIVER);
  		ieee80211_check_fast_xmit(sta);
@@ -112,7 +112,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  EXPORT_SYMBOL(ieee80211_sta_block_awake);
 --- a/net/mac80211/ieee80211_i.h
 +++ b/net/mac80211/ieee80211_i.h
-@@ -2256,6 +2256,8 @@ void ieee80211_start_tx_ba_cb(struct sta
+@@ -2254,6 +2254,8 @@ void ieee80211_start_tx_ba_cb(struct sta
  			      struct tid_ampdu_tx *tid_tx);
  void ieee80211_stop_tx_ba_cb(struct sta_info *sta, int tid,
  			     struct tid_ampdu_tx *tid_tx);
