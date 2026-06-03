@@ -1,6 +1,6 @@
 --- a/iwinfo_nl80211.c
 +++ b/iwinfo_nl80211.c
-@@ -1568,6 +1568,27 @@ static int nl80211_get_txpower(const cha
+@@ -1659,6 +1659,27 @@ static int nl80211_get_txpower(const cha
  	return 0;
  }
  
@@ -28,7 +28,7 @@
  
  static int nl80211_fill_signal_cb(struct nl_msg *msg, void *arg)
  {
-@@ -3124,11 +3145,18 @@ static int nl80211_get_scanlist(const ch
+@@ -3217,11 +3238,18 @@ static int nl80211_get_scanlist(const ch
  	return -1;
  }
  
@@ -48,7 +48,7 @@
  	struct iwinfo_freqlist_entry *e;
  
  	struct nlattr **attr = nl80211_parse(msg);
-@@ -3142,6 +3170,11 @@ static int nl80211_get_freqlist_cb(struc
+@@ -3235,6 +3263,11 @@ static int nl80211_get_freqlist_cb(struc
  	if (attr[NL80211_ATTR_WIPHY_BANDS]) {
  		nla_for_each_nested(band, attr[NL80211_ATTR_WIPHY_BANDS], bands_remain)
  		{
@@ -60,7 +60,7 @@
  			nla_parse(bands, NL80211_BAND_ATTR_MAX,
  				  nla_data(band), nla_len(band), NULL);
  
-@@ -3194,18 +3227,22 @@ static int nl80211_get_freqlist_cb(struc
+@@ -3287,18 +3320,22 @@ static int nl80211_get_freqlist_cb(struc
  
  static int nl80211_get_freqlist(const char *ifname, char *buf, int *len)
  {
@@ -84,7 +84,7 @@
  		goto out;
  
  	*len = arr.count * sizeof(struct iwinfo_freqlist_entry);
-@@ -3266,6 +3303,7 @@ struct nl80211_modes
+@@ -3359,6 +3396,7 @@ struct nl80211_modes
  	uint32_t ht;
  
  	uint8_t bands;
@@ -92,7 +92,7 @@
  
  	uint16_t nl_ht;
  	uint32_t nl_vht;
-@@ -3364,6 +3402,11 @@ static int nl80211_get_modelist_cb(struc
+@@ -3457,6 +3495,11 @@ static int nl80211_get_modelist_cb(struc
  	{
  		nla_for_each_nested(band, attr[NL80211_ATTR_WIPHY_BANDS], bands_remain)
  		{
@@ -104,7 +104,7 @@
  			m->bands |= nl80211_get_band(band->nla_type);
  
  			nla_parse(bands, NL80211_BAND_ATTR_MAX,
-@@ -3423,6 +3466,8 @@ static int nl80211_get_hwmodelist(const
+@@ -3516,6 +3559,8 @@ static int nl80211_get_hwmodelist(const
  	uint32_t features = nl80211_get_protocol_features(ifname);
  	int flags;
  
@@ -113,7 +113,7 @@
  	flags = features & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP ? NLM_F_DUMP : 0;
  	cv = nl80211_msg(ifname, NL80211_CMD_GET_WIPHY, flags);
  	if (!cv)
-@@ -3558,6 +3603,8 @@ static int nl80211_get_htmodelist(const
+@@ -3651,6 +3696,8 @@ static int nl80211_get_htmodelist(const
  	uint32_t features = nl80211_get_protocol_features(ifname);
  	int flags;
  

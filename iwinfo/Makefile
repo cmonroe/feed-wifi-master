@@ -11,9 +11,9 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=$(PROJECT_GIT)/project/iwinfo.git
-PKG_SOURCE_DATE:=2025-11-07
-PKG_SOURCE_VERSION:=5f4c213fc59f1a82d9f0140642d668ae2969531b
-PKG_MIRROR_HASH:=363e245821d9bc6ffe2cf20f4b51670f1f91928df22a2ffe73a06767f737fb6d
+PKG_SOURCE_DATE:=2026-05-26
+PKG_SOURCE_VERSION:=66bdd1a071895d91babc9b9228bb84626bbce226
+PKG_MIRROR_HASH:=e58dab2e33c52b0c217134e81b3ba5376b7a3b57dc1885edf62826573d9f6292
 PKG_MAINTAINER:=Jo-Philipp Wich <jo@mein.io>
 PKG_LICENSE:=GPL-2.0
 
@@ -23,7 +23,7 @@ PKG_CONFIG_DEPENDS:=CONFIG_WIFI_SCRIPTS_UCODE
 IWINFO_ABI_VERSION:=20230701
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/lang/python/python3-version.mk
+
 
 define Package/libiwinfo
   SECTION:=libs
@@ -58,18 +58,6 @@ define Package/libiwinfo-data
   HIDDEN:=1
 endef
 
-define Package/python3-libiwinfo
-  SUBMENU:=Python
-  SECTION:=lang
-  CATEGORY:=Languages
-  TITLE:=libiwinfo Python binding
-  DEPENDS:=+libiwinfo +python3-ctypes
-endef
-
-define Package/python3-libiwinfo/description
-  This is the python binding for the iwinfo library. It provides access to all enabled
-  backends.
-endef
 
 define Package/iwinfo
   SECTION:=utils
@@ -93,7 +81,7 @@ TARGET_CFLAGS += \
 
 MAKE_FLAGS += \
 	FPIC="$(FPIC)" \
-	CFLAGS="$(TARGET_CFLAGS)" \
+	CFLAGS="$(TARGET_CFLAGS) $(TARGET_CPPFLAGS)" \
 	LDFLAGS="$(TARGET_LDFLAGS)" \
 	BACKENDS="nl80211" \
 	SOVERSION="$(IWINFO_ABI_VERSION)"
@@ -123,11 +111,6 @@ define Package/libiwinfo-data/install
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/devices.txt $(1)/usr/share/libiwinfo/devices.txt
 endef
 
-define Package/python3-libiwinfo/install
-	$(INSTALL_DIR) $(1)/usr/lib/python$(PYTHON3_VERSION)/site-packages/iwinfo
-	$(INSTALL_BIN) ./files/iwinfo/* $(1)/usr/lib/python$(PYTHON3_VERSION)/site-packages/iwinfo/
-endef
-
 ifdef CONFIG_WIFI_SCRIPTS_UCODE
   define Package/iwinfo/install
 	:
@@ -143,4 +126,3 @@ $(eval $(call BuildPackage,libiwinfo))
 $(eval $(call BuildPackage,libiwinfo-lua))
 $(eval $(call BuildPackage,libiwinfo-data))
 $(eval $(call BuildPackage,iwinfo))
-$(eval $(call BuildPackage,python3-libiwinfo))
