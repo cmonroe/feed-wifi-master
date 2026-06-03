@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		struct sk_buff *head;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -945,6 +945,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -948,6 +948,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
  	if (id < 0)
  		return id;
  
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* Since the rules of HW MLD address translation are not fully
  	 * compatible with 802.11 EAPOL frame, we do the translation by
  	 * software
-@@ -1138,6 +1142,21 @@ mt7996_txwi_free(struct mt7996_dev *dev,
+@@ -1141,6 +1145,21 @@ mt7996_txwi_free(struct mt7996_dev *dev,
  	__le32 *txwi;
  	u16 wcid_idx;
  
@@ -84,7 +84,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt76_connac_txp_skb_unmap(mdev, t);
  	if (!t->skb)
  		goto out;
-@@ -2762,6 +2781,41 @@ static int mt7996_mac_sta_poll(struct mt
+@@ -2765,6 +2784,41 @@ static int mt7996_mac_sta_poll(struct mt
  	return mt7996_mcu_get_per_sta_info(dev, UNI_PER_STA_PKT_CNT, i, sta_list);
  }
  
@@ -126,7 +126,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt7996_mac_work(struct work_struct *work)
  {
  	struct mt7996_phy *phy;
-@@ -2798,6 +2852,11 @@ void mt7996_mac_work(struct work_struct
+@@ -2801,6 +2855,11 @@ void mt7996_mac_work(struct work_struct
  			           test_bit(MT76_STATE_RUNNING, &mdev->phys[i]->state))
  				break;
  		}

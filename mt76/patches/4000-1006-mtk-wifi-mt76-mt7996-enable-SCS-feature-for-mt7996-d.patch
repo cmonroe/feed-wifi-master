@@ -41,7 +41,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2287,6 +2287,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2290,6 +2290,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  	cancel_work_sync(&dev->wed_rro.work);
  	mt7996_for_each_phy(dev, phy)
  		cancel_delayed_work_sync(&phy->mt76->mac_work);

@@ -273,7 +273,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  /* The HW does not translate the mac header to 802.3 for mesh point */
  static int mt7996_reverse_frag0_hdr_trans(struct sk_buff *skb, u16 hdr_gap)
  {
-@@ -1392,8 +1279,6 @@ next:
+@@ -1395,8 +1282,6 @@ next:
  		}
  	}
  
@@ -282,7 +282,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -1407,25 +1292,25 @@ next:
+@@ -1410,25 +1295,25 @@ next:
  
  static bool
  mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
@@ -317,7 +317,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  		skb = mt76_tx_status_skb_get(mdev, wcid, pid, &list);
  		if (skb) {
  			info = IEEE80211_SKB_CB(skb);
-@@ -1438,119 +1323,33 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1441,119 +1326,33 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  
  			info->status.rates[0].idx = -1;
  		}
@@ -456,7 +456,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	mt76_tx_status_unlock(mdev, &list);
  
  	return !!skb;
-@@ -1558,13 +1357,13 @@ out:
+@@ -1561,13 +1360,13 @@ out:
  
  static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
  {
@@ -473,7 +473,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	pid = le32_get_bits(txs_data[3], MT_TXS3_PID);
  
  	if (pid < MT_PACKET_ID_NO_SKB)
-@@ -1576,14 +1375,16 @@ static void mt7996_mac_add_txs(struct mt
+@@ -1579,14 +1378,16 @@ static void mt7996_mac_add_txs(struct mt
  	if (!wcid)
  		goto out;
  
@@ -495,7 +495,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -2928,34 +2729,81 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2931,34 +2732,81 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
