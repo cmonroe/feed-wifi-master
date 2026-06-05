@@ -1,6 +1,6 @@
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1501,16 +1501,16 @@ int hostapd_drv_mu_dump(struct hostapd_d
+@@ -1492,16 +1492,16 @@ int hostapd_drv_mu_dump(struct hostapd_d
  
  int hostapd_drv_txpower_ctrl(struct hostapd_data *hapd)
  {
@@ -43,7 +43,7 @@
  };
  
  static struct nl_sock * nl_create_handle(struct nl_cb *cb, const char *dbg)
-@@ -15386,7 +15386,7 @@ wpa_driver_get_multi_hw_info(void *priv,
+@@ -15916,7 +15916,7 @@ static void wpa_driver_nl80211_nan_stop(
  
  
  static int nl80211_txpower_ctrl(void *priv, u8 lpi_psd, u8 sku_idx, u8 lpi_bcn_enhance,
@@ -52,7 +52,7 @@
  {
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-@@ -15416,7 +15416,8 @@ static int nl80211_txpower_ctrl(void *pr
+@@ -15946,7 +15946,8 @@ static int nl80211_txpower_ctrl(void *pr
  	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD, lpi_psd);
  	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX, sku_idx);
  	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE, lpi_bcn_enhance);
@@ -64,16 +64,16 @@
  	ret = send_and_recv_cmd(drv, msg);
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5567,10 +5567,10 @@ struct wpa_driver_ops {
+@@ -5631,10 +5631,10 @@ struct wpa_driver_ops {
  	* @lpi_psd: 1 to enable lpi psd compensate, 0 to disable
  	* @lpi_bcn_enhance: 1 to enable beacon duplicate enhancement in 6G lpi mode, 0 to disable enhancement
  	* @sku_idx: index used to indicate which sku table should be used
 -	* @link_id: MLD link id. -1 if this is an non-MLD AP
-+	* @radio_idx: radio index 
++	* @radio_idx: radio index
  	*/
  	int (*txpower_ctrl)(void *priv, u8 lpi_psd, u8 sku_idx, u8 lpi_bcn_enhance,
 -			    u8 link_id);
 +			    s8 radio_idx);
- };
  
- /**
+ #ifdef CONFIG_NAN
+ 	/**

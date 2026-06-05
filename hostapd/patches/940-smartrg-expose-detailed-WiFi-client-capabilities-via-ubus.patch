@@ -23,7 +23,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4811,6 +4811,14 @@ skip_wpa_ies:
+@@ -6011,6 +6011,14 @@ skip_wpa_ies:
  		hostapd_wfa_capab(hapd, sta, elems->wfa_capab,
  				  elems->wfa_capab + elems->wfa_capab_len);
  
@@ -35,12 +35,12 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 +	sta->assoc_ies = (ies && ies_len) ?
 +		wpabuf_alloc_copy(ies, ies_len) : NULL;
 +
- 	return WLAN_STATUS_SUCCESS;
- }
- 
+ out:
+ 	if (resp != WLAN_STATUS_SUCCESS || assoc_wpa_sm) {
+ 		struct wpa_state_machine *sm = sta->wpa_sm;
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -424,6 +424,8 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -480,6 +480,8 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->t_c_url);
  	wpabuf_free(sta->hs20_deauth_req);
  	os_free(sta->hs20_session_info_url);
@@ -51,7 +51,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
  	sae_clear_data(sta->sae);
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -321,6 +321,9 @@ struct sta_info {
+@@ -350,6 +350,9 @@ struct sta_info {
  	struct link_reconf_req_list *reconf_req;
  #endif /* CONFIG_IEEE80211BE */
  
@@ -63,7 +63,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
  
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -1196,6 +1196,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
+@@ -1272,6 +1272,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
  }
  
  
@@ -99,7 +99,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
  	u16 fc, type, stype;
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -218,6 +218,7 @@ ParseRes ieee802_11_parse_link_assoc_req
+@@ -233,6 +233,7 @@ ParseRes ieee802_11_parse_link_assoc_res
  int ieee802_11_ie_count(const u8 *ies, size_t ies_len);
  struct wpabuf * ieee802_11_vendor_ie_concat(const u8 *ies, size_t ies_len,
  					    u32 oui_type);
@@ -982,7 +982,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -1641,6 +2310,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1647,6 +2316,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),
@@ -1001,4 +1001,4 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 +}
  
  static u8 ieee80211_eht_mcs_set_size(enum hostapd_hw_mode mode, u8 opclass,
- 				     int he_oper_chwidth, const u8 *he_phy_cap,
+ 				     const u8 *he_phy_cap,

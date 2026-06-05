@@ -24,7 +24,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5032,6 +5032,14 @@ static int hostapd_config_fill(struct ho
+@@ -5061,6 +5061,14 @@ static int hostapd_config_fill(struct ho
  		u8 en = strtol(pos, NULL, 10);
  
  		conf->dfs_detect_mode = en;
@@ -41,7 +41,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  			   "Line %d: unknown configuration item '%s'",
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -312,6 +312,10 @@ struct hostapd_config * hostapd_config_d
+@@ -318,6 +318,10 @@ struct hostapd_config * hostapd_config_d
  	conf->edcca_enable = EDCCA_MODE_AUTO;
  	conf->edcca_compensation = EDCCA_DEFAULT_COMPENSATION;
  
@@ -51,10 +51,10 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 +
  	hostapd_set_and_check_bw320_offset(conf, 0);
  
- 	return conf;
+ 	conf->disable_mcs15_rx = true;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1284,6 +1284,9 @@ struct hostapd_config {
+@@ -1302,6 +1302,9 @@ struct hostapd_config {
  	s8 edcca_compensation;
  	int *edcca_threshold;
  	u8 dfs_detect_mode;
@@ -66,7 +66,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  enum dfs_mode {
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1480,3 +1480,19 @@ int hostapd_drv_mu_dump(struct hostapd_d
+@@ -1471,3 +1471,19 @@ int hostapd_drv_mu_dump(struct hostapd_d
  		return 0;
  	return hapd->driver->mu_dump(hapd->drv_priv, mu_onoff);
  }
@@ -88,7 +88,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 +}
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -164,6 +164,7 @@ int hostapd_drv_configure_edcca_threshol
+@@ -161,6 +161,7 @@ int hostapd_drv_configure_edcca_threshol
  int hostapd_drv_get_edcca(struct hostapd_data *hapd, const u8 mode, u8 *value);
  int hostapd_drv_mu_ctrl(struct hostapd_data *hapd);
  int hostapd_drv_mu_dump(struct hostapd_data *hapd, u8 *mu_onoff);
@@ -98,7 +98,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2815,6 +2815,8 @@ dfs_offload:
+@@ -2829,6 +2829,8 @@ dfs_offload:
  		goto fail;
  	if (hostapd_drv_mu_ctrl(hapd) < 0)
  		goto fail;
@@ -109,7 +109,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		   iface->bss[0]->conf->iface);
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
-@@ -260,6 +260,9 @@ u8 * hostapd_eid_he_operation(struct hos
+@@ -245,6 +245,9 @@ u8 * hostapd_eid_he_operation(struct hos
  		else
  			control = center_idx_to_bw_6ghz(seg0);
  
@@ -151,11 +151,10 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #define ETH_ALEN 6
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5560,6 +5560,17 @@ struct wpa_driver_ops {
- 	 */
+@@ -5625,6 +5625,17 @@ struct wpa_driver_ops {
  	 int (*mu_ctrl)(void *priv, u8 mu_onoff);
  	 int (*mu_dump)(void *priv, u8 *mu_onoff);
-+
+ 
 +	/**
 +	* txpower_ctrl - ctrl txpower operation
 +	* @priv: Private driver interface data
@@ -166,9 +165,10 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 +	*/
 +	int (*txpower_ctrl)(void *priv, u8 lpi_psd, u8 sku_idx, u8 lpi_bcn_enhance,
 +			    u8 link_id);
- };
- 
- /**
++
+ #ifdef CONFIG_NAN
+ 	/**
+ 	 * nan_start - Start NAN operation
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
 @@ -91,6 +91,14 @@ static void handle_nl_debug_hook(struct
@@ -186,8 +186,8 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static struct nl_sock * nl_create_handle(struct nl_cb *cb, const char *dbg)
  {
  	struct nl_sock *handle;
-@@ -15348,6 +15356,52 @@ wpa_driver_get_multi_hw_info(void *priv,
- }
+@@ -15878,6 +15886,52 @@ static void wpa_driver_nl80211_nan_stop(
+ #endif /* CONFIG_NAN */
  
  
 +static int nl80211_txpower_ctrl(void *priv, u8 lpi_psd, u8 sku_idx, u8 lpi_bcn_enhance,
@@ -239,25 +239,27 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -15527,4 +15581,5 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -16057,6 +16111,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.configure_edcca_enable = nl80211_configure_edcca_enable,
  	.configure_edcca_threshold = nl80211_configure_edcca_threshold,
  	.get_edcca = nl80211_get_edcca,
 +	.txpower_ctrl = nl80211_txpower_ctrl,
- };
+ #ifdef CONFIG_NAN
+ 	.nan_start = wpa_driver_nl80211_nan_start,
+ 	.nan_stop = wpa_driver_nl80211_nan_stop,
 --- a/src/drivers/driver_nl80211.h
 +++ b/src/drivers/driver_nl80211.h
-@@ -203,6 +203,7 @@ struct wpa_driver_nl80211_data {
+@@ -217,6 +217,7 @@ struct wpa_driver_nl80211_data {
  	unsigned int connect_ext_vendor_cmd_avail:1;
  	unsigned int mtk_edcca_vendor_cmd_avail:1;
  	unsigned int mtk_mu_vendor_cmd_avail:1;
 +	unsigned int mtk_txpower_vendor_cmd_avail:1;
+ 	unsigned int support_ap_scan:1;
  
  	u8 extra_bss_membership_selectors[8];
- 
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -1155,6 +1155,9 @@ static int wiphy_info_handler(struct nl_
+@@ -1178,6 +1178,9 @@ static int wiphy_info_handler(struct nl_
  				case MTK_NL80211_VENDOR_SUBCMD_MU_CTRL :
  					drv->mtk_mu_vendor_cmd_avail = 1;
  					break;

@@ -11,7 +11,7 @@ Subject: [PATCH 19/28] hostapd: mtk: Mark DFS channel as available for CSA.
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2771,6 +2771,16 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2518,6 +2518,16 @@ static int hostapd_ctrl_iface_chan_switc
  		break;
  	}
  
@@ -30,7 +30,7 @@ Subject: [PATCH 19/28] hostapd: mtk: Mark DFS channel as available for CSA.
  			iface, bandwidth, settings.freq_params.center_freq1);
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1773,7 +1773,7 @@ static const struct hostapd_cli_cmd host
+@@ -1794,7 +1794,7 @@ static const struct hostapd_cli_cmd host
  	  "<addr> = send QoS Map Configure frame" },
  	{ "chan_switch", hostapd_cli_cmd_chan_switch, NULL,
  	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]\n"
@@ -41,11 +41,12 @@ Subject: [PATCH 19/28] hostapd: mtk: Mark DFS channel as available for CSA.
  	{ "color_change", hostapd_cli_cmd_color_change, NULL,
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1222,6 +1222,7 @@ int hostapd_parse_csa_settings(const cha
- 	settings->freq_params.eht_enabled = !!os_strstr(pos, " eht");
- 	settings->freq_params.he_enabled = !!os_strstr(pos, " he") ||
- 		settings->freq_params.eht_enabled;
-+	settings->freq_params.radar_background = !!os_strstr(pos, " skip_cac");
- 	settings->block_tx = !!os_strstr(pos, " blocktx");
- #undef SET_CSA_SETTING
+@@ -1489,6 +1489,8 @@ int hostapd_parse_csa_settings(struct ho
+ 		return ret;
+ 	}
  
++	settings->freq_params.radar_background = !!os_strstr(pos, " skip_cac");
++
+ 	target_mode = get_target_hw_mode(iface, settings->freq_params.freq);
+ 	if (!target_mode) {
+ 		wpa_printf(MSG_DEBUG,
