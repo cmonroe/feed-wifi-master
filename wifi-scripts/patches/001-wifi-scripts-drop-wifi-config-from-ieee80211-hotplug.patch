@@ -1,0 +1,33 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 10 Jun 2026 05:57:34 -0700
+Subject: [PATCH] wifi-scripts: drop wifi config call from ieee80211 hotplug
+
+The ieee80211 hotplug ran 'wifi config' concurrently with the boot-time
+uci-defaults scripts writing the wireless config. uci batch is not
+atomic and its commit truncates the shared delta file, so concurrent
+writers corrupt /etc/config/wireless: radio sections land mid-file and
+uncommitted options are silently lost.
+
+The call only ever wrote on factory and post-sysupgrade first boots,
+exactly when the defaults scripts run; the defaults sequence now
+generates the radio sections itself. On all other boots the radios
+already exist in the config and the call was a no-op. Keep the
+network.wireless retry so netifd picks up phys that register after its
+config load.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/etc/hotplug.d/ieee80211/10-wifi-detect |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/src/etc/hotplug.d/ieee80211/10-wifi-detect
++++ b/src/etc/hotplug.d/ieee80211/10-wifi-detect
+@@ -1,6 +1,7 @@
+ #!/bin/sh
+ 
++# wireless config generation happens in the uci-defaults sequence;
++# running 'wifi config' here raced those scripts' uncommitted changes
+ [ "${ACTION}" = "add" ] && {
+-	/sbin/wifi config
+ 	ubus call network.wireless retry
+ }
