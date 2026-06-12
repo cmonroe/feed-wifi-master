@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  
  static int hostapd_flush_old_stations(struct hostapd_data *hapd, u16 reason);
-@@ -4301,10 +4302,13 @@ const char * hostapd_state_text(enum hos
+@@ -4353,10 +4354,13 @@ const char * hostapd_state_text(enum hos
  
  void hostapd_set_state(struct hostapd_iface *iface, enum hostapd_iface_state s)
  {
@@ -45,7 +45,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -1303,3 +1303,16 @@ void hostapd_ucode_apup_newpeer(struct h
+@@ -1305,3 +1305,16 @@ void hostapd_ucode_apup_newpeer(struct h
  	ucv_put(val);
  }
  #endif // def CONFIG_APUP

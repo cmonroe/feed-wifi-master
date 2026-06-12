@@ -52,7 +52,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			phy: phydev.phy,
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1162,6 +1162,25 @@ hostapd_check_chans(struct hostapd_iface
+@@ -1231,6 +1231,25 @@ hostapd_check_chans(struct hostapd_iface
  	 * which is used to trigger ACS.
  	 */
  
@@ -80,7 +80,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return HOSTAPD_CHAN_ACS;
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -681,6 +681,8 @@ out:
+@@ -683,6 +683,8 @@ out:
  		iface->bss[i]->conf->start_disabled = 0;
  
  	if (iface->state != HAPD_IFACE_ENABLED) {
@@ -91,7 +91,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -869,6 +869,22 @@ int hostapd_handle_dfs(struct hostapd_if
+@@ -870,6 +870,22 @@ int hostapd_handle_dfs(struct hostapd_if
  		return 1;
  	}
  

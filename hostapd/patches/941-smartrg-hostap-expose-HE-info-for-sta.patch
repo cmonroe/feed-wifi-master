@@ -1,6 +1,6 @@
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -231,6 +231,53 @@ static const char * timeout_next_str(int
+@@ -232,6 +232,53 @@ static const char * timeout_next_str(int
  	}
  }
  
@@ -54,7 +54,7 @@
  
  static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
  				      struct sta_info *sta,
-@@ -460,6 +507,16 @@ static int hostapd_ctrl_iface_sta_mib(st
+@@ -461,6 +508,16 @@ static int hostapd_ctrl_iface_sta_mib(st
  		if (!os_snprintf_error(buflen - len, ret))
  			len += ret;
  	}

@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1421,7 +1421,7 @@ static bool parse_ml_probe_req(const str
+@@ -1446,7 +1446,7 @@ static bool parse_ml_probe_req(const str
  
  void handle_probe_req(struct hostapd_data *hapd,
  		      const struct ieee80211_mgmt *mgmt, size_t len,
@@ -29,7 +29,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct ieee802_11_elems elems;
  	const u8 *ie;
-@@ -1435,6 +1435,7 @@ void handle_probe_req(struct hostapd_dat
+@@ -1460,6 +1460,7 @@ void handle_probe_req(struct hostapd_dat
  	struct radius_sta rad_info;
  	struct probe_resp_params params;
  	char *hex = NULL;
@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_IEEE80211BE
  	int mld_id;
  	u16 links;
-@@ -1444,6 +1445,7 @@ void handle_probe_req(struct hostapd_dat
+@@ -1469,6 +1470,7 @@ void handle_probe_req(struct hostapd_dat
  		.mgmt_frame = mgmt,
  		.ssi_signal = ssi_signal,
  		.elems = &elems,
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int ieee802_11_set_beacons(struct hostapd_iface *iface);
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2026,6 +2026,11 @@ static int hostapd_mgmt_rx(struct hostap
+@@ -2040,6 +2040,11 @@ static int hostapd_mgmt_rx(struct hostap
  			    (iface->bss[i]->drv_priv != rx_mgmt->drv_priv))
  				continue;
  
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				ret = 1;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6790,7 +6790,7 @@ int ieee802_11_mgmt(struct hostapd_data
+@@ -8087,7 +8087,7 @@ int ieee802_11_mgmt(struct hostapd_data
  	}
  
  	if (stype == WLAN_FC_STYPE_PROBE_REQ) {
@@ -87,7 +87,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1903,7 +1903,7 @@ int hostapd_ubus_handle_event(struct hos
+@@ -1909,7 +1909,7 @@ int hostapd_ubus_handle_event(struct hos
  		blobmsg_add_macaddr(&b, "target", req->mgmt_frame->da);
  	if (req->ssi_signal)
  		blobmsg_add_u32(&b, "signal", req->ssi_signal);
