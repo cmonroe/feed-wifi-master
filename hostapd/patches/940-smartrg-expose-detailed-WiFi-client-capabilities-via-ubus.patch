@@ -11,6 +11,7 @@ Signed-off-by: Vitali Klotschko <vitali.klotschko@adtran.com>
 Co-developed-by: Matthew Cather <matthew.cather@adtran.com>
 Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
 Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  src/ap/ieee802_11.c            |    4 
  src/ap/ieee802_11_eht.c        |    3 
@@ -137,7 +138,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
  
  static struct ubus_context *ctx;
  static struct blob_buf b;
-@@ -169,77 +183,681 @@ hostapd_bss_reload(struct ubus_context *
+@@ -169,77 +183,689 @@ hostapd_bss_reload(struct ubus_context *
  
  
  static void
@@ -216,11 +217,11 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 +		uint32_t shift;
 +	} values[] = {
 +		{ "max_mpdu_length", VHT_CAP_MAX_MPDU_LENGTH_MASK, 0 },
-+		{ "channel_width_set", VHT_OPMODE_CHANNEL_WIDTH_MASK, VHT_CAP_SUPP_CHAN_WIDTH_MASK_SHIFT },
++		{ "channel_width_set", VHT_CAP_SUPP_CHAN_WIDTH_MASK, VHT_CAP_SUPP_CHAN_WIDTH_MASK_SHIFT },
 +		{ "rx_stbc", VHT_CAP_RXSTBC_MASK, VHT_CAP_RXSTBC_MASK_SHIFT },
 +		{ "beamformee_sts_max", VHT_CAP_BEAMFORMEE_STS_MAX, VHT_CAP_BEAMFORMEE_STS_MAX_SHIFT },
 +		{ "sounding_dimension_max", VHT_CAP_SOUNDING_DIMENSION_MAX, VHT_CAP_SOUNDING_DIMENSION_MAX_SHIFT },
-+		{ "max_a_mpdu_length_exponent", VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX, VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX_SHIFT },
++		{ "max_ampdu_length_exponent", VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX, VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX_SHIFT },
 +		{ "extended_nss_bw", VHT_CAP_EXTENDED_NSS_BW_SUPPORT_MASK, VHT_CAP_EXTENDED_NSS_BW_SHIFT },
 +	};
 +
@@ -493,7 +494,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 +		{ "txs_mode_2", 3, 1 },
 +		{ "restricted_twt", 4, 1 },
 +		{ "scs_traffic_descr", 5, 1 },
-+		{ "max_mpdu__len", 6, 2 },
++		{ "max_mpdu_len", 6, 2 },
 +		{ "max_a-mpdu_len_exp", 8, 1 },
 +		{ "eht_trs", 9, 1 },
 +		{ "txop_return", 10, 1 },
@@ -538,9 +539,9 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 +		{ "eht-mcs-15_in_mru", 51, 4 },
 +		{ "eth-dup-mcs-14_in_6ghz", 55, 1 },
 +		{ "20mhz_sta_recv_ndp_w_wider_bw", 56, 1 },
-+		{ "non-ofdma_ul_mu-mimo_<=80mhz", 57, 3 },
-+		{ "non-ofdma_ul_mu-mimo_160mhz", 58, 3 },
-+		{ "non-ofdma_ul_mu-mimo_320mhz", 59, 3 },
++		{ "non-ofdma_ul_mu-mimo_<=80mhz", 57, 1 },
++		{ "non-ofdma_ul_mu-mimo_160mhz", 58, 1 },
++		{ "non-ofdma_ul_mu-mimo_320mhz", 59, 1 },
 +		{ "mu_beamformer_<=80mhz", 60, 1 },
 +		{ "mu_beamformer_160mhz", 61, 1},
 +		{ "mu_beamformer_320mhz", 62, 1 },
@@ -565,9 +566,30 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 +	strcpy(str, "0x");
 +	mcs_table = blobmsg_open_table(&b, "supported_mcs_set");
 +
-+	if (!IS_5GHZ(freq)) {
-+		bool wide_bw = bitfield_value_get(he_phy, 1, 1) != 0;
-+		if (wide_bw) {
++	bool band_5g = IS_5GHZ(freq);
++	bool band_6g = freq >= 5895;
++
++	if (band_6g) {
++		wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
++		blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
++		ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
++	} else if (band_5g) {
++		if (bitfield_value_get(he_phy, 2, 3) == 0) {
++			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
++			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
++			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY;
++		} else {
++			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
++			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
++			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
++			if (bitfield_value_get(he_phy, 3, 2)) {
++				wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
++				blobmsg_add_string(&b, "eht-mcs_map_160mhz", str);
++				ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
++			}
++		}
++	} else {
++		if (bitfield_value_get(he_phy, 1, 1)) {
 +			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
 +			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
 +			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
@@ -576,25 +598,9 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 +			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
 +			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY;
 +		}
-+	} else {
-+		if (bitfield_value_get(he_phy, 1, 3) == 0) {
-+			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
-+			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
-+			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY;
-+		}
-+		if (bitfield_value_get(he_phy, 2, 1)) {
-+			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
-+			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
-+			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
-+		}
-+		if (bitfield_value_get(he_phy, 3, 1)) {
-+			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
-+			blobmsg_add_string(&b, "eht-mcs_map_160mhz", str);
-+			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
-+		}
 +	}
 +
-+	if (bitfield_value_get(ehtc->phy_cap, 1, 1)) {
++	if (band_6g && bitfield_value_get(ehtc->phy_cap, 1, 1)) {
 +		wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
 +		blobmsg_add_string(&b, "eht-mcs_map_320mhz", str);
 +		ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
@@ -792,15 +798,18 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 +		blobmsg_close_table(&b, table);
 +	} else if (elems && elems->eht_capabilities && elems->he_capabilities &&
 +		   elems->he_capabilities_len >= IEEE80211_HE_CAPAB_MIN_LEN &&
-+		   elems->he_capabilities_len <= sizeof(struct ieee80211_he_capabilities)) {
++		   elems->he_capabilities_len <= sizeof(struct ieee80211_he_capabilities) &&
++		   elems->eht_capabilities_len >= IEEE80211_EHT_CAPAB_MIN_LEN &&
++		   elems->eht_capabilities_len <= sizeof(struct ieee80211_eht_capabilities)) {
 +		struct ieee80211_he_capabilities he_tmp;
-+		struct ieee80211_eht_capabilities *eht_tmp;
++		struct ieee80211_eht_capabilities eht_tmp;
 +
-+		eht_tmp = (struct ieee80211_eht_capabilities *)elems->eht_capabilities;
 +		os_memset(&he_tmp, 0, sizeof(he_tmp));
 +		os_memcpy(&he_tmp, elems->he_capabilities, elems->he_capabilities_len);
++		os_memset(&eht_tmp, 0, sizeof(eht_tmp));
++		os_memcpy(&eht_tmp, elems->eht_capabilities, elems->eht_capabilities_len);
 +		table = blobmsg_open_table(&b, "eht");
-+		eht_capab_add(eht_tmp, &he_tmp, freq, filter_false);
++		eht_capab_add(&eht_tmp, &he_tmp, freq, filter_false);
 +		blobmsg_close_table(&b, table);
 +	}
 +
@@ -853,7 +862,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
  {
  	struct hostapd_data *hapd = container_of(obj, struct hostapd_data, ubus.obj);
  	struct hostap_sta_driver_data sta_driver_data;
-@@ -255,42 +873,78 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -255,42 +881,78 @@ hostapd_bss_get_clients(struct ubus_cont
  		{ "authorized", WLAN_STA_AUTHORIZED },
  		{ "preauth", WLAN_STA_PREAUTH },
  		{ "wds", WLAN_STA_WDS },
@@ -936,7 +945,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
  		}
  		blobmsg_close_array(&b, r);
  
-@@ -301,8 +955,8 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -301,8 +963,8 @@ hostapd_bss_get_clients(struct ubus_cont
  			blobmsg_add_string_buffer(&b);
  #endif
  
@@ -947,7 +956,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
  			r = blobmsg_open_table(&b, "bytes");
  			blobmsg_add_u64(&b, "rx", sta_driver_data.rx_bytes);
  			blobmsg_add_u64(&b, "tx", sta_driver_data.tx_bytes);
-@@ -316,14 +970,14 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -316,14 +978,14 @@ hostapd_bss_get_clients(struct ubus_cont
  			blobmsg_add_u32(&b, "tx", sta_driver_data.tx_packets);
  			blobmsg_close_table(&b, r);
  			r = blobmsg_open_table(&b, "rate");
@@ -964,7 +973,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
  
  		blobmsg_close_table(&b, c);
  	}
-@@ -334,6 +988,22 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -334,6 +996,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -987,7 +996,7 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -1647,6 +2317,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1647,6 +2325,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),
