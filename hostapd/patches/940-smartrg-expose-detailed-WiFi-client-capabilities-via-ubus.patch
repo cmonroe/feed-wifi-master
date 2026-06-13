@@ -729,11 +729,11 @@ Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 +	mcs_table = blobmsg_open_table(&b, "mcs_map");
 +
 +	map = blobmsg_open_table(&b, "rx");
-+	mcs_nss_map_add(le_to_host16(*((le16 *)&hec->optional[0])), WLAN_STA_HE);
++	mcs_nss_map_add(le_to_host16(hec->he_basic_supported_mcs_set.rx_map), WLAN_STA_HE);
 +	blobmsg_close_table(&b, map);
 +
 +	map = blobmsg_open_table(&b, "tx");
-+	mcs_nss_map_add(le_to_host16(*((le16 *)&hec->optional[2])), WLAN_STA_HE);
++	mcs_nss_map_add(le_to_host16(hec->he_basic_supported_mcs_set.tx_map), WLAN_STA_HE);
 +	blobmsg_close_table(&b, map);
 +
 +	blobmsg_close_table(&b, mcs_table);

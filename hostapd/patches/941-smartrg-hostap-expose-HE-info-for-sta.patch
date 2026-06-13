@@ -1,6 +1,6 @@
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -232,6 +232,53 @@ static const char * timeout_next_str(int
+@@ -232,6 +232,55 @@ static const char * timeout_next_str(int
  	}
  }
  
@@ -41,7 +41,9 @@
 +			return len;
 +		len += ret;
 +
-+		len += wpa_snprintf_hex(buf + len, buflen - len, he_capab->optional, he_capab_len - 17);
++		len += wpa_snprintf_hex(buf + len, buflen - len,
++				(const u8 *) &he_capab->he_basic_supported_mcs_set,
++				he_capab_len - 17);
 +		ret = os_snprintf(buf + len, buflen - len, "\n");
 +		if (os_snprintf_error(buflen - len, ret))
 +			return len;
@@ -54,7 +56,7 @@
  
  static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
  				      struct sta_info *sta,
-@@ -461,6 +508,16 @@ static int hostapd_ctrl_iface_sta_mib(st
+@@ -461,6 +510,16 @@ static int hostapd_ctrl_iface_sta_mib(st
  		if (!os_snprintf_error(buflen - len, ret))
  			len += ret;
  	}
