@@ -41,7 +41,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	    hostapd_start_dfs_cac(iface, iface->conf->hw_mode,
  				  channel->freq, channel->chan,
  				  iface->conf->ieee80211n,
-@@ -1470,6 +1486,7 @@ static int hostapd_dfs_start_channel_swi
+@@ -1468,6 +1484,7 @@ static int hostapd_dfs_start_channel_swi
  		iface->conf->op_class = op_class;
  	}
  	err = 0;
@@ -49,7 +49,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	hostapd_setup_interface_complete(iface, err);
  	return err;
-@@ -1597,6 +1614,7 @@ static int hostapd_dfs_start_channel_swi
+@@ -1595,6 +1612,7 @@ static int hostapd_dfs_start_channel_swi
  			hostapd_set_oper_centr_freq_seg1_idx(
  				iface->conf, oper_centr_freq_seg1_idx);
  

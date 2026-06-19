@@ -41,7 +41,7 @@ Subject: [PATCH 19/28] hostapd: mtk: Mark DFS channel as available for CSA.
  	{ "color_change", hostapd_cli_cmd_color_change, NULL,
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1489,6 +1489,8 @@ int hostapd_parse_csa_settings(struct ho
+@@ -1491,6 +1491,8 @@ int hostapd_parse_csa_settings(struct ho
  		return ret;
  	}
  

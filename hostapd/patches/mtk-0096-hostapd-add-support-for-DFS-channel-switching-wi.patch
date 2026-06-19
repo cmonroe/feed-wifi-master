@@ -209,7 +209,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (ieee802_11_build_ap_params(hapd, &params) < 0)
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1491,6 +1491,13 @@ int hostapd_parse_csa_settings(struct ho
+@@ -1493,6 +1493,13 @@ int hostapd_parse_csa_settings(struct ho
  
  	settings->freq_params.radar_background = !!os_strstr(pos, " skip_cac");
  
@@ -309,7 +309,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	iface->radar_detected = false;
-@@ -1393,6 +1400,9 @@ int hostapd_dfs_pre_cac_expired(struct h
+@@ -1391,6 +1398,9 @@ int hostapd_dfs_pre_cac_expired(struct h
  	set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
  		      cf1, cf2, HOSTAPD_CHAN_DFS_USABLE);
  
