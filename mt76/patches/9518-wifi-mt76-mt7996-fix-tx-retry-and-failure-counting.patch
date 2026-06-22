@@ -17,7 +17,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1309,18 +1309,16 @@ next:
+@@ -1308,18 +1308,16 @@ next:
  				cur_info++;
  			continue;
  		} else if (info & MT_TXFREE_INFO_HEADER) {
@@ -30,18 +30,19 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -			tx_retries =
 -				FIELD_GET(MT_TXFREE_INFO_COUNT, info) - 1;
 -			tx_failed = tx_retries +
+-				!!FIELD_GET(MT_TXFREE_INFO_STAT, info);
+-
+-			wcid->stats.tx_retries += tx_retries;
+-			wcid->stats.tx_failed += tx_failed;
 +			count = FIELD_GET(MT_TXFREE_INFO_COUNT, info);
 +			if (count)
 +				wcid->stats.tx_retries += count - 1;
 +			wcid->stats.tx_failed +=
- 				!!FIELD_GET(MT_TXFREE_INFO_STAT, info);
--
--			wcid->stats.tx_retries += tx_retries;
--			wcid->stats.tx_failed += tx_failed;
- 			continue;
- 		}
++ 				!!FIELD_GET(MT_TXFREE_INFO_STAT, info);
  
-@@ -2895,7 +2893,6 @@ void mt7996_mac_work(struct work_struct
+ 			/* age the stale-token PLE flush from genuine TX
+ 			 * activity only, not from every token free
+@@ -2900,7 +2898,6 @@ void mt7996_mac_work(struct work_struct
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_MSDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_RX_MPDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TX_STAT);

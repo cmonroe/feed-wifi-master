@@ -46,3 +46,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			qid = MT_TXQ_PSD;
  
  		q = phy->q_tx[qid];
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1322,6 +1322,7 @@ mt7996_mac_sta_event(struct mt7996_dev *
+ 				goto unlock;
+ 
+ 			msta_link->wcid.tx_info |= MT_WCID_TX_INFO_SET;
++			msta_link->wcid.sta_disabled = 0;
+ 			break;
+ 		case MT76_STA_EVENT_AUTHORIZE:
+ 			err = mt7996_mcu_add_sta(dev, link_conf, link_sta,

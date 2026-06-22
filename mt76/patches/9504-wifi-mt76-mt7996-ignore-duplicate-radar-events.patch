@@ -66,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 rx_ampdu_ts;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2970,6 +2970,8 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -2975,6 +2975,8 @@ int mt7996_dfs_init_radar_detector(struc
  	enum mt76_dfs_state dfs_state, prev_state;
  	int err, rdd_idx = mt7996_get_rdd_idx(phy, false);
  
