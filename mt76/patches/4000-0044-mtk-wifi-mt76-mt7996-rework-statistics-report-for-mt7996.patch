@@ -72,7 +72,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	u64 last_rx_bytes;
  };
  
-@@ -412,6 +425,8 @@ struct mt76_wcid {
+@@ -413,6 +426,8 @@ struct mt76_wcid {
  	int inactive_count;
  
  	struct rate_info rate;
@@ -81,7 +81,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	unsigned long ampdu_state;
  
  	u16 idx;
-@@ -1473,6 +1488,22 @@ static inline int mt76_decr(int val, int
+@@ -1475,6 +1490,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -106,7 +106,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1423,6 +1423,21 @@ enum {
+@@ -1427,6 +1427,21 @@ enum {
  	UNI_OFFLOAD_OFFLOAD_BMC_RPY_DETECT,
  };
  
@@ -128,7 +128,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  enum UNI_ALL_STA_INFO_TAG {
  	UNI_ALL_STA_TXRX_RATE,
  	UNI_ALL_STA_TX_STAT,
-@@ -1431,6 +1446,8 @@ enum UNI_ALL_STA_INFO_TAG {
+@@ -1435,6 +1450,8 @@ enum UNI_ALL_STA_INFO_TAG {
  	UNI_ALL_STA_DATA_TX_RETRY_COUNT,
  	UNI_ALL_STA_GI_MODE,
  	UNI_ALL_STA_TXRX_MSDU_COUNT,
@@ -273,7 +273,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  /* The HW does not translate the mac header to 802.3 for mesh point */
  static int mt7996_reverse_frag0_hdr_trans(struct sk_buff *skb, u16 hdr_gap)
  {
-@@ -1395,8 +1282,6 @@ next:
+@@ -1400,8 +1287,6 @@ next:
  		}
  	}
  
@@ -282,7 +282,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -1410,25 +1295,25 @@ next:
+@@ -1415,25 +1300,25 @@ next:
  
  static bool
  mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
@@ -317,7 +317,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  		skb = mt76_tx_status_skb_get(mdev, wcid, pid, &list);
  		if (skb) {
  			info = IEEE80211_SKB_CB(skb);
-@@ -1441,119 +1326,33 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1446,119 +1331,33 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  
  			info->status.rates[0].idx = -1;
  		}
@@ -456,7 +456,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	mt76_tx_status_unlock(mdev, &list);
  
  	return !!skb;
-@@ -1561,13 +1360,13 @@ out:
+@@ -1566,13 +1365,13 @@ out:
  
  static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
  {
@@ -473,7 +473,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	pid = le32_get_bits(txs_data[3], MT_TXS3_PID);
  
  	if (pid < MT_PACKET_ID_NO_SKB)
-@@ -1579,14 +1378,16 @@ static void mt7996_mac_add_txs(struct mt
+@@ -1584,14 +1383,16 @@ static void mt7996_mac_add_txs(struct mt
  	if (!wcid)
  		goto out;
  
@@ -495,7 +495,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -2931,34 +2732,81 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2913,34 +2714,81 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -588,7 +588,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1065,7 +1065,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1128,7 +1128,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
  	struct mt7996_phy *phy = mt7996_vif_link_phy(link);
  	struct mt7996_sta_link *msta_link;
@@ -597,7 +597,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
  	if (!phy)
  		return -EINVAL;
-@@ -1101,6 +1101,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1167,6 +1167,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
  
  	ewma_avg_signal_init(&msta_link->avg_ack_signal);
  	ewma_signal_init(&msta_link->wcid.rssi);
@@ -607,7 +607,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
  	rcu_assign_pointer(msta->link[link_id], msta_link);
  
-@@ -1837,6 +1840,87 @@ static void mt7996_sta_statistics(struct
+@@ -1917,6 +1920,87 @@ static void mt7996_sta_statistics(struct
  	}
  }
  
@@ -695,7 +695,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
  					 struct mt7996_sta_link *msta_link)
  {
-@@ -2472,6 +2556,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2555,6 +2639,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_bitrate_mask = mt7996_set_bitrate_mask,
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,
@@ -1009,7 +1009,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  			break;
  		default:
  			break;
-@@ -5205,9 +5402,126 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5355,9 +5552,126 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -1138,7 +1138,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -5218,7 +5532,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -5368,7 +5682,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  

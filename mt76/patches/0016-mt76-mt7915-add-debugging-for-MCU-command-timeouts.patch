@@ -50,7 +50,7 @@
  		skb_pull(skb, sizeof(*rxd) - 4);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1049,6 +1049,9 @@ struct mt76_dev {
+@@ -1051,6 +1051,9 @@ struct mt76_dev {
  	};
  
  	atomic_t bus_hung;

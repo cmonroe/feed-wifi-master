@@ -18,7 +18,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -933,8 +933,6 @@ struct mt76_phy {
+@@ -935,8 +935,6 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -27,7 +27,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 sku_idx;
  	u8 antenna_mask;
  	u16 chainmask;
-@@ -1072,6 +1070,10 @@ struct mt76_dev {
+@@ -1074,6 +1072,10 @@ struct mt76_dev {
  		bool beacon_received;
  	} scan;
  
@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct {
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -602,7 +602,9 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -611,7 +611,9 @@ void mt76_connac2_mac_write_txwi(struct
  							vif ? &vif->bss_conf : NULL,
  							beacon, multicast);
  		u32 val = MT_TXD6_FIXED_BW;
@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			val |= MT_TX_BW_IDX_80;
  		/* hardware won't add HTC for mgmt/ctrl frame */
  		txwi[2] |= cpu_to_le32(MT_TXD2_HTC_VLD);
-@@ -617,7 +619,7 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -626,7 +628,7 @@ void mt76_connac2_mac_write_txwi(struct
  			if (!spe_idx)
  				spe_idx = 24 + phy_idx;
  			txwi[7] |= cpu_to_le32(FIELD_PREP(MT_TXD7_SPE_IDX,
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1487,7 +1487,7 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
+@@ -1505,7 +1505,7 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
  	struct mt7915_sta *msta = (struct mt7915_sta *)sta->drv_priv;
  	struct mt76_phy *mphy = mvif->phy->mt76;
@@ -85,7 +85,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		     0 : mt76_connac_spe_idx(mphy->antenna_mask);
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &msta->wcid,
-@@ -3531,7 +3531,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3549,7 +3549,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.cck, len[SKU_CCK]);
  
@@ -94,7 +94,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	    !mt7915_get_psd_country(dev->mt76.alpha2)) {
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
-@@ -3583,7 +3583,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3601,7 +3601,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
  

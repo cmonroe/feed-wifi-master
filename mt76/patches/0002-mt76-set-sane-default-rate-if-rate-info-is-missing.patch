@@ -15,7 +15,7 @@ Signed-off-by: Chad Monroe <chad.monroe@smartrg.com>
 
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -339,6 +339,18 @@ legacy:
+@@ -348,6 +348,18 @@ legacy:
  	if (band != NL80211_BAND_2GHZ)
  		offset = 4;
  

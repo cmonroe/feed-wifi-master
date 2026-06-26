@@ -31,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76_connac.h
 +++ b/mt76_connac.h
-@@ -442,7 +442,7 @@ u16 mt76_connac2_mac_tx_rate_val(struct
+@@ -461,7 +461,7 @@ u16 mt76_connac2_mac_tx_rate_val(struct
  				 struct ieee80211_bss_conf *conf,
  				 bool beacon, bool mcast);
  bool mt76_connac2_mac_fill_txs(struct mt76_dev *dev, struct mt76_wcid *wcid,
@@ -42,7 +42,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt76_connac2_mac_decode_he_radiotap(struct mt76_dev *dev,
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -625,7 +625,7 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -634,7 +634,7 @@ void mt76_connac2_mac_write_txwi(struct
  EXPORT_SYMBOL_GPL(mt76_connac2_mac_write_txwi);
  
  bool mt76_connac2_mac_fill_txs(struct mt76_dev *dev, struct mt76_wcid *wcid,
@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct mt76_sta_stats *stats = &wcid->stats;
  	struct ieee80211_supported_band *sband;
-@@ -637,15 +637,10 @@ bool mt76_connac2_mac_fill_txs(struct mt
+@@ -646,15 +646,10 @@ bool mt76_connac2_mac_fill_txs(struct mt
  	txs = le32_to_cpu(txs_data[0]);
  
  	/* PPDU based reporting */
@@ -68,7 +68,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		if (wcid->sta) {
  			struct ieee80211_sta *sta;
-@@ -659,6 +654,9 @@ bool mt76_connac2_mac_fill_txs(struct mt
+@@ -668,6 +663,9 @@ bool mt76_connac2_mac_fill_txs(struct mt
  		}
  	}
  
@@ -78,7 +78,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	txrate = FIELD_GET(MT_TXS0_TX_RATE, txs);
  
  	rate.mcs = FIELD_GET(MT_TX_RATE_IDX, txrate);
-@@ -753,13 +751,13 @@ bool mt76_connac2_mac_add_txs_skb(struct
+@@ -762,13 +760,13 @@ bool mt76_connac2_mac_add_txs_skb(struct
  				  int pid, __le32 *txs_data)
  {
  	struct sk_buff_head list;
@@ -97,7 +97,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (skb) {
  		struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
  
-@@ -771,7 +769,7 @@ bool mt76_connac2_mac_add_txs_skb(struct
+@@ -780,7 +778,7 @@ bool mt76_connac2_mac_add_txs_skb(struct
  			!!(info->flags & IEEE80211_TX_STAT_ACK);
  		info->status.rates[0].idx = -1;
  
@@ -169,8 +169,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	msta->wcid.phy_idx = ext_phy;
 -	msta->jiffies = jiffies;
  
- 	ewma_avg_signal_init(&msta->avg_ack_signal);
- 
+ 	if (sta->tdls)
+ 		set_bit(MT_WCID_FLAG_TDLS_PEER, &msta->wcid.flags);
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
 @@ -146,7 +146,6 @@ struct mt7915_sta {

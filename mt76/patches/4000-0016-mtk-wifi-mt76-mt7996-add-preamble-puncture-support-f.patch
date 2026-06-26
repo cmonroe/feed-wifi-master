@@ -16,7 +16,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1328,6 +1328,7 @@ enum {
+@@ -1330,6 +1330,7 @@ enum {
  	MCU_UNI_CMD_CHANNEL_SWITCH = 0x34,
  	MCU_UNI_CMD_THERMAL = 0x35,
  	MCU_UNI_CMD_VOW = 0x37,
@@ -26,7 +26,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TESTMODE_CTRL = 0x46,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5376,3 +5376,43 @@ int mt7996_mcu_set_dup_wtbl(struct mt799
+@@ -5526,3 +5526,43 @@ int mt7996_mcu_set_dup_wtbl(struct mt799
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(CHIP_CONFIG), &req,
  				 sizeof(req), true);
  }
@@ -72,7 +72,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1003,6 +1003,16 @@ enum {
+@@ -1070,6 +1070,16 @@ enum {
  	MT7996_SEC_MODE_MAX,
  };
  
@@ -101,7 +101,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -921,6 +924,7 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
+@@ -929,6 +932,7 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
  				     struct mt7996_vif_link *link,
  				     struct mt7996_sta_link *msta_link);
  int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode);

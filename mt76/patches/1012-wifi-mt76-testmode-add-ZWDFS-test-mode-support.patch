@@ -19,7 +19,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -851,6 +851,15 @@ struct mt76_testmode_data {
+@@ -853,6 +853,15 @@ struct mt76_testmode_data {
  		u64 fcs_error[__MT_RXQ_MAX];
  		u64 len_mismatch;
  	} rx_stats;
@@ -37,7 +37,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  struct mt76_vif_link {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1274,6 +1274,7 @@ enum {
+@@ -1276,6 +1276,7 @@ enum {
  	MCU_EXT_CMD_OFFCH_SCAN_CTRL = 0x9a,
  	MCU_EXT_CMD_SET_RDD_TH = 0x9d,
  	MCU_EXT_CMD_MURU_CTRL = 0x9f,
@@ -45,7 +45,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	MCU_EXT_CMD_RX_STAT = 0xa4,
  	MCU_EXT_CMD_SET_SPR = 0xa8,
  	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
-@@ -1283,6 +1284,7 @@ enum {
+@@ -1285,6 +1286,7 @@ enum {
  	MCU_EXT_CMD_SMESH_CTRL = 0xae,
  	MCU_EXT_CMD_WF_RF_PIN_CTRL = 0xbd,
  	MCU_EXT_CMD_CSI_CTRL = 0xc2,
@@ -55,7 +55,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  enum {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2766,6 +2766,7 @@ mt7915_mcu_background_chain_ctrl(struct
+@@ -2784,6 +2784,7 @@ mt7915_mcu_background_chain_ctrl(struct
  		req.monitor_chan = chandef->chan->hw_value;
  		req.monitor_central_chan =
  			ieee80211_frequency_to_channel(chandef->center_freq1);
@@ -63,7 +63,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		req.band_idx = phy->mt76->band_idx;
  		req.scan_mode = 2;
  		break;
-@@ -4553,3 +4554,68 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4579,3 +4580,68 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(MEC_CTRL), &req, sizeof(req), true);
  }
  #endif
@@ -134,7 +134,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +}
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -673,4 +673,50 @@ struct csi_data {
+@@ -682,4 +682,50 @@ struct csi_data {
  };
  #endif
  

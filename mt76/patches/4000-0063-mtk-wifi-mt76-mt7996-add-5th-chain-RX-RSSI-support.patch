@@ -25,16 +25,16 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -400,6 +400,8 @@ enum mt76_wcid_flags {
- 	MT_WCID_FLAG_PS,
+@@ -401,6 +401,8 @@ enum mt76_wcid_flags {
  	MT_WCID_FLAG_4ADDR,
  	MT_WCID_FLAG_HDR_TRANS,
+ 	MT_WCID_FLAG_TDLS_PEER,
 +
 +	NUM_MT76_WCID_FLAGS,
  };
  
  #define MT76_N_WCIDS 1088
-@@ -774,25 +776,19 @@ struct mt76_mmio {
+@@ -776,25 +778,19 @@ struct mt76_mmio {
  	int npu_type;
  };
  
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 flag;
  	u8 enc_flags;
  	u8 encoding:3, bw:4;
-@@ -807,14 +803,13 @@ struct mt76_rx_status {
+@@ -809,14 +805,13 @@ struct mt76_rx_status {
  			u8 gi:2;
  		} eht;
  	};
@@ -83,7 +83,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	const struct cfg80211_sar_freq_ranges *range;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -1159,11 +1159,245 @@ static const struct file_operations fops
+@@ -1157,11 +1157,246 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
@@ -93,6 +93,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	FLAG(PS),
 +	FLAG(4ADDR),
 +	FLAG(HDR_TRANS),
++	FLAG(TDLS_PEER),
 +#undef FLAG
 +};
 +
@@ -387,7 +388,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rxd += 24;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5507,6 +5507,7 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5657,6 +5657,7 @@ int mt7996_mcu_get_per_sta_info(struct m
  				msta_link->chain_signal_wf4 = to_rssi(MT_PRXV_RCPI0,
  								      rssi->rcpi_wf4);
  				msta_link->chain_ack_signal[4] = msta_link->chain_signal_wf4;

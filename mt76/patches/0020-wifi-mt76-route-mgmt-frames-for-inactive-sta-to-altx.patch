@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -900,6 +900,9 @@ void mt7996_mac_write_txwi(struct mt7996
+@@ -895,6 +895,9 @@ void mt7996_mac_write_txwi(struct mt7996
  	} else if (beacon) {
  		p_fmt = MT_TX_TYPE_FW;
  		q_idx = MT_LMAC_BCN0;
@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		q_idx = MT_LMAC_ALTX0;
 --- a/tx.c
 +++ b/tx.c
-@@ -634,7 +634,9 @@ mt76_txq_schedule_pending_wcid(struct mt
+@@ -684,7 +684,9 @@ mt76_txq_schedule_pending_wcid(struct mt
  		    !ieee80211_is_data_present(hdr->frame_control) &&
  		    (!ieee80211_is_bufferable_mmpdu(skb) ||
  		     ieee80211_is_deauth(hdr->frame_control) ||
@@ -48,7 +48,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		q = phy->q_tx[qid];
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1322,6 +1322,7 @@ mt7996_mac_sta_event(struct mt7996_dev *
+@@ -1400,6 +1400,7 @@ mt7996_mac_sta_event(struct mt7996_dev *
  				goto unlock;
  
  			msta_link->wcid.tx_info |= MT_WCID_TX_INFO_SET;

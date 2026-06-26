@@ -17,7 +17,7 @@ Change-Id: I06a3f94d5e444be894200e2b6588d76ed38d09d0
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1282,6 +1282,7 @@ enum {
+@@ -1284,6 +1284,7 @@ enum {
  	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
  	/* for vendor csi and air monitor */
  	MCU_EXT_CMD_SMESH_CTRL = 0xae,
@@ -40,7 +40,7 @@ Change-Id: I06a3f94d5e444be894200e2b6588d76ed38d09d0
  			return ret;
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4621,3 +4621,76 @@ int mt7915_mcu_ipi_hist_scan(struct mt79
+@@ -4647,3 +4647,76 @@ int mt7915_mcu_ipi_hist_scan(struct mt79
  
  	return 0;
  }
@@ -119,7 +119,7 @@ Change-Id: I06a3f94d5e444be894200e2b6588d76ed38d09d0
 +}
 --- a/mt7915/mcu.h
 +++ b/mt7915/mcu.h
-@@ -671,6 +671,27 @@ struct csi_data {
+@@ -680,6 +680,27 @@ struct csi_data {
  
  	struct list_head node;
  };

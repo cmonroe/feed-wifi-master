@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3482,7 +3482,7 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3500,7 +3500,7 @@ mt7915_update_txpower(struct mt7915_phy
  
  static int mt7915_get_psd_country(char *country)
  {
@@ -163,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -3517,7 +3517,13 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3535,7 +3535,13 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	struct mt76_power_limits *la;
  	struct sk_buff *skb;
  
@@ -177,7 +177,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
  		if (!la)
-@@ -3530,6 +3536,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3548,6 +3554,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -188,7 +188,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(hdr) + MT7915_SKU_RATE_NUM);
  	if (!skb) {
-@@ -3541,7 +3551,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3559,7 +3569,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &la->cck, len[SKU_CCK]);
  
  	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
@@ -197,7 +197,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->mcs[0], len[SKU_OFDM]);
-@@ -3712,6 +3722,10 @@ int mt7915_mcu_set_lpi(struct mt7915_phy
+@@ -3738,6 +3748,10 @@ int mt7915_mcu_set_lpi(struct mt7915_phy
  		.enable = en,
  		.psd_limit = en ? mt7915_get_psd_country(mdev->alpha2) : 0,
  	};
@@ -208,7 +208,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return mt76_mcu_send_msg(mdev, MCU_EXT_CMD(LPI_CTRL), &req,
  				 sizeof(req), false);
  }
-@@ -3751,7 +3765,11 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3777,7 +3791,11 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	};
  	int ret;
  
@@ -251,7 +251,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	err = mt7915_mcu_set_txpower_sku(phy);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1230,6 +1230,11 @@ struct mt76_mib_stats {
+@@ -1232,6 +1232,11 @@ struct mt76_mib_stats {
  	u32 ul_hetrig_4mu_cnt;
  };
  

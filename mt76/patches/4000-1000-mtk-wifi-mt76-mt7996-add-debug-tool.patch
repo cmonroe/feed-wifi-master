@@ -267,7 +267,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  int mt7996_init_debugfs(struct mt7996_dev *dev)
  {
  	struct dentry *dir;
-@@ -991,9 +1085,16 @@ int mt7996_init_debugfs(struct mt7996_de
+@@ -989,9 +1083,16 @@ int mt7996_init_debugfs(struct mt7996_de
  			    &fops_radar_trigger);
  	debugfs_create_devm_seqfile(dev->mt76.dev, "rdd_monitor", dir,
  				    mt7996_rdd_monitor);
@@ -284,7 +284,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	return 0;
  }
  
-@@ -1005,7 +1106,11 @@ mt7996_debugfs_write_fwlog(struct mt7996
+@@ -1003,7 +1104,11 @@ mt7996_debugfs_write_fwlog(struct mt7996
  	unsigned long flags;
  	void *dest;
  
@@ -296,7 +296,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	dest = relay_reserve(dev->relay_fwlog, hdrlen + len + 4);
  	if (dest) {
  		*(u32 *)dest = hdrlen + len;
-@@ -1038,9 +1143,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
+@@ -1036,9 +1141,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -334,7 +334,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  };
  
  enum {
-@@ -963,7 +975,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -971,7 +983,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
  #ifdef CONFIG_MTK_DEBUG

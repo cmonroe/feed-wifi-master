@@ -29,7 +29,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		ieee80211_restart_hw(ext_phy->hw);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2348,6 +2348,8 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2330,6 +2330,8 @@ mt7996_mac_full_reset(struct mt7996_dev
  
  	mutex_unlock(&dev->mt76.mutex);
  

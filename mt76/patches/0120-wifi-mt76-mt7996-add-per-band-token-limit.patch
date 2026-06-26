@@ -25,7 +25,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -464,6 +464,8 @@ struct mt76_txwi_cache {
+@@ -465,6 +465,8 @@ struct mt76_txwi_cache {
  
  	u8 qid;
  	u8 phy_idx;
@@ -34,7 +34,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  struct mt76_rx_tid {
-@@ -927,6 +929,8 @@ struct mt76_phy {
+@@ -929,6 +931,8 @@ struct mt76_phy {
  		bool al;
  		u8 pin;
  	} leds;
@@ -43,7 +43,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  struct mt76_dev {
-@@ -980,6 +984,7 @@ struct mt76_dev {
+@@ -982,6 +986,7 @@ struct mt76_dev {
  	u16 token_count;
  	u16 token_start;
  	u16 token_size;
@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spinlock_t rx_token_lock;
  	struct idr rx_token;
-@@ -2056,7 +2061,8 @@ static inline bool mt76_queue_is_npu_txf
+@@ -2060,7 +2065,8 @@ static inline bool mt76_queue_is_npu_txf
  
  struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake);
@@ -73,7 +73,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -1214,8 +1214,12 @@ void mt76_connac2_tx_token_put(struct mt
+@@ -1223,8 +1223,12 @@ void mt76_connac2_tx_token_put(struct mt
  
  	spin_lock_bh(&dev->token_lock);
  	idr_for_each_entry(&dev->token, txwi, id) {
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	idr_destroy(&dev->token);
 --- a/tx.c
 +++ b/tx.c
-@@ -858,22 +858,33 @@ void __mt76_set_tx_blocked(struct mt76_d
+@@ -935,22 +935,33 @@ void __mt76_set_tx_blocked(struct mt76_d
  }
  EXPORT_SYMBOL_GPL(__mt76_set_tx_blocked);
  
@@ -125,7 +125,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  #ifdef CONFIG_NET_MEDIATEK_SOC_WED
-@@ -885,6 +896,7 @@ int mt76_token_consume(struct mt76_dev *
+@@ -962,6 +973,7 @@ int mt76_token_consume(struct mt76_dev *
  	if (dev->token_count >= dev->token_size - MT76_TOKEN_FREE_THR)
  		__mt76_set_tx_blocked(dev, true);
  
@@ -133,7 +133,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	spin_unlock_bh(&dev->token_lock);
  
  	return token;
-@@ -913,12 +925,16 @@ struct mt76_txwi_cache *
+@@ -990,12 +1002,16 @@ struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake)
  {
  	struct mt76_txwi_cache *txwi;
@@ -179,7 +179,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7925/pci_mac.c
 +++ b/mt7925/pci_mac.c
-@@ -26,8 +26,10 @@ int mt7925e_tx_prepare_skb(struct mt76_d
+@@ -27,8 +27,10 @@ int mt7925e_tx_prepare_skb(struct mt76_d
  
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
@@ -214,7 +214,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1054,8 +1054,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -1055,8 +1055,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
  
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
@@ -226,7 +226,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (id < 0)
  		return id;
  
-@@ -2217,8 +2219,12 @@ void mt7996_tx_token_put(struct mt7996_d
+@@ -2212,8 +2214,12 @@ void mt7996_tx_token_put(struct mt7996_d
  
  	spin_lock_bh(&dev->mt76.token_lock);
  	idr_for_each_entry(&dev->mt76.token, txwi, id) {
@@ -279,7 +279,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /* The index of RF registers use the generic regidx, combined with two parts:
   * WF selection [31:24] and offset [23:0].
   */
-@@ -895,6 +926,8 @@ int mt7996_init_debugfs(struct mt7996_de
+@@ -893,6 +924,8 @@ int mt7996_init_debugfs(struct mt7996_de
  			    &fops_implicit_txbf);
  	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
  				    mt7996_twt_stats);

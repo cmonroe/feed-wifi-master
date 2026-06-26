@@ -85,7 +85,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -933,6 +933,9 @@ struct mt76_phy {
+@@ -935,6 +935,9 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -95,7 +95,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -2001,7 +2004,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
+@@ -2005,7 +2008,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
  void mt76_set_irq_mask(struct mt76_dev *dev, u32 addr, u32 clear, u32 set);
  
  struct device_node *
@@ -120,7 +120,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif /* __MT76_CONNAC2_MAC_H */
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -602,7 +602,8 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -611,7 +611,8 @@ void mt76_connac2_mac_write_txwi(struct
  							vif ? &vif->bss_conf : NULL,
  							beacon, multicast);
  		u32 val = MT_TXD6_FIXED_BW;
@@ -130,7 +130,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* hardware won't add HTC for mgmt/ctrl frame */
  		txwi[2] |= cpu_to_le32(MT_TXD2_HTC_VLD);
  
-@@ -615,7 +616,9 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -624,7 +625,9 @@ void mt76_connac2_mac_write_txwi(struct
  
  			if (!spe_idx)
  				spe_idx = 24 + phy_idx;
@@ -143,7 +143,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		txwi[7] &= ~cpu_to_le32(MT_TXD7_HW_AMSDU);
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1289,6 +1289,7 @@ enum {
+@@ -1291,6 +1291,7 @@ enum {
  	MCU_EXT_CMD_SWLNA_ACI_CTRL = 0xc0,
  	MCU_EXT_CMD_CSI_CTRL = 0xc2,
  	MCU_EXT_CMD_IPI_HIST_SCAN = 0xc5,
@@ -195,7 +195,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static void
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1487,7 +1487,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
+@@ -1505,7 +1505,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
  	struct mt7915_sta *msta = (struct mt7915_sta *)sta->drv_priv;
  	struct mt76_phy *mphy = mvif->phy->mt76;
@@ -205,7 +205,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &msta->wcid,
  					      &spe_idx, RATE_PARAM_SPE_UPDATE);
-@@ -3476,6 +3477,22 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3494,6 +3495,22 @@ mt7915_update_txpower(struct mt7915_phy
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -228,7 +228,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3506,14 +3523,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3524,14 +3541,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -268,7 +268,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb_put_data(skb, &la.mcs[0], len[SKU_HT_BW20]);
  	skb_put_data(skb, &la.mcs[1], len[SKU_HT_BW40]);
  
-@@ -3542,8 +3582,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3560,8 +3600,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
@@ -305,7 +305,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	/* HT20 and HT40 */
  	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
-@@ -3620,6 +3686,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3646,6 +3712,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	return 0;
  }
  
@@ -476,7 +476,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #endif
 --- a/mt7921/mcu.c
 +++ b/mt7921/mcu.c
-@@ -1343,7 +1343,7 @@ int __mt7921_mcu_set_clc(struct mt792x_d
+@@ -1341,7 +1341,7 @@ int __mt7921_mcu_set_clc(struct mt792x_d
  
  	if (dev->phy.chip_cap & MT792x_CHIP_CAP_CLC_EVT_EN)
  		req.cap |= CLC_CAP_EVT_EN;
@@ -485,9 +485,9 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		req.cap |= CLC_CAP_DTS_EN;
  
  	buf_len = le32_to_cpu(clc->len) - sizeof(*clc);
---- a/mt7921/init.c
-+++ b/mt7921/init.c
-@@ -66,12 +66,11 @@ mt7921_regd_channel_update(struct wiphy
+--- a/mt7921/regd.c
++++ b/mt7921/regd.c
+@@ -25,12 +25,11 @@ mt7921_regd_channel_update(struct wiphy
  #define IS_UNII_INVALID(idx, sfreq, efreq) \
  	(!(dev->phy.clc_chan_conf & BIT(idx)) && (cfreq) >= (sfreq) && (cfreq) <= (efreq))
  	struct ieee80211_supported_band *sband;

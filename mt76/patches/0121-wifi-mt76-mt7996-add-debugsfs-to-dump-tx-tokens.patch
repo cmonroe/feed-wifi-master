@@ -83,7 +83,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /* The index of RF registers use the generic regidx, combined with two parts:
   * WF selection [31:24] and offset [23:0].
   */
-@@ -928,6 +981,9 @@ int mt7996_init_debugfs(struct mt7996_de
+@@ -926,6 +979,9 @@ int mt7996_init_debugfs(struct mt7996_de
  				    mt7996_twt_stats);
  	debugfs_create_devm_seqfile(dev->mt76.dev, "token", dir,
  				    mt7996_token_read);

@@ -25,7 +25,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1050,9 +1050,34 @@ enum {
+@@ -1117,9 +1117,34 @@ enum {
  	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
  };
  
@@ -65,7 +65,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5840,7 +5840,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -5990,7 +5990,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  static bool mt7996_is_psd_country(char *country)
  {
@@ -74,7 +74,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -5893,7 +5893,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6043,7 +6043,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	if (txpower_setting == INT_MIN || txpower_setting > 127)
  		txpower_setting = 127;
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -5908,6 +5914,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6058,6 +6064,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		return 0;
  	}
  
@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
  	if (!skb) {
-@@ -5922,7 +5931,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6072,7 +6081,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	 * driver doesn't need to do it
  	 */
  	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
@@ -107,7 +107,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->eht[3], 8);
-@@ -6057,6 +6066,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -6207,6 +6216,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.psd_limit = enable ? mt7996_is_psd_country(dev->mt76.alpha2) : 0,
  	};
  
@@ -139,7 +139,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
  
-@@ -614,6 +627,8 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -677,6 +690,8 @@ int mt7996_set_channel(struct mt76_phy *
  {
  	struct mt7996_phy *phy = mphy->priv;
  	int ret;
@@ -148,7 +148,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
-@@ -632,7 +647,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -695,7 +710,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
