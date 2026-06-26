@@ -5,41 +5,44 @@ Subject: [PATCH] wifi-scripts: add lpi_psd and lpi_bcn_enhance hostapd config
 
 Support configuration of LPI PSD and beacon enhance mode.
 
+Declare lpi_psd and lpi_bcn_enhance in the wifi-device schema and emit
+them from the device config generator in usr/share/ucode/wifi/hostapd.uc
+when enabled.
+
 Fixes: SDG-1871
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/lib/netifd/hostapd.sh |    8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
-
---- a/src/lib/netifd/hostapd.sh
-+++ b/src/lib/netifd/hostapd.sh
-@@ -139,6 +139,8 @@ hostapd_common_add_device_config() {
- 	config_add_boolean stationary_ap
- 	config_add_int acs_num_scans
- 	config_add_boolean acs_exclude_6ghz_non_psc
-+	config_add_boolean lpi_psd
-+	config_add_boolean lpi_bcn_enhance
+--- a/src/usr/share/schema/wireless.wifi-device.json
++++ b/src/usr/share/schema/wireless.wifi-device.json
+@@ -500,6 +500,16 @@
+ 			"minimum": 0,
+ 			"maximum": 4
+ 		},
++		"lpi_bcn_enhance": {
++			"description": "Enable 6GHz LPI beacon enhancement mode",
++			"type": "boolean",
++			"default": false
++		},
++		"lpi_psd": {
++			"description": "Enable 6GHz LPI power spectral density mode",
++			"type": "boolean",
++			"default": false
++		},
+ 		"macaddr": {
+ 			"type": "alias",
+ 			"default": "bssid"
+--- a/src/usr/share/ucode/wifi/hostapd.uc
++++ b/src/usr/share/ucode/wifi/hostapd.uc
+@@ -525,6 +525,11 @@ function generate(config) {
+ 	if (config.acs_exclude_6ghz_non_psc)
+ 		append('acs_exclude_6ghz_non_psc', 1);
  
- 	config_add_string acs_chan_bias
- 	config_add_array hostapd_options
-@@ -158,7 +160,8 @@ hostapd_prepare_device_config() {
- 	json_get_vars country country3 country_ie beacon_int:100 doth require_mode legacy_rates \
- 		acs_chan_bias local_pwr_constraint spectrum_mgmt_required airtime_mode cell_density \
- 		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_reject_assoc_timeout rssi_ignore_probe_request \
--		maxassoc mbssid:0 band reg_power_type stationary_ap acs_num_scans acs_exclude_6ghz_non_psc
-+		maxassoc mbssid:0 band reg_power_type stationary_ap acs_num_scans acs_exclude_6ghz_non_psc \
-+		lpi_psd lpi_bcn_enhance
- 
- 	hostapd_set_log_options base_cfg
- 
-@@ -185,6 +188,9 @@ hostapd_prepare_device_config() {
- 	[ -n "$acs_num_scans" ] && append base_cfg "acs_num_scans=$acs_num_scans" "$N"
- 	[ "$acs_exclude_6ghz_non_psc" -eq "1" ] && append base_cfg "acs_exclude_6ghz_non_psc=1" "$N"
- 
-+	[ "$lpi_psd" -eq "1" ] && append base_cfg "lpi_psd=1" "$N"
-+	[ "$lpi_bcn_enhance" -eq "1" ] && append base_cfg "lpi_bcn_enhance=1" "$N"
++	if (config.lpi_psd)
++		append('lpi_psd', 1);
++	if (config.lpi_bcn_enhance)
++		append('lpi_bcn_enhance', 1);
 +
- 	local brlist= br
- 	json_get_values basic_rate_list basic_rate
- 	local rlist= r
+ 	/* TX Power */
+ 	append_vars(config, [ 'min_tx_power' ]);
+ 

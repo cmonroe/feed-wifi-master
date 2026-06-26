@@ -27,7 +27,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 +# wireless config generation happens in the uci-defaults sequence;
 +# running 'wifi config' here raced those scripts' uncommitted changes
- [ "${ACTION}" = "add" ] && {
+ [ "${ACTION}" = "add" ] && [ -f /etc/board.json ] && {
 -	/sbin/wifi config
  	ubus call network.wireless retry
  }

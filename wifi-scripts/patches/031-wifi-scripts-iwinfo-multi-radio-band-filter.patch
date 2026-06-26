@@ -1,0 +1,51 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 26 Jun 2026 21:14:31 -0700
+Subject: [PATCH] wifi-scripts: limit iwinfo freqlist to the interface band
+
+On a single wiphy that exposes multiple bands, iwinfo freqlist for an
+interface listed every band on the radio because it walked all of
+phy.wiphy_bands. An interface only operates on one band, so a query
+like "iwinfo wifi5g freq" should report just that band.
+
+Derive the interface band from its current frequency and skip the
+other bands. A phy-name query keeps returning every band, since a
+phy is not tied to a single band and callers select the band
+themselves. This ports the intent of the old C iwinfo patch
+101-smartrg-multi-radio-band-filter.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/usr/share/ucode/iwinfo.uc |    8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+--- a/src/usr/share/ucode/iwinfo.uc
++++ b/src/usr/share/ucode/iwinfo.uc
+@@ -195,6 +195,11 @@ function format_band(freq) {
+ 	return '60';
+ }
+ 
++function iface_band(iface) {
++	let freq = iface?.wiphy_freq;
++	return freq ? format_band(freq) : null;
++}
++
+ function format_frequency(freq) {
+ 	return freq ? sprintf('%.03f', freq / 1000.0) : 'unknown';
+ }
+@@ -420,6 +425,7 @@ export function freqlist(name) {
+ 	let phy = iface ? find_phy(iface.wiphy) : phy_by_name(name);
+ 	if (!phy)
+ 		return [];
++	let want_band = iface ? iface_band(iface) : null;
+ 	let channels = [];
+ 
+ 	for (let k, band in phy.wiphy_bands) {
+@@ -427,6 +433,8 @@ export function freqlist(name) {
+ 			continue;
+ 
+ 		let band_name = format_band(band.freqs[0].freq);
++		if (want_band && band_name != want_band)
++			continue;
+ 		for (let freq in band.freqs) {
+ 			if (freq.disabled)
+ 				continue;

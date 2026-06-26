@@ -3,22 +3,21 @@ Date: Mon, 24 Nov 2025 14:36:46 -0800
 Subject: [PATCH] wifi-scripts: allow VLAN configuration for open auth mode
 
 Without vlan_possible=1, VLAN settings are ignored for open networks.
+Set it for the open/owe auth type in iface_auth_type() in
+usr/share/ucode/wifi/ap.uc.
 
 Fixes: OWRT-9051
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/lib/netifd/hostapd.sh |    2 ++
- 1 file changed, 2 insertions(+)
-
---- a/src/lib/netifd/hostapd.sh
-+++ b/src/lib/netifd/hostapd.sh
-@@ -682,6 +682,8 @@ hostapd_set_bss_options() {
- 			[ -n "$owe_transition_bssid" ] && append bss_conf "owe_transition_bssid=$owe_transition_bssid" "$N"
- 			[ -n "$owe_transition_ifname" ] && append bss_conf "owe_transition_ifname=$owe_transition_ifname" "$N"
+--- a/src/usr/share/ucode/wifi/ap.uc
++++ b/src/usr/share/ucode/wifi/ap.uc
+@@ -125,6 +125,8 @@ function iface_auth_type(config, band) {
+ 	switch(config.auth_type) {
+ 	case 'none':
+ 	case 'owe':
++		/* allow VLAN configuration for open auth mode (OWRT-9051) */
++		config.vlan_possible = 1;
+ 		config.wps_possible = 1;
+ 		config.wps_state = 1;
  
-+			set_default dynamic_vlan 0
-+			vlan_possible=1
- 			wps_possible=1
- 			# Here we make the assumption that if we're in open mode
- 			# with WPS enabled, we got to be in unconfigured state.

@@ -4,37 +4,34 @@ Subject: [PATCH] wifi-scripts: add acs_num_scans hostapd config option
 
 Support adjusting the number of scans made during ACS.
 
+Declare acs_num_scans in the wifi-device schema and emit it from the
+device config generator in usr/share/ucode/wifi/hostapd.uc.
+
 Fixes: OWRT-8792
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/lib/netifd/hostapd.sh |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
---- a/src/lib/netifd/hostapd.sh
-+++ b/src/lib/netifd/hostapd.sh
-@@ -137,6 +137,7 @@ hostapd_common_add_device_config() {
- 	config_add_int maxassoc
- 	config_add_int reg_power_type
- 	config_add_boolean stationary_ap
-+	config_add_int acs_num_scans
+--- a/src/usr/share/schema/wireless.wifi-device.json
++++ b/src/usr/share/schema/wireless.wifi-device.json
+@@ -13,6 +13,10 @@
+ 			"type": "boolean",
+ 			"default": false
+ 		},
++		"acs_num_scans": {
++			"description": "Number of scans to perform during ACS",
++			"type": "number"
++		},
+ 		"airtime_mode": {
+ 			"description": "Set the airtime policy operating mode",
+ 			"type": "number",
+--- a/src/usr/share/ucode/wifi/hostapd.uc
++++ b/src/usr/share/ucode/wifi/hostapd.uc
+@@ -520,7 +520,7 @@ function generate(config) {
+ 	else
+ 		set_default(config, 'enable_background_radar', false);
  
- 	config_add_string acs_chan_bias
- 	config_add_array hostapd_options
-@@ -156,7 +157,7 @@ hostapd_prepare_device_config() {
- 	json_get_vars country country3 country_ie beacon_int:100 doth require_mode legacy_rates \
- 		acs_chan_bias local_pwr_constraint spectrum_mgmt_required airtime_mode cell_density \
- 		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_reject_assoc_timeout rssi_ignore_probe_request \
--		maxassoc mbssid:0 band reg_power_type stationary_ap
-+		maxassoc mbssid:0 band reg_power_type stationary_ap acs_num_scans
+-	append_vars(config, [ 'acs_chan_bias', 'acs_exclude_dfs', 'enable_background_radar' ]);
++	append_vars(config, [ 'acs_chan_bias', 'acs_exclude_dfs', 'acs_num_scans', 'enable_background_radar' ]);
  
- 	hostapd_set_log_options base_cfg
- 
-@@ -180,6 +181,7 @@ hostapd_prepare_device_config() {
- 	}
- 
- 	[ -n "$acs_chan_bias" ] && append base_cfg "acs_chan_bias=$acs_chan_bias" "$N"
-+	[ -n "$acs_num_scans" ] && append base_cfg "acs_num_scans=$acs_num_scans" "$N"
- 
- 	local brlist= br
- 	json_get_values basic_rate_list basic_rate
+ 	/* TX Power */
+ 	append_vars(config, [ 'min_tx_power' ]);

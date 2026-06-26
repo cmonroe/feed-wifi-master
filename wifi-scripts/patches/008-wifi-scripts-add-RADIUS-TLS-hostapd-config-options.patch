@@ -4,48 +4,65 @@ Subject: [PATCH] wifi-scripts: add RADIUS TLS hostapd config options
 
 Support configuration of RADIUS TLS.
 
+Declare the auth_server_type, auth_server_ca_cert, auth_server_client_cert,
+auth_server_private_key and auth_server_private_key_passwd options in the
+wifi-iface schema and emit them per RADIUS server from
+iface_authentication_server() in usr/share/ucode/wifi/ap.uc.
+
 Fixes: SDG-2276
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/lib/netifd/hostapd.sh |   15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
-
---- a/src/lib/netifd/hostapd.sh
-+++ b/src/lib/netifd/hostapd.sh
-@@ -422,6 +422,10 @@ hostapd_common_add_bss_config() {
- 	config_add_int ocv
- 	config_add_boolean beacon_prot spp_amsdu
+--- a/src/usr/share/schema/wireless.wifi-iface.json
++++ b/src/usr/share/schema/wireless.wifi-iface.json
+@@ -153,15 +153,35 @@
+ 				"type": "string"
+ 			}
+ 		},
++		"auth_server_ca_cert": {
++			"description": "RADIUS over TLS CA certificate path",
++			"type": "string"
++		},
++		"auth_server_client_cert": {
++			"description": "RADIUS over TLS client certificate path",
++			"type": "string"
++		},
+ 		"auth_server_port": {
+ 			"description": "RADIUS authentication port",
+ 			"type": "number",
+ 			"default": 1812
+ 		},
++		"auth_server_private_key": {
++			"description": "RADIUS over TLS client private key path",
++			"type": "string"
++		},
++		"auth_server_private_key_passwd": {
++			"description": "RADIUS over TLS client private key passphrase",
++			"type": "string"
++		},
+ 		"auth_server_shared_secret": {
+ 			"description": "Shared authentication RADIUS secret",
+ 			"type": "string"
+ 		},
++		"auth_server_type": {
++			"description": "RADIUS server transport type (e.g. radsec for RADIUS over TLS)",
++			"type": "string"
++		},
+ 		"basic_rate": {
+ 			"type": "array"
+ 		},
+--- a/src/usr/share/ucode/wifi/ap.uc
++++ b/src/usr/share/ucode/wifi/ap.uc
+@@ -66,7 +66,11 @@ function iface_setup(config) {
+ function iface_authentication_server(config) {
+ 	for (let server in config.auth_server_addr) {
+ 		append('auth_server_addr', server);
+-		append_vars(config, [ 'auth_server_port', 'auth_server_shared_secret' ]);
++		append_vars(config, [
++			'auth_server_port', 'auth_server_shared_secret',
++			'auth_server_type', 'auth_server_ca_cert', 'auth_server_client_cert',
++			'auth_server_private_key', 'auth_server_private_key_passwd'
++		]);
+ 	}
  
-+	config_add_string auth_server_type
-+	config_add_string auth_server_ca_cert auth_server_client_cert
-+	config_add_string auth_server_private_key auth_server_private_key_passwd
-+
- 	config_add_boolean apup
- 	config_add_string apup_peer_ifname_prefix
- }
-@@ -548,7 +552,12 @@ append_auth_server() {
- 	[ -n "$1" ] || return
- 	append bss_conf "auth_server_addr=$1" "$N"
- 	append bss_conf "auth_server_port=$auth_port" "$N"
--	[ -n "$auth_secret" ] && append bss_conf "auth_server_shared_secret=$auth_secret" "$N"
-+	[ -n "$auth_secret" ]                    && append bss_conf "auth_server_shared_secret=$auth_secret" "$N"
-+	[ -n "$auth_server_type" ]               && append bss_conf "auth_server_type=$auth_server_type" "$N"
-+	[ -n "$auth_server_ca_cert" ]            && append bss_conf "auth_server_ca_cert=$auth_server_ca_cert" "$N"
-+	[ -n "$auth_server_client_cert" ]        && append bss_conf "auth_server_client_cert=$auth_server_client_cert" "$N"
-+	[ -n "$auth_server_private_key" ]        && append bss_conf "auth_server_private_key=$auth_server_private_key" "$N"
-+	[ -n "$auth_server_private_key_passwd" ] && append bss_conf "auth_server_private_key_passwd=$auth_server_private_key_passwd" "$N"
- }
- 
- append_acct_server() {
-@@ -741,7 +750,9 @@ hostapd_set_bss_options() {
- 				dynamic_ownip ownip radius_client_addr \
- 				eap_reauth_period request_cui \
- 				erp_domain mobility_domain \
--				fils_realm fils_dhcp
-+				fils_realm fils_dhcp \
-+				auth_server_type auth_server_ca_cert auth_server_client_cert \
-+				auth_server_private_key auth_server_private_key_passwd
- 
- 			# radius can provide VLAN ID for clients
- 			vlan_possible=1
+ 	append_vars(config, [ 'radius_auth_req_attr' ]);

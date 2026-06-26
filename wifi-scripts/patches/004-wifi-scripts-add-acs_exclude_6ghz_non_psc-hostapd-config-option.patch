@@ -4,37 +4,37 @@ Subject: [PATCH] wifi-scripts: add acs_exclude_6ghz_non_psc hostapd config optio
 
 Support excluding non-PSC channels from ACS on 6GHz radios.
 
+Declare acs_exclude_6ghz_non_psc in the wifi-device schema and emit it
+from the device config generator in usr/share/ucode/wifi/hostapd.uc when
+enabled.
+
 Fixes: OWRT-8793
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/lib/netifd/hostapd.sh |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
---- a/src/lib/netifd/hostapd.sh
-+++ b/src/lib/netifd/hostapd.sh
-@@ -138,6 +138,7 @@ hostapd_common_add_device_config() {
- 	config_add_int reg_power_type
- 	config_add_boolean stationary_ap
- 	config_add_int acs_num_scans
-+	config_add_boolean acs_exclude_6ghz_non_psc
+--- a/src/usr/share/schema/wireless.wifi-device.json
++++ b/src/usr/share/schema/wireless.wifi-device.json
+@@ -8,6 +8,11 @@
+ 			"description": "Can be used to increase (or decrease) the likelihood of a specific channel to be selected by the ACS algorithm",
+ 			"type": "string"
+ 		},
++		"acs_exclude_6ghz_non_psc": {
++			"description": "Exclude non-PSC channels from ACS on 6GHz radios",
++			"type": "boolean",
++			"default": false
++		},
+ 		"acs_exclude_dfs": {
+ 			"description": "Exclude DFS channels from ACS",
+ 			"type": "boolean",
+--- a/src/usr/share/ucode/wifi/hostapd.uc
++++ b/src/usr/share/ucode/wifi/hostapd.uc
+@@ -522,6 +522,9 @@ function generate(config) {
  
- 	config_add_string acs_chan_bias
- 	config_add_array hostapd_options
-@@ -157,7 +158,7 @@ hostapd_prepare_device_config() {
- 	json_get_vars country country3 country_ie beacon_int:100 doth require_mode legacy_rates \
- 		acs_chan_bias local_pwr_constraint spectrum_mgmt_required airtime_mode cell_density \
- 		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_reject_assoc_timeout rssi_ignore_probe_request \
--		maxassoc mbssid:0 band reg_power_type stationary_ap acs_num_scans
-+		maxassoc mbssid:0 band reg_power_type stationary_ap acs_num_scans acs_exclude_6ghz_non_psc
+ 	append_vars(config, [ 'acs_chan_bias', 'acs_exclude_dfs', 'acs_num_scans', 'enable_background_radar' ]);
  
- 	hostapd_set_log_options base_cfg
++	if (config.acs_exclude_6ghz_non_psc)
++		append('acs_exclude_6ghz_non_psc', 1);
++
+ 	/* TX Power */
+ 	append_vars(config, [ 'min_tx_power' ]);
  
-@@ -182,6 +183,7 @@ hostapd_prepare_device_config() {
- 
- 	[ -n "$acs_chan_bias" ] && append base_cfg "acs_chan_bias=$acs_chan_bias" "$N"
- 	[ -n "$acs_num_scans" ] && append base_cfg "acs_num_scans=$acs_num_scans" "$N"
-+	[ "$acs_exclude_6ghz_non_psc" -eq "1" ] && append base_cfg "acs_exclude_6ghz_non_psc=1" "$N"
- 
- 	local brlist= br
- 	json_get_values basic_rate_list basic_rate

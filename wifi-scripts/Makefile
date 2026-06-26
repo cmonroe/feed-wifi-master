@@ -51,9 +51,6 @@ endef
 define Package/wifi-scripts/install
 	$(INSTALL_DIR) $(1)
 	$(CP) $(PKG_BUILD_DIR)/src/* $(1)/
-ifeq ($(CONFIG_WIFI_SCRIPTS_UCODE),y)
-	$(CP) ./files-ucode/* $(1)/
-endif
 ifeq ($(CONFIG_WIFI_SCRIPTS_WPS_BUTTON_DISABLED),y)
 	rm -f $(1)/etc/rc.button/wps
 endif

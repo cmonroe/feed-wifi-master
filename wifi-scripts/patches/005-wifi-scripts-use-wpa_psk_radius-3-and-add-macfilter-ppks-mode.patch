@@ -1,0 +1,62 @@
+From: Colin Whittaker <colin.whittaker@adtran.com>
+Date: Fri, 26 Jun 2026 16:40:16 -0700
+Subject: [PATCH] wifi-scripts: use wpa_psk_radius=3 and add macfilter ppsk mode
+
+On per-station PSK (ppsk) networks macaddr_acl=2 was forced on
+whenever ppsk was enabled, tying RADIUS PSK lookup to RADIUS MAC
+authorization. Make the MAC ACL opt-in via a new macfilter=ppsk
+value, and use wpa_psk_radius=3.
+
+Fixes: SDG-6861
+
+Signed-off-by: Colin Whittaker <colin.whittaker@adtran.com>
+---
+ src/usr/share/schema/wireless.wifi-iface.json |    2 +-
+ src/usr/share/ucode/wifi/ap.uc                |   11 ++++++++---
+ 2 files changed, 9 insertions(+), 4 deletions(-)
+
+--- a/src/usr/share/schema/wireless.wifi-iface.json
++++ b/src/usr/share/schema/wireless.wifi-iface.json
+@@ -568,7 +568,7 @@
+ 		"macfilter": {
+ 			"description": "Allow/deny associations based on the clients MAC",
+ 			"type": "string",
+-			"enum": [ "allow", "deny" ]
++			"enum": [ "allow", "deny", "ppsk" ]
+ 		},
+ 		"maclist": {
+ 			"description": "List of MACs used by the macfilter option",
+--- a/src/usr/share/ucode/wifi/ap.uc
++++ b/src/usr/share/ucode/wifi/ap.uc
+@@ -150,8 +150,7 @@ function iface_auth_type(config, band) {
+ 
+ 		if (config.ppsk) {
+ 			iface_authentication_server(config);
+-			config.macaddr_acl = 2;
+-			config.wpa_psk_radius = 2;
++			config.wpa_psk_radius = 3;
+ 		} else if (length(config.key) == 64) {
+ 			config.wpa_psk = config.key;
+ 		} else if (length(config.key) >= 8 && length(config.key) <= 63) {
+@@ -225,7 +224,9 @@ function iface_ppsk(config) {
+ 		return;
+ 
+ 	iface_authentication_server(config);
+-	append('macaddr_acl', '2');
++	/* ppsk macaddr_acl is set via macfilter=ppsk; keep RADIUS MAC-auth for open/owe/wep */
++	if (config.auth_type in [ 'none', 'owe', 'wep' ])
++		append('macaddr_acl', '2');
+ }
+ 
+ function iface_wps(config) {
+@@ -292,6 +293,10 @@ function iface_macfilter(config) {
+ 		append('macaddr_acl', 0);
+ 		break;
+ 
++	case 'ppsk':
++		append('macaddr_acl', 2);
++		return;
++
+ 	default:
+ 		return;
+ 	}

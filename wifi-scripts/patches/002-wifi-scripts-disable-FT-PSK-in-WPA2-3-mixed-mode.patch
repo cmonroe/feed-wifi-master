@@ -5,21 +5,25 @@ Subject: [PATCH] wifi-scripts: disable FT-PSK in WPA2/3 mixed mode
 FT-PSK causes compatibility issues with WPA2-only clients in mixed mode.
 WPA2 clients will still connect but cannot use fast roaming.
 
+In the ucode scripts the mixed-mode (psk-sae) key management list is
+built by wpa_key_mgmt() in usr/share/ucode/wifi/iface.uc; drop the
+FT-PSK entry it appends for the psk-sae auth type.
+
 Fixes: SDG-3228
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/lib/netifd/hostapd.sh |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
---- a/src/lib/netifd/hostapd.sh
-+++ b/src/lib/netifd/hostapd.sh
-@@ -71,7 +71,7 @@ hostapd_append_wpa_key_mgmt() {
- 			[ "$rsn_override" -gt 1 ] && wpa_key_mgmt=
- 			[ "$band" = "6g" ] || {
- 				append wpa_key_mgmt "WPA-PSK"
--				[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt "FT-PSK"
-+				#[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt "FT-PSK"
- 				[ "${ieee80211w:-0}" -gt 0 ] && append wpa_key_mgmt "WPA-PSK-SHA256"
- 			}
- 		;;
+--- a/src/usr/share/ucode/wifi/iface.uc
++++ b/src/usr/share/ucode/wifi/iface.uc
+@@ -179,8 +179,9 @@ export function wpa_key_mgmt(config, ban
+ 		append_value(config, 'wpa_key_mgmt', 'WPA-PSK');
+ 		if (config.ieee80211w)
+ 			append_value(config, 'wpa_key_mgmt', 'WPA-PSK-SHA256');
+-		if (config.ieee80211r)
+-			append_value(config, 'wpa_key_mgmt', 'FT-PSK');
++		/* FT-PSK disabled in WPA2/3 mixed mode (SDG-3228) */
++		//if (config.ieee80211r)
++		//	append_value(config, 'wpa_key_mgmt', 'FT-PSK');
+ 		break;
+ 
+ 	case 'psk-sae-compat':

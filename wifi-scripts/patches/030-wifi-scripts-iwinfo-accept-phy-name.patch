@@ -1,0 +1,172 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 26 Jun 2026 21:12:27 -0700
+Subject: [PATCH] wifi-scripts: accept phy name as iwinfo device argument
+
+The ucode iwinfo resolves the <device> argument only against netdev
+interface names, so a phy name such as phy0 prints the usage text
+instead of querying the radio. The old C iwinfo and the ubus iwinfo
+backend both accept phy names, and callers such as
+wifi-set-channel-list.sh pass phyN to read a radio's channel list
+before any VAP netdev exists.
+
+Add phy_by_name() to resolve a wiphy by its phyN name from the
+GET_WIPHY dump, which is available without an interface, and accept a
+phy name for the commands that are pure wiphy properties: freqlist,
+htmodelist, countrylist and txpowerlist. freqlist resolves the phy
+directly and drops the active-channel marker; htmodelist derives the
+band from board data; countrylist reads the phy regulatory domain;
+and txpowerlist reports the maximum power across the phy's channels.
+Commands that need a live interface (info, assoclist, scan) still
+require an interface name.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/usr/bin/iwinfo            |   20 ++++++++---
+ src/usr/share/ucode/iwinfo.uc |   55 ++++++++++++++++++++++++++------
+ 2 files changed, 60 insertions(+), 15 deletions(-)
+
+--- a/src/usr/bin/iwinfo
++++ b/src/usr/bin/iwinfo
+@@ -147,14 +147,16 @@ if (!length(ARGV)) {
+ 	return 0;
+ }
+ 
++// The third element marks commands that query pure wiphy properties and
++// therefore accept a phy name as well as an interface name.
+ const commands = {
+ 	assoclist: [ iwinfo.assoclist, print_assoclist ],
+-	countrylist: [ iwinfo.countrylist, print_countrylist ],
+-	freqlist: [ iwinfo.freqlist, print_freqlist ],
+-	htmodelist: [ iwinfo.htmodelist, print_htmodelist ],
++	countrylist: [ iwinfo.countrylist, print_countrylist, true ],
++	freqlist: [ iwinfo.freqlist, print_freqlist, true ],
++	htmodelist: [ iwinfo.htmodelist, print_htmodelist, true ],
+ 	info: [ iwinfo.info, print_info ],
+ 	scan: [ iwinfo.scan, print_scan ],
+-	txpowerlist: [ iwinfo.txpowerlist, print_txpowerlist ],
++	txpowerlist: [ iwinfo.txpowerlist, print_txpowerlist, true ],
+ };
+ 
+ if (ARGV[0] == 'nl80211' && ARGV[1] == 'phyname') {
+@@ -175,11 +177,17 @@ if (ARGV[0] == 'nl80211' && ARGV[1] == '
+ 	return 0;
+ }
+ 
+-if (length(ARGV) == 2 && iwinfo.ifaces[ARGV[0]])
++let phy_only = !iwinfo.ifaces[ARGV[0]] && iwinfo.phy_by_name(ARGV[0]);
++if (length(ARGV) == 2 && (iwinfo.ifaces[ARGV[0]] || phy_only))
+ 	for (let cmd, cb in commands)
+ 		if (substr(cmd, 0, length(ARGV[1])) == ARGV[1]) {
++			if (phy_only && !cb[2]) {
++				warn(`iwinfo: command '${cmd}' requires an interface name\n`);
++				return 1;
++			}
++
+ 			let ret = cb[0](ARGV[0]);
+-			
++
+ 			if (pretty)
+ 				cb[1](ret);
+ 			else
+--- a/src/usr/share/ucode/iwinfo.uc
++++ b/src/usr/share/ucode/iwinfo.uc
+@@ -21,6 +21,30 @@ function find_phy(wiphy) {
+ 	return null;
+ }
+ 
++export function phy_by_name(name) {
++	for (let k, phy in phys)
++		if (phy && phy.wiphy_name == name)
++			return phy;
++	return null;
++};
++
++function phy_max_power(phy) {
++	let max = 0;
++	for (let k, band in phy.wiphy_bands)
++		if (band)
++			for (let freq in band.freqs)
++				if (freq.max_tx_power > max)
++					max = freq.max_tx_power;
++	return max;
++}
++
++function phy_country(phy) {
++	let reg = nl80211.request(nl80211.const.NL80211_CMD_GET_REG, 0, { wiphy: phy.wiphy });
++	if (!reg)
++		reg = nl80211.request(nl80211.const.NL80211_CMD_GET_REG, 0, {});
++	return reg?.reg_alpha2 ?? '';
++}
++
+ function get_survey(iface) {
+ 	let channels = nl80211.request(nl80211.const.NL80211_CMD_GET_SURVEY, nl80211.const.NLM_F_DUMP, { dev: iface.ifname });
+ 	for (let channel in channels)
+@@ -393,7 +417,9 @@ export function freqlist(name) {
+ 	};
+ 
+ 	let iface = ifaces[name];
+-	let phy = find_phy(iface.wiphy);
++	let phy = iface ? find_phy(iface.wiphy) : phy_by_name(name);
++	if (!phy)
++		return [];
+ 	let channels = [];
+ 
+ 	for (let k, band in phy.wiphy_bands) {
+@@ -410,7 +436,7 @@ export function freqlist(name) {
+ 				band: band_name,
+ 				channel: format_channel(freq.freq),
+ 				flags: [],
+-				active: iface.wiphy_freq == freq.freq,
++				active: iface ? (iface.wiphy_freq == freq.freq) : false,
+ 			};
+ 	
+ 			for (let k, v in freq_flags)
+@@ -493,17 +519,29 @@ export function info(name) {
+ 
+ export function htmodelist(name) {
+ 	let iface = ifaces[name];
+-	let phy = board_data.wlan?.['phy' + iface.wiphy];
+-	if (!phy || !iface.radio.band)
++	let wiphy_name = iface ? ('phy' + iface.wiphy) : (phy_by_name(name) ? name : null);
++	let phy = wiphy_name ? board_data.wlan?.[wiphy_name] : null;
++	if (!phy)
+ 		return [];
+ 
+-	return filter(phy.info.bands[uc(iface.radio.band)].modes, (v) => v != 'NOHT');
++	let band = iface?.radio?.band;
++	if (band)
++		return filter(phy.info.bands[uc(band)].modes, (v) => v != 'NOHT');
++
++	// A phy-name query has no single band; merge all bands' modes to match
++	// legacy C iwinfo, which unioned the phy's bands (callers pick the band).
++	let modes = [];
++	for (let k, b in phy.info.bands)
++		modes = [ ...modes, ...filter(b.modes, (v) => v != 'NOHT') ];
++
++	return uniq(modes);
+ };
+ 
+ export function txpowerlist(name) {
+ 	let iface = ifaces[name];
+-	let max_power = iface.max_power / 100;
+-	let match = iface.wiphy_tx_power_level / 100;
++	let phy = iface ? null : phy_by_name(name);
++	let max_power = (iface ? iface.max_power : (phy ? phy_max_power(phy) : 0)) / 100;
++	let match = iface ? (iface.wiphy_tx_power_level / 100) : -1;
+ 	let list = [];
+ 
+ 	for (let power = 0; power <= max_power; power++) {
+@@ -520,10 +558,11 @@ export function txpowerlist(name) {
+ 
+ export function countrylist(dev) {
+ 	let iface = ifaces[dev];
++	let phy = iface ? null : phy_by_name(dev);
+ 
+ 	let list = {
+-		active: iface.country,
+-		countries, 
++		active: iface ? iface.country : (phy ? phy_country(phy) : ''),
++		countries,
+ 	};
+ 
+ 	return list;
