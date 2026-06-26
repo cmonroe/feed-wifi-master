@@ -1,0 +1,35 @@
+Index: wifi-scripts-1.0/src/lib/netifd/hostapd.sh
+===================================================================
+--- wifi-scripts-1.0.orig/src/lib/netifd/hostapd.sh
++++ wifi-scripts-1.0/src/lib/netifd/hostapd.sh
+@@ -717,8 +717,8 @@ hostapd_set_bss_options() {
+ 				json_get_vars auth_secret auth_port
+ 				set_default auth_port 1812
+ 				json_for_each_item append_auth_server auth_server
+-				append bss_conf "macaddr_acl=2" "$N"
+-				append bss_conf "wpa_psk_radius=2" "$N"
++				#append bss_conf "macaddr_acl=2" "$N"
++				append bss_conf "wpa_psk_radius=3" "$N"
+ 			elif [ ${#key} -eq 64 ]; then
+ 				append bss_conf "wpa_psk=$key" "$N"
+ 			elif [ ${#key} -ge 8 ] && [ ${#key} -le 63 ]; then
+@@ -835,7 +835,7 @@ hostapd_set_bss_options() {
+ 				json_for_each_item append_auth_server auth_server
+ 				[ -n "$ownip" ] && append bss_conf "own_ip_addr=$ownip" "$N"
+ 				[ -n "$radius_client_addr" ] && append bss_conf "radius_client_addr=$radius_client_addr" "$N"
+-				append bss_conf "macaddr_acl=2" "$N"
++				#append bss_conf "macaddr_acl=2" "$N"
+ 			}
+ 		;;
+ 	esac
+@@ -1078,6 +1078,10 @@ hostapd_set_bss_options() {
+ 			append bss_conf "macaddr_acl=0" "$N"
+ 			append bss_conf "deny_mac_file=$_macfile" "$N"
+ 		;;
++		ppsk)
++			append bss_conf "macaddr_acl=2" "$N"
++			_macfile=""
++		;;
+ 		*)
+ 			_macfile=""
+ 		;;
