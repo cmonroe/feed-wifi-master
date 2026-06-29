@@ -195,7 +195,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	u8 pp_mode;
  	u16 punct_bitmap;
  
-@@ -925,6 +930,15 @@ static inline bool mt7996_has_ext_eeprom
+@@ -923,6 +928,15 @@ static inline bool mt7996_has_ext_eeprom
  	return !is_mt7996(&dev->mt76);
  }
  
@@ -211,7 +211,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  void mt7996_mac_init(struct mt7996_dev *dev);
  u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
  bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
-@@ -1002,9 +1016,15 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1000,9 +1014,15 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  

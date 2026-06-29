@@ -86,7 +86,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  	u8 pp_mode;
  	u16 punct_bitmap;
  
-@@ -1036,6 +1041,8 @@ enum edcca_bw_id {
+@@ -1034,6 +1039,8 @@ enum edcca_bw_id {
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  int mt7996_mcu_set_muru_cfg(struct mt7996_dev *dev, void *data);

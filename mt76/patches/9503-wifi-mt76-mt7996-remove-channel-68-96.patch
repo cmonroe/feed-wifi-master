@@ -17,7 +17,7 @@
  	CHAN5G(104, 5520),
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -431,7 +431,7 @@ out:
+@@ -400,7 +400,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  
  static void mt7996_eeprom_init_precal(struct mt7996_dev *dev)
  {

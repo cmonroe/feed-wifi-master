@@ -19,7 +19,7 @@ Change-Id: I53479ad22aec81ba3f3028aa0aada86b175379f8
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -445,6 +445,8 @@ static void mt7996_eeprom_init_precal(st
+@@ -414,6 +414,8 @@ static void mt7996_eeprom_init_precal(st
  	switch (mt76_chip(&dev->mt76)) {
  	case 0x7990:
  		dev->prek.rev = mt7996_prek_rev;

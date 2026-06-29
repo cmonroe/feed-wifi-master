@@ -1,99 +1,38 @@
 From edd667417d5bf86af2b0c04679782614a6b8ef8f Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Fri, 31 Mar 2023 11:36:34 +0800
-Subject: [PATCH 020/223] mtk: mt76: mt7996: add binfile mode support
+Subject: [PATCH 020/223] mtk: mt76: mt7996: load precal data from flash/nvmem
 
-Fix binfile cannot sync precal data to atenl
-Binfile is viewed as efuse mode in atenl, so atenl does not allocate
-precal memory for its eeprom file
-Use mtd offset == 0xFFFFFFFF to determine whether it is binfile or flash mode
-Add support for loading precal in binfile mode
+Load pre-calibration data on mt7996 from the flash MTD partition, or
+from an nvmem "precal" cell when no MTD source is present;
+mt7996_eeprom_init() calls mt7996_eeprom_load_precal() after the
+eeprom load.
 
-Align upstream
+Export mt7996_eeprom_name() so the eeprom_mode debugfs node can report
+the active eeprom source (default bin, efuse, flash, external eeprom).
 
-Change-Id: I06369a46f75c0707d9ababd8ade70d79a89b1a1c
-Change-Id: I4c8fd2b0a9956d2ee961b70cd28973e2e9410aca
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---
- eeprom.c             | 25 +++++++++++++++
- mt76.h               |  3 ++
- mt7996/eeprom.c      | 76 ++++++++++++++++++++++++++++++++++++++------
- mt7996/eeprom.h      |  7 ++++
- mt7996/mt7996.h      |  3 ++
- mt7996/mtk_debugfs.c | 41 ++++++++++++++++++++++++
- testmode.h           |  2 +-
- 7 files changed, 147 insertions(+), 10 deletions(-)
+ mt7996/eeprom.c      |   32 ++++++++++++++++++++++++++++++--
+ mt7996/mt7996.h      |    1 +
+ mt7996/mtk_debugfs.c |   41 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 72 insertions(+), 2 deletions(-)
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -60,8 +60,11 @@ static int mt7996_check_eeprom(struct mt
+@@ -60,7 +60,7 @@ static int mt7996_check_eeprom(struct mt
  	}
  }
  
 -static char *mt7996_eeprom_name(struct mt7996_dev *dev)
 +const char *mt7996_eeprom_name(struct mt7996_dev *dev)
  {
-+	if (dev->bin_file_mode)
-+		return dev->mt76.bin_file_name;
-+
  	switch (mt76_chip(&dev->mt76)) {
  	case MT7992_DEVICE_ID:
- 		switch (dev->var.type) {
-@@ -211,7 +214,10 @@ mt7996_eeprom_check_or_use_default(struc
- 		return ret;
- 
- 	if (!fw || !fw->data) {
--		dev_err(dev->mt76.dev, "Invalid default bin\n");
-+		if (dev->bin_file_mode)
-+			dev_err(dev->mt76.dev, "Invalid bin (bin file mode)\n");
-+		else
-+			dev_err(dev->mt76.dev, "Invalid default bin\n");
- 		ret = -EINVAL;
- 		goto out;
- 	}
-@@ -221,6 +227,7 @@ mt7996_eeprom_check_or_use_default(struc
- 
- 	dev_warn(dev->mt76.dev, "eeprom load fail, use default bin\n");
- 	memcpy(eeprom, fw->data, MT7996_EEPROM_SIZE);
-+	dev->bin_file_mode = false;
- 	dev->eeprom_mode = EEPROM_MODE_DEFAULT_BIN;
- 
- out:
-@@ -287,6 +294,7 @@ static int mt7996_eeprom_load(struct mt7
- 			use_default = true;
- 			goto out;
- 		}
-+		dev->eeprom_mode = EFUSE_MODE;
- 	}
- 
- out:
-@@ -395,14 +403,68 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -395,14 +395,42 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  	return mt7996_eeprom_parse_band_config(phy);
  }
  
-+static int mt7996_eeprom_load_precal_binfile(struct mt7996_dev *dev, u32 offs, u32 size)
-+{
-+	int ret;
-+	const struct firmware *fw = NULL;
-+
-+	ret = request_firmware(&fw, dev->mt76.bin_file_name, dev->mt76.dev);
-+	if (ret)
-+		return ret;
-+
-+	if (!fw || !fw->data) {
-+		dev_err(dev->mt76.dev, "Invalid bin (bin file mode), load precal fail\n");
-+		ret = -EINVAL;
-+		goto out;
-+	}
-+
-+	memcpy(dev->cal, fw->data + offs, size);
-+
-+out:
-+	release_firmware(fw);
-+
-+	return ret;
-+}
-+
 +static int mt7996_eeprom_load_precal(struct mt7996_dev *dev)
 +{
 +	struct mt76_dev *mdev = &dev->mt76;
@@ -112,9 +51,6 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	dev->cal = devm_kzalloc(mdev->dev, size, GFP_KERNEL);
 +	if (!dev->cal)
 +		return -ENOMEM;
-+
-+	if (dev->bin_file_mode)
-+		return mt7996_eeprom_load_precal_binfile(dev, MT_EE_PRECAL, size);
 +
 +	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, size);
 +	if (!ret)
@@ -137,34 +73,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	ret = mt7996_eeprom_parse_hw_cap(dev, &dev->phy);
  	if (ret < 0)
  		return ret;
---- a/mt7996/eeprom.h
-+++ b/mt7996/eeprom.h
-@@ -100,6 +100,13 @@ enum mt7996_eeprom_band {
- 	MT_EE_BAND_SEL_6GHZ,
- };
- 
-+enum mt7915_eeprom_mode {
-+	DEFAULT_BIN_MODE,
-+	EFUSE_MODE,
-+	FLASH_MODE,
-+	BIN_FILE_MODE,
-+};
-+
- static inline int
- mt7996_get_channel_group_5g(int channel)
- {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -533,6 +533,8 @@ struct mt7996_dev {
- 
- 	dma_addr_t npu_txd_addr[2 * MT7996_NPU_TXD_SIZE];
- 
-+	bool bin_file_mode;
-+
- 	bool ibf;
- 	u8 fw_debug_wm;
- 	u8 fw_debug_wa;
-@@ -735,6 +737,7 @@ int mt7996_vif_link_add(struct mt76_phy
+@@ -735,6 +735,7 @@ int mt7996_vif_link_add(struct mt76_phy
  void mt7996_vif_link_remove(struct mt76_phy *mphy, struct ieee80211_vif *vif,
  			    struct ieee80211_bss_conf *link_conf,
  			    struct mt76_vif_link *mlink);
@@ -193,21 +104,21 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	seq_printf(s, "Current eeprom mode:\n");
 +
 +	switch (dev->eeprom_mode) {
-+	case DEFAULT_BIN_MODE:
++	case EEPROM_MODE_DEFAULT_BIN:
 +		seq_printf(s, "   default bin mode\n   filename = %s\n", mt7996_eeprom_name(dev));
 +		break;
-+	case EFUSE_MODE:
++	case EEPROM_MODE_EFUSE:
 +		seq_printf(s, "   efuse mode\n");
 +		break;
-+	case FLASH_MODE:
++	case EEPROM_MODE_FLASH:
 +		if (mtd_name)
 +			seq_printf(s, "   flash mode\n   mtd name = %s\n   flash offset = 0x%x\n",
 +				   mtd_name, mtd_offset);
 +		else
 +			seq_printf(s, "   flash mode\n");
 +		break;
-+	case BIN_FILE_MODE:
-+		seq_printf(s, "   bin file mode\n   filename = %s\n", mt7996_eeprom_name(dev));
++	case EEPROM_MODE_EXT:
++		seq_printf(s, "   external eeprom mode\n");
 +		break;
 +	default:
 +		break;

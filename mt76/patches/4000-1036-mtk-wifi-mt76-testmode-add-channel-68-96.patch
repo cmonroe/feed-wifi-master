@@ -58,7 +58,7 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  const u32 dpd_5g_bw160_ch_num = ARRAY_SIZE(dpd_5g_ch_list_bw160);
  const u32 dpd_6g_bw160_ch_num = ARRAY_SIZE(dpd_6g_ch_list_bw160);
  const u32 dpd_6g_bw320_ch_num = ARRAY_SIZE(dpd_6g_ch_list_bw320);
-@@ -193,8 +205,8 @@ mt7996_get_dpd_per_band_size(struct mt79
+@@ -190,8 +202,8 @@ mt7996_get_dpd_per_band_size(struct mt79
  	if (band == NL80211_BAND_2GHZ)
  		dpd_size = dpd_2g_bw20_ch_num * DPD_PER_CH_BW20_SIZE;
  	else if (band == NL80211_BAND_5GHZ)
@@ -69,8 +69,8 @@ Subject: [PATCH 040/223] mtk: mt76: mt7996: add channel 68 & 96
  	else
  		dpd_size = mphy->sband_6g.sband.n_channels * DPD_PER_CH_BW20_SIZE +
  			   (dpd_6g_bw160_ch_num + dpd_6g_bw320_ch_num) * DPD_PER_CH_GT_BW20_SIZE;
-@@ -426,6 +438,39 @@ out:
- 	return ret;
+@@ -395,6 +407,39 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+ 	return mt7996_eeprom_parse_band_config(phy);
  }
  
 +static void mt7996_eeprom_init_precal(struct mt7996_dev *dev)

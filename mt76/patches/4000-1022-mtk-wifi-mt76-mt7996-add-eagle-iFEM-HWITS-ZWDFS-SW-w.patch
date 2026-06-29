@@ -199,9 +199,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  						GFP_ATOMIC);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -545,6 +545,8 @@ struct mt7996_dev {
+@@ -543,6 +543,8 @@ struct mt7996_dev {
  
- 	bool bin_file_mode;
+ 	dma_addr_t npu_txd_addr[2 * MT7996_NPU_TXD_SIZE];
  
 +	u32 bg_nxt_freq;
 +
