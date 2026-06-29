@@ -17,7 +17,23 @@
  	CHAN5G(104, 5520),
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -400,7 +400,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -14,14 +14,12 @@ const struct ieee80211_channel dpd_2g_ch
+ };
+ 
+ const struct ieee80211_channel dpd_5g_skip_ch_list[] = {
+-	CHAN5G(68, 5340),
+ 	CHAN5G(72, 5360),
+ 	CHAN5G(76, 5380),
+ 	CHAN5G(80, 5400),
+ 	CHAN5G(84, 5420),
+ 	CHAN5G(88, 5440),
+-	CHAN5G(92, 5460),
+-	CHAN5G(96, 5480)
++	CHAN5G(92, 5460)
+ };
+ 
+ const struct ieee80211_channel dpd_5g_ch_list_bw80[] = {
+@@ -400,7 +398,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  
  static void mt7996_eeprom_init_precal(struct mt7996_dev *dev)
  {
