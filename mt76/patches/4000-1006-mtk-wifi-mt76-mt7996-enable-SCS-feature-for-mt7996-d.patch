@@ -21,7 +21,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1320,6 +1320,7 @@ enum {
+@@ -1322,6 +1322,7 @@ enum {
  	MCU_UNI_CMD_GET_STAT_INFO = 0x23,
  	MCU_UNI_CMD_SNIFFER = 0x24,
  	MCU_UNI_CMD_SR = 0x25,
@@ -31,7 +31,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TXPOWER = 0x2b,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1751,6 +1751,7 @@ int mt7996_register_device(struct mt7996
+@@ -1766,6 +1766,7 @@ int mt7996_register_device(struct mt7996
  	dev->mt76.phy.priv = &dev->phy;
  	INIT_WORK(&dev->rc_work, mt7996_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7996_mac_work);
@@ -77,7 +77,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -2593,6 +2600,8 @@ mt7996_reconfig_complete(struct ieee8021
+@@ -2624,6 +2631,8 @@ mt7996_reconfig_complete(struct ieee8021
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -88,7 +88,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6001,3 +6001,116 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6159,3 +6159,116 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
@@ -207,7 +207,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1152,6 +1152,12 @@ enum pp_mode {
+@@ -1153,6 +1153,12 @@ enum pp_mode {
  	PP_USR_MODE,
  };
  
@@ -222,7 +222,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -332,6 +332,16 @@ struct mt7996_hif {
+@@ -379,6 +379,16 @@ struct mt7996_hif {
  	enum pcie_link_width width;
  };
  
@@ -239,7 +239,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define WED_RRO_ADDR_SIGNATURE_MASK	GENMASK(31, 24)
  #define WED_RRO_ADDR_COUNT_MASK		GENMASK(14, 4)
  #define WED_RRO_ADDR_HEAD_HIGH_MASK	GENMASK(3, 0)
-@@ -424,6 +434,8 @@ struct mt7996_phy {
+@@ -471,6 +481,8 @@ struct mt7996_phy {
  
  	u8 pp_mode;
  	u16 punct_bitmap;
@@ -248,7 +248,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -458,6 +470,7 @@ struct mt7996_dev {
+@@ -505,6 +517,7 @@ struct mt7996_dev {
  	struct work_struct rc_work;
  	struct work_struct dump_work;
  	struct work_struct reset_work;
@@ -256,7 +256,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -990,6 +1003,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
+@@ -1044,6 +1057,8 @@ u32 mt7996_wed_init_buf(void *ptr, dma_a
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif

@@ -31,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76_connac.h
 +++ b/mt76_connac.h
-@@ -461,7 +461,7 @@ u16 mt76_connac2_mac_tx_rate_val(struct
+@@ -522,7 +522,7 @@ u16 mt76_connac2_mac_tx_rate_val(struct
  				 struct ieee80211_bss_conf *conf,
  				 bool beacon, bool mcast);
  bool mt76_connac2_mac_fill_txs(struct mt76_dev *dev, struct mt76_wcid *wcid,
@@ -163,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		goto out;
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -765,7 +765,6 @@ int mt7915_mac_sta_add(struct mt76_dev *
+@@ -775,7 +775,6 @@ int mt7915_mac_sta_add(struct mt76_dev *
  	msta->wcid.sta_disabled = 1;
  	msta->wcid.idx = idx;
  	msta->wcid.phy_idx = ext_phy;
@@ -173,7 +173,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		set_bit(MT_WCID_FLAG_TDLS_PEER, &msta->wcid.flags);
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -146,7 +146,6 @@ struct mt7915_sta {
+@@ -156,7 +156,6 @@ struct mt7915_sta {
  	struct ewma_avg_signal avg_ack_signal;
  
  	unsigned long changed;

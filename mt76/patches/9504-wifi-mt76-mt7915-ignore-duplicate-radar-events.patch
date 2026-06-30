@@ -75,7 +75,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -265,6 +265,8 @@ struct mt7915_phy {
+@@ -275,6 +275,8 @@ struct mt7915_phy {
  	s16 coverage_class;
  	u8 slottime;
  

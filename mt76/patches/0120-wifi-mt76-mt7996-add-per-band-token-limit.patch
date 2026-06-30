@@ -203,7 +203,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT7996_CFEND_RATE_11B		0x03	/* 11B LP, 11M */
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1773,6 +1773,8 @@ int mt7996_register_device(struct mt7996
+@@ -1788,6 +1788,8 @@ int mt7996_register_device(struct mt7996
  	if (ret)
  		return ret;
  
@@ -279,12 +279,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /* The index of RF registers use the generic regidx, combined with two parts:
   * WF selection [31:24] and offset [23:0].
   */
-@@ -893,6 +924,8 @@ int mt7996_init_debugfs(struct mt7996_de
+@@ -928,6 +959,8 @@ int mt7996_init_debugfs(struct mt7996_de
  			    &fops_implicit_txbf);
  	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
  				    mt7996_twt_stats);
 +	debugfs_create_devm_seqfile(dev->mt76.dev, "token", dir,
 +				    mt7996_token_read);
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
+ 	debugfs_create_file("vow_atf", 0600, dir, dev, &fops_vow_atf);
  
- 	debugfs_create_u32("dfs_hw_pattern", 0400, dir, &dev->hw_pattern);

@@ -106,7 +106,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1427,6 +1427,21 @@ enum {
+@@ -1429,6 +1429,21 @@ enum {
  	UNI_OFFLOAD_OFFLOAD_BMC_RPY_DETECT,
  };
  
@@ -128,7 +128,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  enum UNI_ALL_STA_INFO_TAG {
  	UNI_ALL_STA_TXRX_RATE,
  	UNI_ALL_STA_TX_STAT,
-@@ -1435,6 +1450,8 @@ enum UNI_ALL_STA_INFO_TAG {
+@@ -1437,6 +1452,8 @@ enum UNI_ALL_STA_INFO_TAG {
  	UNI_ALL_STA_DATA_TX_RETRY_COUNT,
  	UNI_ALL_STA_GI_MODE,
  	UNI_ALL_STA_TXRX_MSDU_COUNT,
@@ -695,14 +695,14 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
  					 struct mt7996_sta_link *msta_link)
  {
-@@ -2555,6 +2639,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2586,6 +2670,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_bitrate_mask = mt7996_set_bitrate_mask,
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,
 +	.link_sta_statistics = mt7996_link_sta_statistics,
  	.sta_set_4addr = mt7996_sta_set_4addr,
  	.sta_set_decap_offload = mt7996_sta_set_decap_offload,
- 	.add_twt_setup = mt7996_mac_add_twt_setup,
+ 	.sta_set_airtime_weight = mt7996_sta_set_airtime_weight,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
 @@ -614,42 +614,167 @@ out:
@@ -1009,7 +1009,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  			break;
  		default:
  			break;
-@@ -5355,9 +5552,126 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5513,9 +5710,126 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -1138,7 +1138,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -5368,7 +5682,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -5526,7 +5840,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  
@@ -1261,7 +1261,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  struct mt7996_vif;
  struct mt7996_sta;
  struct mt7996_dfs_pulse;
-@@ -247,11 +249,20 @@ struct mt7996_sta_link {
+@@ -294,11 +296,20 @@ struct mt7996_sta_link {
  	struct mt7996_sta *sta;
  
  	struct list_head rc_list;
@@ -1283,7 +1283,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	unsigned long changed;
  
  	struct mt76_connac_sta_key_conf bip;
-@@ -798,7 +809,9 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -852,7 +863,9 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);

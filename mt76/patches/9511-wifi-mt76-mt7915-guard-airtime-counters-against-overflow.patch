@@ -140,7 +140,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
  		default:
  			break;
-@@ -3306,6 +3329,8 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3307,6 +3330,8 @@ int mt7915_mcu_get_chan_mib_info(struct
  	struct sk_buff *skb;
  	static const u32 *offs;
  	int i, ret, len, offs_cc;
@@ -149,7 +149,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 cc_tx;
  
  	/* strict order */
-@@ -3356,11 +3381,18 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3357,11 +3382,18 @@ int mt7915_mcu_get_chan_mib_info(struct
  	if (chan_switch)
  		goto out;
  
@@ -175,7 +175,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	state_ts->cc_tx = cc_tx;
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -274,6 +274,7 @@ struct mt7915_phy {
+@@ -284,6 +284,7 @@ struct mt7915_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -185,7 +185,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool sku_limit_en:1;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -1467,7 +1467,9 @@ mt7996_link_sta_info_show(struct seq_fil
+@@ -1503,7 +1503,9 @@ mt7996_link_sta_info_show(struct seq_fil
  		   stats->tx_mpdus ? stats->tx_failed * 1000 / stats->tx_mpdus / 10 : 0,
  		   stats->tx_mpdus ? stats->tx_failed * 1000 / stats->tx_mpdus % 10 : 0);
  	seq_printf(file, "\t\tMPDU Retries: %u\n", stats->tx_retries);
@@ -196,7 +196,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	seq_printf(file, "\t\tNumber of non-AQL packets: %u (Max: %u)\n",
  		   atomic_read(&wcid->non_aql_packets), MT_MAX_NON_AQL_PKT);
  	seq_printf(file, "\tRX:\n");
-@@ -1478,7 +1480,9 @@ mt7996_link_sta_info_show(struct seq_fil
+@@ -1514,7 +1516,9 @@ mt7996_link_sta_info_show(struct seq_fil
  	seq_printf(file, "\t\tMPDU FCS Errors: %u (PER: %u.%u%%)\n", stats->rx_fcs_err,
  		   stats->rx_mpdus ? stats->rx_fcs_err * 1000 / stats->rx_mpdus / 10 : 0,
  		   stats->rx_mpdus ? stats->rx_fcs_err * 1000 / stats->rx_mpdus % 10 : 0);

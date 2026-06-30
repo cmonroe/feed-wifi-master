@@ -88,7 +88,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  void mt7915_init_txpower(struct mt7915_phy *phy)
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3529,13 +3529,17 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3530,13 +3530,17 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	};
  	int i, ret, tx_power;
  	const u8 *len = mt7915_sku_group_len;
@@ -108,7 +108,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		mt7915_update_txpower(phy, tx_power);
  	} else {
  		mt7915_update_txpower(phy, tx_power);
-@@ -3543,97 +3547,102 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3544,97 +3548,102 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	}
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(hdr) + MT7915_SKU_RATE_NUM);
@@ -248,7 +248,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	/* start from non-bf and bf fields of
  	 * BW20/RU242, BW40/RU484, BW80/RU996, BW160/RU2x996,
-@@ -3643,7 +3652,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3644,7 +3653,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	for (i = 0; i < 8; i++) {
  		bool bf = i % 2;
  		u8 idx = (i + 6) / 2;
@@ -257,7 +257,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		/* The non-bf fields of RU26 to RU106 are special cases */
  		if (bf)
  			skb_put_data(skb, buf + 1, 9);
-@@ -3654,13 +3663,16 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3655,13 +3664,16 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	for (i = 0; i < 6; i++) {
  		bool bf = i % 2;
  		u8 idx = i / 2;
@@ -324,7 +324,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  void mt7996_init_txpower(struct mt7996_phy *phy)
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5412,9 +5412,42 @@ int mt7996_mcu_set_sniffer_mode(struct m
+@@ -5570,9 +5570,42 @@ int mt7996_mcu_set_sniffer_mode(struct m
  				 sizeof(req), true);
  }
  
@@ -367,7 +367,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_phy *mphy = phy->mt76;
  	struct tx_power_limit_table_ctrl {
-@@ -5432,45 +5465,88 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5590,45 +5623,88 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.power_limit_type = TX_POWER_LIMIT_TABLE_RATE,
  		.band_idx = phy->mt76->band_idx,
  	};
@@ -481,7 +481,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -402,6 +402,9 @@ struct mt7996_phy {
+@@ -449,6 +449,9 @@ struct mt7996_phy {
  	bool counter_reset;
  	bool rdd_tx_paused;
  

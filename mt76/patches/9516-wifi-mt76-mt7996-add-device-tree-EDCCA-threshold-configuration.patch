@@ -198,7 +198,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -783,6 +783,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -832,6 +832,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);

@@ -67,7 +67,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			}
  			break;
  		case UNI_ALL_STA_RX_MPDU_COUNT:
-@@ -5022,6 +5034,8 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5180,6 +5192,8 @@ int mt7996_mcu_get_chan_mib_info(struct
  	struct mt7996_dev *dev = phy->dev;
  	struct mt7996_mcu_mib *res;
  	struct sk_buff *skb;
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i, ret;
  
  	for (i = 0; i < IDX_NUM; i++) {
-@@ -5043,16 +5057,22 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5201,16 +5215,22 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	state_ts->cc_bss_rx = __res_u64(IDX_RX_TIME);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -439,6 +439,7 @@ struct mt7996_phy {
+@@ -486,6 +486,7 @@ struct mt7996_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;

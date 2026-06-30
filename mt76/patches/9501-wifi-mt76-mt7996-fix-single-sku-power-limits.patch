@@ -25,7 +25,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1117,9 +1117,34 @@ enum {
+@@ -1118,9 +1118,34 @@ enum {
  	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
  };
  
@@ -65,7 +65,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	UNI_CMD_ACCESS_REG_BASIC = 0x0,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5990,7 +5990,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6148,7 +6148,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  static bool mt7996_is_psd_country(char *country)
  {
@@ -74,7 +74,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -6043,7 +6043,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6201,7 +6201,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	if (txpower_setting == INT_MIN || txpower_setting > 127)
  		txpower_setting = 127;
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6058,6 +6064,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6216,6 +6222,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		return 0;
  	}
  
@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
  	if (!skb) {
-@@ -6072,7 +6081,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6230,7 +6239,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	 * driver doesn't need to do it
  	 */
  	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
@@ -107,7 +107,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->eht[3], 8);
-@@ -6207,6 +6216,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -6365,6 +6374,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.psd_limit = enable ? mt7996_is_psd_country(dev->mt76.alpha2) : 0,
  	};
  
