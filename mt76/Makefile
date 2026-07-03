@@ -248,13 +248,13 @@ endef
 
 define KernelPackage/mt7981-firmware
   $(KernelPackage/mt76-default)
-  DEPENDS:=@TARGET_mediatek_filogic
+  DEPENDS:=@(TARGET_mediatek_filogic||TARGET_cascade)
   TITLE:=MediaTek MT7981 firmware
 endef
 
 define KernelPackage/mt7986-firmware
   $(KernelPackage/mt76-default)
-  DEPENDS:=@TARGET_mediatek_filogic
+  DEPENDS:=@(TARGET_mediatek_filogic||TARGET_cascade)
   TITLE:=MediaTek MT7986 firmware
 endef
 
@@ -462,7 +462,7 @@ ifdef CONFIG_PACKAGE_kmod-mt7615-common
 endif
 ifdef CONFIG_PACKAGE_kmod-mt7615e
   PKG_MAKE_FLAGS += CONFIG_MT7615E=m
-  ifneq ($(CONFIG_TARGET_mediatek_mt7622)$(CONFIG_TARGET_mediatek_filogic),)
+  ifneq ($(CONFIG_TARGET_mediatek_mt7622)$(CONFIG_TARGET_mediatek_filogic)$(CONFIG_TARGET_cascade),)
     PKG_MAKE_FLAGS += CONFIG_MT7622_WMAC=y
     NOSTDINC_FLAGS += -DCONFIG_MT7622_WMAC
   endif
@@ -478,7 +478,7 @@ ifdef CONFIG_PACKAGE_kmod-mt7663u
 endif
 ifdef CONFIG_PACKAGE_kmod-mt7915e
   PKG_MAKE_FLAGS += CONFIG_MT7915E=m
-  ifdef CONFIG_TARGET_mediatek_filogic
+  ifneq ($(CONFIG_TARGET_mediatek_filogic)$(CONFIG_TARGET_cascade),)
     PKG_MAKE_FLAGS += CONFIG_MT798X_WMAC=y
     NOSTDINC_FLAGS += -DCONFIG_MT798X_WMAC
   endif
@@ -503,7 +503,7 @@ ifdef CONFIG_PACKAGE_kmod-mt7921e
 endif
 ifdef CONFIG_PACKAGE_kmod-mt7996e
   PKG_MAKE_FLAGS += CONFIG_MT7996E=m
-  ifdef CONFIG_TARGET_airoha_an7581
+  ifneq ($(CONFIG_TARGET_airoha_an7581)$(CONFIG_TARGET_cascade),)
     PKG_MAKE_FLAGS += CONFIG_MT76_NPU=y
     PKG_MAKE_FLAGS += CONFIG_MT7996_NPU=y
     NOSTDINC_FLAGS += -DCONFIG_MT76_NPU
