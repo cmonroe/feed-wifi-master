@@ -17,7 +17,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1313,19 +1313,17 @@ next:
+@@ -1312,19 +1312,17 @@ next:
  				cur_info++;
  			continue;
  		} else if (info & MT_TXFREE_INFO_HEADER) {
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			/* age the stale-token PLE flush from genuine TX
  			 * activity only, not from every token free
  			 */
-@@ -2882,7 +2880,6 @@ void mt7996_mac_work(struct work_struct
+@@ -2881,7 +2879,6 @@ void mt7996_mac_work(struct work_struct
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_MSDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_RX_MPDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TX_STAT);
