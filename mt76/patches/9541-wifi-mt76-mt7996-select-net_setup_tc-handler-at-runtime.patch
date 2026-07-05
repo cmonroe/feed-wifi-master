@@ -1,0 +1,61 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 05 Jul 2026 13:18:58 -0700
+Subject: [PATCH] wifi: mt76: mt7996: select net_setup_tc handler at
+ runtime
+
+The net_setup_tc callback is chosen at compile time and the WED
+handler shadows the NPU one when CONFIG_NET_MEDIATEK_SOC_WED is
+enabled. mt76_wed_net_setup_tc() returns -EOPNOTSUPP without an
+active WED device, so on boards using the Airoha NPU with a WED
+enabled kernel the tc offload block is never bound and PPE flow
+offload for wireless traffic is silently disabled.
+
+Dispatch on the active offload backend instead: use the WED handler
+when a WED device is attached and fall back to the NPU handler
+otherwise. Builds without MT76_NPU keep the old behavior through the
+mt76_npu_net_setup_tc() stub.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c |   23 +++++++++++++++++++----
+ 1 file changed, 19 insertions(+), 4 deletions(-)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -2735,6 +2735,23 @@ mt7996_net_fill_forward_path(struct ieee
+ 	return 0;
+ }
+ 
++#if defined(CONFIG_NET_MEDIATEK_SOC_WED) || defined(CONFIG_MT7996_NPU)
++static int
++mt7996_net_setup_tc(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
++		    struct net_device *netdev, enum tc_setup_type type,
++		    void *type_data)
++{
++#ifdef CONFIG_NET_MEDIATEK_SOC_WED
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++
++	if (mtk_wed_device_active(&dev->mt76.mmio.wed))
++		return mt76_wed_net_setup_tc(hw, vif, netdev, type,
++					     type_data);
++#endif
++	return mt76_npu_net_setup_tc(hw, vif, netdev, type, type_data);
++}
++#endif
++
+ static int
+ mt7996_change_vif_links(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+ 			u16 old_links, u16 new_links,
+@@ -2910,10 +2927,8 @@ const struct ieee80211_ops mt7996_ops =
+ #endif
+ 	.set_radar_background = mt7996_set_radar_background,
+ 	.net_fill_forward_path = mt7996_net_fill_forward_path,
+-#ifdef CONFIG_NET_MEDIATEK_SOC_WED
+-	.net_setup_tc = mt76_wed_net_setup_tc,
+-#elif defined(CONFIG_MT7996_NPU)
+-	.net_setup_tc = mt76_npu_net_setup_tc,
++#if defined(CONFIG_NET_MEDIATEK_SOC_WED) || defined(CONFIG_MT7996_NPU)
++	.net_setup_tc = mt7996_net_setup_tc,
+ #endif
+ 	.change_vif_links = mt7996_change_vif_links,
+ 	.change_sta_links = mt7996_mac_sta_change_links,
