@@ -15,7 +15,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/usr/share/schema/wireless.wifi-device.json
 +++ b/src/usr/share/schema/wireless.wifi-device.json
-@@ -500,6 +500,16 @@
+@@ -515,6 +515,16 @@
  			"minimum": 0,
  			"maximum": 4
  		},
@@ -34,7 +34,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			"default": "bssid"
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -525,6 +525,11 @@ function generate(config) {
+@@ -543,6 +543,11 @@ function generate(config) {
  	if (config.acs_exclude_6ghz_non_psc)
  		append('acs_exclude_6ghz_non_psc', 1);
  

@@ -43,7 +43,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -606,6 +606,7 @@ export function setup(data) {
+@@ -619,6 +619,7 @@ export function setup(data) {
  	let msg = {
  		phy: data.phy,
  		radio: data.config.radio,

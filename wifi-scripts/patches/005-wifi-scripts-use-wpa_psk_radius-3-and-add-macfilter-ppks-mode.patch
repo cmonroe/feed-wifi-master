@@ -17,7 +17,7 @@ Signed-off-by: Colin Whittaker <colin.whittaker@adtran.com>
 
 --- a/src/usr/share/schema/wireless.wifi-iface.json
 +++ b/src/usr/share/schema/wireless.wifi-iface.json
-@@ -568,7 +568,7 @@
+@@ -580,7 +580,7 @@
  		"macfilter": {
  			"description": "Allow/deny associations based on the clients MAC",
  			"type": "string",

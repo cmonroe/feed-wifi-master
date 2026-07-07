@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			"type": "number",
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -520,7 +520,7 @@ function generate(config) {
+@@ -538,7 +538,7 @@ function generate(config) {
  	else
  		set_default(config, 'enable_background_radar', false);
  
