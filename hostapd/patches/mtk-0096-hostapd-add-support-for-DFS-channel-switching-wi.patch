@@ -195,7 +195,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			break;
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2762,6 +2762,11 @@ static int __ieee802_11_set_beacon(struc
+@@ -2765,6 +2765,11 @@ static int __ieee802_11_set_beacon(struc
  	}
  #endif /* CONFIG_IEEE80211AX */
  

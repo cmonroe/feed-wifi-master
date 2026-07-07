@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1446,7 +1446,7 @@ static bool parse_ml_probe_req(const str
+@@ -1449,7 +1449,7 @@ static bool parse_ml_probe_req(const str
  
  void handle_probe_req(struct hostapd_data *hapd,
  		      const struct ieee80211_mgmt *mgmt, size_t len,
@@ -29,7 +29,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct ieee802_11_elems elems;
  	const u8 *ie;
-@@ -1460,6 +1460,7 @@ void handle_probe_req(struct hostapd_dat
+@@ -1463,6 +1463,7 @@ void handle_probe_req(struct hostapd_dat
  	struct radius_sta rad_info;
  	struct probe_resp_params params;
  	char *hex = NULL;
@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_IEEE80211BE
  	int mld_id;
  	u16 links;
-@@ -1469,6 +1470,7 @@ void handle_probe_req(struct hostapd_dat
+@@ -1472,6 +1473,7 @@ void handle_probe_req(struct hostapd_dat
  		.mgmt_frame = mgmt,
  		.ssi_signal = ssi_signal,
  		.elems = &elems,
