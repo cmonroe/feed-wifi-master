@@ -1,0 +1,73 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 9 Jul 2026 12:00:00 -0700
+Subject: [PATCH] AP: fix STA state after unacknowledged association response
+
+When the driver reports no ACK for a (Re)Association Response with
+status SUCCESS, hostapd removes the STA from the kernel driver but
+keeps its own STA entry. Three problems with that:
+
+1. The TX status may be stale. With full AP client state, a new
+   authentication exchange re-adds the driver STA entry through
+   ap_sta_re_add() while the TX status of the previous association
+   attempt can still be pending in the driver (e.g. flushed as
+   "no ACK" by the STA removal itself on mt76). Processing that
+   stale callback removed the just re-added driver entry, and the
+   following association failed NL80211_CMD_SET_STATION with
+   -ENOENT ("Could not set STA to kernel driver"), repeating on
+   every retry cycle. add_associated_sta() clears added_unassoc
+   before the response frame is sent, so a genuine TX status for
+   the current attempt always sees added_unassoc == 0; skip the
+   removal when it is still set.
+
+2. The WPA state machine was not notified about the removal, so
+   tk_already_set stayed true for FT/FILS. A later FT or FILS
+   reassociation then kept using set-STA on a driver entry that no
+   longer existed and could never recover. Send WPA_DRV_STA_REMOVED
+   like add_associated_sta() does, so the next reassociation takes
+   the remove+add path and reinstalls the TK. The driver entry and
+   its keys are already gone at this point, so this does not enable
+   TK reinstallation against a live key.
+
+3. The authorized state survived the removal. A previously
+   authorized STA retrying after the unacknowledged response was
+   re-added to the driver with WLAN_STA_AUTHORIZED already set,
+   before the new exchange completed. Clear the authorized state
+   next to the removal, matching what ap_sta_re_add() does.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -8389,9 +8389,30 @@ static void handle_assoc_cb(struct hosta
+ 			       HOSTAPD_LEVEL_DEBUG,
+ 			       "did not acknowledge association response");
+ 		sta->flags &= ~WLAN_STA_ASSOC_REQ_OK;
+-		/* The STA is added only in case of SUCCESS */
+-		if (status == WLAN_STATUS_SUCCESS)
++		/* The STA is added only in case of SUCCESS.
++		 *
++		 * Skip the removal if the STA has already been re-added for a
++		 * newer authentication exchange; the TX status is stale in
++		 * that case and the driver STA entry belongs to the new
++		 * exchange. add_associated_sta() clears added_unassoc before
++		 * the response is sent, so a TX status for this response
++		 * always sees added_unassoc == 0.
++		 *
++		 * Notify the WPA state machine about the removal so that a
++		 * previously installed TK is not considered valid anymore.
++		 * Without this, a following FT/FILS reassociation would keep
++		 * using set-STA on a driver entry that no longer exists and
++		 * the STA could never reconnect until a fresh authentication
++		 * clears the state.
++		 *
++		 * Clear the authorized state as well; otherwise the retry
++		 * would re-add the driver entry with the authorized flag
++		 * already set before the new exchange has completed. */
++		if (status == WLAN_STATUS_SUCCESS && !sta->added_unassoc) {
++			ap_sta_set_authorized(hapd, sta, 0);
+ 			hostapd_drv_sta_remove(hapd, sta->addr);
++			wpa_auth_sm_event(sta->wpa_sm, WPA_DRV_STA_REMOVED);
++		}
+ 
+ 		goto handle_ml;
+ 	}
