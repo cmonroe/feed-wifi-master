@@ -607,7 +607,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
  	rcu_assign_pointer(msta->link[link_id], msta_link);
  
-@@ -1917,6 +1920,87 @@ static void mt7996_sta_statistics(struct
+@@ -1915,6 +1918,87 @@ static void mt7996_sta_statistics(struct
  	}
  }
  
@@ -695,7 +695,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
  					 struct mt7996_sta_link *msta_link)
  {
-@@ -2586,6 +2670,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2584,6 +2668,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_bitrate_mask = mt7996_set_bitrate_mask,
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,
