@@ -46,7 +46,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	if (changed & BSS_CHANGED_HT || changed & BSS_CHANGED_ERP_CTS_PROT)
  		mt7996_mcu_set_protection(phy, link, info->ht_operation_mode,
-@@ -1273,6 +1275,7 @@ mt7996_mac_sta_add_links(struct mt7996_d
+@@ -1275,6 +1277,7 @@ mt7996_mac_sta_add_links(struct mt7996_d
  		struct ieee80211_link_sta *link_sta;
  		struct mt7996_sta_link *msta_link;
  		struct mt7996_vif_link *link;
@@ -54,7 +54,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		struct mt76_phy *mphy;
  
  		msta_link = mt76_dereference(msta->link[link_id], &dev->mt76);
-@@ -1305,6 +1308,14 @@ mt7996_mac_sta_add_links(struct mt7996_d
+@@ -1307,6 +1310,14 @@ mt7996_mac_sta_add_links(struct mt7996_d
  			goto error_unlink;
  		}
  

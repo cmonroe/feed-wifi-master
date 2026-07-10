@@ -102,7 +102,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	mt7996_set_stream_vht_txbf_caps(phy);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1822,33 +1822,36 @@ mt7996_set_antenna(struct ieee80211_hw *
+@@ -1824,33 +1824,36 @@ mt7996_set_antenna(struct ieee80211_hw *
  		   u32 tx_ant, u32 rx_ant)
  {
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
