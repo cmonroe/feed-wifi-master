@@ -924,6 +924,13 @@ hostapd_set_bss_options() {
 
 	json_get_vars ieee80211r
 	set_default ieee80211r 0
+	# auth types without an FT AKM (see hostapd_append_wpa_key_mgmt) cannot
+	# use 802.11r; deriving the FT key would fail on keyless BSSes (e.g. owe)
+	# and abort the vif setup
+	case "$auth_type" in
+		psk|sae|psk-sae|eap|eap2|eap-eap2|eap192) ;;
+		*) ieee80211r=0 ;;
+	esac
 	if [ "$wpa" -ge "1" ]; then
 		if [ "$fils" -gt 0 ]; then
 			json_get_vars fils_realm
