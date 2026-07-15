@@ -395,8 +395,9 @@ function iface_roaming(config) {
 		return;
 
 	/* auth types without an FT AKM (see wpa_key_mgmt) cannot use 802.11r;
-	   deriving the r0kh/r1kh key would fail on keyless BSSes (e.g. owe)
-	   and abort the whole radio setup */
+	   with no PSK or auth secret to derive the r0kh/r1kh key from, the FT
+	   setup below would report FT_KEY_CANT_BE_DERIVED and derive a bogus,
+	   unusable key (e.g. on owe) */
 	if (!(config.auth_type in [ 'psk', 'psk2', 'sae', 'psk-sae', 'psk-sae-compat', 'eap', 'eap2', 'eap-eap2', 'eap192' ])) {
 		log(`Ignoring ieee80211r on ${config.ifname}: no FT support for auth type '${config.auth_type}'`);
 		return;
