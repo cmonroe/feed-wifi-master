@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -672,6 +672,12 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -679,6 +679,12 @@ int mt7996_set_channel(struct mt76_phy *
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
  

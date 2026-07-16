@@ -1,0 +1,43 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 15 Jul 2026 18:30:00 -0700
+Subject: [PATCH] wifi: mt76: mt7996: hold dev->mutex in remove_interface teardown
+
+mt7996_remove_interface() destroys the remaining vif links, clearing
+omac_mask, vif_mask and mld_idx_mask, with only the wiphy mutex held.
+Those masks are modified under dev->mutex everywhere else, so the
+unlocked clears can race the scan-link teardown and the reset work
+and lose updates.
+
+Take dev->mutex around the link destroy loop, matching
+mt7996_add_interface() and mt7915_remove_interface(). The mutex is
+released before mt76_vif_cleanup(), which aborts a pending scan and
+takes the mutex itself.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -605,6 +605,8 @@ static void mt7996_remove_interface(stru
+ 	unsigned int link_id;
+ 	int i;
+ 
++	mutex_lock(&dev->mt76.mutex);
++
+ 	/* Remove all active links */
+ 	for_each_set_bit(link_id, &rem_links, IEEE80211_MLD_MAX_NUM_LINKS) {
+ 		struct mt7996_vif_link *link;
+@@ -621,6 +623,11 @@ static void mt7996_remove_interface(stru
+ 		mt7996_vif_link_destroy(phy, link, vif, NULL);
+ 	}
+ 
++	/* mt76_vif_cleanup() aborts a pending scan, whose teardown takes
++	 * dev->mutex itself; release it before calling in.
++	 */
++	mutex_unlock(&dev->mt76.mutex);
++
+ 	ieee80211_iterate_active_interfaces_mtx(hw, 0, mt7996_remove_iter,
+ 						&rdata);
+ 	mt76_vif_cleanup(&dev->mt76, vif);

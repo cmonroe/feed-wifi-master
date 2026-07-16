@@ -26,7 +26,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	ret = mt7996_mcu_set_thermal_throttling(phy, MT7996_THERMAL_THROTTLE_MAX);
  	if (ret)
  		return ret;
-@@ -2625,6 +2630,49 @@ mt7996_set_eml_op_mode(struct ieee80211_
+@@ -2632,6 +2637,49 @@ mt7996_set_eml_op_mode(struct ieee80211_
  	return ret;
  }
  
@@ -76,7 +76,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  const struct ieee80211_ops mt7996_ops = {
  	.add_chanctx = mt76_add_chanctx,
  	.remove_chanctx = mt76_remove_chanctx,
-@@ -2657,6 +2705,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2664,6 +2712,7 @@ const struct ieee80211_ops mt7996_ops =
  	.get_txpower = mt7996_get_txpower,
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
  	.post_channel_switch = mt7996_post_channel_switch,

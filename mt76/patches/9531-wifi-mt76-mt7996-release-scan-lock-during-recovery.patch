@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		 wiphy_name(hw->wiphy));
 --- a/scan.c
 +++ b/scan.c
-@@ -23,7 +23,7 @@ static void mt76_scan_complete(struct mt
+@@ -25,7 +25,7 @@ static void mt76_scan_complete(struct mt
  	}
  	mt76_put_vif_phy_link(phy, dev->scan.vif, dev->scan.mlink);
  	memset(&dev->scan, 0, sizeof(dev->scan));

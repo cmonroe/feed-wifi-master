@@ -588,7 +588,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1128,7 +1128,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1135,7 +1135,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
  	struct mt7996_phy *phy = mt7996_vif_link_phy(link);
  	struct mt7996_sta_link *msta_link;
@@ -597,7 +597,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
  	if (!phy)
  		return -EINVAL;
-@@ -1167,6 +1167,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1174,6 +1174,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
  
  	ewma_avg_signal_init(&msta_link->avg_ack_signal);
  	ewma_signal_init(&msta_link->wcid.rssi);
@@ -607,7 +607,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
  	rcu_assign_pointer(msta->link[link_id], msta_link);
  
-@@ -1917,6 +1920,87 @@ static void mt7996_sta_statistics(struct
+@@ -1924,6 +1927,87 @@ static void mt7996_sta_statistics(struct
  	}
  }
  
@@ -695,7 +695,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
  					 struct mt7996_sta_link *msta_link)
  {
-@@ -2586,6 +2670,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2593,6 +2677,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_bitrate_mask = mt7996_set_bitrate_mask,
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,
