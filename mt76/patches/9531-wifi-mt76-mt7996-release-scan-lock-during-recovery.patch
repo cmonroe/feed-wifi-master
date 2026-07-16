@@ -15,7 +15,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2365,8 +2365,20 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2371,8 +2371,20 @@ void mt7996_mac_reset_work(struct work_s
  		return;
  	}
  

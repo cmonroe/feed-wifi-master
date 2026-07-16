@@ -1,0 +1,65 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 15 Jul 2026 15:04:44 -0700
+Subject: [PATCH] wifi: mt76: fix LPI enhanced mgmt TX on narrow channels
+
+When lpi_bcn_enhance is set, every fixed-rate 6 GHz management frame
+is forced to 80 MHz bandwidth so beacons keep their range under LPI
+PSD power limits. The override also applies to probe requests sent
+from scan and ROC dwells, where the radio is tuned to a 20 MHz
+channel; the hardware cannot honor the forced bandwidth there and
+most of these frames never make it on air (TX status reports an
+error). Hidden-SSID 6 GHz APs then never hear our directed probes,
+so a backhaul STA cannot rediscover its AP after the AP reboots or
+changes channel: scans keep showing the BSSID from beacons while the
+SSID never resolves, until a rare probe transmission succeeds.
+
+Apply the override only while the current chandef is at least 80 MHz
+wide. This keeps the enhancement on AP operating channels (beacons,
+probe responses, on-channel management frames) and restores normal
+management TX during scans. Fix both the mt7996 and connac2
+(mt7915/mt7986) copies of the logic.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt76_connac_mac.c |    8 +++++++-
+ mt7996/mac.c      |    8 +++++++-
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+--- a/mt76_connac_mac.c
++++ b/mt76_connac_mac.c
+@@ -611,9 +611,15 @@ void mt76_connac2_mac_write_txwi(struct
+ 							vif ? &vif->bss_conf : NULL,
+ 							beacon, multicast);
+ 		u32 val = MT_TXD6_FIXED_BW;
++		/* 80 MHz mgmt TX is only possible while the radio is on a
++		 * chandef of at least that width; during scan/ROC dwells the
++		 * phy sits on a 20 MHz channel and the forced bandwidth makes
++		 * most frames (e.g. probe requests) fail to transmit.
++		 */
+ 		if (dev->phys[band_idx]->cap.has_6ghz &&
+ 			dev->phys[band_idx]->lpi_bcn_enhance &&
+-			ieee80211_is_mgmt(hdr->frame_control))
++			ieee80211_is_mgmt(hdr->frame_control) &&
++			cfg80211_chandef_get_width(&dev->phys[band_idx]->chandef) >= 80)
+ 			val |= MT_TX_BW_IDX_80;
+ 		/* hardware won't add HTC for mgmt/ctrl frame */
+ 		txwi[2] |= cpu_to_le32(MT_TXD2_HTC_VLD);
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -881,9 +881,15 @@ void mt7996_mac_write_txwi(struct mt7996
+ 
+ 		if (mcast)
+ 			val |= MT_TXD6_DIS_MAT;
++		/* 80 MHz mgmt TX is only possible while the radio is on a
++		 * chandef of at least that width; during scan/ROC dwells the
++		 * phy sits on a 20 MHz channel and the forced bandwidth makes
++		 * most frames (e.g. probe requests) fail to transmit.
++		 */
+ 		if (dev->mt76.phys[band_idx]->cap.has_6ghz &&
+ 		    dev->mt76.phys[band_idx]->lpi_bcn_enhance &&
+-		    ieee80211_is_mgmt(hdr->frame_control))
++		    ieee80211_is_mgmt(hdr->frame_control) &&
++		    cfg80211_chandef_get_width(&dev->mt76.phys[band_idx]->chandef) >= 80)
+ 			val |= FIELD_PREP(MT_TXD6_BW, FW_CDBW_80MHZ);
+ 		txwi[6] |= cpu_to_le32(val);
+ 		txwi[3] |= cpu_to_le32(MT_TXD3_BA_DISABLE);
