@@ -8,14 +8,19 @@ Subject: [PATCH] mt76: mt7915: fix single SKU power limits
   config a cap/max requested value
 * add Canada to the list of PSD limited countries
 * re-apply single SKU limits after SER event
+* store the 6 GHz LPI flags (lpi_psd/lpi_bcn_enhance) in mt76_phy
+  instead of mt76_dev and convert mt7915/connac2 users. prevents
+  a vendor command issued on one band from affecting the others
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- eeprom.c        |   21 ++++++++-------------
- mt7915/init.c   |    6 +++---
- mt7915/mcu.c    |   15 +++++++++++----
- mt7915/vendor.c |    5 +++++
- 4 files changed, 27 insertions(+), 20 deletions(-)
+ eeprom.c          |   59 +++++++++++++++++++++++++++++-------------------------
+ mt76.h            |    9 ++++++--
+ mt76_connac_mac.c |    2 -
+ mt7915/init.c     |    6 ++---
+ mt7915/mcu.c      |   28 +++++++++++++++++++++----
+ mt7915/vendor.c   |    9 ++++++--
+ 6 files changed, 73 insertions(+), 40 deletions(-)
 
 --- a/eeprom.c
 +++ b/eeprom.c
@@ -188,15 +193,26 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(hdr) + MT7915_SKU_RATE_NUM);
  	if (!skb) {
-@@ -3560,7 +3570,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3559,8 +3569,8 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la->cck, len[SKU_CCK]);
  
- 	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
+-	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
 -	    !mt7915_get_psd_country(dev->mt76.alpha2)) {
++	if (phy->mt76->cap.has_6ghz && mphy->lpi_psd &&
 +	    mt7915_get_psd_country(dev->mt76.alpha2)) {
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->mcs[0], len[SKU_OFDM]);
+@@ -3613,7 +3623,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+ 	skb_put_data(skb, &hdr, sizeof(hdr));
+ 	skb_put_data(skb, &la->path.cck, 4);
+ 
+-	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd) {
++	if (phy->mt76->cap.has_6ghz && mphy->lpi_psd) {
+ 		switch (mphy->chandef.width) {
+ 		case NL80211_CHAN_WIDTH_20:
+ 			skb_put_data(skb, &la->path.ru[3], 4);
 @@ -3739,6 +3749,10 @@ int mt7915_mcu_set_lpi(struct mt7915_phy
  		.enable = en,
  		.psd_limit = en ? mt7915_get_psd_country(mdev->alpha2) : 0,
@@ -231,19 +247,23 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct mt7915_phy *phy = mt7915_hw_phy(hw);
  	struct mt76_phy *mphy = phy->mt76;
  	struct nlattr *tb[NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL];
-@@ -960,6 +961,8 @@ static int mt7915_vendor_txpower_ctrl(st
+@@ -958,7 +959,9 @@ static int mt7915_vendor_txpower_ctrl(st
+ 	if (mphy->cap.has_6ghz &&
+ 	    tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD]) {
  		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD]);
- 		mphy->dev->lpi_psd = val;
- 
-+		dev_info(dev->mt76.dev, "%s: set lpi_psd=%u", __func__, val);
+-		mphy->dev->lpi_psd = val;
++		mphy->lpi_psd = val;
 +
++		dev_info(dev->mt76.dev, "%s: set lpi_psd=%u", __func__, val);
+ 
  		err = mt7915_mcu_set_lpi(phy, val);
  		if (err)
- 			return err;
-@@ -985,6 +988,8 @@ static int mt7915_vendor_txpower_ctrl(st
+@@ -984,7 +987,9 @@ static int mt7915_vendor_txpower_ctrl(st
+ 	if (mphy->cap.has_6ghz &&
  	    tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE]) {
  		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE]);
- 		mphy->dev->lpi_bcn_enhance = val;
+-		mphy->dev->lpi_bcn_enhance = val;
++		mphy->lpi_bcn_enhance = val;
 +
 +		dev_info(dev->mt76.dev, "%s: set lpi_bcn_enhance=%u", __func__, val);
  	}
@@ -251,6 +271,24 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	err = mt7915_mcu_set_txpower_sku(phy);
 --- a/mt76.h
 +++ b/mt76.h
+@@ -971,6 +971,8 @@ struct mt76_phy {
+ 
+ 	int txpower_cur;
+ 	u8 sku_idx;
++	bool lpi_psd;
++	bool lpi_bcn_enhance;
+ 	u8 antenna_mask;
+ 	u16 chainmask;
+ 
+@@ -1107,8 +1109,6 @@ struct mt76_dev {
+ 		bool beacon_received;
+ 	} scan;
+ 
+-	bool lpi_psd;
+-	bool lpi_bcn_enhance;
+ 	bool mgmt_pwr_enhance;
+ 
+ #ifdef CONFIG_NL80211_TESTMODE
 @@ -1232,6 +1232,11 @@ struct mt76_mib_stats {
  	u32 ul_hetrig_4mu_cnt;
  };
@@ -285,3 +323,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		target_power += path_delta;
  		target_power = DIV_ROUND_UP(target_power, 2);
+--- a/mt76_connac_mac.c
++++ b/mt76_connac_mac.c
+@@ -612,7 +612,7 @@ void mt76_connac2_mac_write_txwi(struct
+ 							beacon, multicast);
+ 		u32 val = MT_TXD6_FIXED_BW;
+ 		if (dev->phys[band_idx]->cap.has_6ghz &&
+-			dev->lpi_bcn_enhance &&
++			dev->phys[band_idx]->lpi_bcn_enhance &&
+ 			ieee80211_is_mgmt(hdr->frame_control))
+ 			val |= MT_TX_BW_IDX_80;
+ 		/* hardware won't add HTC for mgmt/ctrl frame */

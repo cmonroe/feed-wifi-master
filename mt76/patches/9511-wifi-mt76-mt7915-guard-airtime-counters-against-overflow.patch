@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 last_rx_bytes;
  };
  
-@@ -1073,6 +1073,7 @@ struct mt76_dev {
+@@ -1075,6 +1075,7 @@ struct mt76_dev {
  
  	struct list_head sta_poll_list;
  	spinlock_t sta_poll_lock;
@@ -209,7 +209,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (flag = 0; flag < NUM_MT76_WCID_FLAGS; flag++) {
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2090,11 +2090,6 @@ static void mt7996_link_sta_statistics(s
+@@ -2097,11 +2097,6 @@ static void mt7996_link_sta_statistics(s
  	link_sinfo->fcs_err_count = stats->rx_fcs_err;
  	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_FCS_ERROR_COUNT);
  

@@ -186,7 +186,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		goto out;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -716,6 +716,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -723,6 +723,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  

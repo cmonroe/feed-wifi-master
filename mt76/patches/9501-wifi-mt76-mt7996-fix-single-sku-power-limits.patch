@@ -10,18 +10,22 @@ Subject: [PATCH] mt76: mt7996: fix single SKU power limits
 * default sku_path_en to false and only enable it once a path
   power entry is found in the device tree
 * re-apply single SKU limits after SER event
+* convert mt7996 users of the 6 GHz LPI flags to per-phy storage
+  introduced in the mt7915 counterpart of this patch. this
+  also band-scopes the lpi_bcn_enhance beacon rate override in
+  mt7996_get_rates_table() which otherwise forces OFDM 6M beacons
+  on all bands
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- eeprom.c             |  113 +++++++++++++++++++++++++++++++++++++++++
- mt76.h               |   14 +++++
- mt7996/init.c        |   12 ++--
- mt7996/main.c        |    6 ++
- mt7996/mcu.c         |   13 ++--
- mt7996/mcu.h         |   31 ++++++++++-
- mt7996/mtk_debugfs.c |    2 
- mt7996/vendor.c      |   36 ++-----------
- 8 files changed, 183 insertions(+), 44 deletions(-)
+ mt7996/init.c   |    8 ++++--
+ mt7996/mac.c    |    2 -
+ mt7996/main.c   |   21 +++++++++++++++--
+ mt7996/mcu.c    |   20 +++++++++++++---
+ mt7996/mcu.h    |   31 +++++++++++++++++++++++--
+ mt7996/vendor.c |   67 +++++++++++++++++++++++++++++++++-----------------------
+ mt7996/vendor.h |    2 -
+ 7 files changed, 110 insertions(+), 41 deletions(-)
 
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
@@ -98,15 +102,26 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
  	if (!skb) {
-@@ -6230,7 +6239,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6229,8 +6238,8 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 	/* FW would compensate for PSD countries
  	 * driver doesn't need to do it
  	 */
- 	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
+-	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
 -	    !mt7996_is_psd_country(dev->mt76.alpha2)) {
++	if (phy->mt76->cap.has_6ghz && mphy->lpi_psd &&
 +	    mt7996_is_psd_country(dev->mt76.alpha2)) {
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->eht[3], 8);
+@@ -6297,7 +6306,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+ 	/* FW would NOT compensate in the case of BF backoff table
+ 	 * driver needs to compensate for LPI PSD
+ 	 */
+-	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd) {
++	if (phy->mt76->cap.has_6ghz && mphy->lpi_psd) {
+ 		switch (mphy->chandef.width) {
+ 		case NL80211_CHAN_WIDTH_20:
+ 			skb_put_data(skb, &la->path.ru[5], 5);
 @@ -6365,6 +6374,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.psd_limit = enable ? mt7996_is_psd_country(dev->mt76.alpha2) : 0,
  	};
@@ -139,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
  
-@@ -677,6 +690,8 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -684,6 +697,8 @@ int mt7996_set_channel(struct mt76_phy *
  {
  	struct mt7996_phy *phy = mphy->priv;
  	int ret;
@@ -148,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
-@@ -695,7 +710,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -702,7 +717,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
@@ -159,6 +174,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (ret)
  		goto out;
  
+@@ -898,7 +915,7 @@ mt7996_get_rates_table(struct mt7996_phy
+ 	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
+ 
+ 	if (beacon) {
+-		if (dev->mt76.lpi_bcn_enhance)
++		if (phy->mt76->lpi_bcn_enhance)
+ 			rate = FR_RATE_IDX_OFDM_6M;
+ 
+ 		/* odd index for driver, even index for firmware */
 --- a/mt7996/vendor.c
 +++ b/mt7996/vendor.c
 @@ -40,7 +40,7 @@ txpower_ctrl_policy[NUM_MTK_VENDOR_ATTRS
@@ -224,7 +248,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	s8 new_power_limit = 127;
  
  	err = nla_parse(tb, MTK_VENDOR_ATTR_TXPOWER_CTRL_MAX, data, data_len,
-@@ -354,24 +360,14 @@ static int mt7996_vendor_txpower_ctrl(st
+@@ -354,30 +360,23 @@ static int mt7996_vendor_txpower_ctrl(st
  	if (err)
  		return err;
  
@@ -254,16 +278,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mphy = phy->mt76;
  
  	if (mphy->cap.has_6ghz &&
-@@ -379,14 +375,22 @@ static int mt7996_vendor_txpower_ctrl(st
+ 	    tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD]) {
  		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD]);
- 		mphy->dev->lpi_psd = val;
- 
+-		mphy->dev->lpi_psd = val;
++		mphy->lpi_psd = val;
++
 +		dev_info(mphy->dev->dev, "%s: band=%u set lpi_psd=%u",
 +				__func__, phy->mt76->band_idx, val);
-+
+ 
  		err = mt7996_mcu_set_lpi_psd(phy, val);
  		if (err)
- 			return err;
+@@ -385,8 +384,13 @@ static int mt7996_vendor_txpower_ctrl(st
  	}
  
  	if (tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX]) {
@@ -296,8 +321,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		dev = phy->dev;
  		err = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						   dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
-@@ -419,11 +428,15 @@ static int mt7996_vendor_txpower_ctrl(st
- 		mphy->dev->lpi_bcn_enhance = val;
+@@ -416,14 +425,18 @@ static int mt7996_vendor_txpower_ctrl(st
+ 	if (mphy->cap.has_6ghz &&
+ 	    tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE]) {
+ 		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE]);
+-		mphy->dev->lpi_bcn_enhance = val;
++		mphy->lpi_bcn_enhance = val;
  		idx = MT7996_BEACON_RATES_TBL + 2 * phy->mt76->band_idx;
  
 +		dev_info(mphy->dev->dev, "%s: band=%u set lpi_bcn_enhance=%u",
@@ -347,3 +376,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		target_power += path_delta;
  		target_power = DIV_ROUND_UP(target_power, 2);
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -882,7 +882,7 @@ void mt7996_mac_write_txwi(struct mt7996
+ 		if (mcast)
+ 			val |= MT_TXD6_DIS_MAT;
+ 		if (dev->mt76.phys[band_idx]->cap.has_6ghz &&
+-		    dev->mt76.lpi_bcn_enhance &&
++		    dev->mt76.phys[band_idx]->lpi_bcn_enhance &&
+ 		    ieee80211_is_mgmt(hdr->frame_control))
+ 			val |= FIELD_PREP(MT_TXD6_BW, FW_CDBW_80MHZ);
+ 		txwi[6] |= cpu_to_le32(val);
