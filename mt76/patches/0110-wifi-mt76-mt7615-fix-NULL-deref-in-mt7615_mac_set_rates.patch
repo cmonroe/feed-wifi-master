@@ -1,0 +1,34 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 20 Jul 2026 19:32:08 -0700
+Subject: [PATCH] wifi: mt76: mt7615: fix NULL deref in mt7615_mac_set_rates
+
+mt7615_add_interface() never initializes the vif backpointer of the
+per-vif embedded sta, unlike mt7915 and mt7996. When a rate control
+probe frame goes out on the BSS wcid (mac80211 hands frames over
+without a station once the station is no longer uploaded, e.g. during
+teardown), mt7615_mac_set_rates() dereferences the NULL sta->vif while
+reading the omac index:
+
+  Unable to handle kernel read from unreadable memory at virtual
+  address 0000000000000002
+  ...
+  pc : mt7615_mac_set_rates
+  lr : mt7615_tx_prepare_skb
+
+Initialize the pointer as the other connac drivers do.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7615/main.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/mt7615/main.c
++++ b/mt7615/main.c
+@@ -225,6 +225,7 @@ static int mt7615_add_interface(struct i
+ 
+ 	INIT_LIST_HEAD(&mvif->sta.wcid.poll_list);
+ 	mvif->sta.wcid.idx = idx;
++	mvif->sta.vif = mvif;
+ 	mt76_wcid_init(&mvif->sta.wcid, mvif->mt76.band_idx);
+ 
+ 	mt7615_mac_wtbl_update(dev, idx,
