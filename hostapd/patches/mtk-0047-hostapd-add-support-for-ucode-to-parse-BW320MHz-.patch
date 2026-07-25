@@ -10,9 +10,9 @@ Subject: [PATCH 047/149] mtk: hostapd: add support for ucode to parse BW320MHz
 
 --- a/src/utils/ucode.c
 +++ b/src/utils/ucode.c
-@@ -139,6 +139,10 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
- 	case 2:
- 		chanwidth = CONF_OPER_CHWIDTH_160MHZ;
+@@ -142,6 +142,10 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
+ 	case 3:
+ 		chanwidth = CONF_OPER_CHWIDTH_320MHZ;
  		break;
 +	case 9:
 +		width = 3;

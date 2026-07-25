@@ -21,7 +21,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -133,9 +133,9 @@ function iface_freq_info(iface, config,
+@@ -143,9 +143,9 @@ function iface_freq_info(iface, config,
  	return hostapd.freq_info(freq, sec_offset, width);
  }
  
@@ -33,7 +33,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	let bss = config.bss[0];
  	let ret = hostapd.add_iface(`bss_config=${phy}:${config_inline}`);
-@@ -217,6 +217,7 @@ function __iface_pending_next(pending, s
+@@ -227,6 +227,7 @@ function __iface_pending_next(pending, s
  		return "check_phy";
  	case "check_phy":
  		let phy_status = data;
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (phy_status && phy_status.state == "COMPLETED") {
  			if (iface_add(phy, config, phy_status))
  				return "done";
-@@ -230,7 +231,7 @@ function __iface_pending_next(pending, s
+@@ -240,7 +241,7 @@ function __iface_pending_next(pending, s
  		});
  		return "wpas_stopped";
  	case "wpas_stopped":
@@ -80,7 +80,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return HOSTAPD_CHAN_ACS;
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -683,6 +683,8 @@ out:
+@@ -694,6 +694,8 @@ out:
  		iface->bss[i]->conf->start_disabled = 0;
  
  	if (iface->state != HAPD_IFACE_ENABLED) {
