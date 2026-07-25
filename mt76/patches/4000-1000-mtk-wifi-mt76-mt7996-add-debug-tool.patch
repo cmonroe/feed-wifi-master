@@ -308,7 +308,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -572,6 +572,7 @@ struct mt7996_dev {
+@@ -573,6 +573,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -316,7 +316,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	u32 token_debug_idx;
  
-@@ -591,6 +592,17 @@ struct mt7996_dev {
+@@ -592,6 +593,17 @@ struct mt7996_dev {
  		u8 fem:4;
  	} var;
  
@@ -334,16 +334,18 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	bool vow_atf_en;
  };
  
-@@ -1025,7 +1037,8 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1029,6 +1041,11 @@ int mt7996_mmio_wed_init(struct mt7996_d
+ 			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
- #ifdef CONFIG_MTK_DEBUG
--int mt7996_mtk_init_debugfs(struct mt7996_phy *phy, struct dentry *dir);
++#ifdef CONFIG_MTK_DEBUG
 +int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
 +int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
- #endif
- 
++#endif
++
  int mt7996_dma_rro_init(struct mt7996_dev *dev);
+ void mt7996_dma_rro_start(struct mt7996_dev *dev);
+ 
 --- /dev/null
 +++ b/mt7996/mtk_debug.h
 @@ -0,0 +1,2286 @@

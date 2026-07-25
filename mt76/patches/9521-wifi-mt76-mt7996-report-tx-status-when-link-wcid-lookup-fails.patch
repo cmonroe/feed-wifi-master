@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1448,9 +1448,13 @@ static void mt7996_mac_add_txs(struct mt
+@@ -1516,9 +1516,13 @@ static void mt7996_mac_add_txs(struct mt
  	if (!wcid)
  		goto out;
  

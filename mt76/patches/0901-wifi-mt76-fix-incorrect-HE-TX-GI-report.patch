@@ -37,7 +37,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	MT_PHY_TYPE_HE_TB,
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -727,6 +727,8 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -757,6 +757,8 @@ mt7915_register_ext_phy(struct mt7915_de
  	struct mt76_phy *mphy = phy->mt76;
  	int ret;
  
@@ -46,7 +46,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	INIT_DELAYED_WORK(&mphy->mac_work, mt7915_mac_work);
  
  	mt7915_eeprom_parse_hw_cap(dev, phy);
-@@ -1263,6 +1265,8 @@ int mt7915_register_device(struct mt7915
+@@ -1293,6 +1295,8 @@ int mt7915_register_device(struct mt7915
  	dev->phy.dev = dev;
  	dev->phy.mt76 = &dev->mt76.phy;
  	dev->mt76.phy.priv = &dev->phy;
@@ -136,8 +136,8 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -1937,6 +1933,27 @@ static void mt7915_mac_severe_check(stru
- 	phy->trb_ts = trb;
+@@ -1957,6 +1953,27 @@ static void mt7915_mac_severe_check(stru
+ 	dev->ple1_sts = ple_err;
  }
  
 +static void mt7915_mac_sta_stats_work(struct mt7915_phy *phy)
@@ -164,7 +164,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7915_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev, rc_work);
-@@ -1995,6 +2012,11 @@ void mt7915_mac_work(struct work_struct
+@@ -2015,6 +2032,11 @@ void mt7915_mac_work(struct work_struct
  			mt7915_mcu_muru_debug_get(phy);
  	}
  
@@ -178,7 +178,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	mt76_tx_status_check(mphy->dev, false);
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -771,6 +771,7 @@ int mt7915_mac_sta_add(struct mt76_dev *
+@@ -781,6 +781,7 @@ int mt7915_mac_sta_add(struct mt76_dev *
  
  	INIT_LIST_HEAD(&msta->rc_list);
  	INIT_LIST_HEAD(&msta->wcid.poll_list);
@@ -186,7 +186,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	msta->vif = mvif;
  	msta->wcid.sta_disabled = 1;
  	msta->wcid.idx = idx;
-@@ -896,6 +897,7 @@ void mt7915_mac_sta_remove(struct mt76_d
+@@ -906,6 +907,7 @@ void mt7915_mac_sta_remove(struct mt76_d
  {
  	struct mt7915_dev *dev = container_of(mdev, struct mt7915_dev, mt76);
  	struct mt7915_sta *msta = (struct mt7915_sta *)sta->drv_priv;
@@ -194,7 +194,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  
  	mt7915_mac_wtbl_update(dev, msta->wcid.idx,
  			       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
-@@ -906,6 +908,11 @@ void mt7915_mac_sta_remove(struct mt76_d
+@@ -916,6 +918,11 @@ void mt7915_mac_sta_remove(struct mt76_d
  	if (!list_empty(&msta->rc_list))
  		list_del_init(&msta->rc_list);
  	spin_unlock_bh(&mdev->sta_poll_lock);
@@ -208,7 +208,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void mt7915_tx(struct ieee80211_hw *hw,
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4214,6 +4214,167 @@ int mt7915_mcu_set_protection(struct mt7
+@@ -4229,6 +4229,167 @@ int mt7915_mcu_set_protection(struct mt7
  				     MCU_EXT_CMD(BSS_INFO_UPDATE), true);
  }
  
@@ -458,7 +458,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	u32 airtime_ac[8];
  
  	int ack_signal;
-@@ -239,6 +240,10 @@ struct mt7915_phy {
+@@ -240,6 +241,10 @@ struct mt7915_phy {
  	bool sku_limit_en:1;
  	bool sku_path_en:1;
  
@@ -469,7 +469,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  #ifdef CONFIG_NL80211_TESTMODE
  	struct {
  		u32 *reg_backup;
-@@ -548,6 +553,7 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -550,6 +555,7 @@ int mt7915_mcu_get_chan_mib_info(struct
  int mt7915_mcu_get_temperature(struct mt7915_phy *phy);
  int mt7915_mcu_set_thermal_throttling(struct mt7915_phy *phy, u8 state);
  int mt7915_mcu_set_thermal_protect(struct mt7915_phy *phy);
@@ -479,7 +479,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  int mt7915_mcu_rdd_background_enable(struct mt7915_phy *phy,
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1239,6 +1239,7 @@ enum {
+@@ -1272,6 +1272,7 @@ enum {
  	MCU_EXT_CMD_EDCA_UPDATE = 0x27,
  	MCU_EXT_CMD_DEV_INFO_UPDATE = 0x2A,
  	MCU_EXT_CMD_THERMAL_CTRL = 0x2c,

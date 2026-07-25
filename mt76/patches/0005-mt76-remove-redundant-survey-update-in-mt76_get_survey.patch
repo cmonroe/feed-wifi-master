@@ -11,7 +11,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -1133,9 +1133,6 @@ int mt76_get_survey(struct ieee80211_hw
+@@ -1140,9 +1140,6 @@ int mt76_get_survey(struct ieee80211_hw
  
  		sband = mt76_get_survey_sband(phy, &idx);
  

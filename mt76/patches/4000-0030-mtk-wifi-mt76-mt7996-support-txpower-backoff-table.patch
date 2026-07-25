@@ -31,7 +31,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			       target_power, txs_delta, &max_power, n_chains, MT76_SKU_BACKOFF);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1205,11 +1205,11 @@ struct mt76_power_limits {
+@@ -1206,11 +1206,11 @@ struct mt76_power_limits {
  	s8 eht[16][16];
  
  	struct {
@@ -49,7 +49,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -289,9 +289,13 @@ static void __mt7915_init_txpower(struct
+@@ -319,9 +319,13 @@ static void __mt7915_init_txpower(struct
  	int i, n_chains = hweight16(phy->mt76->chainmask);
  	int path_delta = mt76_tx_power_path_delta(n_chains);
  	int pwr_delta = mt7915_eeprom_get_power_delta(dev, sband->band);
@@ -64,7 +64,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	phy->sku_limit_en = true;
  	phy->sku_path_en = true;
  	np = mt76_find_power_limits_node(phy->mt76);
-@@ -309,11 +313,11 @@ static void __mt7915_init_txpower(struct
+@@ -339,11 +343,11 @@ static void __mt7915_init_txpower(struct
  
  		target_power += pwr_delta;
  		target_power = mt76_get_rate_power_limits(phy->mt76, chan,
@@ -78,7 +78,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			phy->sku_path_en = false;
  
  		target_power += path_delta;
-@@ -327,6 +331,7 @@ static void __mt7915_init_txpower(struct
+@@ -357,6 +361,7 @@ static void __mt7915_init_txpower(struct
  			chan->max_power = target_power;
  		chan->orig_mpwr = target_power;
  	}
@@ -88,7 +88,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  void mt7915_init_txpower(struct mt7915_phy *phy)
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3530,13 +3530,17 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3545,13 +3545,17 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	};
  	int i, ret, tx_power;
  	const u8 *len = mt7915_sku_group_len;
@@ -108,7 +108,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		mt7915_update_txpower(phy, tx_power);
  	} else {
  		mt7915_update_txpower(phy, tx_power);
-@@ -3544,97 +3548,102 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3559,97 +3563,102 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	}
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(hdr) + MT7915_SKU_RATE_NUM);
@@ -248,7 +248,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	/* start from non-bf and bf fields of
  	 * BW20/RU242, BW40/RU484, BW80/RU996, BW160/RU2x996,
-@@ -3644,7 +3653,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3659,7 +3668,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	for (i = 0; i < 8; i++) {
  		bool bf = i % 2;
  		u8 idx = (i + 6) / 2;
@@ -257,7 +257,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		/* The non-bf fields of RU26 to RU106 are special cases */
  		if (bf)
  			skb_put_data(skb, buf + 1, 9);
-@@ -3655,13 +3664,16 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3670,13 +3679,16 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	for (i = 0; i < 6; i++) {
  		bool bf = i % 2;
  		u8 idx = i / 2;
@@ -324,7 +324,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  void mt7996_init_txpower(struct mt7996_phy *phy)
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5570,9 +5570,42 @@ int mt7996_mcu_set_sniffer_mode(struct m
+@@ -5641,9 +5641,42 @@ int mt7996_mcu_set_sniffer_mode(struct m
  				 sizeof(req), true);
  }
  
@@ -367,7 +367,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_phy *mphy = phy->mt76;
  	struct tx_power_limit_table_ctrl {
-@@ -5590,45 +5623,88 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5661,45 +5694,88 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.power_limit_type = TX_POWER_LIMIT_TABLE_RATE,
  		.band_idx = phy->mt76->band_idx,
  	};

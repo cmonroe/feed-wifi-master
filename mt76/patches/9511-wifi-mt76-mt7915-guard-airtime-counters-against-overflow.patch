@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 last_rx_bytes;
  };
  
-@@ -1075,6 +1075,7 @@ struct mt76_dev {
+@@ -1076,6 +1076,7 @@ struct mt76_dev {
  
  	struct list_head sta_poll_list;
  	spinlock_t sta_poll_lock;
@@ -48,7 +48,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	u32 rev;
  
-@@ -1531,6 +1532,28 @@ mt76_ac_to_tid(u8 ac)
+@@ -1532,6 +1533,28 @@ mt76_ac_to_tid(u8 ac)
  	return ac_to_tid[ac];
  }
  
@@ -140,7 +140,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
  		default:
  			break;
-@@ -3307,6 +3330,8 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3322,6 +3345,8 @@ int mt7915_mcu_get_chan_mib_info(struct
  	struct sk_buff *skb;
  	static const u32 *offs;
  	int i, ret, len, offs_cc;
@@ -149,7 +149,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 cc_tx;
  
  	/* strict order */
-@@ -3357,11 +3382,18 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3372,11 +3397,18 @@ int mt7915_mcu_get_chan_mib_info(struct
  	if (chan_switch)
  		goto out;
  
@@ -175,7 +175,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	state_ts->cc_tx = cc_tx;
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -284,6 +284,7 @@ struct mt7915_phy {
+@@ -285,6 +285,7 @@ struct mt7915_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -209,7 +209,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (flag = 0; flag < NUM_MT76_WCID_FLAGS; flag++) {
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2097,11 +2097,6 @@ static void mt7996_link_sta_statistics(s
+@@ -2093,11 +2093,6 @@ static void mt7996_link_sta_statistics(s
  	link_sinfo->fcs_err_count = stats->rx_fcs_err;
  	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_FCS_ERROR_COUNT);
  

@@ -81,7 +81,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	unsigned long ampdu_state;
  
  	u16 idx;
-@@ -1475,6 +1490,22 @@ static inline int mt76_decr(int val, int
+@@ -1476,6 +1491,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -106,7 +106,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1429,6 +1429,21 @@ enum {
+@@ -1466,6 +1466,21 @@ enum {
  	UNI_OFFLOAD_OFFLOAD_BMC_RPY_DETECT,
  };
  
@@ -128,7 +128,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  enum UNI_ALL_STA_INFO_TAG {
  	UNI_ALL_STA_TXRX_RATE,
  	UNI_ALL_STA_TX_STAT,
-@@ -1437,6 +1452,8 @@ enum UNI_ALL_STA_INFO_TAG {
+@@ -1474,6 +1489,8 @@ enum UNI_ALL_STA_INFO_TAG {
  	UNI_ALL_STA_DATA_TX_RETRY_COUNT,
  	UNI_ALL_STA_GI_MODE,
  	UNI_ALL_STA_TXRX_MSDU_COUNT,
@@ -139,18 +139,18 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -602,11 +602,6 @@ mt7996_mac_init_band(struct mt7996_dev *
- 	set = FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_MODE, 0) |
+@@ -609,11 +609,6 @@ mt7996_mac_init_band(struct mt7996_dev *
  	      FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_PARAM, 0x3);
  	mt76_rmw(dev, MT_WTBLOFF_RSCR(band), mask, set);
--
+ 
 -	/* MT_TXD5_TX_STATUS_HOST (MPDU format) has higher priority than
 -	 * MT_AGG_ACR_PPDU_TXS2H (PPDU format) even though ACR bit is set.
 -	 */
 -	mt76_set(dev, MT_AGG_ACR4(band), MT_AGG_ACR_PPDU_TXS2H);
+-
+ 	if (!is_mt7996(&dev->mt76))
+ 		mt7996_mcu_set_bssid_mapping_addr(&dev->mt76, band);
  }
- 
- static void mt7996_mac_init_basic_rates(struct mt7996_dev *dev)
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
 @@ -72,119 +72,6 @@ u32 mt7996_mac_wtbl_lmac_addr(struct mt7
@@ -251,7 +251,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
 -		rssi[0] = to_rssi(GENMASK(7, 0), val);
 -		rssi[1] = to_rssi(GENMASK(15, 8), val);
 -		rssi[2] = to_rssi(GENMASK(23, 16), val);
--		rssi[3] = to_rssi(GENMASK(31, 14), val);
+-		rssi[3] = to_rssi(GENMASK(31, 24), val);
 -
 -		mlink = rcu_dereference(msta->vif->mt76.link[wcid->link_id]);
 -		if (mlink) {
@@ -273,7 +273,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  /* The HW does not translate the mac header to 802.3 for mesh point */
  static int mt7996_reverse_frag0_hdr_trans(struct sk_buff *skb, u16 hdr_gap)
  {
-@@ -1399,8 +1286,6 @@ next:
+@@ -1465,8 +1352,6 @@ next:
  		}
  	}
  
@@ -282,7 +282,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -1414,25 +1299,25 @@ next:
+@@ -1480,25 +1365,25 @@ next:
  
  static bool
  mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
@@ -317,7 +317,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  		skb = mt76_tx_status_skb_get(mdev, wcid, pid, &list);
  		if (skb) {
  			info = IEEE80211_SKB_CB(skb);
-@@ -1445,119 +1330,33 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1511,119 +1396,33 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  
  			info->status.rates[0].idx = -1;
  		}
@@ -330,9 +330,13 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
 -		sta = wcid_to_sta(wcid);
 -		tid = FIELD_GET(MT_TXS0_TID, txs);
 -		ieee80211_refresh_tx_agg_session_timer(sta, tid);
--	}
--
--	txrate = FIELD_GET(MT_TXS0_TX_RATE, txs);
++		break;
++	default:
++		dev_err(mdev->dev, "Unknown TXS format: %hhu\n", fmt);
++		goto unlock;
+ 	}
+ 
+ 	txrate = FIELD_GET(MT_TXS0_TX_RATE, txs);
 -
 -	rate.mcs = FIELD_GET(MT_TX_RATE_IDX, txrate);
 -	rate.nss = FIELD_GET(MT_TX_RATE_NSS, txrate) + 1;
@@ -345,8 +349,9 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
 -		stats->tx_nss[rate.nss - 1]++;
 -	if (rate.mcs < ARRAY_SIZE(stats->tx_mcs))
 -		stats->tx_mcs[rate.mcs]++;
--
--	mode = FIELD_GET(MT_TX_RATE_MODE, txrate);
++	bw = FIELD_GET(MT_TXS0_BW, txs);
+ 
+ 	mode = FIELD_GET(MT_TX_RATE_MODE, txrate);
 -	switch (mode) {
 -	case MT_PHY_TYPE_CCK:
 -		cck = true;
@@ -400,16 +405,16 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
 -
 -		rate.eht_gi = wcid->rate.eht_gi;
 -		rate.flags = RATE_INFO_FLAGS_EHT_MCS;
- 		break;
- 	default:
+-		break;
+-	default:
 -		goto out;
-+		dev_err(mdev->dev, "Unknown TXS format: %hhu\n", fmt);
-+		goto unlock;
- 	}
- 
+-	}
+-
 -	stats->tx_mode[mode]++;
-+	txrate = FIELD_GET(MT_TXS0_TX_RATE, txs);
-+	bw = FIELD_GET(MT_TXS0_BW, txs);
++	mcs = FIELD_GET(MT_TX_RATE_IDX, txrate);
++	nss = FIELD_GET(MT_TX_RATE_NSS, txrate) + 1;
++	if (le32_get_bits(txs_data[3], MT_TXS3_RATE_STBC) && nss > 1)
++		nss >>= 1;
  
 -	switch (FIELD_GET(MT_TXS0_BW, txs)) {
 -	case IEEE80211_STA_RX_BW_320:
@@ -434,12 +439,6 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
 -		break;
 -	}
 -	wcid->rate = rate;
-+	mode = FIELD_GET(MT_TX_RATE_MODE, txrate);
-+	mcs = FIELD_GET(MT_TX_RATE_IDX, txrate);
-+	nss = FIELD_GET(MT_TX_RATE_NSS, txrate) + 1;
-+	if (le32_get_bits(txs_data[3], MT_TXS3_RATE_STBC) && nss > 1)
-+		nss >>= 1;
-+
 +	if (nss - 1 < ARRAY_SIZE(stats->tx_nss))
 +		stats->tx_nss[nss - 1]++;
 +	if (mcs < ARRAY_SIZE(stats->tx_mcs))
@@ -456,7 +455,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	mt76_tx_status_unlock(mdev, &list);
  
  	return !!skb;
-@@ -1565,13 +1364,13 @@ out:
+@@ -1631,13 +1430,13 @@ out:
  
  static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
  {
@@ -473,7 +472,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	pid = le32_get_bits(txs_data[3], MT_TXS3_PID);
  
  	if (pid < MT_PACKET_ID_NO_SKB)
-@@ -1583,14 +1382,16 @@ static void mt7996_mac_add_txs(struct mt
+@@ -1649,14 +1448,16 @@ static void mt7996_mac_add_txs(struct mt
  	if (!wcid)
  		goto out;
  
@@ -487,15 +486,15 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
 -	msta_link = container_of(wcid, struct mt7996_sta_link, wcid);
 -	mt76_wcid_add_poll(&dev->mt76, &msta_link->wcid);
 +	mt7996_mac_add_txs_skb(dev, wcid, link_wcid, pid, txs_data);
-+
+ 
 +	if (!link_wcid->sta)
 +		goto out;
- 
++
 +	mt76_wcid_add_poll(&dev->mt76, link_wcid);
  out:
  	rcu_read_unlock();
  }
-@@ -2912,34 +2713,81 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2984,34 +2785,81 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -588,7 +587,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1135,7 +1135,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1133,7 +1133,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
  	struct mt7996_phy *phy = mt7996_vif_link_phy(link);
  	struct mt7996_sta_link *msta_link;
@@ -597,7 +596,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
  	if (!phy)
  		return -EINVAL;
-@@ -1174,6 +1174,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1172,6 +1172,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
  
  	ewma_avg_signal_init(&msta_link->avg_ack_signal);
  	ewma_signal_init(&msta_link->wcid.rssi);
@@ -607,7 +606,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
  	rcu_assign_pointer(msta->link[link_id], msta_link);
  
-@@ -1924,6 +1927,87 @@ static void mt7996_sta_statistics(struct
+@@ -1920,6 +1923,87 @@ static void mt7996_sta_statistics(struct
  	}
  }
  
@@ -695,7 +694,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
  					 struct mt7996_sta_link *msta_link)
  {
-@@ -2593,6 +2677,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2615,6 +2699,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_bitrate_mask = mt7996_set_bitrate_mask,
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,
@@ -1009,7 +1008,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  			break;
  		default:
  			break;
-@@ -5513,9 +5710,126 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5584,9 +5781,126 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -1138,7 +1137,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -5526,7 +5840,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -5597,7 +5911,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  
@@ -1283,7 +1282,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	unsigned long changed;
  
  	struct mt76_connac_sta_key_conf bip;
-@@ -852,7 +863,9 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -854,7 +865,9 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);

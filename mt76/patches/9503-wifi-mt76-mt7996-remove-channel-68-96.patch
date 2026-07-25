@@ -33,7 +33,7 @@
  };
  
  const struct ieee80211_channel dpd_5g_ch_list_bw80[] = {
-@@ -400,7 +398,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -406,7 +404,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  
  static void mt7996_eeprom_init_precal(struct mt7996_dev *dev)
  {

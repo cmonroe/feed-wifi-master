@@ -31,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76_connac.h
 +++ b/mt76_connac.h
-@@ -522,7 +522,7 @@ u16 mt76_connac2_mac_tx_rate_val(struct
+@@ -534,7 +534,7 @@ u16 mt76_connac2_mac_tx_rate_val(struct
  				 struct ieee80211_bss_conf *conf,
  				 bool beacon, bool mcast);
  bool mt76_connac2_mac_fill_txs(struct mt76_dev *dev, struct mt76_wcid *wcid,
@@ -108,7 +108,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt76_tx_status_unlock(dev, &list);
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -551,8 +551,7 @@ mt7915_mac_init_band(struct mt7915_dev *
+@@ -581,8 +581,7 @@ mt7915_mac_init_band(struct mt7915_dev *
  	/* MT_TXD5_TX_STATUS_HOST (MPDU format) has higher priority than
  	 * MT_AGG_ACR_PPDU_TXS2H (PPDU format) even though ACR bit is set.
  	 */
@@ -163,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		goto out;
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -775,7 +775,6 @@ int mt7915_mac_sta_add(struct mt76_dev *
+@@ -785,7 +785,6 @@ int mt7915_mac_sta_add(struct mt76_dev *
  	msta->wcid.sta_disabled = 1;
  	msta->wcid.idx = idx;
  	msta->wcid.phy_idx = ext_phy;

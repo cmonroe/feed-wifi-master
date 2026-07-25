@@ -15,7 +15,7 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1042,6 +1042,8 @@ enum {
+@@ -1048,6 +1048,8 @@ enum {
  
  enum {
  	UNI_BAND_CONFIG_RADIO_ENABLE,
@@ -23,10 +23,10 @@ Subject: [PATCH 1019/1044] mtk: wifi: mt76: mt7996: add vendor subcmd EDCCA
 +	UNI_BAND_CONFIG_EDCCA_THRESHOLD = 0x06,
  	UNI_BAND_CONFIG_RTS_THRESHOLD = 0x08,
  	UNI_BAND_CONFIG_MAC_ENABLE_CTRL = 0x0c,
- };
+ 	UNI_BAND_CONFIG_BSSID_MAPPING_ADDR = 0x12,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -1073,6 +1073,17 @@ void mt7996_set_wireless_vif(void *data,
+@@ -1078,6 +1078,17 @@ void mt7996_set_wireless_vif(void *data,
  void mt7996_vendor_register(struct mt7996_phy *phy);
  #endif
  

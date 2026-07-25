@@ -17,7 +17,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1055,6 +1055,7 @@ enum {
+@@ -1081,6 +1081,7 @@ enum {
  	MCU_EXT_EVENT_BCC_NOTIFY = 0x75,
  	MCU_EXT_EVENT_WF_RF_PIN_CTRL = 0x9a,
  	MCU_EXT_EVENT_MURU_CTRL = 0x9f,
@@ -25,7 +25,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	MCU_EXT_EVENT_CSI_REPORT = 0xc2,
  };
  
-@@ -1291,6 +1292,7 @@ enum {
+@@ -1324,6 +1325,7 @@ enum {
  	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
  	/* for vendor csi and air monitor */
  	MCU_EXT_CMD_SMESH_CTRL = 0xae,
@@ -33,7 +33,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	MCU_EXT_CMD_EDCCA = 0xba,
  	MCU_EXT_CMD_WF_RF_PIN_CTRL = 0xbd,
  	MCU_EXT_CMD_SWLNA_ACI_CTRL = 0xc0,
-@@ -1299,6 +1301,16 @@ enum {
+@@ -1332,6 +1334,16 @@ enum {
  	MCU_EXT_CMD_LPI_CTRL = 0xc8,
  };
  
@@ -137,7 +137,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		rate = &msta->wcid.rate;
  
  		switch (rate->bw) {
-@@ -2033,11 +1972,14 @@ void mt7915_mac_work(struct work_struct
+@@ -2053,11 +1992,14 @@ void mt7915_mac_work(struct work_struct
  {
  	struct mt7915_phy *phy;
  	struct mt76_phy *mphy;
@@ -152,7 +152,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mutex_lock(&mphy->dev->mutex);
  
  	mt76_update_survey(mphy);
-@@ -2049,6 +1991,8 @@ void mt7915_mac_work(struct work_struct
+@@ -2069,6 +2011,8 @@ void mt7915_mac_work(struct work_struct
  
  		if (phy->dev->muru_debug)
  			mt7915_mcu_muru_debug_get(phy);
@@ -229,7 +229,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	     !rxd->seq) &&
  	     !(rxd->eid == MCU_CMD_EXT_CID &&
  	       rxd->ext_eid == MCU_EXT_EVENT_WA_TX_STAT))
-@@ -5111,3 +5156,16 @@ int mt7915_mcu_thermal_debug(struct mt79
+@@ -5124,3 +5169,16 @@ int mt7915_mcu_thermal_debug(struct mt79
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(THERMAL_DEBUG), &req,
  				 sizeof(req), true);
  }
@@ -273,7 +273,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  					 sizeof(struct bss_info_bcn) +	\
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -666,6 +666,7 @@ int mt7915_mcu_set_thermal_protect(struc
+@@ -668,6 +668,7 @@ int mt7915_mcu_set_thermal_protect(struc
  int mt7915_mcu_get_tx_rate(struct mt7915_phy *phy, u16 wcidx);
  int mt7915_mcu_get_rx_rate(struct mt7915_phy *phy, struct ieee80211_vif *vif,
  			   struct ieee80211_sta *sta, struct rate_info *rate);

@@ -32,7 +32,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 
 --- a/mt76_connac3_mac.h
 +++ b/mt76_connac3_mac.h
-@@ -204,6 +204,18 @@ enum tx_frag_idx {
+@@ -209,6 +209,18 @@ enum tx_frag_idx {
  	MT_TX_FRAG_LAST
  };
  
@@ -64,7 +64,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		int target_power = mt7996_eeprom_get_target_power(dev, chan);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -878,8 +878,13 @@ void mt7996_mac_write_txwi(struct mt7996
+@@ -915,8 +915,13 @@ void mt7996_mac_write_txwi(struct mt7996
  		}
  
  		val = FIELD_PREP(MT_TXD6_TX_RATE, idx) | MT_TXD6_FIXED_BW;
@@ -80,7 +80,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	}
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -889,6 +889,7 @@ static u8
+@@ -887,6 +887,7 @@ static u8
  mt7996_get_rates_table(struct mt7996_phy *phy, struct ieee80211_bss_conf *conf,
  		       bool beacon, bool mcast)
  {
@@ -88,7 +88,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_vif_link *mvif = mt76_vif_conf_link(&dev->mt76, conf->vif, conf);
  	u16 rate;
-@@ -897,6 +898,9 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -895,6 +896,9 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -98,7 +98,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* odd index for driver, even index for firmware */
  		idx = MT7996_BEACON_RATES_TBL + 2 * phy->mt76->band_idx;
  		if (phy->beacon_rate != rate)
-@@ -1078,7 +1082,7 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1076,7 +1080,7 @@ mt7996_link_info_changed(struct ieee8021
  	if (changed & BSS_CHANGED_TXPOWER &&
  	    info->txpower != phy->txpower) {
  		phy->txpower = info->txpower;
@@ -109,7 +109,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5832,7 +5832,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -5903,7 +5903,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -118,7 +118,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -6146,6 +6146,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6217,6 +6217,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -141,7 +141,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static s8 mt7996_get_power_bound(struct mt7996_phy *phy, s8 txpower)
  {
         struct mt76_phy *mphy = phy->mt76;
-@@ -6157,7 +6173,8 @@ static s8 mt7996_get_power_bound(struct
+@@ -6228,7 +6244,8 @@ static s8 mt7996_get_power_bound(struct
         return txpower;
  }
  
@@ -151,7 +151,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
  #define TX_POWER_LIMIT_TABLE_PATH	1
-@@ -6182,7 +6199,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6253,7 +6270,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
@@ -162,7 +162,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6205,7 +6224,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6276,7 +6295,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	}
  
  	skb_put_data(skb, &req, sizeof(req));
@@ -201,7 +201,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb_put_data(skb, &la->mcs[0], 8); /* HT20 */
  	skb_put_data(skb, &la->mcs[1], 9); /* HT40 */
  
-@@ -6244,8 +6293,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6315,8 +6364,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la->path.cck, 5);
@@ -245,7 +245,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -6262,6 +6344,31 @@ out:
+@@ -6333,6 +6415,31 @@ out:
  	return ret;
  }
  
@@ -279,17 +279,17 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	__le32 cp_mode;
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1046,6 +1046,7 @@ enum {
+@@ -1052,6 +1052,7 @@ enum {
  	UNI_BAND_CONFIG_EDCCA_THRESHOLD = 0x06,
  	UNI_BAND_CONFIG_RTS_THRESHOLD = 0x08,
  	UNI_BAND_CONFIG_MAC_ENABLE_CTRL = 0x0c,
 +	UNI_BAND_CONFIG_LPI_CTRL = 0x0d,
+ 	UNI_BAND_CONFIG_BSSID_MAPPING_ADDR = 0x12,
  };
  
- enum {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -914,7 +914,8 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -916,7 +916,8 @@ int mt7996_mcu_get_chan_mib_info(struct
  int mt7996_mcu_get_temperature(struct mt7996_phy *phy);
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);

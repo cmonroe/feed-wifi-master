@@ -221,7 +221,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	       ETH_ALEN);
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2982,6 +2982,7 @@ int mt7915_mcu_get_eeprom(struct mt7915_
+@@ -2990,6 +2990,7 @@ int mt7915_mcu_get_eeprom(struct mt7915_
  	struct mt7915_mcu_eeprom_info *res;
  	struct sk_buff *skb;
  	u8 *buf = read_buf;
@@ -229,18 +229,30 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	int ret;
  
  	ret = mt76_mcu_send_and_get_msg(&dev->mt76,
-@@ -2991,9 +2992,15 @@ int mt7915_mcu_get_eeprom(struct mt7915_
+@@ -2999,16 +3000,22 @@ int mt7915_mcu_get_eeprom(struct mt7915_
  		return ret;
  
  	res = (struct mt7915_mcu_eeprom_info *)skb->data;
--	if (!buf)
--		buf = dev->mt76.eeprom.data + le32_to_cpu(res->addr);
--	memcpy(buf, res->data, MT7915_EEPROM_BLOCK_SIZE);
+-	if (!buf) {
+-		u32 addr = le32_to_cpu(res->addr);
 +	valid = !!le32_to_cpu(res->valid);
-+
+ 
+-		if (addr > dev->mt76.eeprom.size - MT7915_EEPROM_BLOCK_SIZE) {
+-			dev_kfree_skb(skb);
+-			return -EINVAL;
 +	if (valid) {
-+		if (!buf)
-+			buf = dev->mt76.eeprom.data + le32_to_cpu(res->addr);
++		if (!buf) {
++			u32 addr = le32_to_cpu(res->addr);
++
++			if (addr > dev->mt76.eeprom.size - MT7915_EEPROM_BLOCK_SIZE) {
++				dev_kfree_skb(skb);
++				return -EINVAL;
++			}
++			buf = dev->mt76.eeprom.data + addr;
+ 		}
+-		buf = dev->mt76.eeprom.data + addr;
+-	}
+-	memcpy(buf, res->data, MT7915_EEPROM_BLOCK_SIZE);
 +		memcpy(buf, res->data, MT7915_EEPROM_BLOCK_SIZE);
 +	} else {
 +		ret = -EINVAL;
@@ -250,7 +262,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -537,6 +537,7 @@ u32 mt7915_wed_init_buf(void *ptr, dma_a
+@@ -539,6 +539,7 @@ u32 mt7915_wed_init_buf(void *ptr, dma_a
  
  int mt7915_register_device(struct mt7915_dev *dev);
  void mt7915_unregister_device(struct mt7915_dev *dev);

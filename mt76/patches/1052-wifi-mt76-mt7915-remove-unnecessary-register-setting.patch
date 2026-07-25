@@ -14,7 +14,7 @@ Signed-off-by: Henry.Yen <henry.yen@mediatek.com>
 
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -494,30 +494,6 @@ mt7915_mac_init_band(struct mt7915_dev *
+@@ -524,30 +524,6 @@ mt7915_mac_init_band(struct mt7915_dev *
  {
  	u32 mask, set;
  
@@ -45,7 +45,7 @@ Signed-off-by: Henry.Yen <henry.yen@mediatek.com>
  	/* mt7915: disable rx rate report by default due to hw issues */
  	mt76_clear(dev, MT_DMA_DCR0(band), MT_DMA_DCR0_RXD_G5_EN);
  
-@@ -655,23 +631,12 @@ u8 mt7915_vow_sta_bss_grp(struct mt76_vi
+@@ -685,23 +661,12 @@ u8 mt7915_vow_sta_bss_grp(struct mt76_vi
  void mt7915_mac_init(struct mt7915_dev *dev)
  {
  	int i;

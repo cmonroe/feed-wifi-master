@@ -48,7 +48,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  enum mt76_wcid_flags {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1273,6 +1273,7 @@ enum {
+@@ -1306,6 +1306,7 @@ enum {
  	MCU_EXT_CMD_SET_RDD_PATTERN = 0x7d,
  	MCU_EXT_CMD_MWDS_SUPPORT = 0x80,
  	MCU_EXT_CMD_SET_SER_TRIGGER = 0x81,
@@ -58,7 +58,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_EXT_CMD_OFFCH_SCAN_CTRL = 0x9a,
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -1296,6 +1296,7 @@ int mt7915_register_device(struct mt7915
+@@ -1326,6 +1326,7 @@ int mt7915_register_device(struct mt7915
  	spin_lock_init(&dev->phy.stats_lock);
  	INIT_WORK(&dev->rc_work, mt7915_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7915_mac_work);
@@ -68,7 +68,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1449,6 +1449,8 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1454,6 +1454,8 @@ mt7915_mac_full_reset(struct mt7915_dev
  
  	mt76_abort_scan(&dev->mt76);
  
@@ -77,7 +77,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	mutex_lock(&dev->mt76.mutex);
  	for (i = 0; i < 10; i++) {
  		if (!mt7915_mac_restart(dev))
-@@ -1534,6 +1536,7 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1543,6 +1545,7 @@ void mt7915_mac_reset_work(struct work_s
  		set_bit(MT76_RESET, &phy2->mt76->state);
  		cancel_delayed_work_sync(&phy2->mt76->mac_work);
  	}
@@ -85,7 +85,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -1603,6 +1606,10 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1612,6 +1615,10 @@ void mt7915_mac_reset_work(struct work_s
  					     &phy2->mt76->mac_work,
  					     MT7915_WATCHDOG_TIME);
  
@@ -131,7 +131,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		mt76_connac_mcu_set_pm(&dev->mt76, dev->phy.mt76->band_idx, 1);
  		mt7915_mcu_set_mac(dev, dev->phy.mt76->band_idx, false, false);
  	}
-@@ -1872,11 +1885,16 @@ static void
+@@ -1882,11 +1895,16 @@ static void
  mt7915_reconfig_complete(struct ieee80211_hw *hw,
  			 enum ieee80211_reconfig_type reconfig_type)
  {
@@ -150,7 +150,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  const struct ieee80211_ops mt7915_ops = {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4849,3 +4849,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
+@@ -4862,3 +4862,121 @@ int mt7915_mcu_get_edcca(struct mt7915_p
  
  	return 0;
  }
@@ -301,7 +301,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  struct mt7915_phy {
  	struct mt76_phy *mt76;
  	struct mt7915_dev *dev;
-@@ -311,6 +320,7 @@ struct mt7915_phy {
+@@ -312,6 +321,7 @@ struct mt7915_phy {
  
  	struct mt7915_air_monitor_ctrl amnt_ctrl;
  #endif
@@ -309,7 +309,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  #ifdef MTK_DEBUG
-@@ -367,6 +377,7 @@ struct mt7915_dev {
+@@ -368,6 +378,7 @@ struct mt7915_dev {
  		struct mt7915_crash_data *crash_data[__MT76_RAM_TYPE_MAX];
  	} coredump;
  #endif
@@ -317,7 +317,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	struct list_head sta_rc_list;
  	struct list_head twt_list;
-@@ -770,6 +781,8 @@ int mt7915_mcu_get_edcca(struct mt7915_p
+@@ -772,6 +783,8 @@ int mt7915_mcu_get_edcca(struct mt7915_p
  int mt7915_mcu_ipi_hist_ctrl(struct mt7915_phy *phy, void *data, u8 cmd, bool wait_resp);
  int mt7915_mcu_ipi_hist_scan(struct mt7915_phy *phy, void *data, u8 mode, bool wait_resp);
  int mt7915_mcu_enable_obss_spr(struct mt7915_phy *phy, u8 action, u8 val);

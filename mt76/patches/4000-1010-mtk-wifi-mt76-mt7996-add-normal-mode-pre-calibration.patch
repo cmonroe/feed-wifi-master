@@ -17,7 +17,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1339,6 +1339,7 @@ enum {
+@@ -1372,6 +1372,7 @@ enum {
  	MCU_UNI_CMD_FIXED_RATE_TABLE = 0x40,
  	MCU_UNI_CMD_RSSI_MONITOR = 0x41,
  	MCU_UNI_CMD_TESTMODE_CTRL = 0x46,
@@ -27,7 +27,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	MCU_UNI_CMD_PER_STA_INFO = 0x6d,
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -429,7 +429,9 @@ int mt7996_eeprom_init(struct mt7996_dev
+@@ -435,7 +435,9 @@ int mt7996_eeprom_init(struct mt7996_dev
  	if (ret)
  		return ret;
  
@@ -51,7 +51,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define MT_EE_WIFI_CONF0_TX_PATH		GENMASK(2, 0)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1321,6 +1321,12 @@ static int mt7996_init_hardware(struct m
+@@ -1330,6 +1330,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -679,6 +679,12 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -677,6 +677,12 @@ int mt7996_set_channel(struct mt76_phy *
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
  
@@ -81,7 +81,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4885,6 +4885,172 @@ int mt7996_mcu_get_efuse_free_block(stru
+@@ -4902,6 +4902,172 @@ int mt7996_mcu_get_efuse_free_block(stru
  	return 0;
  }
  
@@ -256,7 +256,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #define UNI_EVENT_CHIP_CONFIG_EFUSE_VERSION	0x21
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -1060,6 +1060,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+@@ -1065,6 +1065,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
  #endif
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);

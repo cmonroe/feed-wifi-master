@@ -14,7 +14,7 @@ Subject: [PATCH 1002/1033] wifi: mt76: mt7915: air monitor support
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1282,6 +1282,8 @@ enum {
+@@ -1315,6 +1315,8 @@ enum {
  	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
  	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
  	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
@@ -38,7 +38,7 @@ Subject: [PATCH 1002/1033] wifi: mt76: mt7915: air monitor support
  		mt7915_wed_check_ppe(dev, &dev->mt76.q_rx[q], msta, skb,
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -817,6 +817,10 @@ int mt7915_mac_sta_add(struct mt76_dev *
+@@ -827,6 +827,10 @@ int mt7915_mac_sta_add(struct mt76_dev *
  						  IEEE80211_DEFAULT_AIRTIME_WEIGHT);
  	}
  
@@ -87,7 +87,7 @@ Subject: [PATCH 1002/1033] wifi: mt76: mt7915: air monitor support
  struct mt7915_phy {
  	struct mt76_phy *mt76;
  	struct mt7915_dev *dev;
-@@ -271,6 +300,8 @@ struct mt7915_phy {
+@@ -272,6 +301,8 @@ struct mt7915_phy {
  		u32 interval;
  		u32 last_record;
  	} csi;
@@ -96,7 +96,7 @@ Subject: [PATCH 1002/1033] wifi: mt76: mt7915: air monitor support
  #endif
  };
  
-@@ -712,6 +743,9 @@ int mt7915_mmio_wed_init(struct mt7915_d
+@@ -714,6 +745,9 @@ int mt7915_mmio_wed_init(struct mt7915_d
  void mt7915_vendor_register(struct mt7915_phy *phy);
  int mt7915_mcu_set_csi(struct mt7915_phy *phy, u8 mode,
  			u8 cfg, u8 v1, u32 v2, u8 *mac_addr);

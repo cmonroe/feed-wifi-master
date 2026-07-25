@@ -34,7 +34,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  #define MT76_N_WCIDS 1088
-@@ -776,25 +778,19 @@ struct mt76_mmio {
+@@ -777,25 +779,19 @@ struct mt76_mmio {
  	int npu_type;
  };
  
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 flag;
  	u8 enc_flags;
  	u8 encoding:3, bw:4;
-@@ -809,14 +805,13 @@ struct mt76_rx_status {
+@@ -810,14 +806,13 @@ struct mt76_rx_status {
  			u8 gi:2;
  		} eht;
  	};
@@ -332,7 +332,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -323,6 +323,7 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
+@@ -327,6 +327,7 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
  	int idx;
  	u8 hw_aggr = false;
  	struct mt7996_sta *msta = NULL;
@@ -340,7 +340,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	hw_aggr = status->aggr;
  	memset(status, 0, sizeof(*status));
-@@ -351,8 +352,6 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
+@@ -361,8 +362,6 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
  	status->wcid = mt7996_rx_get_wcid(dev, idx, band_idx);
  
  	if (status->wcid) {
@@ -349,7 +349,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		msta_link = container_of(status->wcid, struct mt7996_sta_link,
  					 wcid);
  		msta = msta_link->sta;
-@@ -472,12 +471,35 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
+@@ -482,12 +481,35 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
  
  		v3 = le32_to_cpu(rxv[3]);
  
@@ -388,7 +388,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rxd += 24;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5815,6 +5815,7 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5886,6 +5886,7 @@ int mt7996_mcu_get_per_sta_info(struct m
  				msta_link->chain_signal_wf4 = to_rssi(MT_PRXV_RCPI0,
  								      rssi->rcpi_wf4);
  				msta_link->chain_ack_signal[4] = msta_link->chain_signal_wf4;

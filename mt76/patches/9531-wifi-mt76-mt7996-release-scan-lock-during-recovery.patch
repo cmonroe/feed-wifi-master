@@ -15,7 +15,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2371,8 +2371,20 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2445,8 +2445,20 @@ void mt7996_mac_reset_work(struct work_s
  		return;
  	}
  
@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		 wiphy_name(hw->wiphy));
 --- a/scan.c
 +++ b/scan.c
-@@ -25,7 +25,7 @@ static void mt76_scan_complete(struct mt
+@@ -32,7 +32,7 @@ static void mt76_scan_complete(struct mt
  	}
  	mt76_put_vif_phy_link(phy, dev->scan.vif, dev->scan.mlink);
  	memset(&dev->scan, 0, sizeof(dev->scan));

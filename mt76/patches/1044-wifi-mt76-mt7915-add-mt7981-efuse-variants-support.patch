@@ -48,15 +48,15 @@ Subject: [PATCH 56/76] wifi: mt76: mt7915 add mt7981 efuse variants support
  
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -374,6 +374,7 @@ struct mt7915_dev {
- 
+@@ -376,6 +376,7 @@ struct mt7915_dev {
  	u32 hw_pattern;
+ 	u32 ple1_sts;
  
 +	bool limited_wtbl_size;
  	bool dbdc_support;
  	bool flash_mode;
  	bool bin_file_mode;
-@@ -664,7 +665,11 @@ void mt7915_mcu_exit(struct mt7915_dev *
+@@ -666,7 +667,11 @@ void mt7915_mcu_exit(struct mt7915_dev *
  
  static inline u16 mt7915_wtbl_size(struct mt7915_dev *dev)
  {
