@@ -12,7 +12,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/usr/share/ucode/wifi/ap.uc
 +++ b/src/usr/share/ucode/wifi/ap.uc
-@@ -125,6 +125,8 @@ function iface_auth_type(config, band) {
+@@ -133,6 +133,8 @@ function iface_auth_type(config, band) {
  	switch(config.auth_type) {
  	case 'none':
  	case 'owe':

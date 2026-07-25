@@ -11,7 +11,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/usr/share/hostap/wifi-detect.uc
 +++ b/src/usr/share/hostap/wifi-detect.uc
-@@ -157,7 +157,9 @@ function wiphy_detect() {
+@@ -164,7 +164,9 @@ function wiphy_detect() {
  				eht_phy_cap |= ift.eht_cap_phy[0];
  			}
  

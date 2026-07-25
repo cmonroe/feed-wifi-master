@@ -2,12 +2,17 @@ From: Chad Monroe <chad@monroe.io>
 Date: Wed, 25 Feb 2026 19:07:10 -0800
 Subject: [PATCH] wifi-scripts: disable background radar in AP+STA mode
 
-In AP+STA mode the AP must follow the STA's channel. Background radar
-CAC can trigger a channel switch to a DFS-cleared channel that the STA
-can't follow, causing tear down of colocated VAPs.
+When an AP is colocated with a supplicant interface the AP must follow
+that interface's channel. Background radar CAC can trigger a channel
+switch to a DFS-cleared channel the supplicant can't follow, causing
+tear down of colocated VAPs.
 
-Detect a STA interface in hostapd.setup() and skip enable_background_radar
-in the device config generator (usr/share/ucode/wifi/hostapd.uc).
+The wireless handler already flags this case: mac80211.sh setup() sets
+data.channel_follow for sta, mesh and adhoc supplicant interfaces alike,
+which is the same condition hostapd uses for channel_follow and the same
+one that drives ap_start_disabled. Carry it into the device config as
+has_supplicant and skip enable_background_radar on it in the device
+config generator (usr/share/ucode/wifi/hostapd.uc).
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
@@ -18,17 +23,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* ACS / Radar*/
 -	if (!phy_features.radar_background || config.band != '5g')
-+	if (!phy_features.radar_background || config.band != '5g' || config.has_sta)
++	if (!phy_features.radar_background || config.band != '5g' || config.has_supplicant)
  		delete config.enable_background_radar;
  	else
  		set_default(config, 'enable_background_radar', false);
-@@ -591,6 +591,10 @@ export function setup(data) {
+@@ -591,6 +591,8 @@ export function setup(data) {
  
  	data.config.phy = data.phy;
  
-+	for (let k, interface in data.interfaces)
-+		if (interface.config.mode == 'sta')
-+			data.config.has_sta = true;
++	data.config.has_supplicant = !!data.channel_follow;
 +
  	generate(data.config);
  

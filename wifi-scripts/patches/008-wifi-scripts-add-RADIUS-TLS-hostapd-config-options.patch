@@ -9,13 +9,17 @@ auth_server_private_key and auth_server_private_key_passwd options in the
 wifi-iface schema and emit them per RADIUS server from
 iface_authentication_server() in usr/share/ucode/wifi/ap.uc.
 
+auth_server_type is constrained to the two literals hostapd accepts, UDP
+and TLS; any other value makes hostapd reject the entire BSS config, so
+the enum turns that into an early validation error instead.
+
 Fixes: SDG-2276
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/usr/share/schema/wireless.wifi-iface.json
 +++ b/src/usr/share/schema/wireless.wifi-iface.json
-@@ -153,15 +153,35 @@
+@@ -153,15 +153,36 @@
  				"type": "string"
  			}
  		},
@@ -45,15 +49,16 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			"type": "string"
  		},
 +		"auth_server_type": {
-+			"description": "RADIUS server transport type (e.g. radsec for RADIUS over TLS)",
-+			"type": "string"
++			"description": "RADIUS server transport type, TLS selects RADIUS over TLS",
++			"type": "string",
++			"enum": [ "UDP", "TLS" ]
 +		},
  		"basic_rate": {
  			"type": "array"
  		},
 --- a/src/usr/share/ucode/wifi/ap.uc
 +++ b/src/usr/share/ucode/wifi/ap.uc
-@@ -66,7 +66,11 @@ function iface_setup(config) {
+@@ -74,7 +74,11 @@ function iface_setup(config, phy, num_gl
  function iface_authentication_server(config) {
  	for (let server in config.auth_server_addr) {
  		append('auth_server_addr', server);
@@ -65,4 +70,4 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		]);
  	}
  
- 	append_vars(config, [ 'radius_auth_req_attr' ]);
+ 	append_list(config, [ 'radius_auth_req_attr' ]);

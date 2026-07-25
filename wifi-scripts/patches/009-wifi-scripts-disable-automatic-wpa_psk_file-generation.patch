@@ -15,7 +15,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/usr/share/ucode/wifi/ap.uc
 +++ b/src/usr/share/ucode/wifi/ap.uc
-@@ -165,10 +165,10 @@ function iface_auth_type(config, band) {
+@@ -173,10 +173,10 @@ function iface_auth_type(config, band) {
  			 netifd.setup_failed('INVALID_WPA_PSK');
  		}
  
@@ -30,7 +30,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		if (config.auth_type in [ 'sae', 'psk-sae', 'psk-sae-compat' ]) {
  			set_default(config, 'sae_password_file', `/var/run/hostapd-${config.ifname}.sae`);
-@@ -212,7 +212,7 @@ function iface_auth_type(config, band) {
+@@ -220,7 +220,7 @@ function iface_auth_type(config, band) {
  	append_vars(config, [
  		'sae_require_mfp', 'sae_password_file', 'sae_pwe', 'sae_groups', 'sae_track_password', 'time_advertisement', 'time_zone',
  		'wpa_group_rekey', 'wpa_ptk_rekey', 'wpa_gmk_rekey', 'wpa_strict_rekey',
@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		'eapol_version', 'dynamic_vlan', 'radius_request_cui', 'eap_reauth_period',
  		'radius_das_client', 'radius_das_port', 'owe_groups', 'owe_ptk_workaround', 'own_ip_addr', 'dynamic_own_ip_addr',
  		'wpa_disable_eapol_key_retries', 'auth_algs', 'wpa', 'wpa_pairwise',
-@@ -363,7 +363,8 @@ function iface_wpa_stations(config, stas
+@@ -371,7 +371,8 @@ function iface_wpa_stations(config, stas
  		}
  	file.close();
  

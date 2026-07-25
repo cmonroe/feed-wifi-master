@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  const DEFAULT_RETRY = 3;
  const DEFAULT_SCRIPT_TIMEOUT = 30 * 1000;
-@@ -528,6 +529,18 @@ function notify(req)
+@@ -547,6 +548,18 @@ function notify(req)
  		else
  			this.retry = DEFAULT_RETRY;
  		return 0;
@@ -43,7 +43,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -619,6 +619,7 @@ export function setup(data) {
+@@ -623,6 +623,7 @@ export function setup(data) {
  	let msg = {
  		phy: data.phy,
  		radio: data.config.radio,
