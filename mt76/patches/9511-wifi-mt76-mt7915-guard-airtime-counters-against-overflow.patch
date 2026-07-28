@@ -140,7 +140,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
  		default:
  			break;
-@@ -3322,6 +3345,8 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3325,6 +3348,8 @@ int mt7915_mcu_get_chan_mib_info(struct
  	struct sk_buff *skb;
  	static const u32 *offs;
  	int i, ret, len, offs_cc;
@@ -149,7 +149,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 cc_tx;
  
  	/* strict order */
-@@ -3372,11 +3397,18 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3375,11 +3400,18 @@ int mt7915_mcu_get_chan_mib_info(struct
  	if (chan_switch)
  		goto out;
  
@@ -223,7 +223,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -880,10 +880,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -929,10 +929,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
  				tx_airtime = le32_to_cpu(res->airtime[i].tx[lmac_ac]);
  				rx_airtime = le32_to_cpu(res->airtime[i].rx[lmac_ac]);
  

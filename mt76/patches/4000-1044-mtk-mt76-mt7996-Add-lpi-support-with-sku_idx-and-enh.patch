@@ -109,7 +109,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5903,7 +5903,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -5933,7 +5933,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -118,7 +118,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -6217,6 +6217,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6247,6 +6247,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -141,7 +141,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static s8 mt7996_get_power_bound(struct mt7996_phy *phy, s8 txpower)
  {
         struct mt76_phy *mphy = phy->mt76;
-@@ -6228,7 +6244,8 @@ static s8 mt7996_get_power_bound(struct
+@@ -6258,7 +6274,8 @@ static s8 mt7996_get_power_bound(struct
         return txpower;
  }
  
@@ -151,7 +151,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
  #define TX_POWER_LIMIT_TABLE_PATH	1
-@@ -6253,7 +6270,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6283,7 +6300,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
@@ -162,7 +162,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6276,7 +6295,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6306,7 +6325,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	}
  
  	skb_put_data(skb, &req, sizeof(req));
@@ -201,7 +201,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb_put_data(skb, &la->mcs[0], 8); /* HT20 */
  	skb_put_data(skb, &la->mcs[1], 9); /* HT40 */
  
-@@ -6315,8 +6364,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6345,8 +6394,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la->path.cck, 5);
@@ -245,7 +245,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -6333,6 +6415,31 @@ out:
+@@ -6363,6 +6445,31 @@ out:
  	return ret;
  }
  

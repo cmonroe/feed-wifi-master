@@ -31,7 +31,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TXPOWER = 0x2b,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1779,6 +1779,7 @@ int mt7996_register_device(struct mt7996
+@@ -1780,6 +1780,7 @@ int mt7996_register_device(struct mt7996
  	dev->mt76.phy.priv = &dev->phy;
  	INIT_WORK(&dev->rc_work, mt7996_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7996_mac_work);
@@ -41,7 +41,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2344,6 +2344,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2347,6 +2347,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  	cancel_work_sync(&dev->wed_rro.work);
  	mt7996_for_each_phy(dev, phy)
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
@@ -88,7 +88,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6230,3 +6230,116 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6260,3 +6260,116 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }

@@ -25,7 +25,7 @@ Subject: [PATCH 1002/1033] wifi: mt76: mt7915: air monitor support
  };
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -511,6 +511,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+@@ -512,6 +512,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  			seq_ctrl = le16_to_cpu(hdr->seq_ctrl);
  			qos_ctl = *ieee80211_get_qos_ctl(hdr);
  		}

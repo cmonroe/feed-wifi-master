@@ -14,16 +14,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -793,12 +793,20 @@ static void
+@@ -802,6 +802,7 @@ static void
  mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
  	struct mt7996_mcu_all_sta_info_event *res;
 +	u32 elapsed_us = 0;
+ 	u32 elem_size;
+ 	u16 sta_num;
  	u16 i;
- 
- 	skb_pull(skb, sizeof(struct mt7996_mcu_rxd));
- 
- 	res = (struct mt7996_mcu_all_sta_info_event *)skb->data;
+@@ -848,6 +849,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ 	if (sta_num > (skb->len - sizeof(*res)) / elem_size)
+ 		sta_num = (skb->len - sizeof(*res)) / elem_size;
  
 +	if (le16_to_cpu(res->tag) == UNI_ALL_STA_TXRX_AIR_TIME) {
 +		unsigned long now = jiffies;
@@ -33,9 +34,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	}
 +
  	rcu_read_lock();
- 	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
+ 	for (i = 0; i < sta_num; i++) {
  		u8 ac;
-@@ -807,7 +815,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -856,7 +864,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		struct mt76_wcid *wcid;
  		struct mt76_phy *mphy;
  		struct ieee80211_sta *sta;
@@ -44,7 +45,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		    tx_packets, rx_packets;
  
  		switch (le16_to_cpu(res->tag)) {
-@@ -877,13 +885,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -926,13 +934,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
  
  			for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac) {
  				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
@@ -67,7 +68,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			}
  			break;
  		case UNI_ALL_STA_RX_MPDU_COUNT:
-@@ -5207,6 +5219,8 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5237,6 +5249,8 @@ int mt7996_mcu_get_chan_mib_info(struct
  	struct mt7996_dev *dev = phy->dev;
  	struct mt7996_mcu_mib *res;
  	struct sk_buff *skb;
@@ -76,7 +77,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i, ret;
  
  	for (i = 0; i < IDX_NUM; i++) {
-@@ -5228,16 +5242,22 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5258,16 +5272,22 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)

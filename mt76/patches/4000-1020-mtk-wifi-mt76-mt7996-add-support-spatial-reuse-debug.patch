@@ -60,7 +60,7 @@ https://wiki.mediatek.inc/display/APKB/mt76+Phy+feature+debug+Cheetsheet#mt76Phy
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1124,6 +1124,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -1185,6 +1185,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_PS_SYNC:
  		mt7996_mcu_rx_ps_sync(dev, skb);
  		break;

@@ -319,8 +319,8 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
 +	mt7915_coredump_fw_stack(dev, type, dump, exception);
  
  	/* gather memory content */
- 	dump_mem = (struct mt7915_coredump_mem *)(buf + sofar);
-@@ -356,17 +410,19 @@ static struct mt7915_coredump *mt7915_co
+ 	if (coredump_memdump && crash_data->memdump_buf_len) {
+@@ -357,17 +411,19 @@ static struct mt7915_coredump *mt7915_co
  	return dump;
  }
  
@@ -342,7 +342,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  
  	return 0;
  }
-@@ -374,23 +430,26 @@ int mt7915_coredump_submit(struct mt7915
+@@ -375,23 +431,26 @@ int mt7915_coredump_submit(struct mt7915
  int mt7915_coredump_register(struct mt7915_dev *dev)
  {
  	struct mt7915_crash_data *crash_data;
@@ -384,7 +384,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  		}
  	}
  
-@@ -399,13 +458,17 @@ int mt7915_coredump_register(struct mt79
+@@ -400,13 +459,17 @@ int mt7915_coredump_register(struct mt79
  
  void mt7915_coredump_unregister(struct mt7915_dev *dev)
  {
@@ -509,7 +509,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  }
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1588,28 +1588,31 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1589,28 +1589,31 @@ void mt7915_mac_reset_work(struct work_s
  }
  
  /* firmware coredump */
@@ -547,7 +547,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	if (!mem_region || !crash_data->memdump_buf_len) {
  		mutex_unlock(&dev->dump_mutex);
  		goto skip_memdump;
-@@ -1619,6 +1622,9 @@ void mt7915_mac_dump_work(struct work_st
+@@ -1620,6 +1623,9 @@ void mt7915_mac_dump_work(struct work_st
  	buf_len = crash_data->memdump_buf_len;
  
  	/* dumping memory content... */
@@ -557,7 +557,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  	memset(buf, 0, buf_len);
  	for (i = 0; i < num; i++) {
  		if (mem_region->len > buf_len) {
-@@ -1636,6 +1642,7 @@ void mt7915_mac_dump_work(struct work_st
+@@ -1637,6 +1643,7 @@ void mt7915_mac_dump_work(struct work_st
  		mt7915_memcpy_fromio(dev, buf, mem_region->start,
  				     mem_region->len);
  
@@ -565,7 +565,7 @@ Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
  		hdr->start = mem_region->start;
  		hdr->len = mem_region->len;
  
-@@ -1652,8 +1659,18 @@ void mt7915_mac_dump_work(struct work_st
+@@ -1653,8 +1660,18 @@ void mt7915_mac_dump_work(struct work_st
  	mutex_unlock(&dev->dump_mutex);
  
  skip_memdump:

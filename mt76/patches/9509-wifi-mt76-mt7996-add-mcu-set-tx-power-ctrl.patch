@@ -1,6 +1,6 @@
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6680,6 +6680,40 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -6710,6 +6710,40 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  				 &req, sizeof(req), false);
  }
  

@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2276,8 +2276,10 @@ mt7996_mac_restart(struct mt7996_dev *de
+@@ -2279,8 +2279,10 @@ mt7996_mac_restart(struct mt7996_dev *de
  		goto out;
  
  	mt7996_mac_init(dev);

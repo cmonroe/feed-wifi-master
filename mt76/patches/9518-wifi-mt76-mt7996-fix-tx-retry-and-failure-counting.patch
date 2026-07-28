@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			/* age the stale-token PLE flush from genuine TX
  			 * activity only, not from every token free
  			 */
-@@ -2961,7 +2959,6 @@ void mt7996_mac_work(struct work_struct
+@@ -2964,7 +2962,6 @@ void mt7996_mac_work(struct work_struct
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_MSDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_RX_MPDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TX_STAT);
@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				break;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -915,16 +915,6 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -964,16 +964,6 @@ mt7996_mcu_rx_all_sta_info_event(struct
  				break;
  
  			wcid->stats.tx_mpdus += le32_to_cpu(res->tx_mpdu_stat[i].total);

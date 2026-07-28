@@ -139,7 +139,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -609,11 +609,6 @@ mt7996_mac_init_band(struct mt7996_dev *
+@@ -610,11 +610,6 @@ mt7996_mac_init_band(struct mt7996_dev *
  	      FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_PARAM, 0x3);
  	mt76_rmw(dev, MT_WTBLOFF_RSCR(band), mask, set);
  
@@ -494,7 +494,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -2984,34 +2785,81 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2987,34 +2788,81 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -704,7 +704,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	.sta_set_airtime_weight = mt7996_sta_set_airtime_weight,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -614,42 +614,167 @@ out:
+@@ -623,42 +623,167 @@ out:
  }
  
  static int
@@ -774,13 +774,13 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
 +
 +		tmp_rate.flags |= RATE_INFO_FLAGS_EHT_MCS;
 +		tmp_rate.eht_gi = gi;
- 		break;
++		break;
 +	case MT_PHY_TYPE_UNKNOWN:
 +		return 0;
- 	default:
- 		return -EINVAL;
- 	}
- 
++	default:
++		return -EINVAL;
++	}
++
 +	switch (bw) {
 +	case IEEE80211_STA_RX_BW_20:
 +		tmp_rate.bw = RATE_INFO_BW_20;
@@ -796,11 +796,11 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
 +		break;
 +	case IEEE80211_STA_RX_BW_320:
 +		tmp_rate.bw = RATE_INFO_BW_320;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
+ 		break;
+ 	default:
+ 		return -EINVAL;
+ 	}
+ 
 +	if (mode == MT_PHY_TYPE_HE_EXT_SU && mcs & MT_PRXV_TX_ER_SU_106T) {
 +		tmp_rate.bw = RATE_INFO_BW_HE_RU;
 +		tmp_rate.he_ru_alloc = NL80211_RATE_INFO_HE_RU_ALLOC_106;
@@ -882,9 +882,37 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  static void
  mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
-@@ -662,8 +787,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -682,11 +807,26 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ 		elem_size = sizeof(res->rate[0]);
+ 		break;
+ 	case UNI_ALL_STA_TXRX_ADM_STAT:
+-		elem_size = sizeof(res->adm_stat[0]);
++		if (le16_to_cpu(res->len) == UNI_EVENT_SIZE_ADM_STAT_V1)
++			elem_size = sizeof(res->adm_stat_v1[0]);
++		else
++			elem_size = sizeof(res->adm_stat_v2[0]);
+ 		break;
+ 	case UNI_ALL_STA_TXRX_MSDU_COUNT:
+ 		elem_size = sizeof(res->msdu_cnt[0]);
+ 		break;
++	case UNI_ALL_STA_TXRX_AIR_TIME:
++		elem_size = sizeof(res->airtime[0]);
++		break;
++	case UNI_ALL_STA_RX_MPDU_COUNT:
++		elem_size = sizeof(res->rx_mpdu_cnt[0]);
++		break;
++	case UNI_ALL_STA_TX_STAT:
++		elem_size = sizeof(res->tx_mpdu_stat[0]);
++		break;
++	case UNI_ALL_STA_DATA_TX_RETRY_COUNT:
++		elem_size = sizeof(res->tx_mpdu_retry_cnt[0]);
++		break;
+ 	default:
+ 		return;
+ 	}
+@@ -696,8 +836,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
  
- 	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
+ 	for (i = 0; i < sta_num; i++) {
  		u8 ac;
 +		bool v1;
  		u16 wlan_idx;
@@ -896,7 +924,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -673,21 +803,39 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -707,21 +852,39 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -944,7 +972,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  			}
  			break;
  		case UNI_ALL_STA_TXRX_MSDU_COUNT:
-@@ -697,10 +845,59 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -731,10 +894,59 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -1008,7 +1036,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  			break;
  		default:
  			break;
-@@ -5584,9 +5781,126 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5599,9 +5811,126 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -1137,7 +1165,7 @@ Signed-off-by: Rex Lu <rex.lu@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -5597,7 +5911,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -5612,7 +5941,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  

@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -368,10 +368,8 @@ void mt7915_init_txpower(struct mt7915_p
+@@ -373,10 +373,8 @@ void mt7915_init_txpower(struct mt7915_p
  		__mt7915_init_txpower(phy, &phy->mt76->sband_2g.sband);
  	if (phy->mt76->cap.has_5ghz)
  		__mt7915_init_txpower(phy, &phy->mt76->sband_5g.sband);
@@ -85,7 +85,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		     0 : mt76_connac_spe_idx(mphy->antenna_mask);
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &msta->wcid,
-@@ -3565,7 +3565,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3568,7 +3568,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.cck, len[SKU_CCK]);
  
@@ -94,7 +94,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	    !mt7915_get_psd_country(dev->mt76.alpha2)) {
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
-@@ -3617,7 +3617,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3620,7 +3620,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
  

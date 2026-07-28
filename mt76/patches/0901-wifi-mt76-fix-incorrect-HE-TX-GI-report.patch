@@ -37,7 +37,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	MT_PHY_TYPE_HE_TB,
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -757,6 +757,8 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -762,6 +762,8 @@ mt7915_register_ext_phy(struct mt7915_de
  	struct mt76_phy *mphy = phy->mt76;
  	int ret;
  
@@ -46,7 +46,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	INIT_DELAYED_WORK(&mphy->mac_work, mt7915_mac_work);
  
  	mt7915_eeprom_parse_hw_cap(dev, phy);
-@@ -1293,6 +1295,8 @@ int mt7915_register_device(struct mt7915
+@@ -1298,6 +1300,8 @@ int mt7915_register_device(struct mt7915
  	dev->phy.dev = dev;
  	dev->phy.mt76 = &dev->mt76.phy;
  	dev->mt76.phy.priv = &dev->phy;
@@ -92,7 +92,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  		/* get signal strength of resp frames (CTS/BA/ACK) */
  		addr = mt7915_mac_wtbl_lmac_addr(dev, idx, 30);
  		val = mt76_rr(dev, addr);
-@@ -888,6 +868,7 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -889,6 +869,7 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  		info = le32_to_cpu(*cur_info);
  		if (info & MT_TX_FREE_PAIR) {
  			struct mt7915_sta *msta;
@@ -100,7 +100,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  			u16 idx;
  
  			idx = FIELD_GET(MT_TX_FREE_WLAN_ID, info);
-@@ -898,6 +879,15 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -899,6 +880,15 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  
  			msta = container_of(wcid, struct mt7915_sta, wcid);
  			mt76_wcid_add_poll(&dev->mt76, &msta->wcid);
@@ -116,7 +116,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  			continue;
  		}
  
-@@ -967,6 +957,7 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
+@@ -968,6 +958,7 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
  static void mt7915_mac_add_txs(struct mt7915_dev *dev, void *data)
  {
  	struct mt7915_sta *msta = NULL;
@@ -124,7 +124,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct mt76_wcid *wcid;
  	__le32 *txs_data = data;
  	u16 wcidx;
-@@ -1005,6 +996,11 @@ static void mt7915_mac_add_txs(struct mt
+@@ -1006,6 +997,11 @@ static void mt7915_mac_add_txs(struct mt
  
  	mt76_wcid_add_poll(&dev->mt76, &msta->wcid);
  
@@ -136,7 +136,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -1957,6 +1953,27 @@ static void mt7915_mac_severe_check(stru
+@@ -1958,6 +1954,27 @@ static void mt7915_mac_severe_check(stru
  	dev->ple1_sts = ple_err;
  }
  
@@ -164,7 +164,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7915_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev, rc_work);
-@@ -2015,6 +2032,11 @@ void mt7915_mac_work(struct work_struct
+@@ -2016,6 +2033,11 @@ void mt7915_mac_work(struct work_struct
  			mt7915_mcu_muru_debug_get(phy);
  	}
  
@@ -208,7 +208,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void mt7915_tx(struct ieee80211_hw *hw,
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4229,6 +4229,167 @@ int mt7915_mcu_set_protection(struct mt7
+@@ -4242,6 +4242,167 @@ int mt7915_mcu_set_protection(struct mt7
  				     MCU_EXT_CMD(BSS_INFO_UPDATE), true);
  }
  

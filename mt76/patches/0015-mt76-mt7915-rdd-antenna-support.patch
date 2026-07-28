@@ -8,7 +8,7 @@
  #include "mt7915.h"
  #include "mac.h"
  #include "mcu.h"
-@@ -897,6 +898,11 @@ mt7915_init_hardware(struct mt7915_dev *
+@@ -902,6 +903,11 @@ mt7915_init_hardware(struct mt7915_dev *
  
  	INIT_WORK(&dev->init_work, mt7915_init_work);
  
@@ -22,7 +22,7 @@
  		return ret;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -2044,6 +2044,27 @@ static void mt7915_dfs_stop_radar_detect
+@@ -2045,6 +2045,27 @@ static void mt7915_dfs_stop_radar_detect
  	mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_STOP, rdd_idx, 0, 0);
  }
  
@@ -50,7 +50,7 @@
  static int mt7915_dfs_start_rdd(struct mt7915_dev *dev, int rdd_idx)
  {
  	int err, region;
-@@ -2065,12 +2086,18 @@ static int mt7915_dfs_start_rdd(struct m
+@@ -2066,12 +2087,18 @@ static int mt7915_dfs_start_rdd(struct m
  	if (err < 0)
  		return err;
  
@@ -69,7 +69,7 @@
  
  	return mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_DET_MODE, rdd_idx, 0, 1);
  }
-@@ -2177,13 +2204,16 @@ stop:
+@@ -2178,13 +2205,16 @@ stop:
  	if (err < 0)
  		return err;
  

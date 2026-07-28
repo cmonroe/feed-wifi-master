@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2931,6 +2931,10 @@ int mt7996_mcu_set_vow_drr_ctrl(struct m
+@@ -2950,6 +2950,10 @@ int mt7996_mcu_set_vow_drr_ctrl(struct m
  		.omac_idx = mvif ? mvif->omac_idx : 0,
  	};
  
@@ -31,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	switch (id) {
  	case VOW_DRR_CTRL_STA_ALL:
  		val |= FIELD_PREP(VOW_DRR_STA_BSS_GRP_MASK,
-@@ -3023,6 +3027,9 @@ int mt7996_mcu_set_vow_feature_ctrl(stru
+@@ -3042,6 +3046,9 @@ int mt7996_mcu_set_vow_feature_ctrl(stru
  		.bwc_enable_per_grp = cpu_to_le16(0xffff),
  	};
  
