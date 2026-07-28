@@ -372,7 +372,7 @@ Squash of the following MediaTek commits:
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -2421,7 +2426,10 @@ static int mt7915_red_set_watermark(stru
+@@ -2436,7 +2441,10 @@ static int mt7915_red_set_watermark(stru
  				 sizeof(req), false);
  }
  
@@ -384,7 +384,7 @@ Squash of the following MediaTek commits:
  {
  #define RED_DISABLE		0
  #define RED_BY_WA_ENABLE	2
-@@ -3678,7 +3686,9 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3696,7 +3704,9 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	};
  	int ret;
  
@@ -395,7 +395,7 @@ Squash of the following MediaTek commits:
  	req.format_id = TX_POWER_LIMIT_ENABLE;
  
  	ret = mt76_mcu_send_msg(&dev->mt76,
-@@ -3687,7 +3697,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3705,7 +3715,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	if (ret)
  		return ret;
  
@@ -404,7 +404,7 @@ Squash of the following MediaTek commits:
  	req.format_id = TX_POWER_LIMIT_PATH_ENABLE;
  
  	return mt76_mcu_send_msg(&dev->mt76,
-@@ -3884,8 +3894,7 @@ int mt7915_mcu_set_txbf(struct mt7915_de
+@@ -3902,8 +3912,7 @@ int mt7915_mcu_set_txbf(struct mt7915_de
  				 sizeof(req), true);
  }
  
@@ -414,7 +414,7 @@ Squash of the following MediaTek commits:
  {
  	struct mt7915_dev *dev = phy->dev;
  	struct mt7915_mcu_sr_ctrl req = {
-@@ -4541,6 +4550,23 @@ out:
+@@ -4559,6 +4568,23 @@ out:
  	return ret;
  }
  
@@ -438,7 +438,7 @@ Squash of the following MediaTek commits:
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-@@ -4569,3 +4595,37 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+@@ -4587,3 +4613,37 @@ int mt7915_mcu_rf_regval(struct mt7915_d
  
  	return 0;
  }
@@ -499,7 +499,7 @@ Squash of the following MediaTek commits:
  #define MT7915_MAX_INTERFACES		19
  #define MT7915_WTBL_SIZE		288
  #define MT7916_WTBL_SIZE		544
-@@ -260,6 +261,14 @@ struct mt7915_phy {
+@@ -262,6 +263,14 @@ struct mt7915_phy {
  #endif
  };
  
@@ -514,7 +514,7 @@ Squash of the following MediaTek commits:
  struct mt7915_dev {
  	union { /* must be first */
  		struct mt76_dev mt76;
-@@ -346,6 +355,33 @@ struct mt7915_dev {
+@@ -348,6 +357,33 @@ struct mt7915_dev {
  	void __iomem *dcm;
  	void __iomem *sku;
  
@@ -548,7 +548,7 @@ Squash of the following MediaTek commits:
  	u32 adie_type;
  };
  
-@@ -660,4 +696,27 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -662,4 +698,27 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  

@@ -188,7 +188,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	.get_stats = mt7996_get_stats,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -554,6 +554,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -566,6 +566,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
  			__func__, r->radar_type_idx, r->periodic_pulse_num, r->long_pulse_num, r->hw_pulse_num);
  
  	if (r->rdd_idx == MT_RDD_IDX_BACKGROUND) {
@@ -198,7 +198,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  						GFP_ATOMIC);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -600,6 +600,8 @@ struct mt7996_dev {
+@@ -602,6 +602,8 @@ struct mt7996_dev {
  
  	dma_addr_t npu_txd_addr[2 * MT7996_NPU_TXD_SIZE];
  

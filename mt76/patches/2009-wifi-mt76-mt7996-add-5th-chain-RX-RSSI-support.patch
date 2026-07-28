@@ -390,7 +390,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rxd += 24;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5916,6 +5916,7 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5938,6 +5938,7 @@ int mt7996_mcu_get_per_sta_info(struct m
  				msta_link->chain_signal_wf4 = to_rssi(MT_PRXV_RCPI0,
  								      rssi->rcpi_wf4);
  				msta_link->chain_ack_signal[4] = msta_link->chain_signal_wf4;
@@ -400,7 +400,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			msta_link->ack_signal = mt76_rx_signal(rx_mask,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -462,6 +462,7 @@ struct mt7996_phy {
+@@ -464,6 +464,7 @@ struct mt7996_phy {
  	u16 orig_antenna_mask;
  
  	bool has_aux_rx;

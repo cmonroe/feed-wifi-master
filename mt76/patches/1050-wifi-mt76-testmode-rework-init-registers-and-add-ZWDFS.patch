@@ -987,7 +987,7 @@ Squash of the following MediaTek commits:
  #endif
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2785,6 +2785,7 @@ mt7915_mcu_background_chain_ctrl(struct
+@@ -2800,6 +2800,7 @@ mt7915_mcu_background_chain_ctrl(struct
  		req.monitor_chan = chandef->chan->hw_value;
  		req.monitor_central_chan =
  			ieee80211_frequency_to_channel(chandef->center_freq1);
@@ -995,7 +995,7 @@ Squash of the following MediaTek commits:
  		req.band_idx = phy->mt76->band_idx;
  		req.scan_mode = 2;
  		break;
-@@ -4615,6 +4616,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4633,6 +4634,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  }
  #endif
  
@@ -1069,7 +1069,7 @@ Squash of the following MediaTek commits:
  	static const u8 ch_band[] = {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -238,6 +238,7 @@ struct mt7915_phy {
+@@ -240,6 +240,7 @@ struct mt7915_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -1077,7 +1077,7 @@ Squash of the following MediaTek commits:
  
  	bool sku_limit_en:1;
  	bool sku_path_en:1;
-@@ -709,6 +710,8 @@ void mt7915_vendor_register(struct mt791
+@@ -711,6 +712,8 @@ void mt7915_vendor_register(struct mt791
  
  int mt7915_mcu_set_edcca(struct mt7915_phy *phy, int mode, u8 *value, s8 compensation);
  int mt7915_mcu_get_edcca(struct mt7915_phy *phy, u8 mode, s8 *value);

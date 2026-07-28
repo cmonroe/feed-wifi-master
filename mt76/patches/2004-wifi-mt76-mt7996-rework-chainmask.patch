@@ -139,7 +139,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	mutex_unlock(&dev->mt76.mutex);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4333,7 +4333,7 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -4355,7 +4355,7 @@ int mt7996_mcu_set_chan_info(struct mt79
  		.center_ch = ieee80211_frequency_to_channel(freq1),
  		.bw = mt76_connac_chan_bw(chandef),
  		.tx_path_num = hweight16(phy->mt76->chainmask),
@@ -150,7 +150,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	};
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -480,8 +480,6 @@ struct mt7996_dev {
+@@ -482,8 +482,6 @@ struct mt7996_dev {
  	struct cfg80211_chan_def rdd2_chandef;
  	struct mt7996_phy *rdd2_phy;
  

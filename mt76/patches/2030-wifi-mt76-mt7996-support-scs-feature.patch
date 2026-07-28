@@ -40,10 +40,10 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2347,6 +2347,7 @@ mt7996_mac_full_reset(struct mt7996_dev
- 	cancel_work_sync(&dev->wed_rro.work);
- 	mt7996_for_each_phy(dev, phy)
+@@ -2350,6 +2350,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 		set_bit(MT76_RESET, &phy->mt76->state);
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
+ 	}
 +	cancel_delayed_work_sync(&dev->scs_work);
  
  	mt76_abort_scan(&dev->mt76);
@@ -89,7 +89,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6260,6 +6260,119 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6282,6 +6282,119 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  				 &req, sizeof(req), false);
  }
  
@@ -243,7 +243,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define WED_RRO_ADDR_SIGNATURE_MASK	GENMASK(31, 24)
  #define WED_RRO_ADDR_COUNT_MASK		GENMASK(14, 4)
  #define WED_RRO_ADDR_HEAD_HIGH_MASK	GENMASK(3, 0)
-@@ -471,6 +481,8 @@ struct mt7996_phy {
+@@ -473,6 +483,8 @@ struct mt7996_phy {
  
  	u8 pp_mode;
  	u16 punct_bitmap;
@@ -252,7 +252,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -506,6 +518,7 @@ struct mt7996_dev {
+@@ -508,6 +520,7 @@ struct mt7996_dev {
  	struct work_struct rc_work;
  	struct work_struct dump_work;
  	struct work_struct reset_work;
@@ -260,7 +260,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -1047,6 +1060,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+@@ -1049,6 +1062,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
  #endif
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);

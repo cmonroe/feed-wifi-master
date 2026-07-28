@@ -411,7 +411,7 @@ Squash of the following MediaTek commits:
  	if (ret)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -996,6 +996,15 @@ static inline bool mt7996_has_ext_eeprom
+@@ -998,6 +998,15 @@ static inline bool mt7996_has_ext_eeprom
  	return !is_mt7996(&dev->mt76);
  }
  
@@ -427,7 +427,7 @@ Squash of the following MediaTek commits:
  void mt7996_mac_init(struct mt7996_dev *dev);
  u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
  bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
-@@ -1076,6 +1085,21 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1078,6 +1087,21 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  

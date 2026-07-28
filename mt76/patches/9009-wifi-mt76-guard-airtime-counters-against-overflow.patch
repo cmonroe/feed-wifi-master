@@ -288,7 +288,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			}
  			break;
  		case UNI_ALL_STA_RX_MPDU_COUNT:
-@@ -5232,6 +5244,8 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5239,6 +5251,8 @@ int mt7996_mcu_get_chan_mib_info(struct
  	struct mt7996_dev *dev = phy->dev;
  	struct mt7996_mcu_mib *res;
  	struct sk_buff *skb;
@@ -297,7 +297,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i, ret;
  
  	for (i = 0; i < IDX_NUM; i++) {
-@@ -5253,16 +5267,22 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5260,16 +5274,22 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)
