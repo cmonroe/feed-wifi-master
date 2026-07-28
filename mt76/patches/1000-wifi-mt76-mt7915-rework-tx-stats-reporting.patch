@@ -128,7 +128,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  	struct mt76_wcid *wcid;
  	__le32 *txs_data = data;
  	u16 wcidx;
-@@ -1015,6 +1006,11 @@ static void mt7915_mac_add_txs(struct mt
+@@ -1014,6 +1005,11 @@ static void mt7915_mac_add_txs(struct mt
  
  	mt76_wcid_add_poll(&dev->mt76, &msta->wcid);
  
@@ -140,7 +140,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -1967,6 +1963,27 @@ static void mt7915_mac_severe_check(stru
+@@ -1966,6 +1962,27 @@ static void mt7915_mac_severe_check(stru
  	dev->ple1_sts = ple_err;
  }
  
@@ -168,7 +168,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  void mt7915_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7915_dev *dev = container_of(work, struct mt7915_dev, rc_work);
-@@ -2025,6 +2042,11 @@ void mt7915_mac_work(struct work_struct
+@@ -2024,6 +2041,11 @@ void mt7915_mac_work(struct work_struct
  			mt7915_mcu_muru_debug_get(phy);
  	}
  

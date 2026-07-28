@@ -6,20 +6,24 @@ The v3 tx_failed formula added retries to the failure flag, treating
 every successful retry as a failure.  Guard count-1 against unsigned
 underflow when hardware reports zero attempts.
 
-Remove the v0 TX_FREE path -- its COUNT field is a status code, not
-an attempt count; MT7915 uses PPDU TXS for these counters instead.
+On pre-v3 TX_FREE (MT7915), stop deriving retries from the COUNT
+field: it carries the tx latency (vendor TXDONE_TX_LATENCY_CNT), not
+an attempt count.  Retries come from PPDU TXS instead.  Keep the
+STAT field as the terminal drop flag (0: success, others: dropped)
+and count it into tx_failed, matching the v3 path.
 
-Remove the WED gate -- v3 chips need TX_FREE counting regardless of
-WED state.
+Remove the WED gate; TX_FREE counting is needed regardless of WED
+state.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7915/mac.c |   21 ++++++---------------
- 1 file changed, 6 insertions(+), 15 deletions(-)
+ mt7915/mac.c |   27 ++++++++++++---------------
+ mt7915/mac.h |    3 ++-
+ 2 files changed, 14 insertions(+), 16 deletions(-)
 
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -847,22 +847,13 @@ mt7915_mac_tx_free(struct mt7915_dev *de
+@@ -847,22 +847,19 @@ mt7915_mac_tx_free(struct mt7915_dev *de
  			continue;
  		}
  
@@ -45,6 +49,26 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +				wcid->stats.tx_retries += count - 1;
 +			wcid->stats.tx_failed +=
 +				!!FIELD_GET(MT_TX_FREE_STAT_V3, info);
++		} else if (wcid && !v3 && (info & MT_TX_FREE_MPDU_HEADER)) {
++			/* pre-v3 has no attempt count; retries come from
++			 * PPDU TXS in mt7915_mac_add_txs()
++			 */
++			wcid->stats.tx_failed +=
++				!!FIELD_GET(MT_TX_FREE_STAT, info);
  		}
  
  		if (v3 && (info & MT_TX_FREE_MPDU_HEADER_V3))
+--- a/mt7915/mac.h
++++ b/mt7915/mac.h
+@@ -8,9 +8,10 @@
+ 
+ #define MT_TX_FREE_VER			GENMASK(18, 16)
+ #define MT_TX_FREE_MSDU_CNT_V0		GENMASK(6, 0)
+-/* 0: success, others: dropped */
++/* pre-v3: tx latency, not an attempt count */
+ #define MT_TX_FREE_COUNT		GENMASK(12, 0)
+ #define MT_TX_FREE_COUNT_V3		GENMASK(27, 24)
++/* 0: success, others: dropped */
+ #define MT_TX_FREE_STAT			GENMASK(14, 13)
+ #define MT_TX_FREE_STAT_V3		GENMASK(29, 28)
+ #define MT_TX_FREE_MPDU_HEADER		BIT(15)

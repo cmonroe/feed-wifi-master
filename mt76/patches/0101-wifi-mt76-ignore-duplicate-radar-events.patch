@@ -70,7 +70,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -2154,6 +2154,8 @@ int mt7915_dfs_init_radar_detector(struc
+@@ -2153,6 +2153,8 @@ int mt7915_dfs_init_radar_detector(struc
  	enum mt76_dfs_state dfs_state, prev_state;
  	int err, rdd_idx = mt7915_get_rdd_idx(phy, false);
  

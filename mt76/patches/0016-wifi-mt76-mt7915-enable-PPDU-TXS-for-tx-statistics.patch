@@ -9,9 +9,13 @@ Enable PPDU TXS unconditionally, route TXS by format rather than PID,
 and assign MT_PACKET_ID_WED for all data frames so fill_txs() can
 gate rate updates to data-path TXS only.
 
-Move retry/failure accumulation out of shared fill_txs() into
-mt7915_mac_add_txs() with is_mt7915() guard -- MT7916/MT7981/MT7986
-obtain these from TX_FREE v3 instead.
+Move retry accumulation out of shared fill_txs() into
+mt7915_mac_add_txs() with is_mt7915() guard; MT7916/MT7981/MT7986
+obtain retries from TX_FREE v3 instead.  Do not accumulate DW6
+MPDU_FAIL_CNT into tx_failed: it counts MPDUs unacked within one
+PPDU attempt (each reappears as a retry in the next PPDU), not
+terminal drops.  Terminal drops are counted from the TX_FREE STAT
+field.
 
 Remove the jiffies-based TX status request throttling that was a
 workaround for the missing PPDU path.
@@ -23,11 +27,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt76_connac.h     |    2 +-
  mt76_connac_mac.c |   24 +++++++++++-------------
  mt7915/init.c     |    3 +--
- mt7915/mac.c      |   26 ++++++++++++--------------
+ mt7915/mac.c      |   25 +++++++++++--------------
  mt7915/main.c     |    1 -
  mt7915/mt7915.h   |    1 -
  tx.c              |    5 ++---
- 7 files changed, 27 insertions(+), 35 deletions(-)
+ 7 files changed, 26 insertions(+), 35 deletions(-)
 
 --- a/mt76_connac.h
 +++ b/mt76_connac.h
@@ -138,7 +142,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
  
-@@ -1006,10 +995,19 @@ static void mt7915_mac_add_txs(struct mt
+@@ -1006,10 +995,18 @@ static void mt7915_mac_add_txs(struct mt
  
  	msta = container_of(wcid, struct mt7915_sta, wcid);
  
@@ -146,14 +150,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -		mt76_connac2_mac_fill_txs(&dev->mt76, wcid, txs_data);
 -	else
 +	if (le32_get_bits(txs_data[0], MT_TXS0_TXS_FORMAT) == MT_TXS_PPDU_FMT) {
-+		if (is_mt7915(&dev->mt76)) {
-+			struct mt76_sta_stats *stats = &wcid->stats;
-+
-+			stats->tx_failed +=
-+				le32_get_bits(txs_data[6], MT_TXS6_MPDU_FAIL_CNT);
-+			stats->tx_retries +=
++		/* MT_TXS6_MPDU_FAIL_CNT counts MPDUs unacked in this PPDU
++		 * attempt, not terminal drops; tx_failed comes from the
++		 * TX_FREE STAT field instead.
++		 */
++		if (is_mt7915(&dev->mt76))
++			wcid->stats.tx_retries +=
 +				le32_get_bits(txs_data[7], MT_TXS7_MPDU_RETRY_CNT);
-+		}
 +		mt76_connac2_mac_fill_txs(&dev->mt76, wcid, pid, txs_data);
 +	} else {
  		mt76_connac2_mac_add_txs_skb(&dev->mt76, wcid, pid, txs_data);

@@ -60,7 +60,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1420,6 +1420,8 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1419,6 +1419,8 @@ mt7915_mac_full_reset(struct mt7915_dev
  
  	mt76_abort_scan(&dev->mt76);
  
@@ -69,7 +69,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	mutex_lock(&dev->mt76.mutex);
  	for (i = 0; i < 10; i++) {
  		if (!mt7915_mac_restart(dev))
-@@ -1509,6 +1511,7 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1508,6 +1510,7 @@ void mt7915_mac_reset_work(struct work_s
  		set_bit(MT76_RESET, &phy2->mt76->state);
  		cancel_delayed_work_sync(&phy2->mt76->mac_work);
  	}
@@ -77,7 +77,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -1578,6 +1581,10 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1577,6 +1580,10 @@ void mt7915_mac_reset_work(struct work_s
  					     &phy2->mt76->mac_work,
  					     MT7915_WATCHDOG_TIME);
  
