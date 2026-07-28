@@ -1,0 +1,35 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 26 Jul 2026 20:29:06 -0700
+Subject: [PATCH] wifi: mt76: mt7996: hold RCU read lock in all-STA info event handler
+
+mt7996_mcu_rx_all_sta_info_event() dereferences wcid pointers via
+mt76_wcid_ptr() (an rcu_dereference) without an RCU read-side
+critical section, racing station teardown and crashing on station
+stats updates. Upstream already holds the lock in the neighbouring
+mt7996_mcu_get_per_sta_info().
+
+Fixes: SDG-2921
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mcu.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -848,6 +848,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ 	if (sta_num > (skb->len - sizeof(*res)) / elem_size)
+ 		sta_num = (skb->len - sizeof(*res)) / elem_size;
+ 
++	rcu_read_lock();
+ 	for (i = 0; i < sta_num; i++) {
+ 		u8 ac;
+ 		bool v1;
+@@ -966,6 +967,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ 			break;
+ 		}
+ 	}
++	rcu_read_unlock();
+ }
+ 
+ static void

@@ -1,0 +1,30 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 26 Jul 2026 20:29:06 -0700
+Subject: [PATCH] wifi: mt76: mt7615: do not advertise VHT 160 MHz support
+
+Product decision: keep MT7615 out of VHT160 and 80+80 operation.
+Clear the capability bits in the DBDC-disable path instead of
+setting them.
+
+Fixes: OWRT-6583
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7615/init.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+--- a/mt7615/init.c
++++ b/mt7615/init.c
+@@ -435,9 +435,9 @@ mt7615_cap_dbdc_enable(struct mt7615_dev
+ static void
+ mt7615_cap_dbdc_disable(struct mt7615_dev *dev)
+ {
+-	dev->mphy.sband_5g.sband.vht_cap.cap |=
+-			IEEE80211_VHT_CAP_SHORT_GI_160 |
+-			IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ;
++	dev->mphy.sband_5g.sband.vht_cap.cap &=
++			~(IEEE80211_VHT_CAP_SHORT_GI_160 |
++			  IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ);
+ 	dev->mphy.antenna_mask = dev->chainmask;
+ 	dev->mphy.chainmask = dev->chainmask;
+ 	dev->mphy.hw->wiphy->available_antennas_rx = dev->chainmask;

@@ -1,0 +1,39 @@
+From: "Allen.Ye" <allen.ye@mediatek.com>
+Date: Thu, 8 Jun 2023 17:32:33 +0800
+Subject: [PATCH] wifi: mt76: mt7996: add check for hostapd config he_ldpc
+
+Add check for hostapd config he_ldpc.
+This capabilities is checked in mcu_beacon_check_caps in 7915.
+
+Add check for STA LDPC cap, if STA only have BCC we should not
+overwrite the phy_cap with config he_ldpc.
+
+Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
+---
+ mt7996/mcu.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -1787,6 +1787,9 @@ mt7996_mcu_sta_he_tlv(struct sk_buff *sk
+ 		      struct ieee80211_link_sta *link_sta,
+ 		      struct mt7996_vif_link *link)
+ {
++	struct mt7996_sta *msta = (struct mt7996_sta *)link_sta->sta->drv_priv;
++	struct ieee80211_vif *vif = container_of((void *)msta->vif,
++						 struct ieee80211_vif, drv_priv);
+ 	struct ieee80211_he_cap_elem *elem = &link_sta->he_cap.he_cap_elem;
+ 	struct ieee80211_he_mcs_nss_supp mcs_map;
+ 	struct sta_rec_he_v2 *he;
+@@ -1805,6 +1808,11 @@ mt7996_mcu_sta_he_tlv(struct sk_buff *sk
+ 		he->he_phy_cap[i] = elem->phy_cap_info[i];
+ 	}
+ 
++	if (vif->type == NL80211_IFTYPE_AP &&
++	    (elem->phy_cap_info[1] & IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD))
++		u8p_replace_bits(&he->he_phy_cap[1], vif->bss_conf.he_ldpc,
++				 IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD);
++
+ 	mcs_map = link_sta->he_cap.he_mcs_nss_supp;
+ 	switch (link_sta->bandwidth) {
+ 	case IEEE80211_STA_RX_BW_160:

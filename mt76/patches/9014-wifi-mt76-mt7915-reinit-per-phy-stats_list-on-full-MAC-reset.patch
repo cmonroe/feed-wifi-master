@@ -1,0 +1,43 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 26 Jul 2026 20:29:06 -0700
+Subject: [PATCH] wifi: mt76: mt7915: reinit per-phy stats_list on full MAC reset
+
+A full chip reset tears down every station without draining the
+per-phy stats_list, leaving list heads pointing into freed station
+memory; the next mac_work tick splices and dereferences them.
+Reinitialize the lists next to the existing sta_rc_list and
+twt_list reinit. stats_list comes from the tx stats rework patch,
+so this fix only applies on top of it.
+
+Fixes: SDG-2422
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7915/mac.c |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -1339,9 +1339,10 @@ static void
+ mt7915_mac_full_reset(struct mt7915_dev *dev)
+ {
+ 	struct mt76_phy *ext_phy;
+-	struct mt7915_phy *phy2;
++	struct mt7915_phy *phy, *phy2;
+ 	int i;
+ 
++	phy = &dev->phy;
+ 	ext_phy = dev->mt76.phys[MT_BAND1];
+ 	phy2 = ext_phy ? ext_phy->priv : NULL;
+ 
+@@ -1379,6 +1380,10 @@ mt7915_mac_full_reset(struct mt7915_dev
+ 	INIT_LIST_HEAD(&dev->sta_rc_list);
+ 	INIT_LIST_HEAD(&dev->twt_list);
+ 
++	INIT_LIST_HEAD(&phy->stats_list);
++	if (phy2)
++		INIT_LIST_HEAD(&phy2->stats_list);
++
+ 	i = mt76_wcid_alloc(dev->mt76.wcid_mask, MT7915_WTBL_STA);
+ 	dev->mt76.global_wcid.idx = i;
+ 	dev->recovery.hw_full_reset = false;

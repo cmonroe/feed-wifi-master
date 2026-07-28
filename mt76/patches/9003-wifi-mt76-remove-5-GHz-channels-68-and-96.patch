@@ -1,0 +1,70 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 26 Jul 2026 20:29:06 -0700
+Subject: [PATCH] wifi: mt76: remove 5 GHz channels 68 and 96
+
+The mt7996 pre-calibration and testmode patch adds channels 68-96
+to the shared mt76_channels_5ghz table. Drop 68 and 96 again: they
+are unusable in every shipped regulatory domain. The remaining
+72-92 block stays exposed but is inert and carries no DPD slots.
+
+Also trim the mt7996 dpd_5g_skip_ch_list from 8 to 6 entries and
+MT76_CHANNELS_5GHZ_SIZE from 36 to 34 so BW20 5G DPD keeps its 28
+slots (channels 36-64 and 100-177); with the skip list left at 8
+entries the factory calibration mis-mapped for channels >= 100 and
+the blob was under-read.
+
+The channel table hunk is generic mac80211.c code and affects all
+mt76 drivers, not only mt7996.
+
+Fixes: OWRT-9554
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mac80211.c      |    2 --
+ mt7996/eeprom.c |    6 ++----
+ 2 files changed, 2 insertions(+), 6 deletions(-)
+
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -34,14 +34,12 @@ static const struct ieee80211_channel mt
+ 	CHAN5G(60, 5300),
+ 	CHAN5G(64, 5320),
+ 
+-	CHAN5G(68, 5340),
+ 	CHAN5G(72, 5360),
+ 	CHAN5G(76, 5380),
+ 	CHAN5G(80, 5400),
+ 	CHAN5G(84, 5420),
+ 	CHAN5G(88, 5440),
+ 	CHAN5G(92, 5460),
+-	CHAN5G(96, 5480),
+ 
+ 	CHAN5G(100, 5500),
+ 	CHAN5G(104, 5520),
+--- a/mt7996/eeprom.c
++++ b/mt7996/eeprom.c
+@@ -14,14 +14,12 @@ const struct ieee80211_channel dpd_2g_ch
+ };
+ 
+ const struct ieee80211_channel dpd_5g_skip_ch_list[] = {
+-	CHAN5G(68, 5340),
+ 	CHAN5G(72, 5360),
+ 	CHAN5G(76, 5380),
+ 	CHAN5G(80, 5400),
+ 	CHAN5G(84, 5420),
+ 	CHAN5G(88, 5440),
+-	CHAN5G(92, 5460),
+-	CHAN5G(96, 5480)
++	CHAN5G(92, 5460)
+ };
+ 
+ const struct ieee80211_channel dpd_5g_ch_list_bw80[] = {
+@@ -406,7 +404,7 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+ 
+ static void mt7996_eeprom_init_precal(struct mt7996_dev *dev)
+ {
+-#define MT76_CHANNELS_5GHZ_SIZE		36	/* ARRAY_SIZE(mt76_channels_5ghz) */
++#define MT76_CHANNELS_5GHZ_SIZE		34	/* ARRAY_SIZE(mt76_channels_5ghz) */
+ #define MT76_CHANNELS_6GHZ_SIZE		59	/* ARRAY_SIZE(mt76_channels_6ghz) */
+ 
+ 	dev->prek.dpd_ch_num[DPD_CH_NUM_BW20_2G] = ARRAY_SIZE(dpd_2g_ch_list_bw20);

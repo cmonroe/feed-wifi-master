@@ -1,0 +1,35 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 20 Aug 2021 08:33:11 -0700
+Subject: [PATCH] wifi: mt76: set sane default rate if rate info is missing
+
+If no rate can be found via beacon (e.g. hidden network) then
+set a sane default of either 11Mbps (2G) or 24Mbps (5G). Using these
+higher rates ensures we can still connect to APs which have some of
+the lower basic rates disabled.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt76_connac_mac.c |   12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+--- a/mt76_connac_mac.c
++++ b/mt76_connac_mac.c
+@@ -348,6 +348,18 @@ legacy:
+ 	if (band != NL80211_BAND_2GHZ)
+ 		offset = 4;
+ 
++	if (band == NL80211_BAND_2GHZ) {
++		if (rateidx < 0)
++			rateidx = 3; /* 11Mbps */
++	} else {
++		offset = 4;
++
++		if (band == NL80211_BAND_5GHZ) {
++			if (rateidx < 0)
++				rateidx = 4; /* 24Mbps */
++		}
++	}
++
+ 	/* pick the lowest rate for hidden nodes */
+ 	if (rateidx < 0)
+ 		rateidx = 0;

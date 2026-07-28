@@ -1,0 +1,28 @@
+From: "Henry.Yen" <henry.yen@mediatek.com>
+Date: Tue, 16 Jan 2024 11:30:02 +0800
+Subject: [PATCH] wifi: mt76: mt7996: add sanity check for NAPI schedule
+
+It's observed that host driver might occasionally receive
+interrupts from unexpected Rx ring, whose Rx NAPI hasn't been
+prepared yet. Under such situation, __napi_poll crash issue
+would occur, so we add sanity check to prevent it.
+
+If without this patch, we might encounter kernel crash issue
+especially in WED-on & RRO-on software path.
+
+Signed-off-by: Henry.Yen <henry.yen@mediatek.com>
+---
+ mt7996/mmio.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/mt7996/mmio.c
++++ b/mt7996/mmio.c
+@@ -790,7 +790,7 @@ static void mt7996_irq_tasklet(struct ta
+ 		napi_schedule(&dev->mt76.tx_napi);
+ 
+ 	for (i = 0; i < __MT_RXQ_MAX; i++) {
+-		if ((intr & MT_INT_RX(i)))
++		if ((intr & MT_INT_RX(i)) && dev->mt76.napi[i].poll)
+ 			napi_schedule(&dev->mt76.napi[i]);
+ 	}
+ 

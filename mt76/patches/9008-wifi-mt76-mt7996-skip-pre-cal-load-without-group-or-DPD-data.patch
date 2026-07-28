@@ -1,0 +1,52 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 26 Jul 2026 20:29:06 -0700
+Subject: [PATCH] wifi: mt76: mt7996: skip pre-cal load without group or DPD data
+
+Bit 6 of MT_EE_DO_PRE_CAL only tells the firmware to work around
+OOB emission near 5412 MHz and carries no pre-cal payload, but the
+plain non-zero test treated it as "pre-cal present", allocating
+the full blob and issuing a doomed MTD/nvmem read. Gate the load
+on the group and DPD indicator bits, warn when the blob is missing
+and free the allocation on failure.
+
+Fixes: SDG-1868
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/eeprom.c |   18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+--- a/mt7996/eeprom.c
++++ b/mt7996/eeprom.c
+@@ -447,7 +447,13 @@ static int mt7996_eeprom_load_precal(str
+ 
+ 	mt7996_eeprom_init_precal(dev);
+ 
+-	if (dev->eeprom_mode != EEPROM_MODE_FLASH || !val)
++	if (dev->eeprom_mode != EEPROM_MODE_FLASH)
++		return 0;
++
++	/* if only bit 6 is set for OOB emission workaround there's no
++	 * need to allocate and load pre-cal data from flash
++	 */
++	if (!(val & MT_EE_WIFI_CAL_GROUP) && !(val & MT_EE_WIFI_CAL_DPD))
+ 		return 0;
+ 
+ 	size = MT_EE_CAL_GROUP_SIZE + MT_EE_CAL_DPD_SIZE;
+@@ -460,7 +466,15 @@ static int mt7996_eeprom_load_precal(str
+ 	if (!ret)
+  		return ret;
+ 
+-	return mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
++	ret = mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
++	if (!ret)
++ 		return ret;
++
++	dev_warn(mdev->dev, "missing precal data, size=%d\n", size);
++	devm_kfree(mdev->dev, dev->cal);
++	dev->cal = NULL;
++
++	return ret;
+ }
+ 
+ int mt7996_eeprom_init(struct mt7996_dev *dev)

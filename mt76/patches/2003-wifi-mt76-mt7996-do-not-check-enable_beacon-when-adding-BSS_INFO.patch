@@ -1,0 +1,28 @@
+From: Michael-CY Lee <michael-cy.lee@mediatek.com>
+Date: Tue, 24 Dec 2024 11:36:31 +0800
+Subject: [PATCH] wifi: mt76: mt7996: do not check enable_beacon when
+ adding BSS_INFO
+
+We use info->enable_beacon to control the timing of beacon TX. However,
+adding/updating BSS_INFO to FW do not affect the beacon TX, so it is not
+necessary to check the enable_beacon before mt7996_mcu_add_bss_info().
+
+Without the commit, the update about the BSS before beacon enabled
+is not sent to FW.
+
+Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
+---
+ mt7996/main.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -970,7 +970,7 @@ mt7996_link_info_changed(struct ieee8021
+ 	 * and then peer references bss_info_rfch to set bandwidth cap.
+ 	 */
+ 	if ((changed & BSS_CHANGED_BSSID && !is_zero_ether_addr(info->bssid)) ||
+-	    (changed & BSS_CHANGED_BEACON_ENABLED && info->enable_beacon)) {
++	    (changed & BSS_CHANGED_BEACON_ENABLED)) {
+ 		mt7996_mcu_add_bss_info(phy, vif, info, &link->mt76,
+ 					&link->msta_link, true);
+ 		mt7996_mcu_add_sta(dev, info, NULL, link, NULL,

@@ -1,0 +1,50 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 26 Jul 2026 20:29:06 -0700
+Subject: [PATCH] wifi: mt76: mt7996: make pre-cal MCU command synchronous
+
+Group and DPD pre-calibration is pushed to the firmware in a
+tight loop of 1 KiB chunks. With the final send fire-and-forget
+the driver can outrun the MCU and the upload lands wrong or wedges
+the firmware; wait for each chunk to be acknowledged. Add dev_dbg
+traces to the group-cal and DPD apply loops. Same fix as the
+mt7915 counterpart.
+
+Fixes: OWRT-9554
+Fixes: SDG-2651
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mcu.c |    8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -4989,7 +4989,7 @@ static int mt7996_mcu_set_pre_cal(struct
+ 	skb_put_data(skb, &req, sizeof(req));
+ 	skb_put_data(skb, cal, len);
+ 
+-	return mt76_mcu_skb_send_msg(&dev->mt76, skb, MCU_WM_UNI_CMD(PRECAL_RESULT), false);
++	return mt76_mcu_skb_send_msg(&dev->mt76, skb, MCU_WM_UNI_CMD(PRECAL_RESULT), true);
+ }
+ 
+ int mt7996_mcu_apply_group_cal(struct mt7996_dev *dev)
+@@ -5003,6 +5003,9 @@ int mt7996_mcu_apply_group_cal(struct mt
+ 		return 0;
+ 
+ 	for (idx = 0; idx < total_idx; idx++, cal += MT_EE_CAL_UNIT) {
++		dev_dbg(dev->mt76.dev, "apply group pre-cal idx=%u cal[0]=0x%02x len=%d total_idx=%d\n",
++				idx, ((unsigned char *)cal)[0], MT_EE_CAL_UNIT, total_idx);
++
+ 		ret = mt7996_mcu_set_pre_cal(dev, idx, cal, MT_EE_CAL_UNIT, RF_PRE_CAL);
+ 		if (ret)
+ 			goto out;
+@@ -5126,6 +5129,9 @@ int mt7996_mcu_apply_tx_dpd(struct mt799
+ 	cal += MT_EE_CAL_GROUP_SIZE + base_offset + idx * per_chan_size;
+ 
+ 	for (i = 0; i < per_chan_size / MT_EE_CAL_UNIT; i++) {
++		dev_dbg(dev->mt76.dev, "apply DPD pre-cal i=%u cal[0]=0x%02x len=%d per_chan_size=%d cal_id=0x%x\n",
++				i, ((unsigned char *)cal)[0], MT_EE_CAL_UNIT, per_chan_size, cal_id);
++
+ 		ret = mt7996_mcu_set_pre_cal(dev, i, cal, MT_EE_CAL_UNIT, cal_id);
+ 		if (ret)
+ 			return ret;

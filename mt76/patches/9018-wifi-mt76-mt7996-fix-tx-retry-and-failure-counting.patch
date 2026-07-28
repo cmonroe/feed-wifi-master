@@ -1,0 +1,70 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 10 Mar 2026 18:54:42 -0700
+Subject: [PATCH] wifi: mt76: mt7996: fix tx retry and failure counting
+
+The tx_failed formula added retries to the failure count, treating
+every successful retry as a failure. Guard count-1 against unsigned
+underflow when hardware reports zero attempts.
+
+Remove MCU-sourced retry and failure accumulation to prevent
+double-counting with TX_FREE_DONE.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mac.c |   11 ++++-------
+ mt7996/mcu.c |   10 ----------
+ 2 files changed, 4 insertions(+), 17 deletions(-)
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -1386,19 +1386,17 @@ next:
+ 				cur_info++;
+ 			continue;
+ 		} else if (info & MT_TXFREE_INFO_HEADER) {
+-			u32 tx_retries = 0, tx_failed = 0, count;
++			u32 count;
+ 
+ 			if (!wcid)
+ 				continue;
+ 
+ 			count = FIELD_GET(MT_TXFREE_INFO_COUNT, info);
+-			tx_retries = count ? count - 1 : 0;
+-			tx_failed = tx_retries +
++			if (count)
++				wcid->stats.tx_retries += count - 1;
++			wcid->stats.tx_failed +=
+ 				!!FIELD_GET(MT_TXFREE_INFO_STAT, info);
+ 
+-			wcid->stats.tx_retries += tx_retries;
+-			wcid->stats.tx_failed += tx_failed;
+-
+ 			/* age the stale-token PLE flush from genuine TX
+ 			 * activity only, not from every token free
+ 			 */
+@@ -2964,7 +2962,6 @@ void mt7996_mac_work(struct work_struct
+ 				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_MSDU_COUNT);
+ 				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_RX_MPDU_COUNT);
+ 				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TX_STAT);
+-				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_DATA_TX_RETRY_COUNT);
+ 			} else if (mt7996_band_valid(phy->dev, i) &&
+ 			           test_bit(MT76_STATE_RUNNING, &mdev->phys[i]->state))
+ 				break;
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -964,16 +964,6 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ 				break;
+ 
+ 			wcid->stats.tx_mpdus += le32_to_cpu(res->tx_mpdu_stat[i].total);
+-			wcid->stats.tx_failed += le32_to_cpu(res->tx_mpdu_stat[i].fails);
+-			break;
+-		/* Multiple retries of a single MPDU only increase the counter by 1 */
+-		case UNI_ALL_STA_DATA_TX_RETRY_COUNT:
+-			wlan_idx = le16_to_cpu(res->tx_mpdu_retry_cnt[i].wlan_idx);
+-			wcid = mt76_wcid_ptr(dev, wlan_idx);
+-			if (!wcid)
+-				break;
+-
+-			wcid->stats.tx_retries += le16_to_cpu(res->tx_mpdu_retry_cnt[i].val);
+ 			break;
+ 		default:
+ 			break;

@@ -1,0 +1,30 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 27 Jan 2026 16:45:00 -0800
+Subject: [PATCH] wifi: mt76: mt7996: abort ROC and mark phys resetting in full reset
+
+mt7996_mac_full_reset() cancelled each phy's mac_work but left
+remain-on-channel work pending and the phys unmarked while the
+hardware went through a full reset. Abort ROC and set MT76_RESET on
+every phy up front, mirroring the L1 SER recovery path; MT76_RESET
+is cleared again when the phys restart.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mac.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2360,8 +2360,11 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 	ieee80211_stop_queues(hw);
+ 
+ 	cancel_work_sync(&dev->wed_rro.work);
+-	mt7996_for_each_phy(dev, phy)
++	mt7996_for_each_phy(dev, phy) {
++		mt76_abort_roc(phy->mt76);
++		set_bit(MT76_RESET, &phy->mt76->state);
+ 		cancel_delayed_work_sync(&phy->mt76->mac_work);
++	}
+ 	cancel_delayed_work_sync(&dev->scs_work);
+ 
+ 	mt76_abort_scan(&dev->mt76);

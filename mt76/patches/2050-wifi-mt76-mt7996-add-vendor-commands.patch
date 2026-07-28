@@ -1,0 +1,580 @@
+From: Yi-Chia Hsieh <yi-chia.hsieh@mediatek.com>
+Date: Wed, 3 May 2023 05:08:07 +0800
+Subject: [PATCH] wifi: mt76: mt7996: add vendor commands
+
+nl80211 vendor command interface for mt7996: available BSS color
+bitmap query, radio-indexed EDCCA control (enable and thresholds,
+consumed by hostapd), and preamble puncture (PP) mode control.
+
+Squash of the following MediaTek commits:
+- wifi: mt76: mt7996: add vendor cmd to get available color bitmap
+  (Yi-Chia Hsieh, 2023-05-03)
+- wifi: mt76: mt7996: add vendor subcmd EDCCA ctrl enable
+  (Rex Lu, 2023-06-08)
+- wifi: mt76: mt7996: support enable/disable pp feature by nl80211
+  vendor commands (Howard Hsu, 2023-09-25)
+---
+ mt7996/Makefile  |    3
+ mt7996/init.c    |    8 +
+ mt7996/mcu.h     |    2
+ mt7996/mt7996.h  |   24 ++++
+ mt7996/mtk_mcu.c |   87 +++++++++++++++++
+ mt7996/mtk_mcu.h |   15 +++
+ mt7996/vendor.c  |  272 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/vendor.h  |   67 +++++++++++++
+ 8 files changed, 477 insertions(+), 1 deletion(-)
+
+--- /dev/null
++++ b/mt7996/vendor.c
+@@ -0,0 +1,272 @@
++// SPDX-License-Identifier: ISC
++/*
++ * Copyright (C) 2020, MediaTek Inc. All rights reserved.
++ */
++
++#include <net/netlink.h>
++
++#include "mt7996.h"
++#include "mcu.h"
++#include "vendor.h"
++#include "mtk_mcu.h"
++
++static struct nla_policy
++bss_color_ctrl_policy[NUM_MTK_VENDOR_ATTRS_BSS_COLOR_CTRL] = {
++	[MTK_VENDOR_ATTR_AVAL_BSS_COLOR_BMP] = { .type = NLA_U64 },
++};
++
++static const struct nla_policy
++edcca_ctrl_policy[NUM_MTK_VENDOR_ATTRS_EDCCA_CTRL] = {
++	[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC20_VAL] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_CTRL_COMPENSATE] = { .type = NLA_S8 },
++	[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX] = { .type = NLA_U8 },
++};
++
++static const struct nla_policy
++edcca_dump_policy[NUM_MTK_VENDOR_ATTRS_EDCCA_DUMP] = {
++	[MTK_VENDOR_ATTR_EDCCA_DUMP_MODE] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_DUMP_PRI20_VAL] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_DUMP_SEC40_VAL] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_DUMP_SEC80_VAL] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_EDCCA_DUMP_SEC160_VAL] = { .type = NLA_U8 },
++};
++
++static struct nla_policy
++pp_ctrl_policy[NUM_MTK_VENDOR_ATTRS_PP_CTRL] = {
++	[MTK_VENDOR_ATTR_PP_MODE] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_PP_BAND_IDX] = { .type = NLA_U8 },
++};
++
++static int
++mt7996_vendor_bss_color_ctrl_dump(struct wiphy *wiphy, struct wireless_dev *wdev,
++				  struct sk_buff *skb, const void *data, int data_len,
++				  unsigned long *storage)
++{
++	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
++	struct ieee80211_bss_conf *bss_conf = &vif->bss_conf;
++	int len = 0;
++
++	if (*storage == 1)
++		return -ENOENT;
++	*storage = 1;
++
++	if (nla_put_u64_64bit(skb, MTK_VENDOR_ATTR_AVAL_BSS_COLOR_BMP,
++			      ~bss_conf->used_color_bitmap, NL80211_ATTR_PAD))
++		return -ENOMEM;
++	len += 1;
++
++	return len;
++}
++
++static int mt7996_vendor_edcca_ctrl(struct wiphy *wiphy, struct wireless_dev *wdev,
++				    const void *data, int data_len)
++{
++	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	struct mt7996_phy *phy = &dev->phy;
++	struct nlattr *tb[NUM_MTK_VENDOR_ATTRS_EDCCA_CTRL];
++	int err;
++	u8 edcca_mode, radio_idx;
++	u8 edcca_value[EDCCA_MAX_BW_NUM];
++
++	err = nla_parse(tb, MTK_VENDOR_ATTR_EDCCA_CTRL_MAX, data, data_len,
++			edcca_ctrl_policy, NULL);
++	if (err)
++		return err;
++
++	if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE] ||
++	    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX])
++		return -EINVAL;
++
++	edcca_mode = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE]);
++	radio_idx = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX]);
++	if (!mt7996_radio_valid(dev, radio_idx))
++		return -EINVAL;
++
++	phy = dev->radio_phy[radio_idx];
++
++	switch (edcca_mode) {
++	case EDCCA_CTRL_SET_EN:
++		if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL])
++			return -EINVAL;
++
++		edcca_value[0] = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL]);
++
++		return mt7996_mcu_edcca_enable(phy, !!edcca_value[0]);
++	case EDCCA_CTRL_SET_THRES:
++		if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL] ||
++		    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL] ||
++		    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL] ||
++		    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL])
++			return -EINVAL;
++
++		edcca_value[EDCCA_BW_20] =
++			nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL]);
++		edcca_value[EDCCA_BW_40] =
++			nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL]);
++		edcca_value[EDCCA_BW_80] =
++			nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL]);
++		edcca_value[EDCCA_BW_160] =
++			nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL]);
++
++		return mt7996_mcu_edcca_threshold_ctrl(phy, edcca_value, true);
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int
++mt7996_vendor_edcca_ctrl_dump(struct wiphy *wiphy, struct wireless_dev *wdev,
++			     struct sk_buff *skb, const void *data, int data_len,
++			     unsigned long *storage)
++{
++	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	struct mt7996_phy *phy = &dev->phy;
++	struct nlattr *tb[NUM_MTK_VENDOR_ATTRS_EDCCA_CTRL];
++	int err;
++	u8 edcca_mode, radio_idx, i;
++	u8 value[EDCCA_MAX_BW_NUM];
++
++	if (*storage == 1)
++		return -ENOENT;
++	*storage = 1;
++
++	err = nla_parse(tb, MTK_VENDOR_ATTR_EDCCA_CTRL_MAX, data, data_len,
++			edcca_ctrl_policy, NULL);
++	if (err)
++		return err;
++
++	if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE] ||
++	    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX])
++		return -EINVAL;
++
++	edcca_mode = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE]);
++	if (edcca_mode != EDCCA_CTRL_GET_THRES)
++		return -EINVAL;
++
++	radio_idx = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX]);
++	if (!mt7996_radio_valid(dev, radio_idx))
++		return -EINVAL;
++
++	phy = dev->radio_phy[radio_idx];
++	err = mt7996_mcu_edcca_threshold_ctrl(phy, value, false);
++	if (err)
++		return err;
++
++	for (i = 0; i < EDCCA_MAX_BW_NUM; i++)
++		if (nla_put_u8(skb, MTK_VENDOR_ATTR_EDCCA_DUMP_PRI20_VAL + i,
++			       value[EDCCA_BW_20 + i]))
++			return -ENOMEM;
++
++	return EDCCA_MAX_BW_NUM;
++}
++
++static int mt7996_vendor_pp_ctrl(struct wiphy *wiphy, struct wireless_dev *wdev,
++				 const void *data, int data_len)
++{
++	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
++	struct nlattr *tb[NUM_MTK_VENDOR_ATTRS_PP_CTRL];
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	struct mt7996_phy *phy;
++	struct mt76_phy *mphy;
++	struct cfg80211_chan_def *chandef;
++	int err;
++	u8 val8, band_idx = 0;
++
++	err = nla_parse(tb, MTK_VENDOR_ATTR_PP_CTRL_MAX, data, data_len,
++			pp_ctrl_policy, NULL);
++
++	if (tb[MTK_VENDOR_ATTR_PP_BAND_IDX]) {
++		band_idx = nla_get_u8(tb[MTK_VENDOR_ATTR_PP_BAND_IDX]);
++	}
++
++	if (!mt7996_band_valid(dev, band_idx))
++		goto error;
++
++	mphy = dev->mt76.phys[band_idx];
++	if (!mphy)
++		goto error;
++
++	phy = (struct mt7996_phy *)mphy->priv;
++	if (!phy)
++		goto error;
++
++	chandef = &phy->mt76->chandef;
++	if (!chandef)
++		goto error;
++
++	if (chandef->chan->band == NL80211_BAND_2GHZ)
++		return 0;
++
++	if (tb[MTK_VENDOR_ATTR_PP_MODE]) {
++		val8 = nla_get_u8(tb[MTK_VENDOR_ATTR_PP_MODE]);
++		switch (val8) {
++		case PP_DISABLE:
++		case PP_FW_MODE:
++			err = mt7996_mcu_set_pp_en(phy, val8, 0);
++			break;
++		case PP_USR_MODE:
++			/* handled by add_chanctx */
++			err = 0;
++			break;
++		default:
++			err = -EINVAL;
++		}
++	}
++
++	return err;
++error:
++	dev_err(dev->mt76.dev, "Invalid band idx: %d\n", band_idx);
++	return -EINVAL;
++}
++
++static const struct wiphy_vendor_command mt7996_vendor_commands[] = {
++	{
++		.info = {
++			.vendor_id = MTK_NL80211_VENDOR_ID,
++			.subcmd = MTK_NL80211_VENDOR_SUBCMD_BSS_COLOR_CTRL,
++		},
++		.flags = WIPHY_VENDOR_CMD_NEED_NETDEV |
++			WIPHY_VENDOR_CMD_NEED_RUNNING,
++		.dumpit = mt7996_vendor_bss_color_ctrl_dump,
++		.policy = bss_color_ctrl_policy,
++		.maxattr = MTK_VENDOR_ATTR_BSS_COLOR_CTRL_MAX,
++	},
++	{
++		.info = {
++			.vendor_id = MTK_NL80211_VENDOR_ID,
++			.subcmd = MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL,
++		},
++		.flags = WIPHY_VENDOR_CMD_NEED_NETDEV |
++			 WIPHY_VENDOR_CMD_NEED_RUNNING,
++		.doit = mt7996_vendor_edcca_ctrl,
++		.dumpit = mt7996_vendor_edcca_ctrl_dump,
++		.policy = edcca_ctrl_policy,
++		.maxattr = MTK_VENDOR_ATTR_EDCCA_CTRL_MAX,
++	},
++	{
++		.info = {
++			.vendor_id = MTK_NL80211_VENDOR_ID,
++			.subcmd = MTK_NL80211_VENDOR_SUBCMD_PP_CTRL,
++		},
++		.flags = WIPHY_VENDOR_CMD_NEED_NETDEV |
++			WIPHY_VENDOR_CMD_NEED_RUNNING,
++		.doit = mt7996_vendor_pp_ctrl,
++		.policy = pp_ctrl_policy,
++		.maxattr = MTK_VENDOR_ATTR_PP_CTRL_MAX,
++	},
++};
++
++void mt7996_vendor_register(struct mt7996_phy *phy)
++{
++	phy->mt76->hw->wiphy->vendor_commands = mt7996_vendor_commands;
++	phy->mt76->hw->wiphy->n_vendor_commands = ARRAY_SIZE(mt7996_vendor_commands);
++}
+--- /dev/null
++++ b/mt7996/vendor.h
+@@ -0,0 +1,67 @@
++#ifndef __MT7996_VENDOR_H
++#define __MT7996_VENDOR_H
++
++#define MTK_NL80211_VENDOR_ID	0x0ce7
++
++enum mtk_nl80211_vendor_subcmds {
++	MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL = 0xc7,
++	MTK_NL80211_VENDOR_SUBCMD_BSS_COLOR_CTRL = 0xca,
++	MTK_NL80211_VENDOR_SUBCMD_PP_CTRL = 0xcc,
++};
++
++enum mtk_vendor_attr_edcca_ctrl {
++	MTK_VENDOR_ATTR_EDCCA_THRESHOLD_INVALID = 0,
++
++	MTK_VENDOR_ATTR_EDCCA_CTRL_MODE,
++	MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL,
++	MTK_VENDOR_ATTR_EDCCA_CTRL_SEC20_VAL,
++	MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL,
++	MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL,
++	MTK_VENDOR_ATTR_EDCCA_CTRL_COMPENSATE,
++	MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL,
++	MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX,
++
++	/* keep last */
++	NUM_MTK_VENDOR_ATTRS_EDCCA_CTRL,
++	MTK_VENDOR_ATTR_EDCCA_CTRL_MAX =
++		NUM_MTK_VENDOR_ATTRS_EDCCA_CTRL - 1
++};
++
++enum mtk_vendor_attr_edcca_dump {
++	MTK_VENDOR_ATTR_EDCCA_DUMP_UNSPEC = 0,
++
++	MTK_VENDOR_ATTR_EDCCA_DUMP_MODE,
++	MTK_VENDOR_ATTR_EDCCA_DUMP_PRI20_VAL,
++	MTK_VENDOR_ATTR_EDCCA_DUMP_SEC40_VAL,
++	MTK_VENDOR_ATTR_EDCCA_DUMP_SEC80_VAL,
++	MTK_VENDOR_ATTR_EDCCA_DUMP_SEC160_VAL,
++
++	/* keep last */
++	NUM_MTK_VENDOR_ATTRS_EDCCA_DUMP,
++	MTK_VENDOR_ATTR_EDCCA_DUMP_MAX =
++		NUM_MTK_VENDOR_ATTRS_EDCCA_DUMP - 1
++};
++
++enum mtk_vendor_attr_bss_color_ctrl {
++	MTK_VENDOR_ATTR_BSS_COLOR_CTRL_UNSPEC,
++
++	MTK_VENDOR_ATTR_AVAL_BSS_COLOR_BMP,
++
++	/* keep last */
++	NUM_MTK_VENDOR_ATTRS_BSS_COLOR_CTRL,
++	MTK_VENDOR_ATTR_BSS_COLOR_CTRL_MAX =
++		NUM_MTK_VENDOR_ATTRS_BSS_COLOR_CTRL - 1
++};
++
++enum mtk_vendor_attr_pp_ctrl {
++	MTK_VENDOR_ATTR_PP_CTRL_UNSPEC,
++
++	MTK_VENDOR_ATTR_PP_MODE,
++	MTK_VENDOR_ATTR_PP_BAND_IDX,
++
++	/* keep last */
++	NUM_MTK_VENDOR_ATTRS_PP_CTRL,
++	MTK_VENDOR_ATTR_PP_CTRL_MAX =
++		NUM_MTK_VENDOR_ATTRS_PP_CTRL - 1
++};
++#endif
+--- a/mt7996/Makefile
++++ b/mt7996/Makefile
+@@ -2,11 +2,12 @@
+ 
+ ccflags-y += -DCONFIG_MT76_LEDS
+ ccflags-y += -DCONFIG_MTK_DEBUG
++ccflags-y += -DCONFIG_MTK_VENDOR
+ 
+ obj-$(CONFIG_MT7996E) += mt7996e.o
+ 
+ mt7996e-y := pci.o init.o dma.o eeprom.o main.o mcu.o mac.o \
+-	     debugfs.o mmio.o
++	     debugfs.o mmio.o vendor.o
+ 
+ mt7996e-$(CONFIG_MT7996_NPU) += npu.o
+ mt7996e-$(CONFIG_DEV_COREDUMP) += coredump.o
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -789,6 +789,10 @@ static int mt7996_register_phy(struct mt
+ 			goto error;
+ 	}
+ 
++#ifdef CONFIG_MTK_VENDOR
++	mt7996_vendor_register(phy);
++#endif
++
+ 	ret = mt76_register_phy(mphy, true, mt76_rates,
+ 				ARRAY_SIZE(mt76_rates));
+ 	if (ret)
+@@ -1815,6 +1819,10 @@ int mt7996_register_device(struct mt7996
+ 
+ 	mt7996_dma_rro_start(dev);
+ 
++#ifdef CONFIG_MTK_VENDOR
++	mt7996_vendor_register(&dev->phy);
++#endif
++
+ 	ret = mt76_register_device(&dev->mt76, true, mt76_rates,
+ 				   ARRAY_SIZE(mt76_rates));
+ 	if (ret)
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -996,6 +996,15 @@ static inline bool mt7996_has_ext_eeprom
+ 	return !is_mt7996(&dev->mt76);
+ }
+ 
++static inline bool
++mt7996_radio_valid(struct mt7996_dev *dev, u8 radio)
++{
++	if (radio >= dev->mt76.hw->wiphy->n_radio ||
++	    !dev->radio_phy[radio])
++		return false;
++	return true;
++}
++
+ void mt7996_mac_init(struct mt7996_dev *dev);
+ u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
+ bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
+@@ -1076,6 +1085,21 @@ int mt7996_mmio_wed_init(struct mt7996_d
+ 			 bool hif2, int *irq);
+ u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
+ 
++#ifdef CONFIG_MTK_VENDOR
++void mt7996_vendor_register(struct mt7996_phy *phy);
++#endif
++
++int mt7996_mcu_edcca_enable(struct mt7996_phy *phy, bool enable);
++int mt7996_mcu_edcca_threshold_ctrl(struct mt7996_phy *phy, u8 *value, bool set);
++
++enum edcca_bw_id {
++	EDCCA_BW_20 = 0,
++	EDCCA_BW_40,
++	EDCCA_BW_80,
++	EDCCA_BW_160,
++	EDCCA_MAX_BW_NUM,
++};
++
+ #ifdef CONFIG_MTK_DEBUG
+ int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
+ int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
+--- a/mt7996/mcu.h
++++ b/mt7996/mcu.h
+@@ -1035,6 +1035,8 @@ enum {
+ 
+ enum {
+ 	UNI_BAND_CONFIG_RADIO_ENABLE,
++	UNI_BAND_CONFIG_EDCCA_ENABLE = 0x05,
++	UNI_BAND_CONFIG_EDCCA_THRESHOLD = 0x06,
+ 	UNI_BAND_CONFIG_RTS_THRESHOLD = 0x08,
+ 	UNI_BAND_CONFIG_MAC_ENABLE_CTRL = 0x0c,
+ 	UNI_BAND_CONFIG_BSSID_MAPPING_ADDR = 0x12,
+--- a/mt7996/mtk_mcu.c
++++ b/mt7996/mtk_mcu.c
+@@ -59,4 +59,91 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+ 	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(MURU), &req,
+ 				 sizeof(req), true);
+ }
++
++int mt7996_mcu_edcca_enable(struct mt7996_phy *phy, bool enable)
++{
++	struct mt7996_dev *dev = phy->dev;
++	struct cfg80211_chan_def *chandef = &phy->mt76->chandef;
++	enum nl80211_band band = chandef->chan->band;
++	struct {
++		u8 band_idx;
++		u8 _rsv[3];
++
++		__le16 tag;
++		__le16 len;
++		u8 enable;
++		u8 std;
++		u8 _rsv2[2];
++	} __packed req = {
++		.band_idx = phy->mt76->band_idx,
++		.tag = cpu_to_le16(UNI_BAND_CONFIG_EDCCA_ENABLE),
++		.len = cpu_to_le16(sizeof(req) - 4),
++		.enable = enable,
++		.std = EDCCA_DEFAULT,
++	};
++
++	switch (dev->mt76.region) {
++	case NL80211_DFS_JP:
++		req.std = EDCCA_JAPAN;
++		break;
++	case NL80211_DFS_FCC:
++		if (band == NL80211_BAND_6GHZ)
++			req.std = EDCCA_FCC;
++		break;
++	case NL80211_DFS_ETSI:
++		if (band == NL80211_BAND_6GHZ)
++			req.std = EDCCA_ETSI;
++		break;
++	default:
++		break;
++	}
++
++	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(BAND_CONFIG),
++				 &req, sizeof(req), true);
++}
++
++int mt7996_mcu_edcca_threshold_ctrl(struct mt7996_phy *phy, u8 *value, bool set)
++{
++	struct {
++		u8 band_idx;
++		u8 _rsv[3];
++
++		__le16 tag;
++		__le16 len;
++		u8 threshold[4];
++		bool init;
++		u8 _rsv2[3];
++	} __packed *res, req = {
++		.band_idx = phy->mt76->band_idx,
++		.tag = cpu_to_le16(UNI_BAND_CONFIG_EDCCA_THRESHOLD),
++		.len = cpu_to_le16(sizeof(req) - 4),
++		.init = false,
++	};
++	struct sk_buff *skb;
++	int ret;
++	int i;
++
++	for (i = 0; i < EDCCA_MAX_BW_NUM; i++)
++		req.threshold[i] = value[i];
++
++	if (set)
++		return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(BAND_CONFIG),
++					 &req, sizeof(req), true);
++
++	ret = mt76_mcu_send_and_get_msg(&phy->dev->mt76,
++					MCU_WM_UNI_CMD_QUERY(BAND_CONFIG),
++					&req, sizeof(req), true, &skb);
++
++	if (ret)
++		return ret;
++
++	res = (void *)skb->data;
++
++	for (i = 0; i < EDCCA_MAX_BW_NUM; i++)
++		value[i] = res->threshold[i];
++
++	dev_kfree_skb(skb);
++
++	return 0;
++}
+ #endif
+--- a/mt7996/mtk_mcu.h
++++ b/mt7996/mtk_mcu.h
+@@ -14,6 +14,21 @@ enum {
+ 	UNI_CMD_MURU_DBG_INFO = 0x18,
+ };
+ 
++enum {
++	EDCCA_CTRL_SET_EN = 0,
++	EDCCA_CTRL_SET_THRES,
++	EDCCA_CTRL_GET_EN,
++	EDCCA_CTRL_GET_THRES,
++	EDCCA_CTRL_NUM,
++};
++
++enum {
++	EDCCA_DEFAULT = 0,
++	EDCCA_FCC = 1,
++	EDCCA_ETSI = 2,
++	EDCCA_JAPAN = 3
++};
++
+ #endif
+ 
+ struct txpower_basic_info {

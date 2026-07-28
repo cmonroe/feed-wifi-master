@@ -1,0 +1,42 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 9 Jul 2026 12:00:00 -0700
+Subject: [PATCH] wifi: mt76: mt7996: report TX status when link wcid
+ lookup fails
+
+mt7996_mac_add_txs() drops the whole TXS event when
+mt7996_rx_get_wcid() returns NULL (station teardown in progress,
+wcid->sta not yet set, or an unexpected band index). If a status
+tracked frame such as an association response is pending for that
+wcid, its status skb is never completed; it times out HZ/4 later in
+mt76_tx_status_skb_get() and gets reported to mac80211 without
+IEEE80211_TX_STAT_ACK. hostapd then treats the frame as not
+acknowledged and removes the station from the driver even though the
+client acknowledged it.
+
+Fall back to the primary wcid so the pending status skb is still
+completed with the real TXS. The link wcid is only used for per-link
+statistics and the poll list; the existing !link_wcid->sta check
+keeps the fallback off the poll list.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mac.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -1516,9 +1516,13 @@ static void mt7996_mac_add_txs(struct mt
+ 	if (!wcid)
+ 		goto out;
+ 
++	/* Fall back to the primary wcid so that a pending status skb is
++	 * still completed when the per-link lookup fails (e.g. station
++	 * teardown in progress); dropping the TXS here would leave the
++	 * skb to time out and get reported as not acknowledged. */
+ 	link_wcid = mt7996_rx_get_wcid(dev, wcidx, band);
+ 	if (!link_wcid)
+-		goto out;
++		link_wcid = wcid;
+ 
+ 	mt7996_mac_add_txs_skb(dev, wcid, link_wcid, pid, txs_data);
+ 

@@ -1,0 +1,25 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 26 Jul 2026 20:29:06 -0700
+Subject: [PATCH] wifi: mt76: mt7915: print ASIC revision at info level
+
+Raise the ASIC revision print from dev_dbg to dev_info so field
+units report their silicon revision in the default boot log.
+
+Fixes: OWRT-5260
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7915/mmio.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/mt7915/mmio.c
++++ b/mt7915/mmio.c
+@@ -785,7 +785,7 @@ static int mt7915_mmio_init(struct mt76_
+ 
+ 	mdev->rev = (device_id << 16) |
+ 		    (mt76_rr(dev, MT_HW_REV) & 0xff);
+-	dev_dbg(mdev->dev, "ASIC revision: %04x\n", mdev->rev);
++	dev_info(mdev->dev, "ASIC revision: %04x\n", mdev->rev);
+ 
+ 	return 0;
+ }

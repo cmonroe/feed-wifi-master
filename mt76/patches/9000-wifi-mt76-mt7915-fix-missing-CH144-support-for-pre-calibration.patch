@@ -1,0 +1,32 @@
+From: Ryder Lee <ryder.lee@mediatek.com>
+Date: Thu, 19 Oct 2023 12:06:48 +0800
+Subject: [PATCH] wifi: mt76: mt7915: fix missing CH144 support for pre-calibration
+
+Sync from MTK SDK. The MT7915 pre-calibration data has no
+CH144@BW20 slot, so the DPD frequency lookup fails and channel 144
+comes up without DPD applied. Fall back to the adjacent channel's
+data at 5700 MHz instead.
+
+[chad: apply the remap after the adjacent-centre search so wide
+bandwidth lookups are unaffected]
+
+Fixes: 495184ac91bb ("mt76: mt7915: add support for applying pre-calibration data")
+Fixes: OWRT-8413
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7915/mcu.c |    3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -3187,6 +3187,9 @@ static int mt7915_dpd_freq_idx(struct mt
+ 			return idx;
+ 	}
+ 
++	if (is_mt7915(&dev->mt76))
++		freq = (freq == 5720) ? 5700: freq;
++
+ 	return mt7915_find_freq_idx(freq_list, n_freqs, freq);
+ }
+ 

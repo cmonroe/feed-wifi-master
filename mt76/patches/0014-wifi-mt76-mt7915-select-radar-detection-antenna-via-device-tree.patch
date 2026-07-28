@@ -1,0 +1,105 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 26 Jul 2026 20:29:06 -0700
+Subject: [PATCH] wifi: mt76: mt7915: select radar detection antenna via device tree
+
+Read the rdd_antenna device tree property and pass it to the MCU
+with RDD_SET_WF_ANT when starting or stopping the radar detector,
+replacing the fixed dbdc_support based antenna choice. Requires
+matching firmware; a no-op unless the property is set. The start
+path passes rdd_idx while the stop path passes the phy band index,
+which are equivalent for the non-background detector.
+
+Fixes: OWRT-6832
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7915/init.c   |    5 +++++
+ mt7915/mac.c    |   38 +++++++++++++++++++++++++-------------
+ mt7915/mt7915.h |    1 +
+ 3 files changed, 31 insertions(+), 13 deletions(-)
+
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -902,6 +902,11 @@ mt7915_init_hardware(struct mt7915_dev *
+ 
+ 	INIT_WORK(&dev->init_work, mt7915_init_work);
+ 
++	if (dev->mt76.dev->of_node) {
++		of_property_read_u32(dev->mt76.dev->of_node, "rdd_antenna",
++		                     &dev->phy.rdd_antenna);
++	}
++
+ 	ret = mt7915_dma_init(dev, phy2);
+ 	if (ret)
+ 		return ret;
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -2045,6 +2045,27 @@ static void mt7915_dfs_stop_radar_detect
+ 	mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_STOP, rdd_idx, 0, 0);
+ }
+ 
++static int mt7915_dfs_set_wf_ant(struct mt7915_dev *dev, int rdd_idx, int start)
++{
++	int err = 0;
++
++	if (is_mt7915(&dev->mt76)) {
++		u32 rdd_antenna = dev->dbdc_support ? 2 : 0;
++
++		if (dev->phy.rdd_antenna)
++			rdd_antenna = dev->phy.rdd_antenna;
++
++		if (start)
++			dev_info(dev->mt76.dev, "%s: dts rdd_antenna=%u rdd_antenna=%u rdd_idx=%d\n",
++			         __func__, dev->phy.rdd_antenna, rdd_antenna, rdd_idx);
++
++		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT, rdd_idx,
++		                              0, rdd_antenna);
++	}
++
++	return err;
++}
++
+ static int mt7915_dfs_start_rdd(struct mt7915_dev *dev, int rdd_idx)
+ {
+ 	int err, region;
+@@ -2066,12 +2087,9 @@ static int mt7915_dfs_start_rdd(struct m
+ 	if (err < 0)
+ 		return err;
+ 
+-	if (is_mt7915(&dev->mt76)) {
+-		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT, rdd_idx,
+-					      0, dev->dbdc_support ? 2 : 0);
+-		if (err < 0)
+-			return err;
+-	}
++	err = mt7915_dfs_set_wf_ant(dev, rdd_idx, 1);
++	if (err < 0)
++		return err;
+ 
+ 	return mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_DET_MODE, rdd_idx, 0, 1);
+ }
+@@ -2178,13 +2196,7 @@ stop:
+ 	if (err < 0)
+ 		return err;
+ 
+-	if (is_mt7915(&dev->mt76)) {
+-		err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_SET_WF_ANT,
+-					      rdd_idx, 0, dev->dbdc_support ? 2 : 0);
+-		if (err < 0)
+-			return err;
+-	}
+-
++	mt7915_dfs_set_wf_ant(dev, phy->mt76->band_idx, 0);
+ 	mt7915_dfs_stop_radar_detector(phy);
+ 	phy->mt76->dfs_state = MT_DFS_STATE_DISABLED;
+ 
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -222,6 +222,7 @@ struct mt7915_phy {
+ 	u32 throttle_temp[2]; /* 0: critical high, 1: maximum */
+ 
+ 	u32 rxfilter;
++	u32 rdd_antenna;
+ 	u64 omac_mask;
+ 
+ 	u16 noise;

@@ -1,0 +1,571 @@
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Thu, 7 Jul 2022 11:09:59 +0800
+Subject: [PATCH] wifi: mt76: mt7915: eeprom bin file mode and cal-free data
+
+EEPROM handling extensions: load the EEPROM image and pre-cal data
+from a firmware-loader blob named by the bin_file_name device tree
+property, merge per-die cal-free efuse bytes into the image, and
+size the WTBL according to the mt7981 efuse variant.
+
+Squash of the following MediaTek commits:
+- wifi: mt76: mt7915: implement bin file mode
+  (StanleyYP Wang, 2022-07-07)
+- wifi: mt76: mt7915: add cal free data merge support
+  (StanleyYP Wang, 2023-03-30)
+- wifi: mt76: mt7915: add mt7981 efuse variants support
+  (Henry Yen, 2023-12-11)
+---
+ eeprom.c             |   25 +++++
+ mt76.h               |    4 +
+ mt7915/eeprom.c      |  274 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ mt7915/eeprom.h      |    7 ++
+ mt7915/mt7915.h      |   10 ++
+ mt7915/mtk_debugfs.c |   45 ++++++++++
+ testmode.h           |    2
+ mt7915/mcu.c         |   23 +++--
+ 8 files changed, 377 insertions(+), 13 deletions(-)
+
+--- a/eeprom.c
++++ b/eeprom.c
+@@ -172,6 +172,31 @@ static int mt76_get_of_eeprom(struct mt7
+ 	return mt76_get_of_data_from_nvmem(dev, eep, "eeprom", len);
+ }
+ 
++bool mt76_check_bin_file_mode(struct mt76_dev *dev)
++{
++	struct device_node *np = dev->dev->of_node;
++	const char *bin_file_name = NULL;
++
++	if (!np)
++		return false;
++
++	of_property_read_string(np, "bin_file_name", &bin_file_name);
++
++	dev->bin_file_name = bin_file_name;
++	if (dev->bin_file_name) {
++		dev_info(dev->dev, "Using bin file %s\n", dev->bin_file_name);
++#ifdef CONFIG_NL80211_TESTMODE
++		dev->test_mtd.name = devm_kstrdup(dev->dev, bin_file_name, GFP_KERNEL);
++		dev->test_mtd.offset = -1;
++#endif
++	}
++
++	of_node_put(np);
++
++	return dev->bin_file_name ? true : false;
++}
++EXPORT_SYMBOL_GPL(mt76_check_bin_file_mode);
++
+ int
+ mt76_eeprom_override(struct mt76_phy *phy)
+ {
+--- a/mt76.h
++++ b/mt76.h
+@@ -1065,6 +1065,9 @@ struct mt76_dev {
+ 
+ 	atomic_t bus_hung;
+ 
++	/* for mtk internal */
++	const char *bin_file_name;
++
+ 	int first_failed_mcu_cmd;
+ 	int last_successful_mcu_cmd;
+ };
+@@ -1372,6 +1375,7 @@ int mt76_eeprom_override(struct mt76_phy
+ int mt76_get_of_data_from_mtd(struct mt76_dev *dev, void *eep, int offset, int len);
+ int mt76_get_of_data_from_nvmem(struct mt76_dev *dev, void *eep,
+ 				const char *cell_name, int len);
++bool mt76_check_bin_file_mode(struct mt76_dev *dev);
+ 
+ struct mt76_queue *
+ mt76_init_queue(struct mt76_dev *dev, int qid, int idx, int n_desc,
+--- a/mt7915/eeprom.c
++++ b/mt7915/eeprom.c
+@@ -10,6 +10,30 @@ static bool enable_6ghz;
+ module_param(enable_6ghz, bool, 0644);
+ MODULE_PARM_DESC(enable_6ghz, "Enable 6 GHz instead of 5 GHz on hardware that supports both");
+ 
++static int
++mt7915_eeprom_load_precal_binfile(struct mt7915_dev *dev, u32 offs, u32 size)
++{
++	const struct firmware *fw = NULL;
++	int ret;
++
++	ret = request_firmware(&fw, dev->mt76.bin_file_name, dev->mt76.dev);
++	if (ret)
++		return ret;
++
++	if (!fw || !fw->data) {
++		dev_err(dev->mt76.dev, "Invalid bin (bin file mode), load precal fail\n");
++		ret = -EINVAL;
++		goto out;
++	}
++
++	memcpy(dev->cal, fw->data + offs, size);
++
++out:
++	release_firmware(fw);
++
++	return ret;
++}
++
+ static int mt7915_eeprom_load_precal(struct mt7915_dev *dev)
+ {
+ 	struct mt76_dev *mdev = &dev->mt76;
+@@ -29,6 +53,9 @@ static int mt7915_eeprom_load_precal(str
+ 
+ 	offs = is_mt7915(&dev->mt76) ? MT_EE_PRECAL : MT_EE_PRECAL_V2;
+ 
++	if (dev->bin_file_mode)
++		return mt7915_eeprom_load_precal_binfile(dev, offs, size);
++
+ 	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, size);
+ 	if (!ret)
+ 		return ret;
+@@ -64,8 +91,11 @@ static int mt7915_check_eeprom(struct mt
+ 	}
+ }
+ 
+-static char *mt7915_eeprom_name(struct mt7915_dev *dev)
++const char *mt7915_eeprom_name(struct mt7915_dev *dev)
+ {
++	if (dev->bin_file_mode)
++		return dev->mt76.bin_file_name;
++
+ 	switch (mt76_chip(&dev->mt76)) {
+ 	case 0x7915:
+ 		return dev->dbdc_support ?
+@@ -106,7 +136,10 @@ mt7915_eeprom_load_default(struct mt7915
+ 		return ret;
+ 
+ 	if (!fw || !fw->data) {
+-		dev_err(dev->mt76.dev, "Invalid default bin\n");
++		if (dev->bin_file_mode)
++			dev_err(dev->mt76.dev, "Invalid bin (bin file mode)\n");
++		else
++			dev_err(dev->mt76.dev, "Invalid default bin\n");
+ 		ret = -EINVAL;
+ 		goto out;
+ 	}
+@@ -179,6 +212,7 @@ static int mt7915_eeprom_load(struct mt7
+ 
+ 	if (ret) {
+ 		dev->flash_mode = true;
++		dev->eeprom_mode = FLASH_MODE;
+ 	} else {
+ 		u8 free_block_num;
+ 		u32 block_num, i;
+@@ -199,11 +233,28 @@ static int mt7915_eeprom_load(struct mt7
+ 			if (ret < 0 && ret != -ENODATA)
+ 				return ret;
+ 		}
++
++		dev->eeprom_mode = EFUSE_MODE;
+ 	}
+ 
+ 	return mt7915_check_eeprom(dev);
+ }
+ 
++static int mt7915_eeprom_parse_efuse_hw_cap(struct mt7915_dev *dev)
++{
++#define WTBL_SIZE_GROUP		GENMASK(1, 0)
++	u32 buf;
++	int ret;
++
++	ret = mt76_get_of_data_from_nvmem(&dev->mt76, &buf, "variant", 4);
++	if (ret)
++		return ret;
++
++	dev->limited_wtbl_size = buf & WTBL_SIZE_GROUP;
++
++	return 0;
++}
++
+ static void mt7915_eeprom_parse_band_config(struct mt7915_phy *phy)
+ {
+ 	struct mt7915_dev *dev = phy->dev;
+@@ -266,6 +317,13 @@ void mt7915_eeprom_parse_hw_cap(struct m
+ 	u8 path, nss, nss_max = 4, *eeprom = dev->mt76.eeprom.data;
+ 	struct mt76_phy *mphy = phy->mt76;
+ 	u8 band = phy->mt76->band_idx;
++	int ret;
++
++	if (is_mt7981(&dev->mt76)) {
++		ret = mt7915_eeprom_parse_efuse_hw_cap(dev);
++		if (ret)
++			dev->limited_wtbl_size = true;
++	}
+ 
+ 	mt7915_eeprom_parse_band_config(phy);
+ 
+@@ -317,22 +375,232 @@ void mt7915_eeprom_parse_hw_cap(struct m
+ 		dev->chainshift = hweight8(dev->mphy.chainmask);
+ }
+ 
++static int mt7915_apply_cal_free_data(struct mt7915_dev *dev)
++{
++#define MT_EE_CAL_FREE_MAX_SIZE		70
++#define MT_EE_FREQ_OFFSET		0x77
++#define MT_EE_ADIE1_MT7976C_OFFSET	0x270
++#define MT_EE_ADIE1_E3_OFFSET		0x271
++#define MT_EE_END_OFFSET		0xffff
++#define MT_EE_ADIE1_BASE_7896		0x1000
++	enum adie_type {
++		ADIE_7975,
++		ADIE_7976,
++	};
++	enum ddie_type {
++		DDIE_7915,
++		DDIE_7916,
++	};
++	static const u16 ddie_offs_list[][MT_EE_CAL_FREE_MAX_SIZE] = {
++		[DDIE_7915] = {0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
++			       0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x20, 0x21, 0x22, 0x23, 0x24,
++			       0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e,
++			       0x52, 0x70, 0x71, 0x72, 0x76, 0xa8, 0xa9, 0xaa, 0xab, 0xac,
++			       0xad, 0xae, 0xaf, -1},
++		[DDIE_7916] = {0x30, 0x31, 0x34, 0x35, 0x36, 0x38, 0x3c, 0x3a, 0x3d, 0x44,
++			       0x46, 0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf, 0xe0, -1},
++	};
++	static const u16 adie_offs_list[][MT_EE_CAL_FREE_MAX_SIZE] = {
++		[ADIE_7975] = {0x7cd, 0x7cf, 0x7d1, 0x7d3, 0x802, 0x803, 0x804, 0x805, 0x806,
++			       0x808, 0x80a, 0x80b, 0x80c, 0x80d, 0x80e, 0x810, 0x812, 0x813,
++			       0x814, 0x815, 0x816, 0x818, 0x81a, 0x81b, 0x81c, 0x81d, 0x81e,
++			       0x820, 0x822, 0x823, 0x824, 0x825, 0x826, 0x827, 0x828, 0x829,
++			       0x82f, 0x8c0, 0x8c1, 0x8c2, 0x8c3, 0x9a0, 0x8d0, 0x8d1, 0x8d7,
++			       0x8d8, 0x8fa, 0x9a1, 0x9a5, 0x9a6, 0x9a8, 0x9aa, 0x9b0, 0x9b1,
++			       0x9b2, 0x9b3, 0x9b4, 0x9b5, 0x9b6, 0x9b7, -1},
++		[ADIE_7976] = {0x24c, 0x24d, 0x24e, 0x24f, 0x250, 0x251, 0x253, 0x255, 0x257,
++			       0x259, 0x990, 0x991, 0x994, 0x995, 0x9a6, 0x9a8, 0x9aa, -1},
++	};
++	static const u16 eep_offs_list[][MT_EE_CAL_FREE_MAX_SIZE] = {
++		[ADIE_7975] = {0xe00, 0xe01, 0xe02, 0xe03, 0xe04, 0xe05, 0xe06, 0xe07, 0xe08,
++			       0xe09, 0xe0a, 0xe0b, 0xe0c, 0xe0d, 0x80e, 0xe0f, 0xe10, 0xe11,
++			       0xe12, 0xe13, 0xe14, 0xe15, 0xe16, 0xe17, 0xe18, 0xe19, 0xe1a,
++			       0xe1b, 0xe1c, 0xe1d, 0xe1e, 0xe1f, 0xe20, 0xe21, 0xe22, 0xe23,
++			       0xe24, 0xe25, 0xe26, 0xe27, 0xe28, 0xe29, 0xe2a, 0xe2b, 0xe2c,
++			       0xe2d, 0xe2e, 0xe2f, 0xe33, 0xe34, 0xe36, 0xe38, 0xe39, 0xe3a,
++			       0xe3b, 0xe3c, 0xe3d, 0xe3e, 0xe3f, 0xe40, -1},
++		[ADIE_7976] = {0x33c, 0x33d, 0x33e, 0x33f, 0x340, 0x341, 0x343, 0x345, 0x347,
++			       0x349, 0x359, 0x35a, 0x35d, 0x35e, 0x36a, 0x36c, 0x36e, -1},
++	};
++	static const u16 *ddie_offs;
++	static const u16 *adie_offs[__MT_MAX_BAND];
++	static const u16 *eep_offs[__MT_MAX_BAND];
++	static u16 adie_base[__MT_MAX_BAND] = {0};
++	u8 *eeprom = dev->mt76.eeprom.data;
++	u8 buf[MT7915_EEPROM_BLOCK_SIZE];
++	int adie_id, band, i, ret;
++
++	switch (mt76_chip(&dev->mt76)) {
++	case 0x7915:
++		ddie_offs = ddie_offs_list[DDIE_7915];
++		ret = mt7915_mcu_get_eeprom(dev, MT_EE_ADIE_FT_VERSION, buf);
++		if (ret)
++			return ret;
++		adie_id = buf[MT_EE_ADIE_FT_VERSION % MT7915_EEPROM_BLOCK_SIZE] - 1;
++		adie_offs[0] = adie_offs_list[ADIE_7975];
++		/* same as adie offset */
++		eep_offs[0] = NULL;
++		break;
++	case 0x7906:
++	case 0x7981:
++		if (is_mt7916(&dev->mt76))
++			ddie_offs = ddie_offs_list[DDIE_7916];
++		adie_offs[0] = adie_offs_list[ADIE_7976];
++		eep_offs[0] = NULL;
++		break;
++	case 0x7986:
++		adie_id = mt7915_check_adie(dev, true);
++		switch (adie_id) {
++		case MT7975_ONE_ADIE:
++		case MT7975_DUAL_ADIE:
++			adie_offs[0] = adie_offs_list[ADIE_7975];
++			eep_offs[0] = NULL;
++			if (adie_id == MT7975_DUAL_ADIE) {
++				adie_offs[1] = adie_offs_list[ADIE_7975];
++				eep_offs[1] = eep_offs_list[ADIE_7975];
++			}
++			break;
++		case MT7976_ONE_ADIE_DBDC:
++		case MT7976_ONE_ADIE:
++		case MT7976_DUAL_ADIE: {
++			u16 base = 0, offset = MT_EE_ADIE1_MT7976C_OFFSET;
++
++			adie_offs[0] = adie_offs_list[ADIE_7976];
++			eep_offs[0] = NULL;
++			if (adie_id == MT7976_DUAL_ADIE) {
++				adie_offs[1] = adie_offs_list[ADIE_7976];
++				eep_offs[1] = eep_offs_list[ADIE_7976];
++				base = MT_EE_ADIE1_BASE_7896;
++			}
++
++			/* E3 re-bonding workaround */
++			ret = mt7915_mcu_get_eeprom(dev, offset + base, buf);
++			if (ret)
++				break;
++			offset = (offset + base) % MT7915_EEPROM_BLOCK_SIZE;
++			eeprom[MT_EE_ADIE1_MT7976C_OFFSET] = buf[offset];
++			offset = (MT_EE_ADIE1_E3_OFFSET + base) % MT7915_EEPROM_BLOCK_SIZE;
++			eeprom[MT_EE_ADIE1_E3_OFFSET] = buf[offset];
++			break;
++		}
++		default:
++			return -EINVAL;
++		}
++		adie_base[1] = MT_EE_ADIE1_BASE_7896;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	/* ddie */
++	if (ddie_offs) {
++		u16 ddie_offset;
++		u32 block_num, prev_block_num = -1;
++
++		for (i = 0; i < MT_EE_CAL_FREE_MAX_SIZE; i++) {
++			ddie_offset = ddie_offs[i];
++			block_num = ddie_offset / MT7915_EEPROM_BLOCK_SIZE;
++
++			if (ddie_offset == MT_EE_END_OFFSET)
++				break;
++
++			if (prev_block_num != block_num) {
++				ret = mt7915_mcu_get_eeprom(dev, ddie_offset, buf);
++				if (ret) {
++					prev_block_num = -1;
++					continue;
++				}
++			}
++
++			eeprom[ddie_offset] = buf[ddie_offset % MT7915_EEPROM_BLOCK_SIZE];
++			prev_block_num = block_num;
++		}
++	}
++
++	/* adie */
++	for (band = 0; band < __MT_MAX_BAND; band++) {
++		u16 adie_offset, eep_offset;
++		u32 block_num, prev_block_num = -1;
++
++		if (!adie_offs[band])
++			continue;
++
++		for (i = 0; i < MT_EE_CAL_FREE_MAX_SIZE; i++) {
++			adie_offset = adie_offs[band][i] + adie_base[band];
++			eep_offset = adie_offset;
++			if (eep_offs[band])
++				eep_offset = eep_offs[band][i];
++			block_num = adie_offset / MT7915_EEPROM_BLOCK_SIZE;
++
++			if (adie_offs[band][i] == MT_EE_END_OFFSET)
++				break;
++
++			if (is_mt7915(&dev->mt76) && !adie_id &&
++			    adie_offset >= 0x8c0 && adie_offset <= 0x8c3)
++				continue;
++
++			if (prev_block_num != block_num) {
++				ret = mt7915_mcu_get_eeprom(dev, adie_offset, buf);
++				if (ret) {
++					prev_block_num = -1;
++					continue;
++				}
++			}
++
++			eeprom[eep_offset] = buf[adie_offset % MT7915_EEPROM_BLOCK_SIZE];
++			prev_block_num = block_num;
++
++			/* workaround for Harrier */
++			if (is_mt7915(&dev->mt76) && adie_offset == 0x9a1)
++				eeprom[MT_EE_FREQ_OFFSET] = eeprom[adie_offset];
++		}
++	}
++
++	return 0;
++}
++
+ int mt7915_eeprom_init(struct mt7915_dev *dev)
+ {
+ 	int ret;
+ 
+-	ret = mt7915_eeprom_load(dev);
++	dev->bin_file_mode = mt76_check_bin_file_mode(&dev->mt76);
++	if (dev->bin_file_mode) {
++		dev->mt76.eeprom.size = mt7915_eeprom_size(dev);
++		dev->mt76.eeprom.data = devm_kzalloc(dev->mt76.dev, dev->mt76.eeprom.size,
++						     GFP_KERNEL);
++		if (!dev->mt76.eeprom.data)
++			return -ENOMEM;
++		ret = mt7915_eeprom_load_default(dev);
++		if (ret)
++			return ret;
++
++		ret = mt7915_check_eeprom(dev);
++		if (ret)
++			return ret;
++		dev->eeprom_mode = BIN_FILE_MODE;
++	} else {
++		ret = mt7915_eeprom_load(dev);
++	}
++
+ 	if (ret < 0) {
+ 		if (ret != -EINVAL)
+ 			return ret;
+ 
+ 		dev_warn(dev->mt76.dev, "eeprom load fail, use default bin\n");
++		dev->bin_file_mode = false;
++		dev->eeprom_mode = DEFAULT_BIN_MODE;
++
+ 		ret = mt7915_eeprom_load_default(dev);
+ 		if (ret)
+ 			return ret;
+ 	}
+ 
+ 	mt7915_eeprom_load_precal(dev);
++
++	ret = mt7915_apply_cal_free_data(dev);
++	if (ret)
++		return ret;
++
+ 	mt7915_eeprom_parse_hw_cap(dev, &dev->phy);
+ 	memcpy(dev->mphy.macaddr, dev->mt76.eeprom.data + MT_EE_MAC_ADDR,
+ 	       ETH_ALEN);
+--- a/mt7915/eeprom.h
++++ b/mt7915/eeprom.h
+@@ -110,6 +110,13 @@ enum mt7915_sku_rate_group {
+ 	MAX_SKU_RATE_GROUP_NUM,
+ };
+ 
++enum mt7915_eeprom_mode {
++	DEFAULT_BIN_MODE,
++	EFUSE_MODE,
++	FLASH_MODE,
++	BIN_FILE_MODE,
++};
++
+ static inline int
+ mt7915_get_channel_group_5g(int channel, bool is_7976)
+ {
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -322,8 +322,11 @@ struct mt7915_dev {
+ 	u32 hw_pattern;
+ 	u32 ple1_sts;
+ 
++	bool limited_wtbl_size;
+ 	bool dbdc_support;
+ 	bool flash_mode;
++	bool bin_file_mode;
++	u8 eeprom_mode;
+ 	bool muru_debug;
+ 	bool ibf;
+ 
+@@ -608,7 +611,11 @@ void mt7915_mcu_exit(struct mt7915_dev *
+ 
+ static inline u16 mt7915_wtbl_size(struct mt7915_dev *dev)
+ {
+-	return is_mt7915(&dev->mt76) ? MT7915_WTBL_SIZE : MT7916_WTBL_SIZE;
++	if (is_mt7915(&dev->mt76) ||
++	    (is_mt7981(&dev->mt76) && dev->limited_wtbl_size))
++		return MT7915_WTBL_SIZE;
++
++	return MT7916_WTBL_SIZE;
+ }
+ 
+ static inline u16 mt7915_eeprom_size(struct mt7915_dev *dev)
+@@ -713,6 +720,7 @@ void mt7915_dump_tmac_info(u8 *tmac_info
+ int mt7915_mcu_set_txpower_level(struct mt7915_phy *phy, u8 drop_level);
+ void mt7915_packet_log_to_host(struct mt7915_dev *dev, const void *data, int len, int type, int des_len);
+ int mt7915_mcu_set_amsdu_algo(struct mt7915_dev *dev, u16 wcid, u8 enable);
++const char *mt7915_eeprom_name(struct mt7915_dev *dev);
+ 
+ #define PKT_BIN_DEBUG_MAGIC	0xc8763123
+ enum {
+--- a/mt7915/mtk_debugfs.c
++++ b/mt7915/mtk_debugfs.c
+@@ -3,6 +3,7 @@
+ #include "mt7915_debug.h"
+ #include "mac.h"
+ #include "mcu.h"
++#include "eeprom.h"
+ 
+ #ifdef MTK_DEBUG
+ #define LWTBL_IDX2BASE_ID		GENMASK(14, 8)
+@@ -3669,6 +3670,47 @@ static int mt7915_fw_wm_info_read(struct
+ 	return 0;
+ }
+ 
++static int mt7915_show_eeprom_mode(struct seq_file *s, void *data)
++{
++	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	u8 free_block_num = 0;
++#ifdef CONFIG_NL80211_TESTMODE
++	struct mt76_dev *mdev = &dev->mt76;
++	const char *mtd_name = mdev->test_mtd.name;
++	u32 mtd_offset = mdev->test_mtd.offset;
++#else
++	const char *mtd_name = NULL;
++	u32 mtd_offset;
++#endif
++
++	seq_printf(s, "Current eeprom mode:\n");
++
++	switch (dev->eeprom_mode) {
++	case DEFAULT_BIN_MODE:
++		seq_printf(s, "   default bin mode\n   filename = %s\n", mt7915_eeprom_name(dev));
++		break;
++	case EFUSE_MODE:
++		seq_printf(s, "   efuse mode\n");
++		mt7915_mcu_get_eeprom_free_block(dev, &free_block_num);
++		seq_printf(s, "   free block number = %d\n", free_block_num);
++		break;
++	case FLASH_MODE:
++		if (mtd_name)
++			seq_printf(s, "   flash mode\n   mtd name = %s\n   flash offset = 0x%x\n",
++				   mtd_name, mtd_offset);
++		else
++			seq_printf(s, "   flash mode\n");
++		break;
++	case BIN_FILE_MODE:
++		seq_printf(s, "   bin file mode\n   filename = %s\n", mt7915_eeprom_name(dev));
++		break;
++	default:
++		break;
++	}
++
++	return 0;
++}
++
+ static int
+ mt7915_sw_aci_set(void *data, u64 val)
+ {
+@@ -3715,6 +3757,7 @@ mt7915_thermal_recal_set(void *data, u64
+ DEFINE_DEBUGFS_ATTRIBUTE(fops_thermal_recal, NULL,
+ 			 mt7915_thermal_recal_set, "%llu\n");
+ 
++
+ int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
+ {
+ 	struct mt7915_dev *dev = phy->dev;
+@@ -3795,6 +3838,8 @@ int mt7915_mtk_init_debugfs(struct mt791
+ 
+ 	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
+ 
++	debugfs_create_devm_seqfile(dev->mt76.dev, "eeprom_mode", dir,
++				    mt7915_show_eeprom_mode);
+ 	debugfs_create_file("sw_aci", 0600, dir, dev,
+ 			    &fops_sw_aci);
+ 	debugfs_create_file("sr_enable", 0200, dir, phy, &fops_sr_enable);
+--- a/testmode.h
++++ b/testmode.h
+@@ -15,7 +15,7 @@
+  * @MT76_TM_ATTR_RESET: reset parameters to default (flag)
+  * @MT76_TM_ATTR_STATE: test state (u32), see &enum mt76_testmode_state
+  *
+- * @MT76_TM_ATTR_MTD_PART: mtd partition used for eeprom data (string)
++ * @MT76_TM_ATTR_MTD_PART: mtd partition or binfile used for eeprom data (string)
+  * @MT76_TM_ATTR_MTD_OFFSET: offset of eeprom data within the partition (u32)
+  *
+  * @MT76_TM_ATTR_TX_COUNT: configured number of frames to send when setting
