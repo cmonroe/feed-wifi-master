@@ -15,7 +15,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -783,6 +783,33 @@ out:
+@@ -780,6 +780,28 @@ mt7915_post_channel_switch(struct ieee80
  	return ret;
  }
  
@@ -25,7 +25,6 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +{
 +	struct mt7915_phy *phy = mt7915_hw_phy(hw);
 +	struct mt7915_dev *dev = phy->dev;
-+	int ret;
 +
 +	switch (event->type) {
 +	case MLME_EVENT:
@@ -33,23 +32,19 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		    event->u.mlme.status == MLME_SUCCESS) {
 +			dev_info(dev->mt76.dev, "%s: set channel after association", __func__);
 +			ieee80211_stop_queues(hw);
-+			ret = mt7915_set_channel(phy->mt76);
-+			if (ret)
-+				return;
++			mt76_update_channel(phy->mt76);
 +			ieee80211_wake_queues(hw);
 +		}
 +		break;
 +	default:
 +		break;
 +	}
-+
-+	return;
 +}
 +
  int mt7915_mac_sta_add(struct mt76_dev *mdev, struct ieee80211_vif *vif,
  		       struct ieee80211_sta *sta)
  {
-@@ -1910,6 +1937,7 @@ const struct ieee80211_ops mt7915_ops =
+@@ -1907,6 +1929,7 @@ const struct ieee80211_ops mt7915_ops =
  	.set_sar_specs = mt7915_set_sar_specs,
  	.channel_switch_beacon = mt7915_channel_switch_beacon,
  	.post_channel_switch = mt7915_post_channel_switch,

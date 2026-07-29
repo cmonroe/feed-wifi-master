@@ -10,7 +10,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -759,6 +759,27 @@ mt7915_sta_vow_set_airtime_weight(struct
+@@ -759,6 +759,24 @@ mt7915_sta_vow_set_airtime_weight(struct
  	mt7915_mcu_set_vow_drr_ctrl(dev, msta, VOW_DRR_CTRL_STA_ALL, weight);
  }
  
@@ -23,22 +23,19 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
 +	ret = cfg80211_chandef_dfs_required(hw->wiphy, chandef, NL80211_IFTYPE_AP);
 +	if (ret <= 0)
-+		goto out;
++		return ret;
 +
 +	ieee80211_stop_queues(hw);
-+	ret = mt7915_set_channel(phy->mt76);
-+	if (ret)
-+		goto out;
++	ret = mt76_update_channel(phy->mt76);
 +	ieee80211_wake_queues(hw);
 +
-+out:
 +	return ret;
 +}
 +
  int mt7915_mac_sta_add(struct mt76_dev *mdev, struct ieee80211_vif *vif,
  		       struct ieee80211_sta *sta)
  {
-@@ -1885,6 +1906,7 @@ const struct ieee80211_ops mt7915_ops =
+@@ -1885,6 +1903,7 @@ const struct ieee80211_ops mt7915_ops =
  	.get_txpower = mt76_get_txpower,
  	.set_sar_specs = mt7915_set_sar_specs,
  	.channel_switch_beacon = mt7915_channel_switch_beacon,
