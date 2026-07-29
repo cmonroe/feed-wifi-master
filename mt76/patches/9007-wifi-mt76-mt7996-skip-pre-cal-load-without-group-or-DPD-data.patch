@@ -18,9 +18,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -447,7 +447,13 @@ static int mt7996_eeprom_load_precal(str
- 
- 	mt7996_eeprom_init_precal(dev);
+@@ -455,7 +455,13 @@ static int mt7996_eeprom_load_precal(str
+ 	if (!dev->prek.rev)
+ 		return 0;
  
 -	if (dev->eeprom_mode != EEPROM_MODE_FLASH || !val)
 +	if (dev->eeprom_mode != EEPROM_MODE_FLASH)
@@ -33,7 +33,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return 0;
  
  	size = MT_EE_CAL_GROUP_SIZE + MT_EE_CAL_DPD_SIZE;
-@@ -460,7 +466,15 @@ static int mt7996_eeprom_load_precal(str
+@@ -469,7 +475,15 @@ static int mt7996_eeprom_load_precal(str
  	if (!ret)
   		return ret;
  

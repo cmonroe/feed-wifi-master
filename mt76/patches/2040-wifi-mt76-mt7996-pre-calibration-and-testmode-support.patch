@@ -27,14 +27,17 @@ Squash of the following MediaTek commits:
  mac80211.c           |   30 ++------
  mt76.h               |   21 +++++
  mt76_connac_mcu.h    |    3
- mt7996/eeprom.c      |  138 +++++++++++++++++++++++++++++++++++++
- mt7996/eeprom.h      |   97 ++++++++++++++++++++++++++
+ mac80211.c           |   30 ++-----
+ mt76.h               |   21 +++++
+ mt76_connac_mcu.h    |    3 
+ mt7996/eeprom.c      |  147 +++++++++++++++++++++++++++++++++++++-
+ mt7996/eeprom.h      |   97 +++++++++++++++++++++++++
  mt7996/init.c        |    6 +
  mt7996/main.c        |    6 +
- mt7996/mcu.c         |  186 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mcu.c         |  196 +++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7996/mt7996.h      |   24 ++++++
- mt7996/mtk_debugfs.c |   41 +++++++++++
- 10 files changed, 529 insertions(+), 23 deletions(-)
+ mt7996/mtk_debugfs.c |   41 ++++++++++
+ 10 files changed, 548 insertions(+), 23 deletions(-)
 
 --- a/mac80211.c
 +++ b/mac80211.c
@@ -221,7 +224,7 @@ Squash of the following MediaTek commits:
  {
  	switch (mt76_chip(&dev->mt76)) {
  	case MT7992_DEVICE_ID:
-@@ -335,12 +404,77 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -335,12 +404,86 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  	return mt7996_eeprom_parse_band_config(phy);
  }
  
@@ -239,14 +242,14 @@ Squash of the following MediaTek commits:
 +	dev->prek.dpd_ch_num[DPD_CH_NUM_BW160_6G] = ARRAY_SIZE(dpd_6g_ch_list_bw160);
 +
 +	switch (mt76_chip(&dev->mt76)) {
-+	case 0x7990:
++	case MT7996_DEVICE_ID:
 +		dev->prek.rev = mt7996_prek_rev;
 +		if (dev->var.type == MT7996_VAR_TYPE_233)
 +			dev->prek.rev = mt7996_prek_rev_233;
 +		/* 5g & 6g bw 80 dpd channel list is not used */
 +		dev->prek.dpd_ch_num[DPD_CH_NUM_BW320_6G] = ARRAY_SIZE(dpd_6g_ch_list_bw320);
 +		break;
-+	case 0x7992:
++	case MT7992_DEVICE_ID:
 +		dev->prek.rev  = mt7992_prek_rev;
 +		dev->prek.dpd_ch_num[DPD_CH_NUM_BW80_5G] = ARRAY_SIZE(dpd_5g_ch_list_bw80);
 +		/* 6g is not used in current sku */
@@ -255,7 +258,12 @@ Squash of the following MediaTek commits:
 +		dev->prek.dpd_ch_num[DPD_CH_NUM_BW160_6G] = 0;
 +		break;
 +	default:
-+		dev->prek.rev  = mt7996_prek_rev;
++		/* no pre-cal size table for this chip, so the group and DPD
++		 * sizes below cannot be computed; skip pre-cal entirely
++		 * rather than parse flash with the wrong layout
++		 */
++		dev->prek.rev = NULL;
++		memset(dev->prek.dpd_ch_num, 0, sizeof(dev->prek.dpd_ch_num));
 +		break;
 +	}
 +}
@@ -270,6 +278,9 @@ Squash of the following MediaTek commits:
 +
 +	mt7996_eeprom_init_precal(dev);
 +
++	if (!dev->prek.rev)
++		return 0;
++
 +	if (dev->eeprom_mode != EEPROM_MODE_FLASH || !val)
 +		return 0;
 +
@@ -279,6 +290,7 @@ Squash of the following MediaTek commits:
 +	if (!dev->cal)
 +		return -ENOMEM;
 +
++	offs = MT_EE_PRECAL;
 +	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, size);
 +	if (!ret)
 + 		return ret;
@@ -513,7 +525,7 @@ Squash of the following MediaTek commits:
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4954,6 +4954,192 @@ int mt7996_mcu_get_efuse_free_block(stru
+@@ -4954,6 +4954,202 @@ int mt7996_mcu_get_efuse_free_block(stru
  	return 0;
  }
  
@@ -562,9 +574,14 @@ Squash of the following MediaTek commits:
 +int mt7996_mcu_apply_group_cal(struct mt7996_dev *dev)
 +{
 +	u8 *cal = dev->cal, *eeprom = dev->mt76.eeprom.data;
-+	u32 idx = 0, total_idx = MT_EE_CAL_GROUP_SIZE / MT_EE_CAL_UNIT;
++	u32 idx = 0, total_idx;
 +	u32 offs = MT_EE_DO_PRE_CAL;
 +	int ret = 0;
++
++	if (!cal)
++		return 0;
++
++	total_idx = MT_EE_CAL_GROUP_SIZE / MT_EE_CAL_UNIT;
 +
 +	if (!(eeprom[offs] & MT_EE_WIFI_CAL_GROUP))
 +		return 0;
@@ -591,11 +608,16 @@ Squash of the following MediaTek commits:
 +	enum nl80211_chan_width bw = chandef->width;
 +	const struct ieee80211_channel *chan_list;
 +	u32 cal_id, chan_list_size, base_offset = 0, offs = MT_EE_DO_PRE_CAL;
-+	u32 per_chan_size = DPD_PER_CH_BW20_SIZE;
++	u32 per_chan_size;
 +	u16 channel = ieee80211_frequency_to_channel(chandef->center_freq1);
 +	u8 dpd_mask, *cal = dev->cal, *eeprom = dev->mt76.eeprom.data;
 +	int idx, i, ret;
 +	bool has_skip_ch = (band == NL80211_BAND_5GHZ);
++
++	if (!cal)
++		return 0;
++
++	per_chan_size = DPD_PER_CH_BW20_SIZE;
 +
 +	switch (band) {
 +	case NL80211_BAND_2GHZ:
