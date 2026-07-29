@@ -22,10 +22,18 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7925/pci_mac.c  |    4 +
  mt7996/debugfs.c  |   89 ++++++++++++++++++++++++++++++++++++++++++++
  mt7996/init.c     |    2
- mt7996/mac.c      |    8 +++
+ mac80211.c        |    1 
+ mt76.h            |    8 ++++
+ mt76_connac_mac.c |    4 ++
+ mt7915/mac.c      |    3 +
+ mt7921/pci_mac.c  |    4 +-
+ mt7925/pci_mac.c  |    8 ++++
+ mt7996/debugfs.c  |   89 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/init.c     |    2 +
+ mt7996/mac.c      |    8 ++++
  mt7996/mt7996.h   |    3 +
- tx.c              |   22 +++++++++-
- 11 files changed, 140 insertions(+), 8 deletions(-)
+ tx.c              |   22 +++++++++++--
+ 11 files changed, 144 insertions(+), 8 deletions(-)
 
 --- a/mt76.h
 +++ b/mt76.h
@@ -195,6 +203,19 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (id < 0)
  		return id;
  
+@@ -61,8 +63,12 @@ void mt7925_tx_token_put(struct mt792x_d
+ 
+ 	spin_lock_bh(&dev->mt76.token_lock);
+ 	idr_for_each_entry(&dev->mt76.token, txwi, id) {
++		struct mt76_phy *phy = mt76_dev_phy(&dev->mt76, txwi->phy_idx);
++
+ 		mt7925_txwi_free(dev, txwi, NULL, NULL, NULL);
+ 		dev->mt76.token_count--;
++		if (phy->tokens > 0)
++			phy->tokens--;
+ 	}
+ 	spin_unlock_bh(&dev->mt76.token_lock);
+ 	idr_destroy(&dev->mt76.token);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
 @@ -94,6 +94,7 @@

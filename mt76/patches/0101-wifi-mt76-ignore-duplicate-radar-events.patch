@@ -16,12 +16,12 @@ guard to mt7915 and mt7996.
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7915/mac.c    |    2 ++
- mt7915/mcu.c    |   19 +++++++++++++++++--
+ mt7915/mcu.c    |   24 ++++++++++++++++++++++--
  mt7915/mt7915.h |    2 ++
  mt7996/mac.c    |    2 ++
- mt7996/mcu.c    |   13 +++++++++++++
+ mt7996/mcu.c    |   20 ++++++++++++++++++--
  mt7996/mt7996.h |    2 ++
- 6 files changed, 38 insertions(+), 2 deletions(-)
+ 6 files changed, 48 insertions(+), 4 deletions(-)
 
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
@@ -34,18 +34,23 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct mt7915_mcu_rdd_report *r;
  	u32 sku;
  
-@@ -361,18 +363,31 @@ mt7915_mcu_rx_radar_detected(struct mt79
+@@ -361,18 +363,36 @@ mt7915_mcu_rx_radar_detected(struct mt79
  	if (!mphy)
  		return;
  
 +	phy = (struct mt7915_phy *)mphy->priv;
 +	chandef = &phy->mt76->chandef;
 +
-+	if (phy->rdd_hw_value == chandef->chan->hw_value) {
-+		dev_info(dev->mt76.dev,
-+			"%s: radar detection for channel=%u in progress, ignore r->rdd_idx=%d\n",
-+			__func__, phy->rdd_hw_value, r->rdd_idx);
-+		return;
++	if (r->rdd_idx != MT_RDD_IDX_BACKGROUND) {
++		if (!chandef->chan)
++			return;
++
++		if (phy->rdd_hw_value == chandef->chan->hw_value) {
++			dev_info(dev->mt76.dev,
++				"%s: radar detection for channel=%u in progress, ignore r->rdd_idx=%d\n",
++				__func__, phy->rdd_hw_value, r->rdd_idx);
++			return;
++		}
 +	}
 +
  	dev_info(dev->mt76.dev, "%s: RADAR DETECTED r->rdd_idx=%d\n", __func__, r->rdd_idx);
@@ -112,27 +117,34 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct mt7996_mcu_rdd_report *r;
  
  	r = (struct mt7996_mcu_rdd_report *)skb->data;
-@@ -547,6 +549,16 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -547,6 +549,21 @@ mt7996_mcu_rx_radar_detected(struct mt79
  	if (!mphy)
  		goto err;
  
 +	phy = (struct mt7996_phy *)mphy->priv;
 +	chandef = &phy->mt76->chandef;
 +
-+	if (phy->rdd_hw_value == chandef->chan->hw_value) {
-+		dev_info(dev->mt76.dev,
-+			"%s: radar detection for channel=%u in progress, ignore r->rdd_idx=%d\n",
-+			__func__, phy->rdd_hw_value, r->rdd_idx);
-+		return;
++	if (r->rdd_idx != MT_RDD_IDX_BACKGROUND) {
++		if (!chandef->chan)
++			return;
++
++		if (phy->rdd_hw_value == chandef->chan->hw_value) {
++			dev_info(dev->mt76.dev,
++				"%s: radar detection for channel=%u in progress, ignore r->rdd_idx=%d\n",
++				__func__, phy->rdd_hw_value, r->rdd_idx);
++			return;
++		}
 +	}
 +
  	dev_info(dev->mt76.dev, "%s: RADAR DETECTED r->rdd_idx=%d\n", __func__, r->rdd_idx);
  	dev_dbg(dev->mt76.dev, "%s: long_detected=%u constant_prf_detected=%u staggered_prf_detected=%u\n",
  			__func__, r->long_detected, r->constant_prf_detected, r->staggered_prf_detected);
-@@ -560,6 +572,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -558,8 +575,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
+ 						&dev->rdd2_chandef,
+ 						GFP_ATOMIC);
  	} else {
- 		struct mt7996_phy *phy = mphy->priv;
- 
+-		struct mt7996_phy *phy = mphy->priv;
+-
 +		phy->rdd_hw_value = chandef->chan->hw_value;
  		phy->rdd_tx_paused = true;
  		ieee80211_radar_detected(mphy->hw, NULL);

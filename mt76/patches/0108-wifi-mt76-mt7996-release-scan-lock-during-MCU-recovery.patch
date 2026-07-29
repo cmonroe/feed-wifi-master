@@ -7,11 +7,18 @@ blocking all future scan requests.
 
 Also clear stale MCU reset bits when recovery returns to normal.
 
+Complete the scan unconditionally.  mac80211 does not finish a
+dangling hw scan on restart, and mt76_scan_complete() clears
+dev->scan before completing, so skipping the call under MT76_MCU_RESET
+just leaked the wiphy scan lock: a scan that reached its last channel
+inside the reset window was never completed and the later abort found
+no scan to cancel.
+
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7996/mac.c |   14 +++++++++++++-
- scan.c       |    2 +-
- 2 files changed, 14 insertions(+), 2 deletions(-)
+ scan.c       |    3 +--
+ 2 files changed, 14 insertions(+), 3 deletions(-)
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
@@ -39,12 +46,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		 wiphy_name(hw->wiphy));
 --- a/scan.c
 +++ b/scan.c
-@@ -32,7 +32,7 @@ static void mt76_scan_complete(struct mt
+@@ -32,8 +32,7 @@ static void mt76_scan_complete(struct mt
  	}
  	mt76_put_vif_phy_link(phy, dev->scan.vif, dev->scan.mlink);
  	memset(&dev->scan, 0, sizeof(dev->scan));
 -	if (!test_bit(MT76_MCU_RESET, &dev->phy.state))
-+	if (!test_bit(MT76_MCU_RESET, &dev->phy.state) || abort)
- 		ieee80211_scan_completed(phy->hw, &info);
+-		ieee80211_scan_completed(phy->hw, &info);
++	ieee80211_scan_completed(phy->hw, &info);
  }
  
+ void mt76_abort_scan(struct mt76_dev *dev)

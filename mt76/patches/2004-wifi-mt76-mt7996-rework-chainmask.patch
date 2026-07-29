@@ -139,7 +139,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	mutex_unlock(&dev->mt76.mutex);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4355,7 +4355,7 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -4358,7 +4358,7 @@ int mt7996_mcu_set_chan_info(struct mt79
  		.center_ch = ieee80211_frequency_to_channel(freq1),
  		.bw = mt76_connac_chan_bw(chandef),
  		.tx_path_num = hweight16(phy->mt76->chainmask),

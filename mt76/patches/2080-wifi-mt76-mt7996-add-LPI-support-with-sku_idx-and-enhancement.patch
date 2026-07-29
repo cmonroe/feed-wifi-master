@@ -18,11 +18,17 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  mt7996/main.c        |    6 ++
  mt7996/mcu.c         |  119 ++++++++++++++++++++++++++++++++++++++++++++++--
  mt7996/mcu.h         |    1
+ mt76_connac3_mac.h   |   12 ++++
+ mt7996/init.c        |    2 
+ mt7996/mac.c         |    5 ++
+ mt7996/main.c        |    6 ++
+ mt7996/mcu.c         |  119 +++++++++++++++++++++++++++++++++++++++++++++--
+ mt7996/mcu.h         |    1 
  mt7996/mt7996.h      |    3 -
  mt7996/mtk_debugfs.c |    3 -
- mt7996/vendor.c      |  124 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/vendor.c      |  127 +++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7996/vendor.h      |   15 ++++++
- 10 files changed, 280 insertions(+), 10 deletions(-)
+ 10 files changed, 283 insertions(+), 10 deletions(-)
 
 --- a/mt76_connac3_mac.h
 +++ b/mt76_connac3_mac.h
@@ -103,7 +109,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5948,7 +5948,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -5951,7 +5951,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -112,7 +118,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -6262,6 +6262,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6271,6 +6271,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -135,7 +141,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static s8 mt7996_get_power_bound(struct mt7996_phy *phy, s8 txpower)
  {
         struct mt76_phy *mphy = phy->mt76;
-@@ -6273,7 +6289,8 @@ static s8 mt7996_get_power_bound(struct
+@@ -6282,7 +6298,8 @@ static s8 mt7996_get_power_bound(struct
         return txpower;
  }
  
@@ -145,7 +151,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
  #define TX_POWER_LIMIT_TABLE_PATH	1
-@@ -6298,7 +6315,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6307,7 +6324,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
@@ -156,7 +162,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6321,7 +6340,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6330,7 +6349,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	}
  
  	skb_put_data(skb, &req, sizeof(req));
@@ -195,7 +201,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb_put_data(skb, &la->mcs[0], 8); /* HT20 */
  	skb_put_data(skb, &la->mcs[1], 9); /* HT40 */
  
-@@ -6360,8 +6409,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6369,8 +6418,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la->path.cck, 5);
@@ -239,7 +245,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -6378,6 +6460,31 @@ out:
+@@ -6387,6 +6469,31 @@ out:
  	return ret;
  }
  
@@ -329,7 +335,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static const struct nla_policy
  edcca_dump_policy[NUM_MTK_VENDOR_ATTRS_EDCCA_DUMP] = {
  	[MTK_VENDOR_ATTR_EDCCA_DUMP_MODE] = { .type = NLA_U8 },
-@@ -228,6 +236,111 @@ error:
+@@ -233,6 +241,114 @@ error:
  	return -EINVAL;
  }
  
@@ -391,6 +397,9 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 +	if (tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX]) {
 +		struct ieee80211_channel *chan = mphy->main_chandef.chan;
 +
++		if (!chan)
++			return -EINVAL;
++
 +		mphy->sku_idx = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX]);
 +
 +		if (mt76_find_power_limits_node(mphy) == NULL)
@@ -441,7 +450,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static const struct wiphy_vendor_command mt7996_vendor_commands[] = {
  	{
  		.info = {
-@@ -254,6 +367,17 @@ static const struct wiphy_vendor_command
+@@ -259,6 +375,17 @@ static const struct wiphy_vendor_command
  	},
  	{
  		.info = {

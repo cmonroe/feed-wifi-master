@@ -13,15 +13,16 @@ Squash of the following MediaTek commits:
   (Yi-Chia Hsieh, 2023-01-26)
 ---
  mt76_connac_mcu.h |    1
- mt7915/main.c     |    4 +
- mt7915/mcu.c      |   73 +++++++++++++++++++++++
- mt7915/mcu.h      |   24 ++++++++
- mt7915/mt7915.h   |    6 ++
- mt7915/vendor.c   |  192 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- mt7915/vendor.h   |   55 +++++++++++++++++
- mt7915/Makefile   |    4 +-
+ mt76_connac_mcu.h |    1 
+ mt7915/Makefile   |    4 -
  mt7915/init.c     |    8 ++
- 9 files changed, 365 insertions(+), 2 deletions(-)
+ mt7915/main.c     |    4 +
+ mt7915/mcu.c      |   78 +++++++++++++++++++++
+ mt7915/mcu.h      |   24 ++++++
+ mt7915/mt7915.h   |    6 +
+ mt7915/vendor.c   |  197 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7915/vendor.h   |   55 +++++++++++++++
+ 9 files changed, 375 insertions(+), 2 deletions(-)
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
@@ -48,7 +49,7 @@ Squash of the following MediaTek commits:
  			return ret;
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4633,6 +4633,79 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4638,6 +4638,84 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  }
  #endif
  
@@ -116,6 +117,11 @@ Squash of the following MediaTek commits:
 +	if (ret)
 +		return ret;
 +
++	if (skb->len < sizeof(*res)) {
++		dev_kfree_skb(skb);
++		return -EINVAL;
++	}
++
 +	res = (struct mt7915_mcu_edcca_info *)skb->data;
 +	*value++ = res->info[0];
 +	*value++ = res->info[1];
@@ -176,7 +182,7 @@ Squash of the following MediaTek commits:
  
 --- /dev/null
 +++ b/mt7915/vendor.c
-@@ -0,0 +1,192 @@
+@@ -0,0 +1,197 @@
 +// SPDX-License-Identifier: ISC
 +/*
 + * Copyright (C) 2020, MediaTek Inc. All rights reserved.
@@ -322,12 +328,17 @@ Squash of the following MediaTek commits:
 +			     unsigned long *storage)
 +{
 +	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
-+	struct ieee80211_bss_conf *bss_conf = &vif->bss_conf;
++	struct ieee80211_bss_conf *bss_conf;
 +	int len = 0;
++
++	if (!vif)
++		return -EINVAL;
 +
 +	if (*storage == 1)
 +		return -ENOENT;
 +	*storage = 1;
++
++	bss_conf = &vif->bss_conf;
 +
 +	if (nla_put_u64_64bit(skb,
 +	    MTK_VENDOR_ATTR_AVAL_BSS_COLOR_BMP,

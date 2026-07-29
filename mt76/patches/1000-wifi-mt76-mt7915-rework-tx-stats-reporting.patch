@@ -212,7 +212,7 @@ Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
  static void mt7915_tx(struct ieee80211_hw *hw,
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4257,6 +4257,167 @@ int mt7915_mcu_set_protection(struct mt7
+@@ -4262,6 +4262,167 @@ int mt7915_mcu_set_protection(struct mt7
  				     MCU_EXT_CMD(BSS_INFO_UPDATE), true);
  }
  

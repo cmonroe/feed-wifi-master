@@ -8,8 +8,8 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 ---
  mt7915/mt7915.h |    2 ++
  mt7915/regs.h   |    2 ++
- mt7915/soc.c    |   47 +++++++++++++++++++++++++++++++++++++++++++++--
- 3 files changed, 49 insertions(+), 2 deletions(-)
+ mt7915/soc.c    |   45 ++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 48 insertions(+), 1 deletion(-)
 
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
@@ -61,15 +61,6 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	mt76_rmw(dev, MT_TOP_WFSYS_PWR,
  		 MT_TOP_PWR_ACK_MASK | MT_TOP_PWR_KEY_MASK,
  		 MT_TOP_PWR_KEY);
-@@ -906,7 +911,7 @@ static void mt7986_wmac_clock_enable(str
- 
- 		read_poll_timeout(mt76_rr, cur, !(cur & MT_SLP_CTRL_BSY_MASK),
- 				  USEC_PER_MSEC, 50 * USEC_PER_MSEC, false,
--				  dev, MT_ADIE_SLP_CTRL_CK0(0));
-+				  dev, MT_ADIE_SLP_CTRL_CK0(1));
- 	}
- 	if (is_7975(dev, 1, adie_type) || is_7976(dev, 1, adie_type)) {
- 		mt76_rmw_field(dev, MT_ADIE_SLP_CTRL_CK0(1),
 @@ -1154,12 +1159,14 @@ int mt7986_wmac_enable(struct mt7915_dev
  	if (ret)
  		return ret;

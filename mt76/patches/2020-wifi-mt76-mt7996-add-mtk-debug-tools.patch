@@ -5712,7 +5712,7 @@ Squash of the following MediaTek commits:
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6279,3 +6279,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6288,3 +6288,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }

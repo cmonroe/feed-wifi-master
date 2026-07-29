@@ -22,8 +22,14 @@ Squash of the following MediaTek commits:
  mt7915/mt7915.h      |   10 ++
  mt7915/mtk_debugfs.c |   45 ++++++++++
  testmode.h           |    2
- mt7915/mcu.c         |   23 +++--
- 8 files changed, 377 insertions(+), 13 deletions(-)
+ eeprom.c             |   25 ++++
+ mt76.h               |    4 
+ mt7915/eeprom.c      |  287 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ mt7915/eeprom.h      |    7 +
+ mt7915/mt7915.h      |   10 +
+ mt7915/mtk_debugfs.c |   45 +++++++
+ testmode.h           |    2 
+ 7 files changed, 375 insertions(+), 5 deletions(-)
 
 --- a/eeprom.c
 +++ b/eeprom.c
@@ -81,7 +87,7 @@ Squash of the following MediaTek commits:
  mt76_init_queue(struct mt76_dev *dev, int qid, int idx, int n_desc,
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
-@@ -10,6 +10,30 @@ static bool enable_6ghz;
+@@ -10,6 +10,36 @@ static bool enable_6ghz;
  module_param(enable_6ghz, bool, 0644);
  MODULE_PARM_DESC(enable_6ghz, "Enable 6 GHz instead of 5 GHz on hardware that supports both");
  
@@ -101,6 +107,12 @@ Squash of the following MediaTek commits:
 +		goto out;
 +	}
 +
++	if (fw->size < offs + size) {
++		dev_err(dev->mt76.dev, "Invalid bin size (bin file mode), load precal fail\n");
++		ret = -EINVAL;
++		goto out;
++	}
++
 +	memcpy(dev->cal, fw->data + offs, size);
 +
 +out:
@@ -112,17 +124,24 @@ Squash of the following MediaTek commits:
  static int mt7915_eeprom_load_precal(struct mt7915_dev *dev)
  {
  	struct mt76_dev *mdev = &dev->mt76;
-@@ -29,6 +53,9 @@ static int mt7915_eeprom_load_precal(str
+@@ -29,6 +59,16 @@ static int mt7915_eeprom_load_precal(str
  
  	offs = is_mt7915(&dev->mt76) ? MT_EE_PRECAL : MT_EE_PRECAL_V2;
  
-+	if (dev->bin_file_mode)
-+		return mt7915_eeprom_load_precal_binfile(dev, offs, size);
++	if (dev->bin_file_mode) {
++		ret = mt7915_eeprom_load_precal_binfile(dev, offs, size);
++		if (ret) {
++			devm_kfree(mdev->dev, dev->cal);
++			dev->cal = NULL;
++		}
++
++		return ret;
++	}
 +
  	ret = mt76_get_of_data_from_mtd(mdev, dev->cal, offs, size);
  	if (!ret)
  		return ret;
-@@ -64,8 +91,11 @@ static int mt7915_check_eeprom(struct mt
+@@ -64,8 +104,11 @@ static int mt7915_check_eeprom(struct mt
  	}
  }
  
@@ -135,7 +154,7 @@ Squash of the following MediaTek commits:
  	switch (mt76_chip(&dev->mt76)) {
  	case 0x7915:
  		return dev->dbdc_support ?
-@@ -106,7 +136,10 @@ mt7915_eeprom_load_default(struct mt7915
+@@ -106,7 +149,10 @@ mt7915_eeprom_load_default(struct mt7915
  		return ret;
  
  	if (!fw || !fw->data) {
@@ -147,7 +166,7 @@ Squash of the following MediaTek commits:
  		ret = -EINVAL;
  		goto out;
  	}
-@@ -179,6 +212,7 @@ static int mt7915_eeprom_load(struct mt7
+@@ -179,6 +225,7 @@ static int mt7915_eeprom_load(struct mt7
  
  	if (ret) {
  		dev->flash_mode = true;
@@ -155,7 +174,7 @@ Squash of the following MediaTek commits:
  	} else {
  		u8 free_block_num;
  		u32 block_num, i;
-@@ -199,11 +233,28 @@ static int mt7915_eeprom_load(struct mt7
+@@ -199,11 +246,28 @@ static int mt7915_eeprom_load(struct mt7
  			if (ret < 0 && ret != -ENODATA)
  				return ret;
  		}
@@ -184,7 +203,7 @@ Squash of the following MediaTek commits:
  static void mt7915_eeprom_parse_band_config(struct mt7915_phy *phy)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -266,6 +317,13 @@ void mt7915_eeprom_parse_hw_cap(struct m
+@@ -266,6 +330,13 @@ void mt7915_eeprom_parse_hw_cap(struct m
  	u8 path, nss, nss_max = 4, *eeprom = dev->mt76.eeprom.data;
  	struct mt76_phy *mphy = phy->mt76;
  	u8 band = phy->mt76->band_idx;
@@ -198,7 +217,7 @@ Squash of the following MediaTek commits:
  
  	mt7915_eeprom_parse_band_config(phy);
  
-@@ -317,22 +375,232 @@ void mt7915_eeprom_parse_hw_cap(struct m
+@@ -317,22 +388,232 @@ void mt7915_eeprom_parse_hw_cap(struct m
  		dev->chainshift = hweight8(dev->mphy.chainmask);
  }
  
@@ -493,7 +512,7 @@ Squash of the following MediaTek commits:
  
  #ifdef MTK_DEBUG
  #define LWTBL_IDX2BASE_ID		GENMASK(14, 8)
-@@ -3669,6 +3670,47 @@ static int mt7915_fw_wm_info_read(struct
+@@ -3671,6 +3672,47 @@ static int mt7915_fw_wm_info_read(struct
  	return 0;
  }
  
@@ -541,7 +560,7 @@ Squash of the following MediaTek commits:
  static int
  mt7915_sw_aci_set(void *data, u64 val)
  {
-@@ -3715,6 +3757,7 @@ mt7915_thermal_recal_set(void *data, u64
+@@ -3717,6 +3759,7 @@ mt7915_thermal_recal_set(void *data, u64
  DEFINE_DEBUGFS_ATTRIBUTE(fops_thermal_recal, NULL,
  			 mt7915_thermal_recal_set, "%llu\n");
  
@@ -549,7 +568,7 @@ Squash of the following MediaTek commits:
  int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -3795,6 +3838,8 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3797,6 +3840,8 @@ int mt7915_mtk_init_debugfs(struct mt791
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  

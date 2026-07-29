@@ -9,6 +9,12 @@ Enable PPDU TXS unconditionally, route TXS by format rather than PID,
 and assign MT_PACKET_ID_WED for all data frames so fill_txs() can
 gate rate updates to data-path TXS only.
 
+Data frames now get MT_PACKET_ID_WED even where WED is absent, so
+extend the mt76x02 status fixup to accept it.  That driver never has
+WED and relied on MT_PACKET_ID_NO_SKB to encode the packet rate;
+without this its statusless data frames lose rate and retry
+accounting entirely.
+
 Move retry accumulation out of shared fill_txs() into
 mt7915_mac_add_txs() with is_mt7915() guard; MT7916/MT7981/MT7986
 obtain retries from TX_FREE v3 instead.  Do not accumulate DW6
@@ -24,14 +30,16 @@ Based-on-work-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 Based-on-work-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt76_connac.h     |    2 +-
- mt76_connac_mac.c |   24 +++++++++++-------------
- mt7915/init.c     |    3 +--
- mt7915/mac.c      |   25 +++++++++++--------------
- mt7915/main.c     |    1 -
- mt7915/mt7915.h   |    1 -
- tx.c              |    5 ++---
- 7 files changed, 26 insertions(+), 35 deletions(-)
+ mt76_connac.h      |    2 +-
+ mt76_connac_mac.c  |   24 +++++++++++-------------
+ mt76x02_txrx.c     |    2 +-
+ mt76x02_usb_core.c |    2 +-
+ mt7915/init.c      |    3 +--
+ mt7915/mac.c       |   25 +++++++++++--------------
+ mt7915/main.c      |    1 -
+ mt7915/mt7915.h    |    1 -
+ tx.c               |    5 ++---
+ 9 files changed, 28 insertions(+), 37 deletions(-)
 
 --- a/mt76_connac.h
 +++ b/mt76_connac.h
@@ -198,3 +206,25 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			return MT_PACKET_ID_WED;
  
  		return MT_PACKET_ID_NO_SKB;
+--- a/mt76x02_txrx.c
++++ b/mt76x02_txrx.c
+@@ -155,7 +155,7 @@ int mt76x02_tx_prepare_skb(struct mt76_d
+ 	pid = mt76_tx_status_skb_add(mdev, wcid, tx_info->skb);
+ 
+ 	/* encode packet rate for no-skb packet id to fix up status reporting */
+-	if (pid == MT_PACKET_ID_NO_SKB)
++	if (pid == MT_PACKET_ID_NO_SKB || pid == MT_PACKET_ID_WED)
+ 		pid = MT_PACKET_ID_HAS_RATE |
+ 		      (le16_to_cpu(txwi->rate) & MT_RXWI_RATE_INDEX) |
+ 		      FIELD_PREP(MT_PKTID_AC,
+--- a/mt76x02_usb_core.c
++++ b/mt76x02_usb_core.c
+@@ -83,7 +83,7 @@ int mt76x02u_tx_prepare_skb(struct mt76_
+ 	pid = mt76_tx_status_skb_add(mdev, wcid, tx_info->skb);
+ 
+ 	/* encode packet rate for no-skb packet id to fix up status reporting */
+-	if (pid == MT_PACKET_ID_NO_SKB)
++	if (pid == MT_PACKET_ID_NO_SKB || pid == MT_PACKET_ID_WED)
+ 		pid = MT_PACKET_ID_HAS_RATE |
+ 		      (le16_to_cpu(txwi->rate) & MT_PKTID_RATE) |
+ 		      FIELD_PREP(MT_PKTID_AC,

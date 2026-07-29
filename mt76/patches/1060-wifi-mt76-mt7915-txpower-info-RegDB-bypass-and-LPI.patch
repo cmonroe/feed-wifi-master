@@ -37,7 +37,23 @@ Squash of the following MediaTek commits:
  mt7915/vendor.h      |   15 ++++
  mt7921/mcu.c         |    2
  mt7921/regd.c        |    3
- 16 files changed, 350 insertions(+), 26 deletions(-)
+ eeprom.c             |    5 +
+ mt76.h               |    5 +
+ mt76_connac2_mac.h   |    7 ++
+ mt76_connac_mac.c    |    7 +-
+ mt76_connac_mcu.h    |    1 
+ mt7915/debugfs.c     |  135 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ mt7915/init.c        |   15 ++++-
+ mt7915/mcu.c         |   97 ++++++++++++++++++++++++++++++++++--
+ mt7915/mcu.h         |    3 -
+ mt7915/mt7915.h      |    1 
+ mt7915/mtk_debugfs.c |    1 
+ mt7915/regs.h        |    8 +--
+ mt7915/vendor.c      |   75 ++++++++++++++++++++++++++++
+ mt7915/vendor.h      |   15 +++++
+ mt7921/mcu.c         |    2 
+ mt7921/regd.c        |    3 -
+ 16 files changed, 354 insertions(+), 26 deletions(-)
 
 --- a/mt7915/debugfs.c
 +++ b/mt7915/debugfs.c
@@ -210,7 +226,7 @@ Squash of the following MediaTek commits:
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1519,7 +1519,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
+@@ -1524,7 +1524,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
  	struct mt7915_sta *msta = (struct mt7915_sta *)sta->drv_priv;
  	struct mt76_phy *mphy = mvif->phy->mt76;
@@ -220,7 +236,7 @@ Squash of the following MediaTek commits:
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &msta->wcid,
  					      &spe_idx, RATE_PARAM_SPE_UPDATE);
-@@ -3520,6 +3521,22 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3525,6 +3526,22 @@ mt7915_update_txpower(struct mt7915_phy
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -243,7 +259,7 @@ Squash of the following MediaTek commits:
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3550,14 +3567,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3555,14 +3572,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -283,7 +299,7 @@ Squash of the following MediaTek commits:
  	skb_put_data(skb, &la.mcs[0], len[SKU_HT_BW20]);
  	skb_put_data(skb, &la.mcs[1], len[SKU_HT_BW40]);
  
-@@ -3586,8 +3626,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3591,8 +3631,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
@@ -320,16 +336,20 @@ Squash of the following MediaTek commits:
  
  	/* HT20 and HT40 */
  	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
-@@ -3663,6 +3729,8 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3668,6 +3734,12 @@ int mt7915_mcu_get_txpower_sku(struct mt
  			return -EINVAL;
  		}
  		memcpy(txpower, skb->data + 4, len);
 +	} else if (category == TX_POWER_INFO_BASIC) {
++		if (skb->len < len) {
++			dev_kfree_skb(skb);
++			return -EINVAL;
++		}
 +		memcpy(txpower, skb->data, len);
  	}
  
  	dev_kfree_skb(skb);
-@@ -3670,6 +3738,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3675,6 +3747,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	return 0;
  }
  
@@ -507,7 +527,7 @@ Squash of the following MediaTek commits:
  int mt7915_mcu_ipi_hist_ctrl(struct mt7915_phy *phy, void *data, u8 cmd, bool wait_resp);
 --- a/mt7915/mtk_debugfs.c
 +++ b/mt7915/mtk_debugfs.c
-@@ -3837,6 +3837,7 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3839,6 +3839,7 @@ int mt7915_mtk_init_debugfs(struct mt791
  			    &fops_txpower_level);
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
@@ -555,7 +575,7 @@ Squash of the following MediaTek commits:
  static int mt7915_vendor_edcca_ctrl(struct wiphy *wiphy,
  				  struct wireless_dev *wdev,
  				  const void *data,
-@@ -159,6 +166,63 @@ mt7915_vendor_bss_color_ctrl_dump(struct
+@@ -164,6 +171,63 @@ mt7915_vendor_bss_color_ctrl_dump(struct
  	return len;
  }
  
@@ -619,7 +639,7 @@ Squash of the following MediaTek commits:
  static const struct wiphy_vendor_command mt7915_vendor_commands[] = {
  	{
  		.info = {
-@@ -182,6 +246,17 @@ static const struct wiphy_vendor_command
+@@ -187,6 +251,17 @@ static const struct wiphy_vendor_command
  		.dumpit = mt7915_vendor_bss_color_ctrl_dump,
  		.policy = bss_color_ctrl_policy,
  		.maxattr = MTK_VENDOR_ATTR_BSS_COLOR_CTRL_MAX,

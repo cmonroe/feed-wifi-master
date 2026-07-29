@@ -14,12 +14,15 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  mt76.h            |   31 ++++
  mt76_connac_mcu.h |   17 ++
  mt7996/init.c     |    5
- mt7996/mac.c      |  338 +++++++++++++----------------------------------
+ mt76.h            |   31 ++++
+ mt76_connac_mcu.h |   17 ++
+ mt7996/init.c     |    5 
+ mt7996/mac.c      |  338 ++++++++++++-----------------------------------
  mt7996/main.c     |   87 ++++++++++++
- mt7996/mcu.c      |  381 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+ mt7996/mcu.c      |  387 ++++++++++++++++++++++++++++++++++++++++++++++++++----
  mt7996/mcu.h      |   73 ++++++++++
  mt7996/mt7996.h   |   17 ++
- 8 files changed, 669 insertions(+), 280 deletions(-)
+ 8 files changed, 675 insertions(+), 280 deletions(-)
 
 --- a/mt76.h
 +++ b/mt76.h
@@ -699,7 +702,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	.sta_set_airtime_weight = mt7996_sta_set_airtime_weight,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -636,42 +636,167 @@ out:
+@@ -639,42 +639,167 @@ out:
  }
  
  static int
@@ -877,7 +880,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  static void
  mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
-@@ -695,11 +820,26 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -698,11 +823,26 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		elem_size = sizeof(res->rate[0]);
  		break;
  	case UNI_ALL_STA_TXRX_ADM_STAT:
@@ -905,7 +908,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	default:
  		return;
  	}
-@@ -710,8 +850,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -713,8 +853,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
  	rcu_read_lock();
  	for (i = 0; i < sta_num; i++) {
  		u8 ac;
@@ -919,7 +922,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -721,21 +866,39 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -724,21 +869,39 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -967,7 +970,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			}
  			break;
  		case UNI_ALL_STA_TXRX_MSDU_COUNT:
-@@ -745,10 +908,59 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -748,10 +911,59 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -1031,7 +1034,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			break;
  		default:
  			break;
-@@ -5621,9 +5833,126 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5624,9 +5836,132 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -1074,7 +1077,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 +		return ret;
 +
 +	res = (struct mt7996_mcu_per_sta_info_event *)skb->data;
-+	if (le16_to_cpu(res->tag) != tag) {
++	if (skb->len < sizeof(*res) || le16_to_cpu(res->tag) != tag) {
 +		ret = -EINVAL;
 +		goto out;
 +	}
@@ -1082,6 +1085,8 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 +	rcu_read_lock();
 +	switch (tag) {
 +	case UNI_PER_STA_RSSI:
++		sta_num = min_t(u16, sta_num,
++				(skb->len - sizeof(*res)) / sizeof(res->rssi[0]));
 +		for (i = 0; i < sta_num; ++i) {
 +			struct per_sta_rssi *rssi = &res->rssi[i];
 +			struct mt76_phy *mphy;
@@ -1113,6 +1118,8 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 +		}
 +		break;
 +	case UNI_PER_STA_SNR:
++		sta_num = min_t(u16, sta_num,
++				(skb->len - sizeof(*res)) / sizeof(res->snr[0]));
 +		for (i = 0; i < sta_num; ++i) {
 +			wlan_idx = le16_to_cpu(res->snr[i].wlan_idx);
 +			wcid = __mt76_wcid_ptr(dev, wlan_idx);
@@ -1125,6 +1132,8 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 +		}
 +		break;
 +	case UNI_PER_STA_PKT_CNT:
++		sta_num = min_t(u16, sta_num,
++				(skb->len - sizeof(*res)) / sizeof(res->msdu_cnt[0]));
 +		for (i = 0; i < sta_num; ++i) {
 +			wlan_idx = le16_to_cpu(res->msdu_cnt[i].wlan_idx);
 +			wcid = __mt76_wcid_ptr(dev, wlan_idx);
@@ -1160,7 +1169,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -5634,7 +5963,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -5637,7 +5972,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  

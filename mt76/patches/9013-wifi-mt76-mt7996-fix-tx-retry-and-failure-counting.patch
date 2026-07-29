@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				break;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -964,16 +964,6 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -967,16 +967,6 @@ mt7996_mcu_rx_all_sta_info_event(struct
  				break;
  
  			wcid->stats.tx_mpdus += le32_to_cpu(res->tx_mpdu_stat[i].total);

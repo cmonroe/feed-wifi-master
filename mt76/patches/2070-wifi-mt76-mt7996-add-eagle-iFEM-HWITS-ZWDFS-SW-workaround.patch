@@ -12,7 +12,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7996/main.c   |  121 +++++++++++++++++++++++++++++++++++++++++++++++++++-----
  mt7996/mcu.c    |    1
  mt7996/mt7996.h |    2
- 3 files changed, 115 insertions(+), 9 deletions(-)
+ mt7996/main.c   |  129 ++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ mt7996/mcu.c    |    1 
+ mt7996/mt7996.h |    2 
+ 3 files changed, 123 insertions(+), 9 deletions(-)
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
@@ -47,7 +50,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7996_post_channel_switch(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  			   struct ieee80211_bss_conf *link_conf)
  {
-@@ -2500,21 +2524,96 @@ mt7996_twt_teardown_request(struct ieee8
+@@ -2500,21 +2524,104 @@ mt7996_twt_teardown_request(struct ieee8
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -58,7 +61,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +{
 +	struct mt7996_dev *dev = mt7996_hw_dev(hw);
 +	struct cfg80211_chan_def *rdd2_chandef, *c = user_chandef;
-+	struct ieee80211_channel *first_chan;
++	struct ieee80211_channel *first_chan, *chan;
 +	bool is_ifem_adie, expand = false;
 +	enum subchan_state {
 +		SUBCHAN_NOT_READY,
@@ -86,6 +89,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	switch (user_chandef->width) {
 +	case NL80211_CHAN_WIDTH_160:
 +		first_chan = ieee80211_get_channel(hw->wiphy, user_chandef->center_freq1 - 70);
++		if (!first_chan)
++			goto out;
++
 +		if (!(first_chan->flags & IEEE80211_CHAN_RADAR)) {
 +			dev->bg_nxt_freq = 0;
 +			c = fw_chandef;
@@ -113,12 +119,17 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	}
 +
 +	if (state || user_chandef->width == NL80211_CHAN_WIDTH_80) {
-+		c->chan = ieee80211_get_channel(hw->wiphy, dev->bg_nxt_freq);
++		chan = ieee80211_get_channel(hw->wiphy, dev->bg_nxt_freq);
 +		dev->bg_nxt_freq = 0;
 +		expand = true;
 +	} else {
-+		c->chan = ieee80211_get_channel(hw->wiphy, first_chan->center_freq + 80);
++		chan = ieee80211_get_channel(hw->wiphy, first_chan->center_freq + 80);
 +	}
++
++	if (!chan)
++		goto out;
++
++	c->chan = chan;
 +	c->width = NL80211_CHAN_WIDTH_80;
 +	c->center_freq1 = c->chan->center_freq + 30;
 +
@@ -150,7 +161,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -2527,13 +2626,14 @@ mt7996_set_radar_background(struct ieee8
+@@ -2527,13 +2634,14 @@ mt7996_set_radar_background(struct ieee8
  		goto out;
  	}
  
@@ -167,7 +178,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		ret = mt7996_mcu_rdd_background_enable(phy, NULL);
  		if (ret)
  			goto out;
-@@ -2542,7 +2642,9 @@ mt7996_set_radar_background(struct ieee8
+@@ -2542,7 +2650,9 @@ mt7996_set_radar_background(struct ieee8
  			goto update_phy;
  	}
  
@@ -178,7 +189,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (ret)
  		goto out;
  
-@@ -2780,6 +2882,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2780,6 +2890,7 @@ const struct ieee80211_ops mt7996_ops =
  	.release_buffered_frames = mt76_release_buffered_frames,
  	.get_txpower = mt7996_get_txpower,
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
@@ -188,7 +199,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	.get_stats = mt7996_get_stats,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -566,6 +566,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -571,6 +571,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
  			__func__, r->radar_type_idx, r->periodic_pulse_num, r->long_pulse_num, r->hw_pulse_num);
  
  	if (r->rdd_idx == MT_RDD_IDX_BACKGROUND) {

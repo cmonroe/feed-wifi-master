@@ -25,8 +25,20 @@ Squash of the following MediaTek commits:
  testmode.h        |   48 +++++++
  mt7915/mcu.c      |   66 +++++++++
  mt7915/mt7915.h   |    3
- tools/fields.c    |   22 +++
- 13 files changed, 671 insertions(+), 36 deletions(-)
+ mac80211.c        |    3 
+ mt76.h            |   14 +
+ mt76_connac_mcu.h |    3 
+ mt7915/mcu.c      |   66 ++++++++
+ mt7915/mcu.h      |   47 +++++
+ mt7915/mmio.c     |    2 
+ mt7915/mt7915.h   |    3 
+ mt7915/regs.h     |   18 ++
+ mt7915/testmode.c |  429 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+ mt7915/testmode.h |   28 +++
+ testmode.c        |   31 +++
+ testmode.h        |   48 ++++++
+ tools/fields.c    |   22 ++
+ 13 files changed, 678 insertions(+), 36 deletions(-)
 
 --- a/mac80211.c
 +++ b/mac80211.c
@@ -281,7 +293,7 @@ Squash of the following MediaTek commits:
 +		.testmode_en = 1,
 +		.param_idx = MCU_ATE_SET_PHY_COUNT,
 +		.param.cfg.enable = control,
-+		.param.cfg.band = phy != &dev->phy,
++		.param.cfg.band = phy->mt76->band_idx,
 +	};
 +
 +	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(ATE_CTRL), &req,
@@ -292,7 +304,7 @@ Squash of the following MediaTek commits:
  mt7915_tm_set_slot_time(struct mt7915_phy *phy, u8 slot_time, u8 sifs)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -167,6 +194,272 @@ mt7915_tm_set_tam_arb(struct mt7915_phy
+@@ -167,6 +194,279 @@ mt7915_tm_set_tam_arb(struct mt7915_phy
  	return mt7915_mcu_set_muru_ctrl(dev, MURU_SET_ARB_OP_MODE, op_mode);
  }
  
@@ -471,13 +483,16 @@ Squash of the following MediaTek commits:
 +		dev_info(dev->mt76.dev, "TX assert time =  %d [ms]\n",
 +			 tx_assert_time / 1000);
 +
++		if (!ipi_free_count || !td->ipi_period) {
++			dev_info(dev->mt76.dev,
++				 "Band %d: skip channel load, ipi_free_count = %d, ipi_period = %d\n",
++				 phy->mt76->band_idx, ipi_free_count, td->ipi_period);
++			continue;
++		}
++
 +		// Calculate channel load = (self idle ratio - idle ratio) / self idle ratio
-+		if (ipi_hist_count_th >= UINT_MAX / (100 * PRECISION))
-+			ipi_percentage = 100 * PRECISION *
-+					(ipi_hist_count_th / (100 * PRECISION)) /
-+					(ipi_free_count / (100 * PRECISION));
-+		else
-+			ipi_percentage = PRECISION * 100 * ipi_hist_count_th / ipi_free_count;
++		ipi_percentage = div_u64(100ULL * PRECISION * ipi_hist_count_th,
++					 ipi_free_count);
 +
 +		ipi_idle_ratio = ((100 * PRECISION) - ipi_percentage) / PRECISION;
 +
@@ -525,13 +540,17 @@ Squash of the following MediaTek commits:
 +		else
 +			start_antenna_idx += td->ipi_antenna_idx;
 +
-+		mt7915_mcu_ipi_hist_scan(phy, &data, 0, true);
++		if (mt7915_mcu_ipi_hist_scan(phy, &data, 0, true))
++			return;
++
 +		mt7915_tm_dump_ipi(phy, &data, antenna_num, start_antenna_idx, true);
 +	} else {
 +		struct mt7915_mcu_rdd_ipi_ctrl data;
 +
 +		start_antenna_idx = 4;
-+		mt7915_mcu_ipi_hist_ctrl(phy, &data, RDD_IPI_HIST_ALL_CNT, true);
++		if (mt7915_mcu_ipi_hist_ctrl(phy, &data, RDD_IPI_HIST_ALL_CNT, true))
++			return;
++
 +		mt7915_tm_dump_ipi(phy, &data, antenna_num, start_antenna_idx, false);
 +	}
 +}
@@ -565,7 +584,7 @@ Squash of the following MediaTek commits:
  static int
  mt7915_tm_set_wmm_qid(struct mt7915_phy *phy, u8 qid, u8 aifs, u8 cw_min,
  		      u16 cw_max, u16 txop)
-@@ -336,7 +629,7 @@ mt7915_tm_reg_backup_restore(struct mt79
+@@ -336,7 +636,7 @@ mt7915_tm_reg_backup_restore(struct mt79
  {
  	int n_regs = ARRAY_SIZE(reg_backup_list);
  	struct mt7915_dev *dev = phy->dev;
@@ -574,7 +593,7 @@ Squash of the following MediaTek commits:
  	u8 band = phy->mt76->band_idx;
  	int i;
  
-@@ -349,18 +642,28 @@ mt7915_tm_reg_backup_restore(struct mt79
+@@ -349,18 +649,28 @@ mt7915_tm_reg_backup_restore(struct mt79
  	REG_BAND(reg_backup_list[6], AGG_MRCR);
  	REG_BAND(reg_backup_list[7], TMAC_TFCR0);
  	REG_BAND(reg_backup_list[8], TMAC_TCR0);
@@ -613,7 +632,7 @@ Squash of the following MediaTek commits:
  		return;
  	}
  
-@@ -380,8 +683,13 @@ mt7915_tm_reg_backup_restore(struct mt79
+@@ -380,8 +690,13 @@ mt7915_tm_reg_backup_restore(struct mt79
  		   MT_AGG_PCR0_BW40_PROT | MT_AGG_PCR0_BW80_PROT);
  	mt76_set(dev, MT_AGG_PCR0(band, 0), MT_AGG_PCR0_PTA_WIN_DIS);
  
@@ -629,7 +648,7 @@ Squash of the following MediaTek commits:
  
  	mt76_clear(dev, MT_AGG_MRCR(band), MT_AGG_MRCR_BAR_CNT_LIMIT |
  		   MT_AGG_MRCR_LAST_RTS_CTS_RN | MT_AGG_MRCR_RTS_FAIL_LIMIT |
-@@ -394,10 +702,19 @@ mt7915_tm_reg_backup_restore(struct mt79
+@@ -394,10 +709,19 @@ mt7915_tm_reg_backup_restore(struct mt79
  
  	mt76_wr(dev, MT_TMAC_TFCR0(band), 0);
  	mt76_clear(dev, MT_TMAC_TCR0(band), MT_TMAC_TCR0_TBTT_STOP_CTRL);
@@ -649,7 +668,7 @@ Squash of the following MediaTek commits:
  }
  
  static void
-@@ -419,8 +736,12 @@ mt7915_tm_init(struct mt7915_phy *phy, b
+@@ -419,8 +743,12 @@ mt7915_tm_init(struct mt7915_phy *phy, b
  	state = en ? CONN_STATE_PORT_SECURE : CONN_STATE_DISCONNECT;
  	mt7915_mcu_add_sta(dev, phy->monitor_vif, NULL, state, true);
  
@@ -662,7 +681,7 @@ Squash of the following MediaTek commits:
  }
  
  static void
-@@ -481,18 +802,63 @@ mt7915_tm_set_tx_frames(struct mt7915_ph
+@@ -481,18 +809,63 @@ mt7915_tm_set_tx_frames(struct mt7915_ph
  	mt7915_tm_set_trx(phy, TM_MAC_TX, en);
  }
  
@@ -729,7 +748,7 @@ Squash of the following MediaTek commits:
  		mt7915_tm_set_trx(phy, TM_MAC_RX_RXV, en);
  	}
  }
-@@ -644,6 +1010,14 @@ mt7915_tm_update_params(struct mt7915_ph
+@@ -644,6 +1017,14 @@ mt7915_tm_update_params(struct mt7915_ph
  		mt7915_tm_set_freq_offset(phy, en, en ? td->freq_offset : 0);
  	if (changed & BIT(TM_CHANGED_TXPOWER))
  		mt7915_tm_set_tx_power(phy);
@@ -744,7 +763,7 @@ Squash of the following MediaTek commits:
  }
  
  static int
-@@ -723,12 +1097,8 @@ static int
+@@ -723,12 +1104,8 @@ static int
  mt7915_tm_dump_stats(struct mt76_phy *mphy, struct sk_buff *msg)
  {
  	struct mt7915_phy *phy = mphy->priv;
@@ -757,7 +776,7 @@ Squash of the following MediaTek commits:
  
  	rx = nla_nest_start(msg, MT76_TM_STATS_ATTR_LAST_RX);
  	if (!rx)
-@@ -772,15 +1142,7 @@ mt7915_tm_dump_stats(struct mt76_phy *mp
+@@ -772,15 +1149,7 @@ mt7915_tm_dump_stats(struct mt76_phy *mp
  
  	nla_nest_end(msg, rx);
  
@@ -831,7 +850,7 @@ Squash of the following MediaTek commits:
  	[MT76_TM_ATTR_DRV_DATA] = { .type = NLA_NESTED },
 +	[MT76_TM_ATTR_OFF_CH_SCAN_CH] = { .type = NLA_U8 },
 +	[MT76_TM_ATTR_OFF_CH_SCAN_CENTER_CH] = { .type = NLA_U8 },
-+	[MT76_TM_ATTR_OFF_CH_SCAN_PATH] = { .type = NLA_U8 },
++	[MT76_TM_ATTR_OFF_CH_SCAN_BW] = { .type = NLA_U8 },
 +	[MT76_TM_ATTR_IPI_THRESHOLD] = { .type = NLA_U8 },
 +	[MT76_TM_ATTR_IPI_PERIOD] = { .type = NLA_U32 },
 +	[MT76_TM_ATTR_IPI_ANTENNA_INDEX] = { .type = NLA_U8 },
@@ -987,7 +1006,7 @@ Squash of the following MediaTek commits:
  #endif
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2800,6 +2800,7 @@ mt7915_mcu_background_chain_ctrl(struct
+@@ -2805,6 +2805,7 @@ mt7915_mcu_background_chain_ctrl(struct
  		req.monitor_chan = chandef->chan->hw_value;
  		req.monitor_central_chan =
  			ieee80211_frequency_to_channel(chandef->center_freq1);
@@ -995,7 +1014,7 @@ Squash of the following MediaTek commits:
  		req.band_idx = phy->mt76->band_idx;
  		req.scan_mode = 2;
  		break;
-@@ -4633,6 +4634,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4638,6 +4639,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  }
  #endif
  

@@ -513,7 +513,7 @@ Squash of the following MediaTek commits:
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4951,6 +4951,192 @@ int mt7996_mcu_get_efuse_free_block(stru
+@@ -4954,6 +4954,192 @@ int mt7996_mcu_get_efuse_free_block(stru
  	return 0;
  }
  

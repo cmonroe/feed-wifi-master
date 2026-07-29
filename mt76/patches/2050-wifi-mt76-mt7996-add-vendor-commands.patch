@@ -17,16 +17,19 @@ Squash of the following MediaTek commits:
  mt7996/Makefile  |    3
  mt7996/init.c    |    8 +
  mt7996/mcu.h     |    2
+ mt7996/Makefile  |    3 
+ mt7996/init.c    |    8 +
+ mt7996/mcu.h     |    2 
  mt7996/mt7996.h  |   24 ++++
  mt7996/mtk_mcu.c |   87 +++++++++++++++++
- mt7996/mtk_mcu.h |   15 +++
- mt7996/vendor.c  |  272 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mtk_mcu.h |   15 ++
+ mt7996/vendor.c  |  277 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7996/vendor.h  |   67 +++++++++++++
- 8 files changed, 477 insertions(+), 1 deletion(-)
+ 8 files changed, 482 insertions(+), 1 deletion(-)
 
 --- /dev/null
 +++ b/mt7996/vendor.c
-@@ -0,0 +1,272 @@
+@@ -0,0 +1,277 @@
 +// SPDX-License-Identifier: ISC
 +/*
 + * Copyright (C) 2020, MediaTek Inc. All rights reserved.
@@ -77,12 +80,17 @@ Squash of the following MediaTek commits:
 +				  unsigned long *storage)
 +{
 +	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
-+	struct ieee80211_bss_conf *bss_conf = &vif->bss_conf;
++	struct ieee80211_bss_conf *bss_conf;
 +	int len = 0;
++
++	if (!vif)
++		return -EINVAL;
 +
 +	if (*storage == 1)
 +		return -ENOENT;
 +	*storage = 1;
++
++	bss_conf = &vif->bss_conf;
 +
 +	if (nla_put_u64_64bit(skb, MTK_VENDOR_ATTR_AVAL_BSS_COLOR_BMP,
 +			      ~bss_conf->used_color_bitmap, NL80211_ATTR_PAD))
