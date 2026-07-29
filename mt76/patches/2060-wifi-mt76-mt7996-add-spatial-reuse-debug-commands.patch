@@ -196,7 +196,7 @@ environment can SR Tx or not.
  	return 0;
 --- a/mt7996/mtk_mcu.c
 +++ b/mt7996/mtk_mcu.c
-@@ -146,4 +146,116 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
+@@ -146,4 +146,135 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
  
  	return 0;
  }
@@ -235,13 +235,23 @@ environment can SR Tx or not.
 +	struct mt7996_mcu_sr_swsd_event *event;
 +	static const char * const rules[] = {"1 - NO CONNECTED", "2 - NO CONGESTION",
 +					     "3 - NO INTERFERENCE", "4 - SR ON"};
-+	u8 idx;
++	u8 idx, rule;
++
++	if (skb->len < sizeof(*event))
++		return;
 +
 +	event = (struct mt7996_mcu_sr_swsd_event *)skb->data;
++	/* band_idx is bounded by mt7996_mcu_rx_sr_event(), the only caller,
++	 * and __MT_MAX_BAND is smaller than ARRAY_SIZE(event->tlv)
++	 */
 +	idx = event->basic.band_idx;
++	rule = event->tlv[idx].rule;
 +
-+	dev_info(dev->mt76.dev, "Band index = %u\n", le16_to_cpu(event->basic.band_idx));
-+	dev_info(dev->mt76.dev, "Hit Rule = %s\n", rules[event->tlv[idx].rule]);
++	dev_info(dev->mt76.dev, "Band index = %u\n", event->basic.band_idx);
++	if (rule < ARRAY_SIZE(rules))
++		dev_info(dev->mt76.dev, "Hit Rule = %s\n", rules[rule]);
++	else
++		dev_info(dev->mt76.dev, "Hit Rule = %u\n", rule);
 +	dev_info(dev->mt76.dev, "Timer Period = %d(us)\n"
 +		 "Congestion Ratio  = %d.%1d%%\n",
 +		 SR_SCENE_DETECTION_TIMER_PERIOD_MS * 1000,
@@ -269,6 +279,9 @@ environment can SR Tx or not.
 +{
 +	struct mt7996_mcu_sr_hw_ind_event *event;
 +
++	if (skb->len < sizeof(*event))
++		return;
++
 +	event = (struct mt7996_mcu_sr_hw_ind_event *)skb->data;
 +
 +	dev_info(dev->mt76.dev, "Inter PPDU Count = %u\n",
@@ -283,11 +296,17 @@ environment can SR Tx or not.
 +
 +void mt7996_mcu_rx_sr_event(struct mt7996_dev *dev, struct sk_buff *skb)
 +{
-+	struct mt76_phy *mphy = &dev->mt76.phy;
-+	struct mt7996_phy *phy;
 +	struct mt7996_mcu_sr_common_event *event;
++	struct mt76_phy *mphy;
++	struct mt7996_phy *phy;
++
++	if (skb->len < sizeof(*event))
++		return;
 +
 +	event = (struct mt7996_mcu_sr_common_event *)skb->data;
++	if (event->basic.band_idx > MT_BAND2)
++		return;
++
 +	mphy = dev->mt76.phys[event->basic.band_idx];
 +	if (!mphy)
 +		return;
