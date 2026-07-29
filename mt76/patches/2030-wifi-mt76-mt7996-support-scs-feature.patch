@@ -89,7 +89,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6280,6 +6280,119 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6280,6 +6280,122 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  				 &req, sizeof(req), false);
  }
  
@@ -121,18 +121,21 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +static void mt7996_sta_rssi_work(void *data, struct ieee80211_sta *sta)
 +{
 +	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
-+	struct mt7996_sta_link *msta_link;
 +	struct mt7996_phy *poll_phy = (struct mt7996_phy *)data;
++	unsigned long valid_links = sta->valid_links ?: BIT(0);
++	unsigned int link_id;
 +
-+	mutex_lock(&poll_phy->dev->mt76.mutex);
-+	msta_link = mt76_dereference(msta->link[0], &poll_phy->dev->mt76);
-+	if (!msta_link)
-+		goto out;
++	for_each_set_bit(link_id, &valid_links, IEEE80211_MLD_MAX_NUM_LINKS) {
++		struct mt7996_sta_link *msta_link;
 +
-+	if (poll_phy->scs_ctrl.sta_min_rssi > msta_link->ack_signal)
-+		poll_phy->scs_ctrl.sta_min_rssi = msta_link->ack_signal;
-+out:
-+	mutex_unlock(&poll_phy->dev->mt76.mutex);
++		msta_link = mt7996_sta_link(msta, link_id);
++		if (!msta_link ||
++		    msta_link->wcid.phy_idx != poll_phy->mt76->band_idx)
++			continue;
++
++		if (poll_phy->scs_ctrl.sta_min_rssi > msta_link->ack_signal)
++			poll_phy->scs_ctrl.sta_min_rssi = msta_link->ack_signal;
++	}
 +}
 +
 +void mt7996_mcu_scs_sta_poll(struct work_struct *work)
