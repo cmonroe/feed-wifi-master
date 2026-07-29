@@ -90,22 +90,27 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -472,15 +472,24 @@ static void
+@@ -472,6 +472,7 @@ static void
  mt7915_mcu_rx_all_sta_info_event(struct mt7915_dev *dev, struct sk_buff *skb)
  {
  	struct mt7915_mcu_all_sta_info_event *res;
 +	u32 elapsed_us = 0;
+ 	u16 sta_num;
  	u16 i;
  
- 	res = (struct mt7915_mcu_all_sta_info_event *)skb->data;
-+
+@@ -483,13 +484,21 @@ mt7915_mcu_rx_all_sta_info_event(struct
+ 	if (sta_num > (skb->len - sizeof(*res)) / sizeof(res->airtime[0]))
+ 		sta_num = (skb->len - sizeof(*res)) / sizeof(res->airtime[0]);
+ 
 +	if (res->tag == MCU_PHY_PER_STA_TXRX_AIR_TIME) {
 +		unsigned long now = jiffies;
 +
 +		elapsed_us = jiffies_to_usecs(now - dev->mt76.airtime_last_poll);
 +		dev->mt76.airtime_last_poll = now;
 +	}
- 	for (i = 0; i < le16_to_cpu(res->sta_num); i++) {
++
+ 	rcu_read_lock();
+ 	for (i = 0; i < sta_num; i++) {
  		u8 ac;
  		u16 wlan_idx;
  		struct mt76_wcid *wcid;
@@ -116,7 +121,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		switch (res->tag) {
  		case MCU_PHY_PER_STA_TXRX_AIR_TIME:
-@@ -493,15 +502,29 @@ mt7915_mcu_rx_all_sta_info_event(struct
+@@ -502,15 +511,29 @@ mt7915_mcu_rx_all_sta_info_event(struct
  
  			for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac) {
  				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
@@ -151,7 +156,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
  		default:
  			break;
-@@ -3317,6 +3340,8 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3327,6 +3350,8 @@ int mt7915_mcu_get_chan_mib_info(struct
  	struct sk_buff *skb;
  	static const u32 *offs;
  	int i, ret, len, offs_cc;
@@ -160,7 +165,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 cc_tx;
  
  	/* strict order */
-@@ -3367,11 +3392,18 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3377,11 +3402,18 @@ int mt7915_mcu_get_chan_mib_info(struct
  	if (chan_switch)
  		goto out;
  
