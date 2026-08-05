@@ -395,7 +395,7 @@ Squash of the following MediaTek commits:
  mt7996e-$(CONFIG_DEV_COREDUMP) += coredump.o
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -789,6 +789,10 @@ static int mt7996_register_phy(struct mt
+@@ -788,6 +788,10 @@ static int mt7996_register_phy(struct mt
  			goto error;
  	}
  
@@ -406,7 +406,7 @@ Squash of the following MediaTek commits:
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1815,6 +1819,10 @@ int mt7996_register_device(struct mt7996
+@@ -1814,6 +1818,10 @@ int mt7996_register_device(struct mt7996
  
  	mt7996_dma_rro_start(dev);
  

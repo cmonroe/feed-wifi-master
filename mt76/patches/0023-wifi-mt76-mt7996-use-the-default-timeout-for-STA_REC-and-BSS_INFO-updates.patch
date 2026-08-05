@@ -1,0 +1,32 @@
+From e4e588a999acd5a2524ebddd3d346f61d8405c46 Mon Sep 17 00:00:00 2001
+From: Felix Fietkau <nbd@nbd.name>
+Date: Fri, 17 Jul 2026 03:49:06 +0200
+Subject: [PATCH] wifi: mt76: mt7996: use the default timeout for STA_REC and
+ BSS_INFO updates
+
+STA_REC_UPDATE and BSS_INFO_UPDATE carry variable-size payloads,
+including beacon templates that grow considerably with 11v MBSS and
+MLD configurations, and firmware can legitimately take longer than 2
+seconds to process them. Since a message timeout now triggers a full
+device reset, a false timeout on these commands is punished harshly.
+
+Keep the shorter timeout for the small fixed-size commands and move
+STA_REC_UPDATE/BSS_INFO_UPDATE back to the 5 second default.
+
+Fixes: beb01caa570c ("wifi: mt76: mt7996: decrease timeout for commonly issued MCU commands")
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+ mt7996/mcu.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -273,8 +273,6 @@ mt7996_mcu_set_timeout(struct mt76_dev *
+ 	case MCU_UNI_CMD_THERMAL:
+ 	case MCU_UNI_CMD_TWT:
+ 	case MCU_UNI_CMD_GET_MIB_INFO:
+-	case MCU_UNI_CMD_STA_REC_UPDATE:
+-	case MCU_UNI_CMD_BSS_INFO_UPDATE:
+ 		mdev->mcu.timeout = 2 * HZ;
+ 		return;
+ 	case MCU_UNI_CMD_EFUSE_CTRL:

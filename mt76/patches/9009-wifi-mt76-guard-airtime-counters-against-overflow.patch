@@ -156,7 +156,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
  		default:
  			break;
-@@ -3332,6 +3355,8 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3323,6 +3346,8 @@ int mt7915_mcu_get_chan_mib_info(struct
  	struct sk_buff *skb;
  	static const u32 *offs;
  	int i, ret, len, offs_cc;
@@ -165,7 +165,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 cc_tx;
  
  	/* strict order */
-@@ -3382,11 +3407,18 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3373,11 +3398,18 @@ int mt7915_mcu_get_chan_mib_info(struct
  	if (chan_switch)
  		goto out;
  
@@ -225,7 +225,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (flag = 0; flag < NUM_MT76_WCID_FLAGS; flag++) {
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2090,11 +2090,6 @@ static void mt7996_link_sta_statistics(s
+@@ -2096,11 +2096,6 @@ static void mt7996_link_sta_statistics(s
  	link_sinfo->fcs_err_count = stats->rx_fcs_err;
  	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_FCS_ERROR_COUNT);
  
@@ -293,7 +293,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			}
  			break;
  		case UNI_ALL_STA_RX_MPDU_COUNT:
-@@ -5250,6 +5262,8 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5282,6 +5294,8 @@ int mt7996_mcu_get_chan_mib_info(struct
  	struct mt7996_dev *dev = phy->dev;
  	struct mt7996_mcu_mib *res;
  	struct sk_buff *skb;
@@ -302,7 +302,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i, ret;
  
  	for (i = 0; i < IDX_NUM; i++) {
-@@ -5271,16 +5285,22 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5303,16 +5317,22 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)

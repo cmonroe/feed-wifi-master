@@ -17,7 +17,7 @@ Signed-off-by: Henry.Yen <henry.yen@mediatek.com>
 
 --- a/mt7996/mmio.c
 +++ b/mt7996/mmio.c
-@@ -790,7 +790,7 @@ static void mt7996_irq_tasklet(struct ta
+@@ -776,7 +776,7 @@ static void mt7996_irq_tasklet(struct ta
  		napi_schedule(&dev->mt76.tx_napi);
  
  	for (i = 0; i < __MT_RXQ_MAX; i++) {

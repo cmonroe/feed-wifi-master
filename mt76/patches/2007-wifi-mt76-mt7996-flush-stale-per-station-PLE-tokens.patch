@@ -96,7 +96,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			continue;
  		}
  
-@@ -2865,6 +2889,41 @@ static int mt7996_mac_sta_poll(struct mt
+@@ -2862,6 +2886,41 @@ static int mt7996_mac_sta_poll(struct mt
  	return mt7996_mcu_get_per_sta_info(dev, UNI_PER_STA_PKT_CNT, i, sta_list);
  }
  
@@ -138,7 +138,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt7996_mac_work(struct work_struct *work)
  {
  	struct mt7996_phy *phy;
-@@ -2901,6 +2960,11 @@ void mt7996_mac_work(struct work_struct
+@@ -2898,6 +2957,11 @@ void mt7996_mac_work(struct work_struct
  			           test_bit(MT76_STATE_RUNNING, &mdev->phys[i]->state))
  				break;
  		}
@@ -152,7 +152,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mutex_unlock(&mdev->mutex);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4089,6 +4089,42 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -4135,6 +4135,42 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  				 sizeof(data), false);
  }
  

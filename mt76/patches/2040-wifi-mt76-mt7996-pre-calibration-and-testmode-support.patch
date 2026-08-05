@@ -495,7 +495,7 @@ Squash of the following MediaTek commits:
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1331,6 +1331,12 @@ static int mt7996_init_hardware(struct m
+@@ -1330,6 +1330,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -525,7 +525,7 @@ Squash of the following MediaTek commits:
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4954,6 +4954,202 @@ int mt7996_mcu_get_efuse_free_block(stru
+@@ -4986,6 +4986,202 @@ int mt7996_mcu_get_efuse_free_block(stru
  	return 0;
  }
  

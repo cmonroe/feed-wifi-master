@@ -137,7 +137,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -610,11 +610,6 @@ mt7996_mac_init_band(struct mt7996_dev *
+@@ -609,11 +609,6 @@ mt7996_mac_init_band(struct mt7996_dev *
  	      FIELD_PREP(MT_WTBLOFF_RSCR_RCPI_PARAM, 0x3);
  	mt76_rmw(dev, MT_WTBLOFF_RSCR(band), mask, set);
  
@@ -492,7 +492,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -3031,34 +2832,81 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -3028,34 +2829,81 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -604,7 +604,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	rcu_assign_pointer(msta->link[link_id], msta_link);
  
-@@ -1920,6 +1923,87 @@ static void mt7996_sta_statistics(struct
+@@ -1926,6 +1929,87 @@ static void mt7996_sta_statistics(struct
  	}
  }
  
@@ -692,7 +692,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
  					 struct mt7996_sta_link *msta_link)
  {
-@@ -2615,6 +2699,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2621,6 +2705,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_bitrate_mask = mt7996_set_bitrate_mask,
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,
@@ -1034,7 +1034,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			break;
  		default:
  			break;
-@@ -5624,9 +5836,132 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5656,9 +5868,132 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -1169,7 +1169,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -5637,7 +5972,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -5669,7 +6004,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  

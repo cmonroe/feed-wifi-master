@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -902,6 +902,11 @@ mt7915_init_hardware(struct mt7915_dev *
+@@ -897,6 +897,11 @@ mt7915_init_hardware(struct mt7915_dev *
  
  	INIT_WORK(&dev->init_work, mt7915_init_work);
  
@@ -34,7 +34,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return ret;
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -2045,6 +2045,27 @@ static void mt7915_dfs_stop_radar_detect
+@@ -2044,6 +2044,27 @@ static void mt7915_dfs_stop_radar_detect
  	mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_STOP, rdd_idx, 0, 0);
  }
  
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int mt7915_dfs_start_rdd(struct mt7915_dev *dev, int rdd_idx)
  {
  	int err, region;
-@@ -2066,12 +2087,9 @@ static int mt7915_dfs_start_rdd(struct m
+@@ -2065,12 +2086,9 @@ static int mt7915_dfs_start_rdd(struct m
  	if (err < 0)
  		return err;
  
@@ -78,7 +78,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	return mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_DET_MODE, rdd_idx, 0, 1);
  }
-@@ -2178,13 +2196,7 @@ stop:
+@@ -2177,13 +2195,7 @@ stop:
  	if (err < 0)
  		return err;
  

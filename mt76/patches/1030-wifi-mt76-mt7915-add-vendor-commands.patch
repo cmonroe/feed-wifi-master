@@ -49,7 +49,7 @@ Squash of the following MediaTek commits:
  			return ret;
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4638,6 +4638,84 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4626,6 +4626,84 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  }
  #endif
  
@@ -455,7 +455,7 @@ Squash of the following MediaTek commits:
  mt7915e-$(CONFIG_MT798X_WMAC) += soc.o
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -748,6 +748,10 @@ mt7915_register_ext_phy(struct mt7915_de
+@@ -743,6 +743,10 @@ mt7915_register_ext_phy(struct mt7915_de
  	/* init wiphy according to mphy and phy */
  	mt7915_init_wiphy(phy);
  
@@ -466,7 +466,7 @@ Squash of the following MediaTek commits:
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1281,6 +1285,10 @@ int mt7915_register_device(struct mt7915
+@@ -1276,6 +1280,10 @@ int mt7915_register_device(struct mt7915
  	dev->mt76.test_ops = &mt7915_testmode_ops;
  #endif
  

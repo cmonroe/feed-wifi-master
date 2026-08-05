@@ -12,7 +12,7 @@ the combined labels fit.
 
 --- a/mt7915/debugfs.c
 +++ b/mt7915/debugfs.c
-@@ -995,9 +995,9 @@ mt7915_xmit_queues_show(struct seq_file
+@@ -984,9 +984,9 @@ mt7915_xmit_queues_show(struct seq_file
  
  DEFINE_SHOW_ATTRIBUTE(mt7915_xmit_queues);
  
@@ -24,7 +24,7 @@ the combined labels fit.
  	for (i = 0; i < mt7915_sku_group_len[SKU_##rate]; i++, offs++)		\
  		len += scnprintf(buf + len, sz - len, " %6d", txpwr[offs]);	\
  	len += scnprintf(buf + len, sz - len, "\n");				\
-@@ -1039,43 +1039,47 @@ mt7915_rate_txpower_get(struct file *fil
+@@ -1028,43 +1028,47 @@ mt7915_rate_txpower_get(struct file *fil
  	len += scnprintf(buf + len, sz - len,
  			 "\nPhy%d Tx power table (channel %d)\n",
  			 phy != &dev->phy, phy->mt76->chandef.chan->hw_value);

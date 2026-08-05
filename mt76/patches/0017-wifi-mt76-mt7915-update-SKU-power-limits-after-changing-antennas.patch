@@ -1,0 +1,26 @@
+From e1b749bf9d0d20aa8e417587caec414979af25f9 Mon Sep 17 00:00:00 2001
+From: Felix Fietkau <nbd@nbd.name>
+Date: Fri, 17 Jul 2026 04:23:50 +0200
+Subject: [PATCH] wifi: mt76: mt7915: update SKU power limits after changing
+ antennas
+
+Changing the antenna configuration updates the stream capabilities but
+left the per-path SKU power limits and path delta compensation stale
+until the next channel switch. Reapply the SKU table like mt7996
+already does.
+
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+ mt7915/main.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/mt7915/main.c
++++ b/mt7915/main.c
+@@ -1180,6 +1180,7 @@ mt7915_set_antenna(struct ieee80211_hw *
+ 	mt76_set_stream_caps(phy->mt76, true);
+ 	mt7915_set_stream_vht_txbf_caps(phy);
+ 	mt7915_set_stream_he_caps(phy);
++	mt7915_mcu_set_txpower_sku(phy);
+ 
+ 	mutex_unlock(&dev->mt76.mutex);
+ 

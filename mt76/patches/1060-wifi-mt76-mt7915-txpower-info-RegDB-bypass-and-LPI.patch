@@ -57,7 +57,7 @@ Squash of the following MediaTek commits:
 
 --- a/mt7915/debugfs.c
 +++ b/mt7915/debugfs.c
-@@ -1052,10 +1052,16 @@ mt7915_rate_txpower_get(struct file *fil
+@@ -1041,10 +1041,16 @@ mt7915_rate_txpower_get(struct file *fil
  {
  	struct mt7915_phy *phy = file->private_data;
  	struct mt7915_dev *dev = phy->dev;
@@ -75,7 +75,7 @@ Squash of the following MediaTek commits:
  	ssize_t ret;
  	char *buf;
  	u32 reg;
-@@ -1114,11 +1120,38 @@ mt7915_rate_txpower_get(struct file *fil
+@@ -1103,11 +1109,38 @@ mt7915_rate_txpower_get(struct file *fil
  	len += scnprintf(buf + len, sz - len, "BW160/");
  	mt7915_txpower_puts(HE_RU2x996, 17);
  
@@ -118,7 +118,7 @@ Squash of the following MediaTek commits:
  
  	ret = simple_read_from_buffer(user_buf, count, ppos, buf, len);
  
-@@ -1293,6 +1326,96 @@ mt7915_txpower_path_show(struct seq_file
+@@ -1282,6 +1315,96 @@ mt7915_txpower_path_show(struct seq_file
  DEFINE_SHOW_ATTRIBUTE(mt7915_txpower_path);
  
  static int
@@ -215,7 +215,7 @@ Squash of the following MediaTek commits:
  mt7915_twt_stats(struct seq_file *s, void *data)
  {
  	struct mt7915_dev *dev = dev_get_drvdata(s->private);
-@@ -1380,6 +1503,8 @@ int mt7915_init_debugfs(struct mt7915_ph
+@@ -1369,6 +1492,8 @@ int mt7915_init_debugfs(struct mt7915_ph
  			    &mt7915_txpower_fops);
  	debugfs_create_file("txpower_path", 0400, dir, phy,
  			    &mt7915_txpower_path_fops);
@@ -236,7 +236,7 @@ Squash of the following MediaTek commits:
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &msta->wcid,
  					      &spe_idx, RATE_PARAM_SPE_UPDATE);
-@@ -3525,6 +3526,22 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3516,6 +3517,22 @@ mt7915_update_txpower(struct mt7915_phy
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -259,7 +259,7 @@ Squash of the following MediaTek commits:
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3555,14 +3572,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3546,14 +3563,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -299,7 +299,7 @@ Squash of the following MediaTek commits:
  	skb_put_data(skb, &la.mcs[0], len[SKU_HT_BW20]);
  	skb_put_data(skb, &la.mcs[1], len[SKU_HT_BW40]);
  
-@@ -3591,8 +3631,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3582,8 +3622,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
@@ -336,7 +336,7 @@ Squash of the following MediaTek commits:
  
  	/* HT20 and HT40 */
  	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
-@@ -3668,6 +3734,12 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3659,6 +3725,12 @@ int mt7915_mcu_get_txpower_sku(struct mt
  			return -EINVAL;
  		}
  		memcpy(txpower, skb->data + 4, len);
@@ -349,7 +349,7 @@ Squash of the following MediaTek commits:
  	}
  
  	dev_kfree_skb(skb);
-@@ -3675,6 +3747,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3666,6 +3738,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	return 0;
  }
  
@@ -475,7 +475,7 @@ Squash of the following MediaTek commits:
  enum {
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -324,9 +324,11 @@ static void __mt7915_init_txpower(struct
+@@ -319,9 +319,11 @@ static void __mt7915_init_txpower(struct
  	int path_delta = mt76_tx_power_path_delta(n_chains);
  	int pwr_delta = mt7915_eeprom_get_power_delta(dev, sband->band);
  	struct mt76_power_limits limits;
@@ -487,7 +487,7 @@ Squash of the following MediaTek commits:
  	for (i = 0; i < sband->n_channels; i++) {
  		struct ieee80211_channel *chan = &sband->channels[i];
  		u32 target_power = 0;
-@@ -350,8 +352,13 @@ static void __mt7915_init_txpower(struct
+@@ -345,8 +347,13 @@ static void __mt7915_init_txpower(struct
  
  		target_power += path_delta;
  		target_power = DIV_ROUND_UP(target_power, 2);
@@ -503,7 +503,7 @@ Squash of the following MediaTek commits:
  		chan->orig_mpwr = target_power;
  	}
  }
-@@ -365,8 +372,10 @@ void mt7915_init_txpower(struct mt7915_p
+@@ -360,8 +367,10 @@ void mt7915_init_txpower(struct mt7915_p
  		__mt7915_init_txpower(phy, &phy->mt76->sband_2g.sband);
  	if (phy->mt76->cap.has_5ghz)
  		__mt7915_init_txpower(phy, &phy->mt76->sband_5g.sband);

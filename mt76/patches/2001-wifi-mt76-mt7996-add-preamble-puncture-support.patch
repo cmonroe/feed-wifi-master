@@ -24,7 +24,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TESTMODE_CTRL = 0x46,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5795,3 +5795,43 @@ int mt7996_mcu_set_dup_wtbl(struct mt799
+@@ -5827,3 +5827,43 @@ int mt7996_mcu_set_dup_wtbl(struct mt799
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(CHIP_CONFIG), &req,
  				 sizeof(req), true);
  }

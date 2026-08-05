@@ -1,0 +1,30 @@
+From c8fb63615991b8794d245d72871bcd6af5c30164 Mon Sep 17 00:00:00 2001
+From: Peter Chiu <chui-hao.chiu@mediatek.com>
+Date: Fri, 24 Jul 2026 21:10:05 +0200
+Subject: [PATCH] wifi: mt76: fix queue assignment for disassoc packets
+
+Like deauth, a disassoc frame sent to a client in powersave mode can get
+stuck in a tx queue along with other buffered frames, filling up hardware
+queues with frames that are only released after the WTBL slot is reused
+for another client.
+
+Move disassoc packets to the ALTX queue, matching the existing deauth
+handling.
+
+Fixes: dedf2ec30fe4 ("wifi: mt76: fix queue assignment for deauth packets")
+Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+ tx.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/tx.c
++++ b/tx.c
+@@ -689,6 +689,7 @@ mt76_txq_schedule_pending_wcid(struct mt
+ 		    !ieee80211_is_data_present(hdr->frame_control) &&
+ 		    (!ieee80211_is_bufferable_mmpdu(skb) ||
+ 		     ieee80211_is_deauth(hdr->frame_control) ||
++		     ieee80211_is_disassoc(hdr->frame_control) ||
+ 		     head == &wcid->tx_offchannel))
+ 			qid = MT_TXQ_PSD;
+ 

@@ -17,7 +17,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3088,7 +3088,7 @@ static int mt7915_mcu_set_pre_cal(struct
+@@ -3079,7 +3079,7 @@ static int mt7915_mcu_set_pre_cal(struct
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, data, len);
  
@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  int mt7915_mcu_apply_group_cal(struct mt7915_dev *dev)
-@@ -3109,6 +3109,9 @@ int mt7915_mcu_apply_group_cal(struct mt
+@@ -3100,6 +3100,9 @@ int mt7915_mcu_apply_group_cal(struct mt
  
  		len = min_t(u32, total, MT_EE_CAL_UNIT);
  

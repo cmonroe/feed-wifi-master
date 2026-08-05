@@ -1006,7 +1006,7 @@ Squash of the following MediaTek commits:
  #endif
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2805,6 +2805,7 @@ mt7915_mcu_background_chain_ctrl(struct
+@@ -2806,6 +2806,7 @@ mt7915_mcu_background_chain_ctrl(struct
  		req.monitor_chan = chandef->chan->hw_value;
  		req.monitor_central_chan =
  			ieee80211_frequency_to_channel(chandef->center_freq1);
@@ -1014,7 +1014,7 @@ Squash of the following MediaTek commits:
  		req.band_idx = phy->mt76->band_idx;
  		req.scan_mode = 2;
  		break;
-@@ -4638,6 +4639,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4626,6 +4627,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  }
  #endif
  

@@ -137,7 +137,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		rate = &msta->wcid.rate;
  
  		switch (rate->bw) {
-@@ -2018,11 +1957,14 @@ void mt7915_mac_work(struct work_struct
+@@ -2017,11 +1956,14 @@ void mt7915_mac_work(struct work_struct
  {
  	struct mt7915_phy *phy;
  	struct mt76_phy *mphy;
@@ -152,7 +152,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mutex_lock(&mphy->dev->mutex);
  
  	mt76_update_survey(mphy);
-@@ -2034,6 +1976,8 @@ void mt7915_mac_work(struct work_struct
+@@ -2033,6 +1975,8 @@ void mt7915_mac_work(struct work_struct
  
  		if (phy->dev->muru_debug)
  			mt7915_mcu_muru_debug_get(phy);
@@ -239,7 +239,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	     !rxd->seq) &&
  	     !(rxd->eid == MCU_CMD_EXT_CID &&
  	       rxd->ext_eid == MCU_EXT_EVENT_WA_TX_STAT))
-@@ -5034,3 +5089,16 @@ int mt7915_mcu_thermal_debug(struct mt79
+@@ -5022,3 +5077,16 @@ int mt7915_mcu_thermal_debug(struct mt79
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(THERMAL_DEBUG), &req,
  				 sizeof(req), true);
  }
