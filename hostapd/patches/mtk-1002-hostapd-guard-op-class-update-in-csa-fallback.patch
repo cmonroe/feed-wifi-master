@@ -1,0 +1,48 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 07 Aug 2026 16:15:10 -0700
+Subject: [PATCH] hostapd: guard op_class update in CSA fallback
+
+ieee80211_freq_to_channel_ext() leaves *op_class untouched on every
+failure path, and hostapd_switch_channel_fallback() declares it
+uninitialized, so the unconditional assignment could store a garbage
+stack byte into conf->op_class. That value then feeds
+configured_fixed_chan_to_freq() and the op_class_to_ch_width() width
+override during the interface restart. Assign only when the
+conversion succeeds, matching the guarded idiom the DFS code already
+uses, and keep the previous op_class otherwise.
+
+Vendor patch 0057-era companion 0074 does not address this: it adds
+a second, guarded write after the garbage one, and its recompute
+reads the operating width after the ieee80211ac/ax/be flags were
+already overwritten, which goes stale across an ieee80211be
+transition. It was rejected in favor of this fix.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/hostapd.c |   15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -4957,12 +4957,15 @@ hostapd_switch_channel_fallback(struct h
+ 	if (ieee80211_freq_to_channel_ext(freq_params->freq,
+ 					  freq_params->sec_channel_offset, bw,
+ 					  &op_class, &chan) ==
+-	    NUM_HOSTAPD_MODES ||
+-	    chan != freq_params->channel)
+-		wpa_printf(MSG_INFO, "CSA: Channel mismatch: %d -> %d",
+-			   freq_params->channel, chan);
+-
+-	iface->conf->op_class = op_class;
++	    NUM_HOSTAPD_MODES) {
++		wpa_printf(MSG_INFO, "CSA: No op_class for freq %d, keeping %d",
++			   freq_params->freq, iface->conf->op_class);
++	} else {
++		if (chan != freq_params->channel)
++			wpa_printf(MSG_INFO, "CSA: Channel mismatch: %d -> %d",
++				   freq_params->channel, chan);
++		iface->conf->op_class = op_class;
++	}
+ 	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, seg0_idx);
+ 	hostapd_set_oper_centr_freq_seg1_idx(iface->conf, seg1_idx);
+ 	hostapd_set_oper_chwidth(iface->conf, bw);
