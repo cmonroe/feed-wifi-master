@@ -1,0 +1,88 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 06 Aug 2026 21:24:30 -0700
+Subject: [PATCH] wifi: mt76: mt7996: log firmware stream caps and eeprom fallback
+
+The firmware NIC capability can silently shrink the per-band
+path/rx_path/nss below the EEPROM provisioning. A variant
+mismatch silently swaps the flash EEPROM for the default bin which
+also disables all pre-cal data. Both change RF behavior with nothing
+in the logs. Log the firmware stream clamp on every probe and raise
+the default-bin fallback to an error including the failing FEM and
+stream values.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/eeprom.c |   33 +++++++++++++++++++++++----------
+ 1 file changed, 23 insertions(+), 10 deletions(-)
+
+--- a/mt7996/eeprom.c
++++ b/mt7996/eeprom.c
+@@ -106,15 +106,17 @@ static bool mt7996_eeprom_variant_valid(
+ 		fem[i] = u8_get_bits(eeprom[MT_EE_WIFI_CONF + 6 + i],
+ 				     MT_EE_WIFI_PA_LNA_CONFIG);
+ 
+-	if (dev->var.fem == MT7996_FEM_EXT &&
+-	    !(fem[0] == FEM_EXT && fem[1] == FEM_EXT))
+-		return false;
+-	else if (dev->var.fem == MT7996_FEM_INT &&
+-		 !(fem[0] == FEM_INT && fem[1] == FEM_INT))
+-		return false;
+-	else if (dev->var.fem == MT7996_FEM_MIX &&
+-		 !(fem[0] == FEM_INT && fem[1] == FEM_EXT))
++	if ((dev->var.fem == MT7996_FEM_EXT &&
++	     !(fem[0] == FEM_EXT && fem[1] == FEM_EXT)) ||
++	    (dev->var.fem == MT7996_FEM_INT &&
++	     !(fem[0] == FEM_INT && fem[1] == FEM_INT)) ||
++	    (dev->var.fem == MT7996_FEM_MIX &&
++	     !(fem[0] == FEM_INT && fem[1] == FEM_EXT))) {
++		dev_err(dev->mt76.dev,
++			"eeprom PA/LNA config %u/%u does not match fem type %u\n",
++			fem[0], fem[1], dev->var.fem);
+ 		return false;
++	}
+ 
+ 	for (i = 0; i < __MT_MAX_BAND; i++) {
+ 		u8 path, rx_path, nss;
+@@ -126,8 +128,13 @@ static bool mt7996_eeprom_variant_valid(
+ 		mt7996_eeprom_parse_stream(eeprom, i, &path, &rx_path, &nss);
+ 		mt7996_eeprom_parse_stream(def, i, &def_path, &def_rx_path,
+ 					   &def_nss);
+-		if (path > def_path || rx_path > def_rx_path || nss > def_nss)
++		if (path > def_path || rx_path > def_rx_path || nss > def_nss) {
++			dev_err(dev->mt76.dev,
++				"band %d eeprom path/rx_path/nss %u/%u/%u exceeds default bin %u/%u/%u\n",
++				i, path, rx_path, nss,
++				def_path, def_rx_path, def_nss);
+ 			return false;
++		}
+ 	}
+ 
+ 	return true;
+@@ -159,7 +166,7 @@ mt7996_eeprom_check_or_use_default(struc
+ 	if (!use_default && mt7996_eeprom_variant_valid(dev, fw->data))
+ 		goto out;
+ 
+-	dev_warn(dev->mt76.dev, "eeprom load fail, use default bin\n");
++	dev_err(dev->mt76.dev, "eeprom load fail, use default bin\n");
+ 	memcpy(eeprom, fw->data, MT7996_EEPROM_SIZE);
+ 	dev->eeprom_mode = EEPROM_MODE_DEFAULT_BIN;
+ 
+@@ -249,12 +256,18 @@ static int mt7996_eeprom_parse_efuse_hw_
+ 
+ 	if (cap) {
+ 		u8 band_offs = phy->mt76->band_idx * 3;
++		u8 old_path = *path, old_rx_path = *rx_path, old_nss = *nss;
+ 
+ 		dev->has_eht = !(cap & MODE_HE_ONLY);
+ 		dev->wtbl_size_group = u32_get_bits(cap, WTBL_SIZE_GROUP);
+ 		*nss = min_t(u8, *nss, STREAM_CAP(1 + band_offs));
+ 		*path = min_t(u8, *path, STREAM_CAP(10 + band_offs));
+ 		*rx_path = min_t(u8, *rx_path, STREAM_CAP(19 + band_offs));
++
++		dev_info(dev->mt76.dev,
++			 "band %u fw chip config 0x%08x: path %u->%u, rx_path %u->%u, nss %u->%u\n",
++			 phy->mt76->band_idx, cap, old_path, *path,
++			 old_rx_path, *rx_path, old_nss, *nss);
+ 	}
+ 
+ 	if (dev->wtbl_size_group < 2 || dev->wtbl_size_group > 4)

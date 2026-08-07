@@ -492,7 +492,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -3028,34 +2829,81 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -3034,34 +2835,81 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  

@@ -18,7 +18,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -455,7 +455,13 @@ static int mt7996_eeprom_load_precal(str
+@@ -468,7 +468,13 @@ static int mt7996_eeprom_load_precal(str
  	if (!dev->prek.rev)
  		return 0;
  
@@ -33,7 +33,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return 0;
  
  	size = MT_EE_CAL_GROUP_SIZE + MT_EE_CAL_DPD_SIZE;
-@@ -469,7 +475,15 @@ static int mt7996_eeprom_load_precal(str
+@@ -482,7 +488,15 @@ static int mt7996_eeprom_load_precal(str
  	if (!ret)
   		return ret;
  

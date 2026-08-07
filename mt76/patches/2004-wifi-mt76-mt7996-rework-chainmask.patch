@@ -54,7 +54,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -326,12 +326,11 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -339,12 +339,11 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  
  	mphy->antenna_mask = BIT(nss) - 1;
  	phy->orig_antenna_mask = mphy->antenna_mask;

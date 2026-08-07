@@ -30,7 +30,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  static void
  mt7996_mac_tx_free(struct mt7996_dev *dev, void *data, int len)
  {
-@@ -2879,6 +2892,7 @@ static int mt7996_mac_sta_poll(struct mt
+@@ -2885,6 +2898,7 @@ static int mt7996_mac_sta_poll(struct mt
  {
  	u16 sta_list[PER_STA_INFO_MAX_NUM];
  	struct mt7996_sta_link *msta_link;
@@ -38,7 +38,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	int i, ret;
  
  	spin_lock_bh(&dev->sta_poll_lock);
-@@ -2891,6 +2905,9 @@ static int mt7996_mac_sta_poll(struct mt
+@@ -2897,6 +2911,9 @@ static int mt7996_mac_sta_poll(struct mt
  					 wcid.poll_list);
  		list_del_init(&msta_link->wcid.poll_list);
  		sta_list[i] = msta_link->wcid.idx;

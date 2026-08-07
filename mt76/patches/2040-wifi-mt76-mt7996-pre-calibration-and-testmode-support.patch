@@ -224,7 +224,7 @@ Squash of the following MediaTek commits:
  {
  	switch (mt76_chip(&dev->mt76)) {
  	case MT7992_DEVICE_ID:
-@@ -335,12 +404,86 @@ int mt7996_eeprom_parse_hw_cap(struct mt
+@@ -348,12 +417,86 @@ int mt7996_eeprom_parse_hw_cap(struct mt
  	return mt7996_eeprom_parse_band_config(phy);
  }
  

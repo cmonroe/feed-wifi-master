@@ -5556,7 +5556,7 @@ Squash of the following MediaTek commits:
 +#endif
 --- a/mt7996/eeprom.c
 +++ b/mt7996/eeprom.c
-@@ -418,3 +418,37 @@ bool mt7996_eeprom_has_background_radar(
+@@ -431,3 +431,37 @@ bool mt7996_eeprom_has_background_radar(
  
  	return true;
  }

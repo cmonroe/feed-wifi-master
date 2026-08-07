@@ -53,7 +53,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   enum ieee80211_roc_type type)
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1962,6 +1962,7 @@ void mt76_abort_scan(struct mt76_dev *de
+@@ -1844,6 +1844,7 @@ void mt76_abort_scan(struct mt76_dev *de
  void mt76_roc_complete_work(struct work_struct *work);
  void mt76_roc_complete(struct mt76_phy *phy);
  void mt76_abort_roc(struct mt76_phy *phy);
@@ -63,7 +63,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt76_put_vif_phy_link(struct mt76_phy *phy, struct ieee80211_vif *vif,
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2608,6 +2608,12 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2732,6 +2732,12 @@ void mt7996_mac_reset_work(struct work_s
  
  	mutex_unlock(&dev->mt76.mutex);
  
