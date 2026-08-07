@@ -13,12 +13,6 @@ Includes a follow-up fix checking max_power of the operating channel.
 Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 ---
  mt76_connac3_mac.h   |   12 ++++
- mt7996/init.c        |    2
- mt7996/mac.c         |    5 ++
- mt7996/main.c        |    6 ++
- mt7996/mcu.c         |  119 ++++++++++++++++++++++++++++++++++++++++++++++--
- mt7996/mcu.h         |    1
- mt76_connac3_mac.h   |   12 ++++
  mt7996/init.c        |    2 
  mt7996/mac.c         |    5 ++
  mt7996/main.c        |    6 ++
@@ -53,7 +47,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #define MT_CT_INFO_MGMT_FRAME		BIT(2)
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -371,7 +371,7 @@ static void __mt7996_init_txpower(struct
+@@ -383,7 +383,7 @@ static void __mt7996_init_txpower(struct
  
  	phy->sku_limit_en = true;
  	phy->sku_path_en = true;
@@ -109,7 +103,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6021,7 +6021,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -6048,7 +6048,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -118,7 +112,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -6341,6 +6341,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6368,6 +6368,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -141,7 +135,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static s8 mt7996_get_power_bound(struct mt7996_phy *phy, s8 txpower)
  {
         struct mt76_phy *mphy = phy->mt76;
-@@ -6352,7 +6368,8 @@ static s8 mt7996_get_power_bound(struct
+@@ -6379,7 +6395,8 @@ static s8 mt7996_get_power_bound(struct
         return txpower;
  }
  
@@ -151,7 +145,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
  #define TX_POWER_LIMIT_TABLE_PATH	1
-@@ -6377,7 +6394,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6404,7 +6421,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
@@ -162,7 +156,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6400,7 +6419,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6427,7 +6446,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	}
  
  	skb_put_data(skb, &req, sizeof(req));
@@ -201,7 +195,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb_put_data(skb, &la->mcs[0], 8); /* HT20 */
  	skb_put_data(skb, &la->mcs[1], 9); /* HT40 */
  
-@@ -6439,8 +6488,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6466,8 +6515,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la->path.cck, 5);
@@ -245,7 +239,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -6457,6 +6539,31 @@ out:
+@@ -6484,6 +6566,31 @@ out:
  	return ret;
  }
  
@@ -279,7 +273,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	__le32 cp_mode;
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1040,6 +1040,7 @@ enum {
+@@ -1039,6 +1039,7 @@ enum {
  	UNI_BAND_CONFIG_EDCCA_THRESHOLD = 0x06,
  	UNI_BAND_CONFIG_RTS_THRESHOLD = 0x08,
  	UNI_BAND_CONFIG_MAC_ENABLE_CTRL = 0x0c,
@@ -289,10 +283,10 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -913,7 +913,8 @@ int mt7996_mcu_get_chan_mib_info(struct
- int mt7996_mcu_get_temperature(struct mt7996_phy *phy);
+@@ -915,7 +915,8 @@ int mt7996_mcu_get_temperature(struct mt
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);
+ int mt7996_mcu_set_thermal_info_query(struct mt7996_phy *phy);
 -int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy);
 +int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy, int txpower_setting);
 +int mt7996_mcu_set_lpi_psd(struct mt7996_phy *phy, u8 enable);

@@ -1,0 +1,250 @@
+From: Howard Hsu <howard-yh.hsu@mediatek.com>
+Date: Mon, 2 Mar 2026 18:10:19 +0800
+Subject: [PATCH] wifi: mt76: mt7996: refactor reading current tx duty cycle
+
+Newer firmware reports the thermal state through a query response on
+the UNI unsolicited event path with a new payload layout, instead of
+pushing unsolicited notify events. Query the duty cycle on demand via
+UNI_CMD_THERMAL_PROTECT_INFO (write throttle1 to trigger, then read
+it back) and translate the reported state through the duty levels
+programmed by mt7996_mcu_set_thermal_throttling().
+
+Squash of the following MediaTek commits:
+- mtk: mt76: mt7996: refactor reading current tx duty cycle
+- mtk: mt76: mt7996: fix thermal notify event
+
+Deviation from the MediaTek original: bound the firmware-reported
+state index before indexing throttle_level.
+
+Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
+---
+ mt7996/init.c   |   46 +++++++++++++++++++++++++++++-----------------
+ mt7996/mcu.c    |   51 +++++++++++++++++++++++++++++++++++++++------------
+ mt7996/mcu.h    |   10 +++++-----
+ mt7996/mt7996.h |    2 ++
+ 4 files changed, 75 insertions(+), 34 deletions(-)
+
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -143,34 +143,46 @@ static ssize_t mt7996_thermal_temp_store
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	mutex_lock(&phy->dev->mt76.mutex);
+-	val = DIV_ROUND_CLOSEST(clamp_val(val, 40 * 1000, 130 * 1000), 1000);
++	switch (i) {
++	case 1:
++	case 2:
++		mutex_lock(&phy->dev->mt76.mutex);
++		val = DIV_ROUND_CLOSEST(clamp_val(val, 40 * 1000, 130 * 1000), 1000);
++
++		/* add a safety margin ~10 */
++		if ((i - 1 == MT7996_CRIT_TEMP_IDX &&
++		     val > phy->throttle_temp[MT7996_MAX_TEMP_IDX] - 10) ||
++		    (i - 1 == MT7996_MAX_TEMP_IDX &&
++		     val - 10 < phy->throttle_temp[MT7996_CRIT_TEMP_IDX])) {
++			dev_err(phy->dev->mt76.dev,
++				"temp1_max shall be 10 degrees higher than temp1_crit.");
++			mutex_unlock(&phy->dev->mt76.mutex);
++			return -EINVAL;
++		}
+ 
+-	/* add a safety margin ~10 */
+-	if ((i - 1 == MT7996_CRIT_TEMP_IDX &&
+-	     val > phy->throttle_temp[MT7996_MAX_TEMP_IDX] - 10) ||
+-	    (i - 1 == MT7996_MAX_TEMP_IDX &&
+-	     val - 10 < phy->throttle_temp[MT7996_CRIT_TEMP_IDX])) {
+-		dev_err(phy->dev->mt76.dev,
+-			"temp1_max shall be 10 degrees higher than temp1_crit.");
++		phy->throttle_temp[i - 1] = val;
+ 		mutex_unlock(&phy->dev->mt76.mutex);
++
++		ret = mt7996_mcu_set_thermal_protect(phy, true);
++		if (ret)
++			return ret;
++		break;
++	case 3:
++		ret = mt7996_mcu_set_thermal_info_query(phy);
++		if (ret)
++			return ret;
++		break;
++	default:
+ 		return -EINVAL;
+ 	}
+ 
+-	phy->throttle_temp[i - 1] = val;
+-	mutex_unlock(&phy->dev->mt76.mutex);
+-
+-	ret = mt7996_mcu_set_thermal_protect(phy, true);
+-	if (ret)
+-		return ret;
+-
+ 	return count;
+ }
+ 
+ static SENSOR_DEVICE_ATTR_RO(temp1_input, mt7996_thermal_temp, 0);
+ static SENSOR_DEVICE_ATTR_RW(temp1_crit, mt7996_thermal_temp, 1);
+ static SENSOR_DEVICE_ATTR_RW(temp1_max, mt7996_thermal_temp, 2);
+-static SENSOR_DEVICE_ATTR_RO(throttle1, mt7996_thermal_temp, 3);
++static SENSOR_DEVICE_ATTR_RW(throttle1, mt7996_thermal_temp, 3);
+ 
+ static struct attribute *mt7996_hwmon_attrs[] = {
+ 	&sensor_dev_attr_temp1_input.dev_attr.attr,
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -973,20 +973,19 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ }
+ 
+ static void
+-mt7996_mcu_rx_thermal_notify(struct mt7996_dev *dev, struct sk_buff *skb)
++mt7996_mcu_rx_thermal_info_query(struct mt7996_dev *dev, struct sk_buff *skb)
+ {
+-#define THERMAL_NOTIFY_TAG 0x4
+-#define THERMAL_NOTIFY 0x2
++#define THERMAL_QUERY_TAG 0x3
+ 	struct mt76_phy *mphy = &dev->mt76.phy;
+-	struct mt7996_mcu_thermal_notify *n;
++	struct mt7996_mcu_thermal_query_info *n;
+ 	struct mt7996_phy *phy;
+ 
+-	n = (struct mt7996_mcu_thermal_notify *)skb->data;
++	n = (struct mt7996_mcu_thermal_query_info *)skb->data;
+ 
+-	if (le16_to_cpu(n->tag) != THERMAL_NOTIFY_TAG)
++	if (le16_to_cpu(n->tag) != THERMAL_QUERY_TAG)
+ 		return;
+ 
+-	if (n->event_id != THERMAL_NOTIFY)
++	if (n->event_id != THERMAL_QUERY_TAG)
+ 		return;
+ 
+ 	if (n->band_idx > MT_BAND2)
+@@ -997,7 +996,10 @@ mt7996_mcu_rx_thermal_notify(struct mt79
+ 		return;
+ 
+ 	phy = (struct mt7996_phy *)mphy->priv;
+-	phy->throttle_state = n->duty_percent;
++	if (n->state >= ARRAY_SIZE(phy->throttle_level))
++		return;
++
++	phy->throttle_state = phy->throttle_level[n->state];
+ }
+ 
+ static void
+@@ -1023,9 +1025,6 @@ mt7996_mcu_rx_unsolicited_event(struct m
+ 	case MCU_EVENT_EXT:
+ 		mt7996_mcu_rx_ext_event(dev, skb);
+ 		break;
+-	case MCU_UNI_EVENT_THERMAL:
+-		mt7996_mcu_rx_thermal_notify(dev, skb);
+-		break;
+ 	default:
+ 		break;
+ 	}
+@@ -1200,6 +1199,9 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+ 	case MCU_UNI_EVENT_WED_RRO:
+ 		mt7996_mcu_wed_rro_event(dev, skb);
+ 		break;
++	case MCU_UNI_EVENT_THERMAL:
++		mt7996_mcu_rx_thermal_info_query(dev, skb);
++		break;
+ 	case MCU_UNI_EVENT_PS_SYNC:
+ 		mt7996_mcu_rx_ps_sync(dev, skb);
+ 		break;
+@@ -5215,12 +5217,14 @@ int mt7996_mcu_set_thermal_throttling(st
+ 	for (level = 0; level < 4; level++) {
+ 		req.ctrl.duty.duty_level = level;
+ 		req.ctrl.duty.duty_cycle = state;
+-		state /= 2;
+ 
+ 		ret = mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(THERMAL),
+ 					&req, sizeof(req), false);
+ 		if (ret)
+ 			return ret;
++
++		phy->throttle_level[level] = state;
++		state /= 2;
+ 	}
+ 
+ 	return 0;
+@@ -5264,6 +5268,29 @@ int mt7996_mcu_set_thermal_protect(struc
+ 
+ 	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(THERMAL),
+ 				 &req, sizeof(req), false);
++}
++
++int mt7996_mcu_set_thermal_info_query(struct mt7996_phy *phy)
++{
++#define PROTECT_INFO_QUERY 0x9
++	struct {
++		u8 _rsv[4];
++
++		__le16 tag;
++		__le16 len;
++
++		u8 action;
++		u8 band_idx;
++		u8 __rsv[2];
++	} __packed req = {
++		.tag = cpu_to_le16(UNI_CMD_THERMAL_PROTECT_INFO),
++		.len = cpu_to_le16(sizeof(req) - 4),
++		.action = PROTECT_INFO_QUERY,
++		.band_idx = phy->mt76->band_idx,
++	};
++
++	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(THERMAL),
++				 &req, sizeof(req), false);
+ }
+ 
+ int mt7996_mcu_set_ser(struct mt7996_dev *dev, u8 action, u8 val, u8 band)
+--- a/mt7996/mcu.h
++++ b/mt7996/mcu.h
+@@ -397,7 +397,7 @@ enum {
+ 	UNI_PS_MULTI_CLIENT_INFO_BITMAP = 2,
+ };
+ 
+-struct mt7996_mcu_thermal_notify {
++struct mt7996_mcu_thermal_query_info {
+ 	struct mt7996_mcu_rxd rxd;
+ 
+ 	u8 __rsv1[4];
+@@ -407,10 +407,9 @@ struct mt7996_mcu_thermal_notify {
+ 
+ 	u8 event_id;
+ 	u8 band_idx;
+-	u8 level_idx;
+-	u8 duty_percent;
+-	__le32 restore_temp;
+-	u8 __rsv2[4];
++	u8 __rsv2[43];
++	u8 state;
++	u8 __rsv3[6];
+ } __packed;
+ 
+ enum mt7996_chan_mib_offs {
+@@ -1108,6 +1107,7 @@ enum {
+ 	UNI_CMD_THERMAL_PROTECT_ENABLE = 0x6,
+ 	UNI_CMD_THERMAL_PROTECT_DISABLE,
+ 	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
++	UNI_CMD_THERMAL_PROTECT_INFO,
+ };
+ 
+ enum {
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -440,6 +440,7 @@ struct mt7996_phy {
+ 	u8 cdev_state;
+ 	u8 throttle_state;
+ 	u32 throttle_temp[2]; /* 0: critical high, 1: maximum */
++	u8 throttle_level[4];
+ 
+ 	u32 rxfilter;
+ 	u64 omac_mask;
+@@ -859,6 +860,7 @@ int mt7996_mcu_get_chan_mib_info(struct
+ int mt7996_mcu_get_temperature(struct mt7996_phy *phy);
+ int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
+ int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);
++int mt7996_mcu_set_thermal_info_query(struct mt7996_phy *phy);
+ int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy);
+ int mt7996_mcu_rdd_resume_tx(struct mt7996_phy *phy);
+ int mt7996_mcu_rdd_cmd(struct mt7996_dev *dev, int cmd, u8 rdd_idx, u8 val);

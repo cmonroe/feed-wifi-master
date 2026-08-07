@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6343,7 +6343,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6370,7 +6370,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  static bool mt7996_is_psd_country(char *country)
  {
@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -6396,7 +6396,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6423,7 +6423,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	if (txpower_setting == INT_MIN || txpower_setting > 127)
  		txpower_setting = 127;
@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6411,6 +6417,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6438,6 +6444,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		return 0;
  	}
  
@@ -61,7 +61,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
  	if (!skb) {
-@@ -6424,8 +6433,8 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6451,8 +6460,8 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* FW would compensate for PSD countries
  	 * driver doesn't need to do it
  	 */
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->eht[3], 8);
-@@ -6492,7 +6501,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6519,7 +6528,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* FW would NOT compensate in the case of BF backoff table
  	 * driver needs to compensate for LPI PSD
  	 */
@@ -81,7 +81,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->path.ru[5], 5);
-@@ -6560,6 +6569,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -6587,6 +6596,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.psd_limit = enable ? mt7996_is_psd_country(dev->mt76.alpha2) : 0,
  	};
  
@@ -306,7 +306,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -370,7 +370,7 @@ static void __mt7996_init_txpower(struct
+@@ -382,7 +382,7 @@ static void __mt7996_init_txpower(struct
  		return;
  
  	phy->sku_limit_en = true;
@@ -315,7 +315,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	np = mt76_find_power_limits_node(phy->mt76);
  	for (i = 0; i < sband->n_channels; i++) {
  		struct ieee80211_channel *chan = &sband->channels[i];
-@@ -380,8 +380,10 @@ static void __mt7996_init_txpower(struct
+@@ -392,8 +392,10 @@ static void __mt7996_init_txpower(struct
  		target_power = mt76_get_rate_power_limits(phy->mt76, chan,
  							  limits,
  							  target_power);

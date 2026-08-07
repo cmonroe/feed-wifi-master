@@ -253,7 +253,7 @@ Squash of the following MediaTek commits:
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -575,6 +575,7 @@ struct mt7996_dev {
+@@ -576,6 +576,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -261,7 +261,7 @@ Squash of the following MediaTek commits:
  
  	u32 token_debug_idx;
  
-@@ -594,6 +595,17 @@ struct mt7996_dev {
+@@ -595,6 +596,17 @@ struct mt7996_dev {
  		u8 fem:4;
  	} var;
  
@@ -279,7 +279,7 @@ Squash of the following MediaTek commits:
  	bool vow_atf_en;
  };
  
-@@ -1031,6 +1043,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1033,6 +1045,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
@@ -5712,7 +5712,7 @@ Squash of the following MediaTek commits:
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6348,3 +6348,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6375,3 +6375,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
@@ -5753,7 +5753,7 @@ Squash of the following MediaTek commits:
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
 @@ -1110,8 +1110,33 @@ enum {
- 	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
+ 	UNI_CMD_THERMAL_PROTECT_INFO,
  };
  
 +struct tx_power_ctrl {

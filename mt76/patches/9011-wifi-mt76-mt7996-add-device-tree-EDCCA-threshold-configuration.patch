@@ -106,7 +106,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -411,6 +411,55 @@ void mt7996_init_txpower(struct mt7996_p
+@@ -423,6 +423,55 @@ void mt7996_init_txpower(struct mt7996_p
  		__mt7996_init_txpower(phy, &phy->mt76->sband_6g.sband);
  }
  
@@ -162,7 +162,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
  mt7996_regd_notifier(struct wiphy *wiphy,
  		     struct regulatory_request *request)
-@@ -427,6 +476,7 @@ mt7996_regd_notifier(struct wiphy *wiphy
+@@ -439,6 +488,7 @@ mt7996_regd_notifier(struct wiphy *wiphy
  			mt7996_mcu_rdd_background_enable(phy, NULL);
  
  		mt7996_init_txpower(phy);
@@ -198,7 +198,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -828,6 +828,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -829,6 +829,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);

@@ -54,7 +54,7 @@ environment can SR Tx or not.
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1203,6 +1203,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -1205,6 +1205,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_PS_SYNC:
  		mt7996_mcu_rx_ps_sync(dev, skb);
  		break;
@@ -68,7 +68,7 @@ environment can SR Tx or not.
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -495,6 +495,11 @@ struct mt7996_phy {
+@@ -496,6 +496,11 @@ struct mt7996_phy {
  	bool sku_limit_en;
  	bool sku_path_en;
  
@@ -80,7 +80,7 @@ environment can SR Tx or not.
  	u8 pp_mode;
  	u16 punct_bitmap;
  
-@@ -1105,6 +1110,8 @@ enum edcca_bw_id {
+@@ -1107,6 +1112,8 @@ enum edcca_bw_id {
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
