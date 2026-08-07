@@ -1,0 +1,41 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 07 Aug 2026 16:22:34 -0700
+Subject: [PATCH] wifi-scripts: fix EHT320 operating width enum values
+
+eht_oper_chwidth used 7, which is CONF_OPER_CHWIDTH_8640MHZ (60 GHz
+DMG); 320 MHz is 9. The 6 GHz beacon path masked this because the
+EHT Operation width is derived from op_class 137, but
+hostapd_get_oper_chwidth() feeds the ucode switch_channel width
+selection, which fell through to 20/40 MHz on any EHT320 CSA, and
+acs_adjust_center_freq() rejected the value outright, so ACS never
+set a 320 MHz center frequency. The shell variant already emits 9.
+
+he_oper_chwidth used 3 (80+80 MHz) for the HE 160 MHz backward
+compatibility values; 160 MHz is 2, matching the comment and the
+segment 0 selection. Inherited verbatim from upstream OpenWrt
+files-ucode; the shell variant is unaffected.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/usr/share/ucode/wifi/hostapd.uc |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/src/usr/share/ucode/wifi/hostapd.uc
++++ b/src/usr/share/ucode/wifi/hostapd.uc
+@@ -284,14 +284,14 @@ function device_htmode_append(config) {
+ 					break;
+ 				}
+ 			config.op_class = 137;
+-			config.eht_oper_chwidth = 7;
++			config.eht_oper_chwidth = 9;
+ 
+ 			/*
+ 			 * Set HE operation values for 160MHz backward compatibility
+ 			 * with WiFi 6E clients. Pick the 160MHz half that contains
+ 			 * the primary channel.
+ 			 */
+-			config.he_oper_chwidth = 3;
++			config.he_oper_chwidth = 2;
+ 			if (config.channel < config.eht_oper_centr_freq_seg0_idx)
+ 				config.he_oper_centr_freq_seg0_idx = config.eht_oper_centr_freq_seg0_idx - 16;
+ 			else
