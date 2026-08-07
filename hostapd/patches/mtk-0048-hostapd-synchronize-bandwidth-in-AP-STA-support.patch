@@ -1,18 +1,34 @@
-From 73a93a8679d20d64895c85d73a2a4348fd4a313f Mon Sep 17 00:00:00 2001
-From: Michael-CY Lee <michael-cy.lee@mediatek.com>
-Date: Mon, 11 Sep 2023 10:16:35 +0800
-Subject: [PATCH 048/149] mtk: hostapd: synchronize bandwidth in AP/STA support
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 07 Aug 2026 15:28:10 -0700
+Subject: [PATCH] hostapd: synchronize bandwidth in AP/STA support
 
-Signed-off-by: Michael Lee <michael-cy.lee@mediatek.com>
+When an AP follows a co-located station (repeater), the station's
+channel alone is not enough: the AP must also adopt its bandwidth.
 
-Fix segment 0 calculation in BW 40.
+wpa_supplicant reports ch_width, center_freq1 and bw320_offset from
+the driver on channel switch events and in phy status. hostapd
+passes them through apsta_state to freq_info, and uc_wpa_freq_info()
+computes segment 0 and the center frequency for all widths,
+including 20/40 MHz (USE_HT) and the second 320 MHz block.
 
-Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
+A supplied ch_width takes precedence over scanning the generated
+config for *_oper_chwidth. The fast path is guarded against a
+missing value: ucode evaluates null >= 0 as true, and treating an
+absent width as valid made every channel-only reload CSA drop to
+20 MHz. uc_wpa_freq_info() rejects a missing width argument instead
+of degrading to 20 MHz, bw320_offset falls back to 1 when absent or
+invalid, and the CSA freq params are assigned on errno alone so
+explicit zero values apply.
+
+Based-on-work-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/ap/ucode.c         | 41 +++++++++++++++++++--
- src/utils/ucode.c      | 20 +++++++----
- wpa_supplicant/ucode.c | 82 ++++++++++++++++++++++++++++++++++--------
- 3 files changed, 121 insertions(+), 22 deletions(-)
+ openwrt/files/hostapd.uc        |   36 ++++++++----
+ openwrt/files/wpa_supplicant.uc |    4 +
+ src/ap/ucode.c                  |   47 +++++++++++++---
+ src/utils/ucode.c               |   25 ++++++--
+ wpa_supplicant/ucode.c          |   88 ++++++++++++++++++++++++------
+ 5 files changed, 159 insertions(+), 41 deletions(-)
 
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
@@ -67,7 +83,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
  		int ret;
-@@ -734,6 +755,7 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -734,13 +755,16 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	uint64_t intval;
  	int i, ret = 0;
  
@@ -75,8 +91,32 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	if (!iface || ucv_type(info) != UC_OBJECT)
  		return NULL;
  
-@@ -776,6 +798,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
- 	if ((intval = ucv_int64_get(ucv_object_get(info, "center_freq2", NULL))) && !errno)
+ 	conf = iface->conf;
+-	if ((intval = ucv_int64_get(ucv_object_get(info, "csa_count", NULL))) && !errno)
++	intval = ucv_int64_get(ucv_object_get(info, "csa_count", NULL));
++	if (!errno)
+ 		csa.cs_count = intval;
+-	if ((intval = ucv_int64_get(ucv_object_get(info, "sec_channel", NULL))) && !errno)
++	intval = ucv_int64_get(ucv_object_get(info, "sec_channel", NULL));
++	if (!errno)
+ 		csa.freq_params.sec_channel_offset = intval;
+ 
+ 	csa.freq_params.ht_enabled = conf->ieee80211n;
+@@ -769,13 +793,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+ 		break;
+ 	}
+ 
+-	if ((intval = ucv_int64_get(ucv_object_get(info, "frequency", NULL))) && !errno)
++	intval = ucv_int64_get(ucv_object_get(info, "frequency", NULL));
++	if (!errno)
+ 		csa.freq_params.freq = intval;
+-	if ((intval = ucv_int64_get(ucv_object_get(info, "center_freq1", NULL))) && !errno)
++	intval = ucv_int64_get(ucv_object_get(info, "center_freq1", NULL));
++	if (!errno)
+ 		csa.freq_params.center_freq1 = intval;
+-	if ((intval = ucv_int64_get(ucv_object_get(info, "center_freq2", NULL))) && !errno)
++	intval = ucv_int64_get(ucv_object_get(info, "center_freq2", NULL));
++	if (!errno)
  		csa.freq_params.center_freq2 = intval;
  
 +	wpa_printf(MSG_INFO, "%s: CSA freq=%d bandwidth=%d sec_chan_offset=%d center_freq1=%d center_freq2=%d\n",
@@ -100,17 +140,30 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	int freq_val, center_idx, center_ofs;
  	enum oper_chan_width chanwidth;
  	enum hostapd_hw_mode hw_mode;
-@@ -145,6 +146,9 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
+@@ -113,6 +114,10 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
+ 	int sec_channel = 0;
+ 	uc_value_t *ret;
+ 
++	/* a missing width argument must not degrade to 20 MHz */
++	if (errno)
++		return NULL;
++
+ 	if (ucv_type(freq) != UC_INTEGER)
+ 		return NULL;
+ 
+@@ -145,6 +150,11 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
  	case 9:
  		width = 3;
  		chanwidth = CONF_OPER_CHWIDTH_320MHZ;
 +
 +		/* bw320_offset is 1 for 320 MHz-1, and 2 for 320 MHz-2 */
 +		bw320_offset = ucv_uint64_get(uc_fn_arg(3));
++		if (errno || (bw320_offset != 1 && bw320_offset != 2))
++			bw320_offset = 1;
  		break;
  	default:
  		return NULL;
-@@ -176,12 +180,18 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
+@@ -176,12 +186,18 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
  	ucv_object_add(ret, "hw_mode_str", ucv_string_new(modestr));
  	ucv_object_add(ret, "sec_channel", ucv_int64_new(sec_channel));
  	ucv_object_add(ret, "frequency", ucv_int64_new(freq_val));
@@ -131,7 +184,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	else if (freq_val >= 5745)
  		center_ofs = 20;
  	else
-@@ -190,10 +200,7 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
+@@ -190,10 +206,7 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
  	tmp_channel &= ~((8 << width) - 1);
  	center_idx = tmp_channel + center_ofs + (4 << width) - 1;
  
@@ -305,7 +358,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
 -			sec_offset = null; // auto-detect
 -			continue;
 -		}
-+	if (params.ch_width >= 0) {
++	if (params.ch_width != null && params.ch_width >= 0) {
 +		width = params.ch_width;
 +	} else {
 +		for (let line in config.radio.data) {
