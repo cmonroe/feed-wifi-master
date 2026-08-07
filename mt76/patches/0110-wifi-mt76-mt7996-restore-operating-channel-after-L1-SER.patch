@@ -1,0 +1,78 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 07 Aug 2026 15:08:47 -0700
+Subject: [PATCH] wifi: mt76: mt7996: restore operating channel after L1 SER
+
+mt76_scan_complete() and mt76_roc_complete() skip re-programming the
+operating channel while MT76_MCU_RESET is set, since the MCU cannot
+be messaged during recovery. The L1 SER path sets that bit before
+aborting scan/ROC and never reprograms the channel afterwards, so a
+reset that interrupts an off-channel dwell leaves the firmware
+beaconing on the 20 MHz scan channel while mac80211 and hostapd still
+believe the configured chandef is active. Add mt76_channel_restore()
+and call it once recovery completes.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ channel.c    |   24 ++++++++++++++++++++++++
+ mt76.h       |    1 +
+ mt7996/mac.c |    6 ++++++
+ 3 files changed, 31 insertions(+)
+
+--- a/channel.c
++++ b/channel.c
+@@ -360,6 +360,30 @@ void mt76_abort_roc(struct mt76_phy *phy
+ }
+ EXPORT_SYMBOL_GPL(mt76_abort_roc);
+ 
++/* Scan/ROC completion skips the operating channel restore while
++ * MT76_MCU_RESET is set (the MCU cannot be messaged during recovery);
++ * drivers call this after recovery to re-program a phy left parked on
++ * an off-channel dwell.
++ */
++void mt76_channel_restore(struct mt76_phy *phy)
++{
++	struct mt76_dev *dev = phy->dev;
++	bool offchannel;
++
++	mutex_lock(&dev->mutex);
++	offchannel = phy->offchannel;
++	if (phy->main_chandef.chan &&
++	    !test_bit(MT76_MCU_RESET, &dev->phy.state) &&
++	    (offchannel ||
++	     !cfg80211_chandef_identical(&phy->chandef, &phy->main_chandef))) {
++		__mt76_set_channel(phy, &phy->main_chandef, false);
++		if (offchannel)
++			mt76_offchannel_notify(phy, false);
++	}
++	mutex_unlock(&dev->mutex);
++}
++EXPORT_SYMBOL_GPL(mt76_channel_restore);
++
+ int mt76_remain_on_channel(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+ 			   struct ieee80211_channel *chan, int duration,
+ 			   enum ieee80211_roc_type type)
+--- a/mt76.h
++++ b/mt76.h
+@@ -1962,6 +1962,7 @@ void mt76_abort_scan(struct mt76_dev *de
+ void mt76_roc_complete_work(struct work_struct *work);
+ void mt76_roc_complete(struct mt76_phy *phy);
+ void mt76_abort_roc(struct mt76_phy *phy);
++void mt76_channel_restore(struct mt76_phy *phy);
+ struct mt76_vif_link *mt76_get_vif_phy_link(struct mt76_phy *phy,
+ 					    struct ieee80211_vif *vif);
+ void mt76_put_vif_phy_link(struct mt76_phy *phy, struct ieee80211_vif *vif,
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2608,6 +2608,12 @@ void mt7996_mac_reset_work(struct work_s
+ 
+ 	mutex_unlock(&dev->mt76.mutex);
+ 
++	/* mt76_abort_scan()/mt76_abort_roc() above ran with MT76_MCU_RESET
++	 * set, which skips their operating channel restore
++	 */
++	mt7996_for_each_phy(dev, phy)
++		mt76_channel_restore(phy->mt76);
++
+ 	mt7996_for_each_phy(dev, phy)
+ 		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
+ 					     MT7996_WATCHDOG_TIME);
