@@ -1,0 +1,42 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 07 Aug 2026 09:51:16 -0700
+Subject: [PATCH] wifi: mt76: mt7996: skip group pre-cal push on MT7992
+
+MT7992 firmware 20260720 corrupts the 2.4 GHz RF state when the
+driver applies group pre-cal data from current factory provisioning.
+EVM collapses. Rates cap at MCS 2-3 in both directions while RSSI
+stays strong and balanced. Firmware 20260310 accepts identical data.
+
+A capped push does not help. Test cap limited the push to the 116772
+byte GROUPPREK stream size. This size matches the flash info dword
+and the wait threshold in MediaTek mt7996_tm_group_prek().
+
+Skip the group pre-cal push on MT7992 until MediaTek clarifies the
+expected provisioning format. Chamber tests on SDG-8713v and
+SDG-8712v confirm the workaround. The same firmware reaches
+EHT-MCS 13 in both directions with the push skipped.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mcu.c |   10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -5073,6 +5073,16 @@ int mt7996_mcu_apply_group_cal(struct mt
+ 	u32 offs = MT_EE_DO_PRE_CAL;
+ 	int ret = 0;
+ 
++	/* Newer firmware corrupts the MT7992 2.4 GHz RF state when group
++	 * pre-cal data from current factory provisioning is applied.
++	 * Skip the push until MediaTek clarifies the expected
++	 * provisioning format.
++	 */
++	if (is_mt7992(&dev->mt76)) {
++		dev_info(dev->mt76.dev, "skipping group pre-cal push\n");
++		return 0;
++	}
++
+ 	if (!cal)
+ 		return 0;
+ 
