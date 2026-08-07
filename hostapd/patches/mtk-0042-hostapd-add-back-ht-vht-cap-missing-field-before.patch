@@ -1,0 +1,44 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 07 Aug 2026 16:21:31 -0700
+Subject: [PATCH] hostapd: restore HT/VHT width caps in CSA fallback
+
+hostapd_event_ch_switch() sets and clears the HT40 and VHT width
+capability bits based on the width of the switched channel. The CSA
+fallback path restarts the interface instead of performing a real
+channel switch, so no ch_switch event fires and a previously
+cleared bit is never set back, leaving the AP advertising a
+narrower width than it operates. Restore the bits from the hardware
+mode before the restart.
+
+The iface->current_mode dereferences are guarded and a missing mode
+is treated as capable: the ubus switch_chan force path arms
+switch_chan_fallback_cb() as an eloop timeout that is never
+cancelled, and hostapd_cleanup_iface_partial() sets current_mode to
+NULL on disable. The VHT restore is inert in this tree, since the
+bandwidth switch above already sets VHT160 unguarded for the
+160 MHz case; the HT40 restore is the new behavior.
+
+Based-on-work-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/hostapd.c |    9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -4937,6 +4937,15 @@ hostapd_switch_channel_fallback(struct h
+ 		break;
+ 	}
+ 
++	if ((!iface->current_mode ||
++	     (iface->current_mode->ht_capab & HT_CAP_INFO_SUPP_CHANNEL_WIDTH_SET)) &&
++	    freq_params->bandwidth > 20)
++		iface->conf->ht_capab |= HT_CAP_INFO_SUPP_CHANNEL_WIDTH_SET;
++	if ((!iface->current_mode ||
++	     (iface->current_mode->vht_capab & VHT_CAP_SUPP_CHAN_WIDTH_160MHZ)) &&
++	    freq_params->bandwidth == 160)
++		iface->conf->vht_capab |= VHT_CAP_SUPP_CHAN_WIDTH_160MHZ;
++
+ 	iface->freq = freq_params->freq;
+ 	iface->conf->channel = freq_params->channel;
+ 	iface->conf->secondary_channel = freq_params->sec_channel_offset;

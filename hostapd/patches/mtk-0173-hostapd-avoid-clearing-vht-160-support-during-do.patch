@@ -1,0 +1,39 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 07 Aug 2026 16:21:31 -0700
+Subject: [PATCH] hostapd: avoid clearing VHT160 support on width downgrade
+
+hostapd_event_ch_switch() cleared the VHT width mask on every
+channel switch and set it back only for 160 and 80+80 MHz landings,
+so any other landing (including 320 MHz, which matches neither
+branch) stripped the advertised VHT160 support. The clearing is
+sticky: hostapd_reload_config() copies the runtime vht_capab over
+every fresh parse and the ucode reload paths never replace the
+radio config, so only a full interface re-add recovers. Until then
+the beacon and probe response advertise no 160 MHz support,
+connected STAs store the crippled AP capabilities and cannot follow
+a later switch back up to 160 MHz, and hostapd_get_vht_capab()
+strips 160 MHz from every new association. Drop the clear; the bits
+are only ever set again.
+
+With the clear removed, a [VHT160-80PLUS80] configuration that
+later lands on 160 MHz would accumulate both width-mask bits (a
+reserved value); we never operate 80+80, so this is theoretical.
+The HT40 clear a few lines up stays: HT is handled symmetrically on
+every ch_switch event and self-heals on the next switch.
+
+Based-on-work-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/drv_callbacks.c |    1 -
+ 1 file changed, 1 deletion(-)
+
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -1407,7 +1407,6 @@ void hostapd_event_ch_switch(struct host
+ 	hapd->iconf->punct_bitmap = punct_bitmap;
+ #endif /* CONFIG_IEEE80211BE */
+ 	if (hapd->iconf->ieee80211ac) {
+-		hapd->iconf->vht_capab &= ~VHT_CAP_SUPP_CHAN_WIDTH_MASK;
+ 		if (chwidth == CONF_OPER_CHWIDTH_160MHZ)
+ 			hapd->iconf->vht_capab |=
+ 				VHT_CAP_SUPP_CHAN_WIDTH_160MHZ;
