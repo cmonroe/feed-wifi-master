@@ -1,0 +1,42 @@
+From 250f12113d047eb0497a2c00fc80027c66b3991c Mon Sep 17 00:00:00 2001
+From: Felix Fietkau <nbd@nbd.name>
+Date: Fri, 17 Jul 2026 04:19:20 +0200
+Subject: [PATCH] wifi: mt76: mt7915: report RX chain signal for all RX paths
+
+status->chains was set from the antenna mask, which is derived from
+the number of spatial streams, while the chain_signal array is filled
+from all RCPI fields. On boards where the number of RX paths exceeds
+the stream count, e.g. the 3T3R mt7916/mt7981 variant with 2 streams
+on the 5 GHz band, the RSSI of the extra chains was never reported.
+
+Derive the chain mask from the RX path chainmask instead, shifted by
+the band index of the phy owning the frame. On single-adie mt7986 the
+main phy is bound to band 1 but its default chainmask is stored
+without the band shift, unlike the mask set by mt7915_set_antenna();
+fall back to the raw mask when the band group is empty to cover both
+stored forms.
+
+Fixes: e57b7901469f ("mt76: add mac80211 driver for MT7915 PCIe-based chipsets")
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+ mt7915/mac.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -437,7 +437,14 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+ 		if (v0 & MT_PRXV_HT_AD_CODE)
+ 			status->enc_flags |= RX_ENC_FLAG_LDPC;
+ 
+-		status->chains = mphy->antenna_mask;
++		/* The single-adie mt7986 default chainmask is stored without
++		 * the band shift, unlike the set_antenna path; fall back to
++		 * the raw mask when the band group is empty
++		 */
++		status->chains = mphy->chainmask >>
++				 (mphy->band_idx * dev->chainshift);
++		if (!status->chains)
++			status->chains = mphy->chainmask;
+ 		status->chain_signal[0] = to_rssi(MT_PRXV_RCPI0, v1);
+ 		status->chain_signal[1] = to_rssi(MT_PRXV_RCPI1, v1);
+ 		status->chain_signal[2] = to_rssi(MT_PRXV_RCPI2, v1);

@@ -1,0 +1,62 @@
+From 9a0aa322a199f3ef2579f60f882d200e438e8f42 Mon Sep 17 00:00:00 2001
+From: Felix Fietkau <nbd@nbd.name>
+Date: Wed, 22 Jul 2026 12:05:34 +0200
+Subject: [PATCH] wifi: mt76: mt7915: fix chainmask handling for single-phy
+ band-1 devices
+
+Single-adie mt7986 binds its only phy to band 1. The eeprom parse
+stores that phy's chainmask unshifted (chainshift is still 0 at that
+point) but then sets chainshift to the mask width, so every consumer
+that shifts by band_idx * chainshift disagrees with the storage:
+mt7915_mcu_set_chan_info() sends rx_path 0 to the firmware with the
+default mask, and mt7915_set_antenna() stores a band-shifted mask
+inconsistent with the parse-time default.
+
+Derive chainshift only from a band-0 main phy. In the single-phy
+band-1 configuration the chains are numbered from 0 like a band-0 phy,
+so with chainshift kept at 0 the stored mask, the set_antenna path, the
+channel switch command and the RX chain report all agree on unshifted
+masks. Drop the now-redundant empty-mask fallback in the RX path.
+Dual-phy DBDC configurations parse the band-0 phy first and are
+unaffected.
+
+Fixes: 006b9d4ad5bf ("mt76: mt7915: introduce band_idx in mt7915_phy")
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+ mt7915/eeprom.c | 7 ++++++-
+ mt7915/mac.c    | 6 ------
+ 2 files changed, 6 insertions(+), 7 deletions(-)
+
+--- a/mt7915/eeprom.c
++++ b/mt7915/eeprom.c
+@@ -303,7 +303,12 @@ void mt7915_eeprom_parse_hw_cap(struct m
+ 		mphy->chainmask <<= dev->chainshift;
+ 	mphy->antenna_mask = BIT(nss) - 1;
+ 	dev->chainmask |= mphy->chainmask;
+-	dev->chainshift = hweight8(dev->mphy.chainmask);
++	/* The single-phy band-1 configuration (single-adie mt7986) uses
++	 * chains 0..n like a band-0 phy, so band-1 masks are only shifted
++	 * when a band-0 phy exists
++	 */
++	if (!dev->mphy.band_idx)
++		dev->chainshift = hweight8(dev->mphy.chainmask);
+ }
+ 
+ int mt7915_eeprom_init(struct mt7915_dev *dev)
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -437,14 +437,8 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+ 		if (v0 & MT_PRXV_HT_AD_CODE)
+ 			status->enc_flags |= RX_ENC_FLAG_LDPC;
+ 
+-		/* The single-adie mt7986 default chainmask is stored without
+-		 * the band shift, unlike the set_antenna path; fall back to
+-		 * the raw mask when the band group is empty
+-		 */
+ 		status->chains = mphy->chainmask >>
+ 				 (mphy->band_idx * dev->chainshift);
+-		if (!status->chains)
+-			status->chains = mphy->chainmask;
+ 		status->chain_signal[0] = to_rssi(MT_PRXV_RCPI0, v1);
+ 		status->chain_signal[1] = to_rssi(MT_PRXV_RCPI1, v1);
+ 		status->chain_signal[2] = to_rssi(MT_PRXV_RCPI2, v1);

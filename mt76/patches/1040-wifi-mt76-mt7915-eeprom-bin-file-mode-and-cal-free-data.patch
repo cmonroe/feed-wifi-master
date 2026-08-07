@@ -217,8 +217,8 @@ Squash of the following MediaTek commits:
  
  	mt7915_eeprom_parse_band_config(phy);
  
-@@ -306,22 +377,232 @@ void mt7915_eeprom_parse_hw_cap(struct m
- 	dev->chainshift = hweight8(dev->mphy.chainmask);
+@@ -311,22 +382,232 @@ void mt7915_eeprom_parse_hw_cap(struct m
+ 		dev->chainshift = hweight8(dev->mphy.chainmask);
  }
  
 +static int mt7915_apply_cal_free_data(struct mt7915_dev *dev)

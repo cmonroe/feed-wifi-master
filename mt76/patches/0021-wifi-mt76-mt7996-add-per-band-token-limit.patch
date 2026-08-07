@@ -164,7 +164,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			struct mt76_phy *mphy = mt76_dev_phy(dev, txwi->phy_idx);
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -749,8 +749,9 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -750,8 +750,9 @@ int mt7915_tx_prepare_skb(struct mt76_de
  
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
