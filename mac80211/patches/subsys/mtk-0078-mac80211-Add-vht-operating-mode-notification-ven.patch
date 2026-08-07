@@ -1,0 +1,106 @@
+From af9eb3ac01579bfc1222099e3540144352910b5f Mon Sep 17 00:00:00 2001
+From: Allen Ye <allen.ye@mediatek.com>
+Date: Wed, 9 Oct 2024 13:50:56 +0800
+Subject: [PATCH 078/137] mtk: mac80211: Add vht operating mode notification
+ vendor flag
+
+Add exported functions for driver to get STA's bandwidth and spatial
+streaming capabilities to support OMN.
+
+Adapted for backports-6.18.26: capa_nss and the NSS initialization
+timing fix are already upstream, and the capability bandwidth is
+read via _ieee80211_sta_cap_rx_bw(link_sta, NULL) since the
+single-argument wrapper does not exist here.
+
+Signed-off-by: Benjamin Lin <benjamin-jw.lin@mediatek.com>
+Signed-off-by: Allen Ye <allen.ye@mediatek.com>
+---
+ include/net/mac80211.h |   17 +++++++++++++++++
+ net/mac80211/vht.c     |   32 ++++++++++++++++++++++++++++++++
+ 2 files changed, 49 insertions(+)
+
+--- a/include/net/mac80211.h
++++ b/include/net/mac80211.h
+@@ -3816,12 +3816,15 @@ enum ieee80211_frame_release_type {
+  *	the peer.
+  * @IEEE80211_RC_NSS_CHANGED: N_SS (number of spatial streams) was changed
+  *	by the peer
++ * @IEEE80211_RC_VHT_OMN_CHANGED: The VHT operating mode notification of the
++ *	station changed. Defined for the mtk vendor rate control path.
+  */
+ enum ieee80211_rate_control_changed {
+ 	IEEE80211_RC_BW_CHANGED		= BIT(0),
+ 	IEEE80211_RC_SMPS_CHANGED	= BIT(1),
+ 	IEEE80211_RC_SUPP_RATES_CHANGED	= BIT(2),
+ 	IEEE80211_RC_NSS_CHANGED	= BIT(3),
++	IEEE80211_RC_VHT_OMN_CHANGED	= BIT(6),
+ };
+ 
+ /**
+@@ -7953,4 +7956,18 @@ bool ieee80211_vif_nan_started(struct ie
+  * @hw: pointer as obtained from ieee80211_alloc_hw()
+  */
+ unsigned long ieee80211_get_scanning(struct ieee80211_hw *hw);
++
++/**
++ * ieee80211_link_sta_cap_bw - get link STA's bandwidth capability.
++ * @pub: STA's public link specific information
++ */
++enum ieee80211_sta_rx_bandwidth
++ieee80211_link_sta_cap_bw(struct ieee80211_link_sta *pub);
++
++/**
++ * ieee80211_link_sta_cap_nss - get link STA's spatial streaming capability.
++ * @pub: STA's public link specific information
++ */
++u8 ieee80211_link_sta_cap_nss(struct ieee80211_link_sta *pub);
++
+ #endif /* MAC80211_H */
+--- a/net/mac80211/vht.c
++++ b/net/mac80211/vht.c
+@@ -445,6 +445,37 @@ _ieee80211_sta_cap_rx_bw(struct link_sta
+ 		   link_sta->rx_omi_bw_rx);
+ }
+ 
++enum ieee80211_sta_rx_bandwidth
++ieee80211_link_sta_cap_bw(struct ieee80211_link_sta *pub)
++{
++	struct sta_info *sta = container_of(pub->sta, struct sta_info, sta);
++	enum ieee80211_sta_rx_bandwidth bw;
++	struct link_sta_info *link_sta;
++
++	rcu_read_lock();
++	link_sta = rcu_dereference(sta->link[pub->link_id]);
++	bw = _ieee80211_sta_cap_rx_bw(link_sta, NULL);
++	rcu_read_unlock();
++
++	return bw;
++}
++EXPORT_SYMBOL(ieee80211_link_sta_cap_bw);
++
++u8 ieee80211_link_sta_cap_nss(struct ieee80211_link_sta *pub)
++{
++	struct sta_info *sta = container_of(pub->sta, struct sta_info, sta);
++	struct link_sta_info *link_sta;
++	u8 nss;
++
++	rcu_read_lock();
++	link_sta = rcu_dereference(sta->link[pub->link_id]);
++	nss = link_sta->capa_nss;
++	rcu_read_unlock();
++
++	return nss;
++}
++EXPORT_SYMBOL(ieee80211_link_sta_cap_nss);
++
+ enum nl80211_chan_width
+ ieee80211_sta_cap_chan_bw(struct link_sta_info *link_sta)
+ {
+@@ -769,6 +800,7 @@ void ieee80211_vht_handle_opmode(struct
+ 						    opmode, band);
+ 
+ 	if (changed > 0) {
++		changed |= IEEE80211_RC_VHT_OMN_CHANGED;
+ 		ieee80211_recalc_min_chandef(sdata, link_sta->link_id);
+ 		rate_control_rate_update(local, sband, link_sta, changed);
+ 	}

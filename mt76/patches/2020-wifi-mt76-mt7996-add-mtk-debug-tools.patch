@@ -5712,7 +5712,7 @@ Squash of the following MediaTek commits:
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6320,3 +6320,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6348,3 +6348,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
@@ -5752,7 +5752,7 @@ Squash of the following MediaTek commits:
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1109,8 +1109,33 @@ enum {
+@@ -1110,8 +1110,33 @@ enum {
  	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,
  };
  

@@ -459,7 +459,7 @@ Squash of the following MediaTek commits:
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1035,6 +1035,8 @@ enum {
+@@ -1036,6 +1036,8 @@ enum {
  
  enum {
  	UNI_BAND_CONFIG_RADIO_ENABLE,

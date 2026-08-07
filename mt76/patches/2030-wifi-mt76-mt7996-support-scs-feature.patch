@@ -89,7 +89,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6321,6 +6321,122 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6349,6 +6349,122 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  				 &req, sizeof(req), false);
  }
  
@@ -214,7 +214,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1185,6 +1185,12 @@ enum pp_mode {
+@@ -1186,6 +1186,12 @@ enum pp_mode {
  	PP_USR_MODE,
  };
  
