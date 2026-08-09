@@ -1,6 +1,6 @@
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -2948,7 +2948,7 @@ nl80211_get_multi_hw_info(struct i802_bs
+@@ -3337,7 +3337,7 @@ nl80211_get_multi_hw_info(struct i802_bs
  
  	*num_multi_hws = 0;
  

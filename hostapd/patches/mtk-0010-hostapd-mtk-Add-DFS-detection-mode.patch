@@ -18,7 +18,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5057,6 +5057,10 @@ static int hostapd_config_fill(struct ho
+@@ -5072,6 +5072,10 @@ static int hostapd_config_fill(struct ho
  			return 1;
  		}
  		conf->edcca_compensation = (s8) val;
@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4143,6 +4143,26 @@ hostapd_ctrl_iface_get_mu(struct hostapd
+@@ -4152,6 +4152,26 @@ hostapd_ctrl_iface_get_mu(struct hostapd
  }
  
  
@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4779,6 +4799,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4788,6 +4808,9 @@ static int hostapd_ctrl_iface_receive_pr
  							  reply_size);
  	} else if (os_strncmp(buf, "GET_MU", 6) == 0) {
  		reply_len = hostapd_ctrl_iface_get_mu(hapd, reply, reply_size);
@@ -70,7 +70,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		reply_len = 16;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1301,6 +1301,19 @@ struct hostapd_config {
+@@ -1314,6 +1314,19 @@ struct hostapd_config {
  	u8 edcca_enable;
  	s8 edcca_compensation;
  	int *edcca_threshold;

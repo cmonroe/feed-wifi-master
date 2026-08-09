@@ -24,7 +24,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4957,12 +4957,15 @@ hostapd_switch_channel_fallback(struct h
+@@ -4960,12 +4960,15 @@ hostapd_switch_channel_fallback(struct h
  	if (ieee80211_freq_to_channel_ext(freq_params->freq,
  					  freq_params->sec_channel_offset, bw,
  					  &op_class, &chan) ==

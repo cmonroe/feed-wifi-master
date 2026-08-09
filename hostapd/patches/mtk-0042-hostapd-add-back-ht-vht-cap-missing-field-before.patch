@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4937,6 +4937,15 @@ hostapd_switch_channel_fallback(struct h
+@@ -4938,6 +4938,15 @@ hostapd_switch_channel_fallback(struct h
  		break;
  	}
  

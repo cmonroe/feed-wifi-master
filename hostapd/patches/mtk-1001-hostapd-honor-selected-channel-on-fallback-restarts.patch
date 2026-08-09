@@ -106,7 +106,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			hostapd_enable_iface(iface);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2281,6 +2281,12 @@ static void hostapd_set_6ghz_sec_chan(st
+@@ -2282,6 +2282,12 @@ static void hostapd_set_6ghz_sec_chan(st
  
  static int setup_interface2(struct hostapd_iface *iface)
  {
@@ -119,7 +119,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	iface->wait_channel_update = 0;
  	iface->is_no_ir = false;
  
-@@ -2290,11 +2296,10 @@ static int setup_interface2(struct hosta
+@@ -2291,11 +2297,10 @@ static int setup_interface2(struct hosta
  	} else {
  		int ret;
  
@@ -132,7 +132,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		ret = configured_fixed_chan_to_freq(iface);
  		if (ret < 0)
-@@ -4971,6 +4976,7 @@ hostapd_switch_channel_fallback(struct h
+@@ -4974,6 +4979,7 @@ hostapd_switch_channel_fallback(struct h
  	 * argument may actually point to one of these.
  	 * These params will be cleared during interface disable below.
  	 */

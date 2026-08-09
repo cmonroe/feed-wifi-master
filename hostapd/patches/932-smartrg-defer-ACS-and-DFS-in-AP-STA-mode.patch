@@ -21,7 +21,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -143,9 +143,9 @@ function iface_freq_info(iface, config,
+@@ -144,9 +144,9 @@ function iface_freq_info(iface, config,
  	return hostapd.freq_info(freq, sec_offset, width);
  }
  
@@ -33,7 +33,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	let bss = config.bss[0];
  	let ret = hostapd.add_iface(`bss_config=${phy}:${config_inline}`);
-@@ -227,6 +227,7 @@ function __iface_pending_next(pending, s
+@@ -228,6 +228,7 @@ function __iface_pending_next(pending, s
  		return "check_phy";
  	case "check_phy":
  		let phy_status = data;
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (phy_status && phy_status.state == "COMPLETED") {
  			if (iface_add(phy, config, phy_status))
  				return "done";
-@@ -240,7 +241,7 @@ function __iface_pending_next(pending, s
+@@ -241,7 +242,7 @@ function __iface_pending_next(pending, s
  		});
  		return "wpas_stopped";
  	case "wpas_stopped":

@@ -11,7 +11,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2801,7 +2801,7 @@ static void nl80211_spurious_frame(struc
+@@ -2874,7 +2874,7 @@ static void nl80211_spurious_frame(struc
  	event.rx_from_unknown.link_id = tb[NL80211_ATTR_MLO_LINK_ID] ?
  		nla_get_u8(tb[NL80211_ATTR_MLO_LINK_ID]) : -1;
  

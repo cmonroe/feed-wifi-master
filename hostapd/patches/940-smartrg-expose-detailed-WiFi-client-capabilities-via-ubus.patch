@@ -24,7 +24,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6011,6 +6011,14 @@ skip_wpa_ies:
+@@ -6152,6 +6152,14 @@ skip_wpa_ies:
  		hostapd_wfa_capab(hapd, sta, elems->wfa_capab,
  				  elems->wfa_capab + elems->wfa_capab_len);
  
@@ -64,7 +64,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -1272,6 +1272,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
+@@ -1283,6 +1283,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
  }
  
  
@@ -100,7 +100,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u16 fc, type, stype;
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -233,6 +233,7 @@ ParseRes ieee802_11_parse_link_assoc_res
+@@ -237,6 +237,7 @@ ParseRes ieee802_11_parse_link_assoc_res
  int ieee802_11_ie_count(const u8 *ies, size_t ies_len);
  struct wpabuf * ieee802_11_vendor_ie_concat(const u8 *ies, size_t ies_len,
  					    u32 oui_type);

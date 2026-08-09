@@ -9,7 +9,7 @@
  static void hostapd_ctrl_iface_send(struct hostapd_data *hapd, int level,
  				    enum wpa_msg_type type,
  				    const char *buf, size_t len);
-@@ -1384,6 +1386,23 @@ static int hostapd_ctrl_iface_reload_bss
+@@ -1393,6 +1395,23 @@ static int hostapd_ctrl_iface_reload_bss
  }
  
  
@@ -33,7 +33,7 @@
  static int hostapd_ctrl_iface_disable(struct hostapd_iface *iface)
  {
  	if (hostapd_disable_iface(iface) < 0) {
-@@ -4158,6 +4177,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4167,6 +4186,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strcmp(buf, "RELOAD") == 0) {
  		if (hostapd_ctrl_iface_reload(hapd->iface))
  			reply_len = -1;
@@ -45,7 +45,7 @@
  			reply_len = -1;
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1261,6 +1261,12 @@ static int hostapd_cli_cmd_reload_config
+@@ -1263,6 +1263,12 @@ static int hostapd_cli_cmd_reload_config
  	return wpa_ctrl_command(ctrl, "RELOAD_CONFIG");
  }
  
@@ -58,7 +58,7 @@
  
  static int hostapd_cli_cmd_disable(struct wpa_ctrl *ctrl, int argc,
  				   char *argv[])
-@@ -1901,6 +1907,8 @@ static const struct hostapd_cli_cmd host
+@@ -1903,6 +1909,8 @@ static const struct hostapd_cli_cmd host
  	  "<addr> = send a link measurement report request to a station"},
  	{ "reload_wpa_psk", hostapd_cli_cmd_reload_wpa_psk, NULL,
  	  "= reload wpa_psk_file only" },
@@ -69,7 +69,7 @@
  	  "= reload R0KHs and R1KHs" },
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -423,6 +423,7 @@ hostapd_interface_init(struct hapd_inter
+@@ -428,6 +428,7 @@ hostapd_interface_init(struct hapd_inter
  	}
  
  	iface->interfaces = interfaces;
@@ -289,7 +289,7 @@
  			   iface->acs_num_completed_scans + 1,
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1259,6 +1259,8 @@ struct hostapd_config {
+@@ -1272,6 +1272,8 @@ struct hostapd_config {
  #define AIRTIME_MODE_MAX (__AIRTIME_MODE_MAX - 1)
  #endif /* CONFIG_AIRTIME_POLICY */
  

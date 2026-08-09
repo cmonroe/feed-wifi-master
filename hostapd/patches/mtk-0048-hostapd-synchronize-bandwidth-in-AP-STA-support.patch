@@ -52,22 +52,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!iface)
  		return NULL;
  
-@@ -649,7 +655,13 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
- 	UPDATE_VAL(op_class, "op_class");
+@@ -650,6 +656,7 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  	UPDATE_VAL(hw_mode, "hw_mode");
  	UPDATE_VAL(channel, "channel");
--	UPDATE_VAL(secondary_channel, "sec_channel");
-+
-+	intval = ucv_int64_get(ucv_object_get(info, "sec_channel", NULL));
-+	if (!errno) {
-+		conf->secondary_channel = intval;
-+		changed = true;
-+	}
+ 	UPDATE_VAL(secondary_channel, "sec_channel");
 +
  	if (!changed &&
  	    (iface->bss[0]->beacon_set_done ||
  	     iface->state == HAPD_IFACE_DFS))
-@@ -700,6 +712,15 @@ out:
+@@ -700,6 +707,15 @@ out:
  		return ucv_boolean_new(true);
  	}
  
@@ -83,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
  		int ret;
-@@ -734,13 +755,16 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -734,13 +750,16 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	uint64_t intval;
  	int i, ret = 0;
  
@@ -102,7 +95,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		csa.freq_params.sec_channel_offset = intval;
  
  	csa.freq_params.ht_enabled = conf->ieee80211n;
-@@ -769,13 +793,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -769,13 +788,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  		break;
  	}
  
@@ -341,7 +334,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -111,6 +111,7 @@ start_disabled=1
+@@ -112,6 +112,7 @@ start_disabled=1
  function iface_freq_info(iface, config, params)
  {
  	let freq = params.frequency;
@@ -349,7 +342,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!freq)
  		return null;
  
-@@ -119,19 +120,23 @@ function iface_freq_info(iface, config,
+@@ -120,19 +121,23 @@ function iface_freq_info(iface, config,
  		sec_offset = 0;
  
  	let width = 0;
@@ -384,7 +377,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (freq < 4000)
-@@ -146,7 +151,7 @@ function iface_freq_info(iface, config,
+@@ -147,7 +152,7 @@ function iface_freq_info(iface, config,
  	if (freq > 5925 && width > 0 && sec_offset == 0)
  		sec_offset = null;
  
@@ -393,7 +386,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  function iface_add(phy, config, phy_status, start_disabled)
-@@ -1448,6 +1453,8 @@ let main_obj = {
+@@ -1455,6 +1460,8 @@ let main_obj = {
  			up: true,
  			frequency: 0,
  			sec_chan_offset: 0,
@@ -401,8 +394,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +			bw320_offset: 1,
  			csa: true,
  			csa_count: 0,
- 		},
-@@ -1456,6 +1463,9 @@ let main_obj = {
+ 			no_link: true,
+@@ -1464,6 +1471,9 @@ let main_obj = {
  			if (req.args.up == null || !phy)
  				return libubus.STATUS_INVALID_ARGUMENT;
  
@@ -412,7 +405,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			let config = hostapd.data.config[phy];
  			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)
  				return 0;
-@@ -1477,6 +1487,8 @@ let main_obj = {
+@@ -1507,6 +1517,8 @@ let main_obj = {
  				if (!freq_info)
  					return libubus.STATUS_UNKNOWN_ERROR;
  
@@ -432,7 +425,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  		break;
  	default:
-@@ -921,6 +923,8 @@ function iface_channel_switch(ifname, if
+@@ -929,6 +931,8 @@ function iface_channel_switch(ifname, if
  		csa_count: info.csa_count ? info.csa_count - 1 : 0,
  		frequency: info.frequency,
  		sec_chan_offset: info.sec_chan_offset,

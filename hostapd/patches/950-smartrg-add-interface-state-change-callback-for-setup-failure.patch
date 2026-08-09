@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  
  static int hostapd_flush_old_stations(struct hostapd_data *hapd, u16 reason);
-@@ -4353,10 +4354,13 @@ const char * hostapd_state_text(enum hos
+@@ -4354,10 +4355,13 @@ const char * hostapd_state_text(enum hos
  
  void hostapd_set_state(struct hostapd_iface *iface, enum hostapd_iface_state s)
  {
@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static inline int hostapd_ucode_dpp_rx_action(struct hostapd_data *hapd,
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -63,6 +63,12 @@ hostapd.data.bss_info_fields = {
+@@ -64,6 +64,12 @@ hostapd.data.bss_info_fields = {
  hostapd.data.mld = {};
  hostapd.data.dpp_hooks = {};
  
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function iface_remove(cfg)
  {
  	if (!cfg || !cfg.bss || !cfg.bss[0] || !cfg.bss[0].ifname)
-@@ -1016,24 +1022,30 @@ function iface_set_config(name, config)
+@@ -1023,24 +1029,30 @@ function iface_set_config(name, config)
  	}
  
  	hostapd.data.config[name] = config;
@@ -144,7 +144,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			return 0;
  		}
  	} catch (e) {
-@@ -1043,6 +1055,7 @@ function iface_set_config(name, config)
+@@ -1050,6 +1062,7 @@ function iface_set_config(name, config)
  	hostapd.printf(`Restart interface for phy ${name}`);
  	let ret = iface_restart(phydev, config, old_config);
  
@@ -152,17 +152,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return ret;
  }
  
-@@ -1452,7 +1465,9 @@ let main_obj = {
- 				return 0;
+@@ -1461,7 +1474,9 @@ let main_obj = {
  
  			if (!req.args.up) {
+ 				delete hostapd.data.apsta_freq[phy];
 +				hostapd.data.apsta_stopping = phy;
  				iface.stop();
 +				delete hostapd.data.apsta_stopping;
  				return 0;
  			}
  
-@@ -1559,6 +1574,7 @@ let main_obj = {
+@@ -1589,6 +1604,7 @@ let main_obj = {
  			radio: 0,
  			config: "",
  			prev_config: "",
@@ -170,7 +170,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
  		call: function(req) {
  			let phy = req.args.phy;
-@@ -1566,18 +1582,23 @@ let main_obj = {
+@@ -1596,18 +1612,23 @@ let main_obj = {
  			let name = phy_name(phy, radio);
  			let file = req.args.config;
  			let prev_file = req.args.prev_config;
@@ -195,7 +195,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			hostapd.printf(`Set new config for phy ${name}: ${file}`);
  			iface_set_config(name, config);
-@@ -1796,4 +1817,38 @@ return {
+@@ -1826,4 +1847,38 @@ return {
  			return null;
  		return response;
  	},

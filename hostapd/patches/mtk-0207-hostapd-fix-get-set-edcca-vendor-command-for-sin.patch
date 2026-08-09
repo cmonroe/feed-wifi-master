@@ -20,7 +20,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -3669,13 +3669,16 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3678,13 +3678,16 @@ hostapd_ctrl_iface_set_edcca(struct host
  			return -1;
  	} else if (os_strcmp(config, "threshold") == 0) {
  		char *thres_value;
@@ -39,7 +39,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  		if (bw_idx < EDCCA_BW_20 || bw_idx > EDCCA_BW_160) {
  			wpa_printf(MSG_ERROR,
-@@ -3691,7 +3694,6 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3700,7 +3703,6 @@ hostapd_ctrl_iface_set_edcca(struct host
  			return -1;
  		}
  
@@ -47,7 +47,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		/* 0x7f means keep the origival value in firmware */
  		os_memset(threshold_arr, 0x7f, sizeof(threshold_arr));
  		threshold_arr[bw_idx] = threshold;
-@@ -3700,7 +3702,7 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3709,7 +3711,7 @@ hostapd_ctrl_iface_set_edcca(struct host
  			return -1;
  	} else {
  		wpa_printf(MSG_ERROR,
@@ -56,7 +56,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		return -1;
  	}
  	return os_snprintf(buf, buflen, "OK\n");
-@@ -3715,15 +3717,16 @@ hostapd_ctrl_iface_get_edcca(struct host
+@@ -3724,15 +3726,16 @@ hostapd_ctrl_iface_get_edcca(struct host
  
  	pos = buf;
  	end = buf + buflen;
@@ -75,7 +75,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		if (hostapd_drv_get_edcca(hapd, EDCCA_CTRL_GET_THRES, value) != 0)
  			return -1;
  		return os_snprintf(pos, end - pos,
-@@ -4895,10 +4898,10 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4904,10 +4907,10 @@ static int hostapd_ctrl_iface_receive_pr
  #endif /* CONFIG_TESTING_OPTIONS */
  	} else if (os_strncmp(buf, "SET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_set_edcca(hapd, buf+10, reply,
@@ -90,7 +90,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  							  reply_size);
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1699,6 +1699,16 @@ static int hostapd_cli_cmd_driver(struct
+@@ -1701,6 +1701,16 @@ static int hostapd_cli_cmd_driver(struct
  #endif /* ANDROID */
  
  
@@ -107,7 +107,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  struct hostapd_cli_cmd {
  	const char *cmd;
  	int (*handler)(struct wpa_ctrl *ctrl, int argc, char *argv[]);
-@@ -1937,6 +1947,10 @@ static const struct hostapd_cli_cmd host
+@@ -1939,6 +1949,10 @@ static const struct hostapd_cli_cmd host
  	{ "driver", hostapd_cli_cmd_driver, NULL,
  	  "<driver sub command> [<hex formatted data>] = send driver command data" },
  #endif /* ANDROID */
@@ -195,7 +195,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  enum mtk_vendor_attr_csi_ctrl {
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5612,10 +5612,10 @@ struct wpa_driver_ops {
+@@ -5873,10 +5873,10 @@ struct wpa_driver_ops {
  	struct hostapd_multi_hw_info *
  	(*get_multi_hw_info)(void *priv, unsigned int *num_multi_hws);
  
@@ -212,7 +212,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	 * mu_ctrl - ctrl on off for UL/DL MURU
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -15519,14 +15519,17 @@ static int testing_nl80211_radio_disable
+@@ -15906,14 +15906,17 @@ static int testing_nl80211_radio_disable
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -231,7 +231,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	int ret;
  
  	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -15535,6 +15538,12 @@ static int nl80211_configure_edcca_enabl
+@@ -15922,6 +15925,12 @@ static int nl80211_configure_edcca_enabl
  		return 0;
  	}
  
@@ -244,7 +244,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR)) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-@@ -15542,8 +15551,8 @@ static int nl80211_configure_edcca_enabl
+@@ -15929,8 +15938,8 @@ static int nl80211_configure_edcca_enabl
  	    !(data = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA)) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_MODE, EDCCA_CTRL_SET_EN) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL, edcca_enable) ||
@@ -255,7 +255,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -15557,12 +15566,15 @@ static int nl80211_configure_edcca_enabl
+@@ -15944,12 +15953,15 @@ static int nl80211_configure_edcca_enabl
  	return 0;
  }
  
@@ -272,7 +272,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	int ret;
  
  	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -15577,6 +15589,12 @@ static int nl80211_configure_edcca_thres
+@@ -15964,6 +15976,12 @@ static int nl80211_configure_edcca_thres
  		return 0;
  	}
  
@@ -285,7 +285,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR)) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-@@ -15586,7 +15604,8 @@ static int nl80211_configure_edcca_thres
+@@ -15973,7 +15991,8 @@ static int nl80211_configure_edcca_thres
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL, threshold[0] & 0xff) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL, threshold[1] & 0xff) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL, threshold[2] & 0xff) ||
@@ -295,7 +295,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -15654,12 +15673,15 @@ static int edcca_info_handler(struct nl_
+@@ -16041,12 +16060,15 @@ static int edcca_info_handler(struct nl_
  }
  
  
@@ -312,7 +312,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	int ret;
  
  	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -15668,12 +15690,19 @@ static int nl80211_get_edcca(void *priv,
+@@ -16055,12 +16077,19 @@ static int nl80211_get_edcca(void *priv,
  		return 0;
  	}
  
