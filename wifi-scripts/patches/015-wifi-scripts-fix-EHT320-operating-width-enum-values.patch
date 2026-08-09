@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -284,14 +284,14 @@ function device_htmode_append(config) {
+@@ -277,14 +277,14 @@ function device_htmode_append(config) {
  					break;
  				}
  			config.op_class = 137;
