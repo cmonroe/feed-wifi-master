@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6370,7 +6370,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6371,7 +6371,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  static bool mt7996_is_psd_country(char *country)
  {
@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -6423,7 +6423,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6424,7 +6424,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	if (txpower_setting == INT_MIN || txpower_setting > 127)
  		txpower_setting = 127;
@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6438,6 +6444,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6439,6 +6445,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		return 0;
  	}
  
@@ -61,7 +61,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
  	if (!skb) {
-@@ -6451,8 +6460,8 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6452,8 +6461,8 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* FW would compensate for PSD countries
  	 * driver doesn't need to do it
  	 */
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->eht[3], 8);
-@@ -6519,7 +6528,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6520,7 +6529,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* FW would NOT compensate in the case of BF backoff table
  	 * driver needs to compensate for LPI PSD
  	 */
@@ -81,7 +81,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->path.ru[5], 5);
-@@ -6587,6 +6596,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -6588,6 +6597,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.psd_limit = enable ? mt7996_is_psd_country(dev->mt76.alpha2) : 0,
  	};
  
@@ -113,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
  
-@@ -679,6 +692,8 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -681,6 +694,8 @@ int mt7996_set_channel(struct mt76_phy *
  {
  	struct mt7996_phy *phy = mphy->priv;
  	int ret;
@@ -122,7 +122,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
-@@ -697,7 +712,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -699,7 +714,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
@@ -133,7 +133,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (ret)
  		goto out;
  
-@@ -893,7 +910,7 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -895,7 +912,7 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {

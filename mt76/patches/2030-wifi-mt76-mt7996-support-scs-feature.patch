@@ -11,12 +11,15 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  mt76_connac_mcu.h    |    1
  mt7996/init.c        |    1
  mt7996/mac.c         |    1
- mt7996/main.c        |    9 ++++
- mt7996/mcu.c         |  113 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt76_connac_mcu.h    |    1 
+ mt7996/init.c        |    1 
+ mt7996/mac.c         |    1 
+ mt7996/main.c        |    9 +++
+ mt7996/mcu.c         |  116 +++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7996/mcu.h         |    6 ++
  mt7996/mt7996.h      |   15 ++++++
  mt7996/mtk_debugfs.c |   13 +++++
- 8 files changed, 159 insertions(+)
+ 8 files changed, 162 insertions(+)
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
@@ -75,10 +78,10 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	cancel_delayed_work_sync(&phy->mt76->mac_work);
 +	cancel_delayed_work_sync(&dev->scs_work);
+ 	wiphy_delayed_work_cancel(phy->mt76->hw->wiphy,
+ 				  &phy->mt76->assoc_chan_work);
  
- 	mutex_lock(&dev->mt76.mutex);
- 
-@@ -2674,6 +2681,8 @@ mt7996_reconfig_complete(struct ieee8021
+@@ -2676,6 +2683,8 @@ mt7996_reconfig_complete(struct ieee8021
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -89,7 +92,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6376,6 +6376,122 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6377,6 +6377,122 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  				 &req, sizeof(req), false);
  }
  
@@ -291,7 +294,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  mt7996_txpower_level_set(void *data, u64 val)
  {
  	struct mt7996_phy *phy = data;
-@@ -2771,6 +2781,9 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2772,6 +2782,9 @@ int mt7996_mtk_init_debugfs(struct mt799
  		char buf[32];
  		struct mt7996_phy *phy = dev->radio_phy[i];
  

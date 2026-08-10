@@ -1,15 +1,24 @@
-From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
-Date: Fri, 17 May 2024 14:49:50 +0800
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 09 Aug 2026 20:00:28 -0700
 Subject: [PATCH] wifi: mt76: mt7996: trigger channel calibration for DFS
 
-Trigger channel calibration (set channel with switch reason = NORMAL)
-for DFS link after STA is associated.
-Without this patch, 5G link might have high PER during T.P. test
+Trigger channel calibration (set channel with switch reason NORMAL)
+for DFS links once a STA is associated; without it, a 5 GHz link may
+show high PER during throughput tests. Also set a parking channel
+when the phy starts up.
 
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+mac80211 only marks the channel AVAILABLE via
+cfg80211_sta_update_dfs_state() after the MLME event callback
+returns, so a synchronous update from the callback would re-send
+CH_SWITCH_DFS. Defer the update to a per-phy wiphy_delayed_work and
+gate it on cfg80211_chandef_dfs_required() so only DFS links are
+re-programmed.
+
+Based-on-work-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7996/main.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 49 insertions(+)
+ mt7996/main.c |   46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
@@ -25,7 +34,16 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	ret = mt7996_mcu_set_thermal_throttling(phy, MT7996_THERMAL_THROTTLE_MAX);
  	if (ret)
  		return ret;
-@@ -2660,6 +2665,49 @@ mt7996_set_eml_op_mode(struct ieee80211_
+@@ -76,6 +81,8 @@ static void mt7996_stop_phy(struct mt799
+ 	dev = phy->dev;
+ 
+ 	cancel_delayed_work_sync(&phy->mt76->mac_work);
++	wiphy_delayed_work_cancel(phy->mt76->hw->wiphy,
++				  &phy->mt76->assoc_chan_work);
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+ 
+@@ -2660,6 +2667,44 @@ mt7996_set_eml_op_mode(struct ieee80211_
  	return ret;
  }
  
@@ -45,8 +63,6 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
 +		valid_links = vif->valid_links ?: BIT(0);
 +
-+		ieee80211_stop_queues(hw);
-+		mutex_lock(&dev->mt76.mutex);
 +		for_each_set_bit(link_id, &valid_links, IEEE80211_MLD_MAX_NUM_LINKS) {
 +			struct mt7996_vif_link *mconf;
 +			struct mt7996_phy *phy;
@@ -59,13 +75,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +			if (!phy)
 +				continue;
 +
-+			if (!cfg80211_reg_can_beacon(hw->wiphy,
-+						     &phy->mt76->chandef,
-+						     NL80211_IFTYPE_AP))
-+				mt7996_set_channel(phy->mt76);
++			wiphy_delayed_work_queue(hw->wiphy,
++						 &phy->mt76->assoc_chan_work,
++						 0);
 +		}
-+		mutex_unlock(&dev->mt76.mutex);
-+		ieee80211_wake_queues(hw);
 +		break;
 +	default:
 +		break;
@@ -75,7 +88,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  const struct ieee80211_ops mt7996_ops = {
  	.add_chanctx = mt76_add_chanctx,
  	.remove_chanctx = mt76_remove_chanctx,
-@@ -2692,6 +2740,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2692,6 +2737,7 @@ const struct ieee80211_ops mt7996_ops =
  	.get_txpower = mt7996_get_txpower,
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
  	.post_channel_switch = mt7996_post_channel_switch,

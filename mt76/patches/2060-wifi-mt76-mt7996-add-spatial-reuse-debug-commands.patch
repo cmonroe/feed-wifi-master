@@ -175,7 +175,7 @@ environment can SR Tx or not.
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir)
  {
  	struct ieee80211_hw *hw = mt76_hw(dev);
-@@ -2836,6 +2913,18 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2837,6 +2914,18 @@ int mt7996_mtk_init_debugfs(struct mt799
  
  		snprintf(buf, sizeof(buf), "txpower_path%d", i);
  		debugfs_create_file(buf, 0600, dir, phy, &mt7996_txpower_path_fops);
