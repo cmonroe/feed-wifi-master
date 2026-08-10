@@ -1,0 +1,61 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 10 Aug 2026 03:18:09 -0700
+Subject: [PATCH] hostapd: ucode: fix setup of a BSS added at run time
+
+The 2026-07-09 update changed the type of the first parameter of
+hostapd_setup_bss() from int to bool. Before the update, add_bss
+passed -1. The value -1 selected the setup path for a secondary BSS
+and told hostapd to adopt an existing netdev. Converted to bool, -1
+becomes true. As a result, hostapd does not do the setup of a
+secondary BSS. The new BSS uses the driver state of the first BSS.
+
+Pass false so the non-first block runs again. In this path the
+use_existing value handed to hostapd_if_add() is constant true, so
+drop the variable and pass true directly: hostapd adopts the netdev
+that the ucode layer already created.
+
+Fixes: 345404476ac8 ("hostapd: update to 2026-07-09")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/hostapd.c |    4 +---
+ src/ap/ucode.c   |    2 +-
+ 2 files changed, 2 insertions(+), 4 deletions(-)
+
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -470,7 +470,7 @@ uc_hostapd_iface_add_bss(uc_vm_t *vm, si
+ 
+ 	if (iface->state == HAPD_IFACE_ENABLED) {
+ 		hapd->conf->start_disabled = 0;
+-		if (hostapd_setup_bss(hapd, -1, true))
++		if (hostapd_setup_bss(hapd, false, true))
+ 			goto deinit_ctrl;
+ 	}
+ 
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -1487,7 +1487,6 @@ int hostapd_setup_bss(struct hostapd_dat
+ 
+ 	if (!first) {
+ 		u8 *addr = hapd->own_addr;
+-		bool use_existing = !first;
+ 
+ #ifdef CONFIG_IEEE80211BE
+ 		if (hapd->conf->mld_ap)
+@@ -1527,7 +1526,6 @@ int hostapd_setup_bss(struct hostapd_dat
+ 					   hapd->mld_link_id, hapd->conf->iface);
+ 				goto setup_mld;
+ 			}
+-			use_existing = true;
+ 		}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+@@ -1536,7 +1534,7 @@ int hostapd_setup_bss(struct hostapd_dat
+ 				   conf->iface, addr, hapd,
+ 				   &hapd->drv_priv, force_ifname, if_addr,
+ 				   conf->bridge[0] ? conf->bridge : NULL,
+-				   use_existing)) {
++				   true)) {
+ 			wpa_printf(MSG_ERROR, "Failed to add BSS (BSSID="
+ 				   MACSTR ")", MAC2STR(hapd->own_addr));
+ 			hapd->interface_added = 0;
