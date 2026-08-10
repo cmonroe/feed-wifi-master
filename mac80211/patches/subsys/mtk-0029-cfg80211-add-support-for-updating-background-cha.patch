@@ -13,8 +13,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -9256,6 +9256,20 @@ void cfg80211_sta_update_dfs_state(struc
- 				   bool associated);
+@@ -9266,6 +9266,20 @@ bool cfg80211_dfs_sta_covered(struct wip
+ 			      const struct cfg80211_chan_def *chandef);
  
  /**
 + * cfg80211_background_radar_update_channel - notify background chandef has been updated
@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1320,6 +1320,18 @@ void cfg80211_stop_radar_detection(struc
+@@ -1321,6 +1321,18 @@ void cfg80211_stop_radar_detection(struc
  	}
  }
  

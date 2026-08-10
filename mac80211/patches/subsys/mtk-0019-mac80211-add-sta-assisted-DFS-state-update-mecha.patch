@@ -30,7 +30,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -9240,6 +9240,22 @@ void cfg80211_cac_event(struct net_devic
+@@ -9240,6 +9240,32 @@ void cfg80211_cac_event(struct net_devic
  			unsigned int link_id);
  
  /**
@@ -48,6 +48,16 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +				   const struct cfg80211_chan_def *csa_chandef,
 +				   unsigned long csa_time,
 +				   bool associated);
++
++/**
++ * cfg80211_dfs_sta_covered - check whether every DFS subchannel of a chandef
++ *	is covered by an associated STA on the same wiphy
++ * @wiphy: the wiphy
++ * @chandef: the channel definition to check
++ *
++ */
++bool cfg80211_dfs_sta_covered(struct wiphy *wiphy,
++			      const struct cfg80211_chan_def *chandef);
 +
 +/**
   * cfg80211_background_cac_abort - Channel Availability Check offchan abort event
@@ -135,7 +145,27 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  static bool cfg80211_valid_60g_freq(u32 freq)
  {
-@@ -1031,7 +1032,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
+@@ -740,17 +741,8 @@ static bool cfg80211_dfs_sta_present(str
+ void cfg80211_set_dfs_concurrent(struct wiphy *wiphy,
+ 				 const struct cfg80211_chan_def *chandef)
+ {
+-	struct ieee80211_channel *c;
+-
+-	for_each_subchan(chandef, freq, cf) {
+-		c = ieee80211_get_channel_khz(wiphy, freq);
+-		if (!c)
+-			return;
+-
+-		if ((c->flags & IEEE80211_CHAN_RADAR) &&
+-		    !cfg80211_dfs_sta_present(wiphy, c))
+-			return;
+-	}
++	if (!cfg80211_dfs_sta_covered(wiphy, chandef))
++		return;
+ 
+ 	cfg80211_set_dfs_state(wiphy, chandef, NL80211_DFS_AVAILABLE);
+ }
+@@ -1031,7 +1023,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
  }
  
  void cfg80211_update_last_available(struct wiphy *wiphy,
@@ -145,7 +175,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  {
  	struct ieee80211_channel *c;
  	int width;
-@@ -1048,7 +1050,7 @@ void cfg80211_update_last_available(stru
+@@ -1048,7 +1041,7 @@ void cfg80211_update_last_available(stru
  		if (!c)
  			return;
  
@@ -154,7 +184,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  }
  
-@@ -1672,6 +1674,82 @@ bool cfg80211_any_usable_channels(struct
+@@ -1672,6 +1665,124 @@ bool cfg80211_any_usable_channels(struct
  }
  EXPORT_SYMBOL(cfg80211_any_usable_channels);
  
@@ -203,14 +233,18 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		netdev_info(wdev->netdev, "Set CSA channel's DFS state to available\n");
 +	}
 +
-+	/* avoid updating the dfs state during nop */
-+	if (!cfg80211_chandef_dfs_usable(wdev->wiphy, bss_chandef) &&
-+	    !cfg80211_chandef_dfs_available(wdev->wiphy, bss_chandef))
-+		return;
-+
 +	if (associated && !csa_active) {
++		/*
++		 * An associated STA proves the master still operates this
++		 * channel, so its operating chandef may promote channels
++		 * to available even out of the NOP/unavailable state.
++		 */
 +		dfs_state = NL80211_DFS_AVAILABLE;
 +		event = NL80211_RADAR_STA_CAC_SKIPPED;
++	} else if (!cfg80211_chandef_dfs_usable(wdev->wiphy, bss_chandef) &&
++		   !cfg80211_chandef_dfs_available(wdev->wiphy, bss_chandef)) {
++		/* never lift the NOP from the usable-downgrade paths */
++		return;
 +	}
 +
 +	/* avoid setting the dfs state to usable
@@ -234,21 +268,59 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +}
 +EXPORT_SYMBOL(cfg80211_sta_update_dfs_state);
 +
++bool cfg80211_dfs_sta_covered(struct wiphy *wiphy,
++			      const struct cfg80211_chan_def *chandef)
++{
++	struct ieee80211_channel *c;
++
++	for_each_subchan(chandef, freq, cf) {
++		c = ieee80211_get_channel_khz(wiphy, freq);
++		if (!c)
++			return false;
++
++		if ((c->flags & IEEE80211_CHAN_RADAR) &&
++		    !cfg80211_dfs_sta_present(wiphy, c))
++			return false;
++	}
++
++	return true;
++}
++EXPORT_SYMBOL(cfg80211_dfs_sta_covered);
++
++bool cfg80211_dfs_sta_recover_radar(struct wiphy *wiphy,
++				    const struct cfg80211_chan_def *chandef)
++{
++	/*
++	 * When every radar subchannel is still covered by an associated
++	 * STA, the master keeps operating the channel and the local
++	 * detection is overruled by the master's judgement; keep the
++	 * chandef available instead of serving a NOP the live STA link
++	 * disproves.
++	 */
++	if (!cfg80211_dfs_sta_covered(wiphy, chandef))
++		return false;
++
++	cfg80211_set_dfs_state(wiphy, chandef, NL80211_DFS_AVAILABLE);
++	cfg80211_update_last_available(wiphy, chandef, 0);
++	cfg80211_sta_radar_notify(wiphy, chandef, NL80211_RADAR_STA_CAC_SKIPPED);
++	return true;
++}
++
  struct cfg80211_chan_def *wdev_chandef(struct wireless_dev *wdev,
  				       unsigned int link_id)
  {
 --- a/net/wireless/core.h
 +++ b/net/wireless/core.h
-@@ -488,7 +488,8 @@ void cfg80211_set_dfs_concurrent(struct
+@@ -488,6 +488,9 @@ void cfg80211_set_dfs_concurrent(struct
  
  void cfg80211_dfs_channels_update_work(struct work_struct *work);
  void cfg80211_update_last_available(struct wiphy *wiphy,
--				    const struct cfg80211_chan_def *chandef);
 +				    const struct cfg80211_chan_def *chandef,
 +				    unsigned long csa_time);
++bool cfg80211_dfs_sta_recover_radar(struct wiphy *wiphy,
+ 				    const struct cfg80211_chan_def *chandef);
  
  void cfg80211_sched_dfs_chan_update(struct cfg80211_registered_device *rdev);
- 
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
 @@ -20987,7 +20987,8 @@ void cfg80211_ch_switch_notify(struct ne
@@ -261,3 +333,37 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		wdev->links[link_id].ap.chandef = *chandef;
  		break;
  	case NL80211_IFTYPE_ADHOC:
+--- a/net/wireless/mlme.c
++++ b/net/wireless/mlme.c
+@@ -1114,7 +1114,8 @@ void __cfg80211_radar_event(struct wiphy
+ 	 * case the radar is detected on only one of multiple channels
+ 	 * spanned by the chandef.
+ 	 */
+-	cfg80211_set_dfs_state(wiphy, chandef, NL80211_DFS_UNAVAILABLE);
++	if (!cfg80211_dfs_sta_recover_radar(wiphy, chandef))
++		cfg80211_set_dfs_state(wiphy, chandef, NL80211_DFS_UNAVAILABLE);
+ 
+ 	if (offchan)
+ 		queue_work(cfg80211_wq, &rdev->background_cac_abort_wk);
+--- a/net/mac80211/chan.c
++++ b/net/mac80211/chan.c
+@@ -1929,6 +1929,19 @@ int _ieee80211_link_use_channel(struct i
+ 					    sdata->wdev.iftype);
+ 	if (ret < 0)
+ 		goto out;
++
++	/*
++	 * An AP whose DFS subchannels are all covered by an associated STA
++	 * on the same wiphy relies on the STA's master for radar detection;
++	 * running the local detector too mostly yields false detections
++	 * against our own transmissions, and the vendor firmware stalls the
++	 * data path after an unactioned report. The channel-follow logic
++	 * stops such an AP when the STA link goes away.
++	 */
++	if (ret > 0 && sdata->wdev.iftype == NL80211_IFTYPE_AP &&
++	    cfg80211_dfs_sta_covered(local->hw.wiphy, &chanreq->oper))
++		ret = 0;
++
+ 	if (ret > 0)
+ 		radar_detect_width = BIT(chanreq->oper.width);
+ 
