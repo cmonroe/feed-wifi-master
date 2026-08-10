@@ -33,7 +33,23 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	let bss = config.bss[0];
  	let ret = hostapd.add_iface(`bss_config=${phy}:${config_inline}`);
-@@ -228,6 +228,7 @@ function __iface_pending_next(pending, s
+@@ -162,6 +162,15 @@ function iface_add(phy, config, phy_stat
+ 
+ 	let freq_info = iface_freq_info(iface, config, phy_status);
+ 
++	/*
++	 * A colocated STA exists but reported no usable frequency yet.
++	 * Leave the AP deferred (start_disabled) instead of starting it
++	 * on stale channel data; apsta_state delivers the real channel
++	 * once the STA link has a chandef.
++	 */
++	if (!freq_info)
++		return true;
++
+ 	return iface.start(freq_info) >= 0;
+ }
+ 
+@@ -228,6 +237,7 @@ function __iface_pending_next(pending, s
  		return "check_phy";
  	case "check_phy":
  		let phy_status = data;
@@ -41,7 +57,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (phy_status && phy_status.state == "COMPLETED") {
  			if (iface_add(phy, config, phy_status))
  				return "done";
-@@ -241,7 +242,7 @@ function __iface_pending_next(pending, s
+@@ -241,7 +251,7 @@ function __iface_pending_next(pending, s
  		});
  		return "wpas_stopped";
  	case "wpas_stopped":
@@ -50,6 +66,49 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			hostapd.printf(`hostapd.add_iface failed for phy ${phy} ifname=${bss.ifname}`);
  		pending.call("wpa_supplicant", "phy_set_state", {
  			phy: phydev.phy,
+@@ -1485,24 +1495,35 @@ let main_obj = {
+ 				return 0;
+ 			}
+ 
++			let fail = () => {
++				delete hostapd.data.apsta_freq[phy];
++				return libubus.STATUS_UNKNOWN_ERROR;
++			};
++
+ 			let freq_info;
+ 			if (req.args.frequency) {
+ 				freq_info = iface_freq_info(iface, config, req.args);
+ 				if (!freq_info)
+-					return libubus.STATUS_UNKNOWN_ERROR;
++					return fail();
+ 
+ 				if (req.args.csa) {
+ 					freq_info.csa_count = req.args.csa_count ?? 10;
+-					let ret = iface.switch_channel(freq_info);
+-					if (!ret)
+-						return libubus.STATUS_UNKNOWN_ERROR;
++					if (!iface.switch_channel(freq_info))
++						return fail();
+ 					return 0;
+ 				}
+ 			}
+ 
+-			let ret = iface.start(freq_info);
+-			if (!ret)
+-				return libubus.STATUS_UNKNOWN_ERROR;
++			/*
++			 * The STA is up but has no usable frequency yet. Keep a
++			 * deferred AP parked; a later update with a real
++			 * frequency starts it.
++			 */
++			if (!freq_info)
++				return 0;
++
++			if (!iface.start(freq_info))
++				return fail();
+ 
+ 			return 0;
+ 		}
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
 @@ -1231,6 +1231,25 @@ hostapd_check_chans(struct hostapd_iface
@@ -78,17 +137,6 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	switch (acs_init(iface)) {
  	case HOSTAPD_CHAN_ACS:
  		return HOSTAPD_CHAN_ACS;
---- a/src/ap/ucode.c
-+++ b/src/ap/ucode.c
-@@ -694,6 +694,8 @@ out:
- 		iface->bss[i]->conf->start_disabled = 0;
- 
- 	if (iface->state != HAPD_IFACE_ENABLED) {
-+		for (i = 0; i < iface->num_bss; i++)
-+			iface->bss[i]->conf->start_disabled = 0;
- 		hostapd_enable_iface(iface);
- 		return ucv_boolean_new(true);
- 	}
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
 @@ -870,6 +870,22 @@ int hostapd_handle_dfs(struct hostapd_if
