@@ -14,7 +14,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
 
 --- a/net/mac80211/rx.c
 +++ b/net/mac80211/rx.c
-@@ -3533,9 +3533,6 @@ ieee80211_rx_h_action(struct ieee80211_r
+@@ -3530,9 +3530,6 @@ ieee80211_rx_h_action(struct ieee80211_r
  
  	switch (mgmt->u.action.category) {
  	case WLAN_CATEGORY_HT:
@@ -24,7 +24,7 @@ Signed-off-by: Allen.Ye <allen.ye@mediatek.com>
  
  		if (sdata->vif.type != NL80211_IFTYPE_STATION &&
  		    sdata->vif.type != NL80211_IFTYPE_MESH_POINT &&
-@@ -3554,6 +3551,11 @@ ieee80211_rx_h_action(struct ieee80211_r
+@@ -3551,6 +3548,11 @@ ieee80211_rx_h_action(struct ieee80211_r
  			enum ieee80211_smps_mode smps_mode;
  			struct sta_opmode_info sta_opmode = {};
  
