@@ -68,7 +68,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		skb_pull(skb, sizeof(*rxd) - 4);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1052,6 +1052,9 @@ struct mt76_dev {
+@@ -1054,6 +1054,9 @@ struct mt76_dev {
  	};
  
  	atomic_t bus_hung;

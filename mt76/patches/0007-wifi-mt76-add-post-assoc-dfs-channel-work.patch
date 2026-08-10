@@ -1,0 +1,94 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 9 Aug 2026 20:00:00 -0700
+Subject: [PATCH] wifi: mt76: add post-assoc DFS channel work
+
+mac80211 marks a DFS channel AVAILABLE via
+cfg80211_sta_update_dfs_state() only after the MLME event callback
+returns, so a channel set issued synchronously from the callback
+re-sends CH_SWITCH_DFS instead of the intended CH_SWITCH_NORMAL and
+the deferred channel calibration never happens.
+
+Provide a per-phy wiphy_delayed_work in mt76 core that drivers queue
+from their MLME association event callback. The work runs with the
+wiphy mutex held after the assoc handler, including the DFS state
+update, has completed. It re-applies the operating channel through
+mt76_set_channel(), which quiesces TX (tx worker disable, pending TX
+drain, MT76_RESET) and refreshes the survey, DFS and channel state
+that a raw driver set_channel call would skip. Non-DFS chandefs are
+left alone.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+---
+ mac80211.c |   27 +++++++++++++++++++++++++++
+ mt76.h     |    2 ++
+ 2 files changed, 29 insertions(+)
+
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -491,6 +491,27 @@ mt76_phy_init(struct mt76_phy *phy, stru
+ 	return 0;
+ }
+ 
++static void mt76_phy_assoc_chan_work(struct wiphy *wiphy,
++				     struct wiphy_work *work)
++{
++	struct mt76_phy *phy = container_of(work, struct mt76_phy,
++					    assoc_chan_work.work);
++
++	/*
++	 * mac80211 flips the DFS state to AVAILABLE only after the MLME
++	 * event callback that queued this work returns, so the channel
++	 * switch reason must be re-evaluated from a wiphy work to become
++	 * CH_SWITCH_NORMAL and trigger the deferred channel calibration.
++	 */
++	if (cfg80211_chandef_dfs_required(wiphy, &phy->main_chandef,
++					  NL80211_IFTYPE_AP) <= 0)
++		return;
++
++	dev_info(phy->dev->dev, "%s: set channel after association\n",
++		 __func__);
++	mt76_set_channel(phy, &phy->main_chandef, false);
++}
++
+ struct mt76_phy *
+ mt76_alloc_radio_phy(struct mt76_dev *dev, unsigned int size,
+ 		     u8 band_idx)
+@@ -508,6 +529,8 @@ mt76_alloc_radio_phy(struct mt76_dev *de
+ 	phy->hw = hw;
+ 	phy->priv = (void *)phy + phy_size;
+ 	phy->band_idx = band_idx;
++	wiphy_delayed_work_init(&phy->assoc_chan_work,
++				mt76_phy_assoc_chan_work);
+ 
+ 	return phy;
+ }
+@@ -531,6 +554,8 @@ mt76_alloc_phy(struct mt76_dev *dev, uns
+ 	phy->hw = hw;
+ 	phy->priv = hw->priv + phy_size;
+ 	phy->band_idx = band_idx;
++	wiphy_delayed_work_init(&phy->assoc_chan_work,
++				mt76_phy_assoc_chan_work);
+ 
+ 	hw->wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
+ 	hw->wiphy->interface_modes =
+@@ -689,6 +714,8 @@ mt76_alloc_device(struct device *pdev, u
+ 	phy->hw = hw;
+ 	phy->band_idx = MT_BAND0;
+ 	dev->phys[phy->band_idx] = phy;
++	wiphy_delayed_work_init(&phy->assoc_chan_work,
++				mt76_phy_assoc_chan_work);
+ 
+ 	spin_lock_init(&dev->rx_lock);
+ 	spin_lock_init(&dev->lock);
+--- a/mt76.h
++++ b/mt76.h
+@@ -890,6 +890,8 @@ struct mt76_phy {
+ 	struct ieee80211_vif *roc_vif;
+ 	struct mt76_vif_link *roc_link;
+ 
++	struct wiphy_delayed_work assoc_chan_work;
++
+ 	struct mt76_chanctx *chanctx;
+ 
+ 	struct mt76_channel_state *chan_state;

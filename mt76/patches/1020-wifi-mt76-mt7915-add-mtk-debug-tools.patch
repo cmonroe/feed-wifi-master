@@ -365,7 +365,7 @@ Squash of the following MediaTek commits:
  
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -256,6 +256,7 @@ static int mt7915_add_interface(struct i
+@@ -257,6 +257,7 @@ static int mt7915_add_interface(struct i
  	mvif->sta.wcid.idx = idx;
  	mvif->sta.wcid.tx_info |= MT_WCID_TX_INFO_SET;
  	mt76_wcid_init(&mvif->sta.wcid, phy->mt76->band_idx);
@@ -6031,7 +6031,7 @@ Squash of the following MediaTek commits:
  }
 --- a/mt76.h
 +++ b/mt76.h
-@@ -966,6 +966,9 @@ struct mt76_dev {
+@@ -968,6 +968,9 @@ struct mt76_dev {
  	struct device *dma_dev;
  
  	struct mt76_mcu mcu;

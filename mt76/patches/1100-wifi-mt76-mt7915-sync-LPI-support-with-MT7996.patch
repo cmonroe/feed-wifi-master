@@ -18,7 +18,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -928,8 +928,6 @@ struct mt76_phy {
+@@ -930,8 +930,6 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -27,7 +27,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 sku_idx;
  	u8 antenna_mask;
  	u16 chainmask;
-@@ -1067,6 +1065,10 @@ struct mt76_dev {
+@@ -1069,6 +1067,10 @@ struct mt76_dev {
  		bool beacon_received;
  	} scan;
  

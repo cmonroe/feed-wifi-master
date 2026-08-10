@@ -42,7 +42,7 @@ Squash of the following MediaTek commits:
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -960,7 +960,8 @@ void mt76_rx(struct mt76_dev *dev, enum
+@@ -987,7 +987,8 @@ void mt76_rx(struct mt76_dev *dev, enum
  	}
  
  #ifdef CONFIG_NL80211_TESTMODE

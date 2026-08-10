@@ -18,7 +18,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -1723,6 +1723,8 @@ void mt76_wcid_init(struct mt76_wcid *wc
+@@ -1750,6 +1750,8 @@ void mt76_wcid_init(struct mt76_wcid *wc
  	idr_init(&wcid->pktid);
  
  	INIT_LIST_HEAD(&wcid->poll_list);
@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  struct mt76_txq {
-@@ -952,7 +956,7 @@ struct mt76_phy {
+@@ -954,7 +958,7 @@ struct mt76_phy {
  #endif
  
  	struct delayed_work mac_work;

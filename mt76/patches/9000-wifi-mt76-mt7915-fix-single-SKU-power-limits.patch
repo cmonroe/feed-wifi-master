@@ -239,7 +239,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	err = mt7915_mcu_set_txpower_sku(phy);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -964,6 +964,8 @@ struct mt76_phy {
+@@ -966,6 +966,8 @@ struct mt76_phy {
  
  	int txpower_cur;
  	u8 sku_idx;
@@ -248,7 +248,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1100,8 +1102,6 @@ struct mt76_dev {
+@@ -1102,8 +1104,6 @@ struct mt76_dev {
  		bool beacon_received;
  	} scan;
  
@@ -257,7 +257,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool mgmt_pwr_enhance;
  
  #ifdef CONFIG_NL80211_TESTMODE
-@@ -1225,6 +1225,11 @@ struct mt76_mib_stats {
+@@ -1227,6 +1227,11 @@ struct mt76_mib_stats {
  	u32 ul_hetrig_4mu_cnt;
  };
  

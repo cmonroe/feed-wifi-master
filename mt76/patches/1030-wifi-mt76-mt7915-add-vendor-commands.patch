@@ -36,7 +36,7 @@ Squash of the following MediaTek commits:
  };
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -478,6 +478,10 @@ static int mt7915_config(struct ieee8021
+@@ -479,6 +479,10 @@ static int mt7915_config(struct ieee8021
  			mutex_unlock(&dev->mt76.mutex);
  		}
  #endif

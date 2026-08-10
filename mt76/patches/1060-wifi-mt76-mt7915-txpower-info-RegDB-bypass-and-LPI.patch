@@ -407,7 +407,7 @@ Squash of the following MediaTek commits:
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -926,6 +926,9 @@ struct mt76_phy {
+@@ -928,6 +928,9 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -417,7 +417,7 @@ Squash of the following MediaTek commits:
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1997,7 +2000,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
+@@ -1999,7 +2002,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
  void mt76_set_irq_mask(struct mt76_dev *dev, u32 addr, u32 clear, u32 set);
  
  struct device_node *

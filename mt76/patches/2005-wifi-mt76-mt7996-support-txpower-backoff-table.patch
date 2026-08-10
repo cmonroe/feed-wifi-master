@@ -30,7 +30,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			       target_power, txs_delta, &max_power, n_chains, MT76_SKU_BACKOFF);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1198,11 +1198,11 @@ struct mt76_power_limits {
+@@ -1200,11 +1200,11 @@ struct mt76_power_limits {
  	s8 eht[16][16];
  
  	struct {

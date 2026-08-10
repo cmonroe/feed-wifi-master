@@ -67,7 +67,7 @@ Squash of the following MediaTek commits:
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1065,6 +1065,9 @@ struct mt76_dev {
+@@ -1067,6 +1067,9 @@ struct mt76_dev {
  
  	atomic_t bus_hung;
  
@@ -77,7 +77,7 @@ Squash of the following MediaTek commits:
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
  };
-@@ -1372,6 +1375,7 @@ int mt76_eeprom_override(struct mt76_phy
+@@ -1374,6 +1377,7 @@ int mt76_eeprom_override(struct mt76_phy
  int mt76_get_of_data_from_mtd(struct mt76_dev *dev, void *eep, int offset, int len);
  int mt76_get_of_data_from_nvmem(struct mt76_dev *dev, void *eep,
  				const char *cell_name, int len);

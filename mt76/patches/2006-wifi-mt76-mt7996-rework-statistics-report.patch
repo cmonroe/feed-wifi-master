@@ -79,7 +79,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	unsigned long ampdu_state;
  
  	u16 idx;
-@@ -1468,6 +1483,22 @@ static inline int mt76_decr(int val, int
+@@ -1470,6 +1485,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
