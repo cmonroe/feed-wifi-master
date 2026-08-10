@@ -19,10 +19,10 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  mt7996/mcu.c         |  119 +++++++++++++++++++++++++++++++++++++++++++++--
  mt7996/mcu.h         |    1 
  mt7996/mt7996.h      |    3 -
- mt7996/mtk_debugfs.c |    3 -
+ mt7996/mtk_debugfs.c |    1 
  mt7996/vendor.c      |  127 +++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7996/vendor.h      |   15 ++++++
- 10 files changed, 283 insertions(+), 10 deletions(-)
+ 10 files changed, 282 insertions(+), 9 deletions(-)
 
 --- a/mt76_connac3_mac.h
 +++ b/mt76_connac3_mac.h
@@ -74,7 +74,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	}
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -884,6 +884,7 @@ static u8
+@@ -886,6 +886,7 @@ static u8
  mt7996_get_rates_table(struct mt7996_phy *phy, struct ieee80211_bss_conf *conf,
  		       bool beacon, bool mcast)
  {
@@ -82,7 +82,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_vif_link *mvif = mt76_vif_conf_link(&dev->mt76, conf->vif, conf);
  	u16 rate;
-@@ -892,6 +893,9 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -894,6 +895,9 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -92,7 +92,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* odd index for driver, even index for firmware */
  		idx = MT7996_BEACON_RATES_TBL + 2 * phy->mt76->band_idx;
  		if (phy->beacon_rate != rate)
-@@ -1073,7 +1077,7 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1075,7 +1079,7 @@ mt7996_link_info_changed(struct ieee8021
  	if (changed & BSS_CHANGED_TXPOWER &&
  	    info->txpower != phy->txpower) {
  		phy->txpower = info->txpower;
@@ -103,7 +103,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6048,7 +6048,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -6049,7 +6049,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -112,7 +112,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -6368,6 +6368,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6369,6 +6369,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -135,7 +135,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static s8 mt7996_get_power_bound(struct mt7996_phy *phy, s8 txpower)
  {
         struct mt76_phy *mphy = phy->mt76;
-@@ -6379,7 +6395,8 @@ static s8 mt7996_get_power_bound(struct
+@@ -6380,7 +6396,8 @@ static s8 mt7996_get_power_bound(struct
         return txpower;
  }
  
@@ -145,7 +145,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
  #define TX_POWER_LIMIT_TABLE_PATH	1
-@@ -6404,7 +6421,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6405,7 +6422,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
@@ -156,7 +156,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6427,7 +6446,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6428,7 +6447,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	}
  
  	skb_put_data(skb, &req, sizeof(req));
@@ -195,7 +195,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb_put_data(skb, &la->mcs[0], 8); /* HT20 */
  	skb_put_data(skb, &la->mcs[1], 9); /* HT40 */
  
-@@ -6466,8 +6515,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6467,8 +6516,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la->path.cck, 5);
@@ -239,7 +239,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -6484,6 +6566,31 @@ out:
+@@ -6485,6 +6567,31 @@ out:
  	return ret;
  }
  
@@ -295,16 +295,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  int mt7996_mcu_rdd_background_enable(struct mt7996_phy *phy,
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
-@@ -2437,7 +2437,7 @@ mt7996_get_txpower_info(struct file *fil
- 	len += scnprintf(buf + len, size - len,
- 			 "    Theraml Compensation Value: %d\n",
- 			 basic_info->thermal_compensate_value);
--	np = mt76_find_power_limits_node(phy->mt76->dev);
-+	np = mt76_find_power_limits_node(phy->mt76);
- 	len += scnprintf(buf + len, size - len,
- 			 "    RegDB:  %s\n",
- 			 !np ? "enable" : "disable");
-@@ -2894,6 +2894,7 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -2895,6 +2895,7 @@ int mt7996_mtk_init_debugfs(struct mt799
  				    mt7996_wtbl_read);
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);

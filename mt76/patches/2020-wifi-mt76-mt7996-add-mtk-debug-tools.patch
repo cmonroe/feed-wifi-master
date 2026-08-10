@@ -7,24 +7,33 @@ and WTBL dumps, firmware debug module knobs and MURU debug info, plus
 per-radio txpower debugfs entries (txpower_level, txpower_info,
 txpower_sku, txpower_path).
 
+The agg_info and mib_info readers depend on per-chip register offset
+tables; register them only when an offset table exists for the
+running chip, so chips without one (MT7990) cannot oops the kernel
+through a debugfs read.
+
 Squash of the following MediaTek commits:
 - wifi: mt76: mt7996: add debug tool (Shayne Chen, 2023-03-24)
 - wifi: mt76: mt7996: add txpower debug support (Allen Ye, 2023-03-24)
+
+Based-on-work-by: Shayne Chen <shayne.chen@mediatek.com>
+Based-on-work-by: Allen Ye <allen.ye@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7996/Makefile      |    5
+ mt7996/Makefile      |    5 
  mt7996/debugfs.c     |  128 +
- mt7996/eeprom.c      |   34
- mt7996/eeprom.h      |   42
- mt7996/main.c        |   15
- mt7996/mcu.c         |   34
- mt7996/mcu.h         |   25
- mt7996/mt7996.h      |   19
+ mt7996/eeprom.c      |   34 
+ mt7996/eeprom.h      |   42 
+ mt7996/main.c        |   15 
+ mt7996/mcu.c         |   34 
+ mt7996/mcu.h         |   25 
+ mt7996/mt7996.h      |   19 
  mt7996/mtk_debug.h   | 2286 +++++++++++++++++++++++++++++++++
- mt7996/mtk_debugfs.c | 2790 +++++++++++++++++++++++++++++++++++++++++
- mt7996/mtk_mcu.c     |   62
+ mt7996/mtk_debugfs.c | 2791 +++++++++++++++++++++++++++++++++++++++++
+ mt7996/mtk_mcu.c     |   62 
  mt7996/mtk_mcu.h     |  111 +
- mt7996/regs.h        |   27
- 13 files changed, 5554 insertions(+), 24 deletions(-)
+ mt7996/regs.h        |   27 
+ 13 files changed, 5555 insertions(+), 24 deletions(-)
 
 --- a/mt7996/Makefile
 +++ b/mt7996/Makefile
@@ -2584,7 +2593,7 @@ Squash of the following MediaTek commits:
 +#endif
 --- /dev/null
 +++ b/mt7996/mtk_debugfs.c
-@@ -0,0 +1,2790 @@
+@@ -0,0 +1,2791 @@
 +// SPDX-License-Identifier: ISC
 +/*
 + * Copyright (C) 2023 MediaTek Inc.
@@ -5014,7 +5023,7 @@ Squash of the following MediaTek commits:
 +	len += scnprintf(buf + len, size - len,
 +			 "    Theraml Compensation Value: %d\n",
 +			 basic_info->thermal_compensate_value);
-+	np = mt76_find_power_limits_node(phy->mt76->dev);
++	np = mt76_find_power_limits_node(phy->mt76);
 +	len += scnprintf(buf + len, size - len,
 +			 "    RegDB:  %s\n",
 +			 !np ? "enable" : "disable");
@@ -5316,13 +5325,21 @@ Squash of the following MediaTek commits:
 +		WTBL_LMAC_DW9 = WTBL_LMAC_DW9_7992;
 +	}
 +
-+	/* agg */
-+	debugfs_create_devm_seqfile(dev->mt76.dev, "agg_info0", dir,
-+				    mt7996_agginfo_read_band0);
-+	debugfs_create_devm_seqfile(dev->mt76.dev, "agg_info1", dir,
-+				    mt7996_agginfo_read_band1);
-+	debugfs_create_devm_seqfile(dev->mt76.dev, "agg_info2", dir,
-+				    mt7996_agginfo_read_band2);
++	/* agg/mib readers require per-chip register offsets in dbg_reg */
++	if (dev->dbg_reg) {
++		debugfs_create_devm_seqfile(dev->mt76.dev, "agg_info0", dir,
++					    mt7996_agginfo_read_band0);
++		debugfs_create_devm_seqfile(dev->mt76.dev, "agg_info1", dir,
++					    mt7996_agginfo_read_band1);
++		debugfs_create_devm_seqfile(dev->mt76.dev, "agg_info2", dir,
++					    mt7996_agginfo_read_band2);
++		debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info0", dir,
++					    mt7996_mibinfo_band0);
++		debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info1", dir,
++					    mt7996_mibinfo_band1);
++		debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info2", dir,
++					    mt7996_mibinfo_band2);
++	}
 +	/* amsdu */
 +	debugfs_create_devm_seqfile(dev->mt76.dev, "amsdu_info", dir,
 +				    mt7996_amsdu_result_read);
@@ -5335,13 +5352,6 @@ Squash of the following MediaTek commits:
 +	debugfs_create_file("fw_wa_set", 0600, dir, dev, &fops_wa_set);
 +	debugfs_create_devm_seqfile(dev->mt76.dev, "fw_version", dir,
 +				    mt7996_dump_version);
-+
-+	debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info0", dir,
-+				    mt7996_mibinfo_band0);
-+	debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info1", dir,
-+				    mt7996_mibinfo_band1);
-+	debugfs_create_devm_seqfile(dev->mt76.dev, "mib_info2", dir,
-+				    mt7996_mibinfo_band2);
 +
 +	debugfs_create_devm_seqfile(dev->mt76.dev, "sta_info", dir,
 +				    mt7996_sta_info);
@@ -5712,7 +5722,7 @@ Squash of the following MediaTek commits:
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6375,3 +6375,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6376,3 +6376,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
