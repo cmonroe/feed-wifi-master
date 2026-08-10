@@ -32,27 +32,45 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -601,6 +601,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
- 	struct hostapd_iface *iface = uc_fn_thisval("hostapd.iface");
- 	int i;
+@@ -604,6 +604,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
+ 	if (!iface)
+ 		return NULL;
  
 +	wpa_printf(MSG_INFO, "%s: stop iface for %s in state %s\n",
 +			__func__, iface->phy, hostapd_state_text(iface->state));
 +
+ 	if (iface->state != HAPD_IFACE_ENABLED)
+ 		uc_hostapd_disable_iface(iface);
+ 
+@@ -630,8 +633,21 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  	if (!iface)
  		return NULL;
  
-@@ -627,6 +630,9 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
- 	uint64_t intval;
- 	int i;
- 
+-	if (!info)
 +	wpa_printf(MSG_INFO, "%s: start iface for %s in state %s\n",
 +			__func__, iface->phy, hostapd_state_text(iface->state));
 +
- 	if (!iface)
- 		return NULL;
++	conf = iface->conf;
++
++	if (!info) {
++		/*
++		 * Starting a parked iface without channel info would clear
++		 * start_disabled and bring the AP up on stale channel data;
++		 * only a live iface may take this path (parameter refresh).
++		 */
++		if (iface->state != HAPD_IFACE_ENABLED)
++			return ucv_boolean_new(false);
+ 		goto out;
++	}
  
-@@ -650,6 +656,7 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+ 	if (ucv_type(info) != UC_OBJECT)
+ 		return NULL;
+@@ -645,11 +661,11 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+ 		}								\
+ 	} while(0)
+ 
+-	conf = iface->conf;
+ 	UPDATE_VAL(op_class, "op_class");
  	UPDATE_VAL(hw_mode, "hw_mode");
  	UPDATE_VAL(channel, "channel");
  	UPDATE_VAL(secondary_channel, "sec_channel");
@@ -60,7 +78,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!changed &&
  	    (iface->bss[0]->beacon_set_done ||
  	     iface->state == HAPD_IFACE_DFS))
-@@ -700,6 +707,15 @@ out:
+@@ -698,6 +714,15 @@ out:
  		return ucv_boolean_new(true);
  	}
  
@@ -76,7 +94,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
  		int ret;
-@@ -734,13 +750,16 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -732,13 +757,16 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	uint64_t intval;
  	int i, ret = 0;
  
@@ -95,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		csa.freq_params.sec_channel_offset = intval;
  
  	csa.freq_params.ht_enabled = conf->ieee80211n;
-@@ -769,13 +788,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -767,13 +795,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  		break;
  	}
  
@@ -201,7 +219,18 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_DPP
  #include "common/dpp.h"
  #include "common/wpa_ctrl.h"
-@@ -136,6 +138,8 @@ void wpas_ucode_event(struct wpa_supplic
+@@ -132,10 +134,19 @@ void wpas_ucode_update_state(struct wpa_
+ 	ucv_put(wpa_ucode_call(3));
+ }
+ 
++static bool is_bw320_offset2(int center_freq1)
++{
++	/* center channels 31, 95, 159: the second 320 MHz channelization */
++	return center_freq1 == 6265 || center_freq1 == 6585 ||
++	       center_freq1 == 6905;
++}
++
+ void wpas_ucode_event(struct wpa_supplicant *wpa_s, int event, union wpa_event_data *data)
  {
  	const char *state;
  	uc_value_t *val;
@@ -210,7 +239,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (event != EVENT_CH_SWITCH_STARTED)
  		return;
-@@ -154,11 +158,42 @@ void wpas_ucode_event(struct wpa_supplic
+@@ -154,11 +165,40 @@ void wpas_ucode_event(struct wpa_supplic
  	uc_value_push(ucv_get(val));
  
  	if (event == EVENT_CH_SWITCH_STARTED) {
@@ -237,10 +266,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +			break;
 +		}
 +
-+		/* Check bandwidth 320 MHz-2 */
 +		if (ch_width == CONF_OPER_CHWIDTH_320MHZ &&
-+		    (center_freq1 == 6265) || center_freq1 == 6585 ||
-+		     center_freq1 == 6905)
++		    is_bw320_offset2(center_freq1))
 +			bw320_offset = 2;
 +
  		ucv_object_add(val, "csa_count", ucv_int64_new(data->ch_switch.count));
@@ -254,16 +281,38 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	ucv_put(wpa_ucode_call(4));
-@@ -567,26 +602,45 @@ out:
+@@ -567,26 +607,58 @@ out:
  }
  
  static void
 -uc_wpas_iface_status_bss(uc_value_t *ret, struct wpa_bss *bss)
-+uc_wpas_iface_status_bss(uc_value_t *ret, struct wpa_supplicant *wpa_s, struct wpa_bss *bss)
++uc_wpas_iface_status_bss(uc_value_t *ret, struct wpa_supplicant *wpa_s,
++			 struct wpa_bss *bss)
  {
  	int sec_chan = 0;
 -	const u8 *ie;
--
++	struct wpa_channel_info ci;
++	u8 op_class, channel;
++	enum oper_chan_width ch_width;
++	int center_freq1, bw320_offset = 1, is_24ghz;
++	enum hostapd_hw_mode hw_mode;
++
++	/*
++	 * Without a driver chandef (scanning, associating, netdev being
++	 * recreated) any width/op-class derived here would be garbage.
++	 * Report nothing so the AP side keeps its start deferred; a
++	 * fresh status arrives once the association has a live chandef.
++	 * The channel info query is a blocking netlink round-trip, so
++	 * skip it outright before the association completes.
++	 */
++	if (wpa_s->wpa_state != WPA_COMPLETED)
++		return;
++
++	os_memset(&ci, 0, sizeof(ci));
++	if (wpa_drv_channel_info(wpa_s, &ci) < 0 ||
++	    !ci.frequency || ci.chanwidth == CHAN_WIDTH_UNKNOWN)
++		return;
+ 
 -	ie = wpa_bss_get_ie(bss, WLAN_EID_HT_OPERATION);
 -	if (ie && ie[1] >= 2) {
 -		const struct ieee80211_ht_operation *ht_oper;
@@ -275,17 +324,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -			sec_chan = 1;
 -		else if (sec == HT_INFO_HT_PARAM_SECONDARY_CHNL_BELOW)
 -			sec_chan = -1;
-+	struct wpa_channel_info ci;
-+	u8 op_class, channel;
-+	enum oper_chan_width ch_width;
-+	int center_freq1, bw320_offset = 1, is_24ghz;
-+	enum hostapd_hw_mode hw_mode;
-+
 +	hw_mode = ieee80211_freq_to_chan(bss->freq, &channel);
 +	is_24ghz = hw_mode == HOSTAPD_MODE_IEEE80211G ||
 +		hw_mode == HOSTAPD_MODE_IEEE80211B;
 +
-+	wpa_drv_channel_info(wpa_s, &ci);
 +	center_freq1 = ci.center_frq1;
 +
 +	if (bss->freq != center_freq1) {
@@ -293,20 +335,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +			sec_chan = (bss->freq < center_freq1) ? 1 : -1;
 +		else
 +			sec_chan = (bss->freq / 20) & 1 ? 1 : -1;
-+	}
-+
+ 	}
+ 
 +	if (ieee80211_chaninfo_to_channel(ci.frequency, ci.chanwidth,
 +					  sec_chan, &op_class, &channel))
 +		return;
 +
 +	ch_width = op_class_to_ch_width(op_class);
 +	if (ch_width == CONF_OPER_CHWIDTH_320MHZ &&
-+		(center_freq1 == 6265) || center_freq1 == 6585 ||
-+		 center_freq1 == 6905) {
-+		/* Bandwidth 320 MHz-2 */
++	    is_bw320_offset2(center_freq1))
 +		bw320_offset = 2;
- 	}
- 
++
  	ucv_object_add(ret, "sec_chan_offset", ucv_int64_new(sec_chan));
  	ucv_object_add(ret, "frequency", ucv_int64_new(bss->freq));
 +	ucv_object_add(ret, "ch_width", ucv_int64_new(ch_width));
@@ -314,7 +353,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static void
-@@ -622,7 +676,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -622,7 +694,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  
  	bss = wpa_s->current_bss;
  	if (bss)
@@ -323,18 +362,24 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (wpa_s->valid_links) {
  		unsigned int valid_links = wpa_s->valid_links;
-@@ -639,7 +693,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -639,7 +711,13 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  				continue;
  
  			link = ucv_object_new(vm);
 -			uc_wpas_iface_status_bss(link, bss);
-+			uc_wpas_iface_status_bss(link, wpa_s, bss);
++			/*
++			 * wpa_drv_channel_info() reports a single chandef for
++			 * the whole interface; per-link operating width is not
++			 * available here, so report only the link frequency.
++			 */
++			ucv_object_add(link, "frequency",
++				       ucv_int64_new(bss->freq));
  			ucv_array_set(links, i, link);
  		}
  
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -112,6 +112,7 @@ start_disabled=1
+@@ -121,6 +121,7 @@ start_disabled=1
  function iface_freq_info(iface, config, params)
  {
  	let freq = params.frequency;
@@ -342,7 +387,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!freq)
  		return null;
  
-@@ -120,19 +121,23 @@ function iface_freq_info(iface, config,
+@@ -129,19 +130,23 @@ function iface_freq_info(iface, config,
  		sec_offset = 0;
  
  	let width = 0;
@@ -377,7 +422,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (freq < 4000)
-@@ -147,7 +152,7 @@ function iface_freq_info(iface, config,
+@@ -156,7 +161,7 @@ function iface_freq_info(iface, config,
  	if (freq > 5925 && width > 0 && sec_offset == 0)
  		sec_offset = null;
  
@@ -386,7 +431,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  function iface_add(phy, config, phy_status, start_disabled)
-@@ -1455,6 +1460,8 @@ let main_obj = {
+@@ -1479,6 +1484,8 @@ let main_obj = {
  			up: true,
  			frequency: 0,
  			sec_chan_offset: 0,
@@ -395,7 +440,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			csa: true,
  			csa_count: 0,
  			no_link: true,
-@@ -1464,6 +1471,9 @@ let main_obj = {
+@@ -1488,6 +1495,9 @@ let main_obj = {
  			if (req.args.up == null || !phy)
  				return libubus.STATUS_INVALID_ARGUMENT;
  
@@ -405,15 +450,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			let config = hostapd.data.config[phy];
  			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)
  				return 0;
-@@ -1507,6 +1517,8 @@ let main_obj = {
+@@ -1536,6 +1546,8 @@ let main_obj = {
  				if (!freq_info)
- 					return libubus.STATUS_UNKNOWN_ERROR;
+ 					return fail();
  
 +				hostapd.printf(`apsta_state phy=${phy} freq_info=${freq_info}`);
 +
  				if (req.args.csa) {
  					freq_info.csa_count = req.args.csa_count ?? 10;
- 					let ret = iface.switch_channel(freq_info);
+ 					if (!iface.switch_channel(freq_info))
 --- a/openwrt/files/wpa_supplicant.uc
 +++ b/openwrt/files/wpa_supplicant.uc
 @@ -877,6 +877,8 @@ function iface_hostapd_notify(ifname, if
