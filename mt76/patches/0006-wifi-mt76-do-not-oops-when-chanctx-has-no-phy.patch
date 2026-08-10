@@ -1,0 +1,108 @@
+From: Oskar Maroszek <oskar.maroszek@adtran.com>
+Date: Mon, 10 Aug 2026 00:00:00 -0700
+Subject: [PATCH] wifi: mt76: do not oops when a chanctx has no phy assigned
+
+Every mt76 chanctx callback reaches its struct mt76_dev through
+ctx->phy->dev, but only two of the five check that ctx->phy is actually
+set. mt76_add_chanctx() and mt76_remove_chanctx() have
+
+	if (WARN_ON_ONCE(!phy))
+		return;
+
+while mt76_change_chanctx(), mt76_assign_vif_chanctx() and
+mt76_unassign_vif_chanctx() dereference it straight from the variable
+declarations:
+
+	struct mt76_phy *phy = ctx->phy;
+	struct mt76_dev *dev = phy->dev;
+
+ctx->phy lives in the chanctx drv_priv area, which mac80211 kzalloc()s in
+ieee80211_alloc_chanctx(). It only becomes valid once the driver has been
+told about that context, via ->add_chanctx() or a SWAP_CONTEXTS
+->switch_vif_chanctx(). Any path that hands the driver a context it was
+never asked to set up therefore turns into a NULL dereference of
+phy->dev, i.e. a fatal read at address 0x8 and an immediate reboot:
+
+  Unable to handle kernel access to user memory outside uaccess routines
+    at virtual address 0000000000000008
+  pc : mt76_unassign_vif_chanctx+0x28/0x100 [mt76]
+  Call trace:
+   mt76_unassign_vif_chanctx+0x28/0x100 [mt76]
+   drv_unassign_vif_chanctx+0x10c/0x1c0 [mac80211]
+   ieee80211_recalc_smps_chanctx+0x474/0xd38 [mac80211]
+   __ieee80211_link_release_channel+0x68/0x178 [mac80211]
+   ieee80211_link_release_channel+0x34/0x50 [mac80211]
+   ieee80211_stop_ap+0x280/0xab8 [mac80211]
+   cfg80211_stop_ap+0xb0/0xe0 [cfg80211]
+   nl80211_stop_ap+0x48/0x58 [cfg80211]
+  Kernel panic - not syncing: Oops: Fatal exception
+
+Give the remaining three callbacks the same guard the other two already
+have. A half-initialised context is a bug wherever it comes from, but the
+driver should report it and decline the operation instead of taking the
+box down; the WARN backtrace names the mac80211 path responsible, which a
+panic in the middle of a reboot does not.
+
+This is deliberately only hardening: it does not paper over a known
+producer of such contexts. The one identified so far, a multi-context
+->switch_vif_chanctx() leaving every vifs[i>0].new_ctx with a NULL ->phy,
+was fixed upstream in commit 43fa7d4a9e4a ("wifi: mt76: fix handling
+channel context with different bands in mt76_switch_vif_chanctx()"),
+already part of this tree. The same phy resolution logic has regressed
+twice upstream; this guard keeps the next regression from becoming a
+panic loop in the field.
+
+Signed-off-by: Oskar Maroszek <oskar.maroszek@adtran.com>
+---
+--- a/channel.c
++++ b/channel.c
+@@ -82,12 +82,17 @@ void mt76_change_chanctx(struct ieee8021
+ {
+ 	struct mt76_chanctx *ctx = (struct mt76_chanctx *)conf->drv_priv;
+ 	struct mt76_phy *phy = ctx->phy;
+-	struct mt76_dev *dev = phy->dev;
++	struct mt76_dev *dev;
++
++	if (WARN_ON_ONCE(!phy))
++		return;
+ 
+ 	if (!(changed & (IEEE80211_CHANCTX_CHANGE_WIDTH |
+ 			 IEEE80211_CHANCTX_CHANGE_RADAR)))
+ 		return;
+ 
++	dev = phy->dev;
++
+ 	if (phy->roc_vif)
+ 		mt76_abort_roc(phy);
+ 
+@@ -110,10 +115,15 @@ int mt76_assign_vif_chanctx(struct ieee8
+ 	struct mt76_vif_data *mvif = mlink->mvif;
+ 	int link_id = link_conf->link_id;
+ 	struct mt76_phy *phy = ctx->phy;
+-	struct mt76_dev *dev = phy->dev;
++	struct mt76_dev *dev;
+ 	bool mlink_alloc = false;
+ 	int ret = 0;
+ 
++	if (WARN_ON_ONCE(!phy))
++		return -EINVAL;
++
++	dev = phy->dev;
++
+ 	if (dev->scan.vif == vif)
+ 		mt76_abort_scan(dev);
+ 
+@@ -159,7 +169,12 @@ void mt76_unassign_vif_chanctx(struct ie
+ 	struct mt76_chanctx *ctx = (struct mt76_chanctx *)conf->drv_priv;
+ 	struct mt76_vif_link *mlink = (struct mt76_vif_link *)vif->drv_priv;
+ 	struct mt76_phy *phy = ctx->phy;
+-	struct mt76_dev *dev = phy->dev;
++	struct mt76_dev *dev;
++
++	if (WARN_ON_ONCE(!phy))
++		return;
++
++	dev = phy->dev;
+ 
+ 	if (dev->scan.vif == vif)
+ 		mt76_abort_scan(dev);
