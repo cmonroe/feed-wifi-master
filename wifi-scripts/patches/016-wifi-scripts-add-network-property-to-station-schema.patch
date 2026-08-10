@@ -1,0 +1,25 @@
+From: Colin Whittaker <colin.whittaker@adtran.com>
+Date: Mon, 10 Aug 2026 14:29:04 -0700
+Subject: [PATCH] wifi-scripts: add network property to station schema
+
+Add a network property to the wifi-station schema so a wifi-station
+section can declare the service / network interface associated with
+its vid and pass schema validation in validate.uc.
+
+Fixes: SDG-6861
+
+Signed-off-by: Colin Whittaker <colin.whittaker@adtran.com>
+---
+--- a/src/usr/share/schema/wireless.wifi-station.json
++++ b/src/usr/share/schema/wireless.wifi-station.json
+@@ -11,6 +11,10 @@
+ 				"type": "string"
+ 			}
+ 		},
++		"network": {
++			"description": "Specifies service / network interface associated with the vid.",
++			"type": "string"
++		},
+ 		"mac": {
+ 			"description": "The station's MAC addresses",
+ 			"type": "array",
