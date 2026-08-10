@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  
  static int hostapd_flush_old_stations(struct hostapd_data *hapd, u16 reason);
-@@ -4354,10 +4355,13 @@ const char * hostapd_state_text(enum hos
+@@ -4352,10 +4353,13 @@ const char * hostapd_state_text(enum hos
  
  void hostapd_set_state(struct hostapd_iface *iface, enum hostapd_iface_state s)
  {
@@ -45,7 +45,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -1343,3 +1343,16 @@ void hostapd_ucode_apup_newpeer(struct h
+@@ -1341,3 +1341,16 @@ void hostapd_ucode_apup_newpeer(struct h
  	ucv_put(val);
  }
  #endif // def CONFIG_APUP
@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static inline int hostapd_ucode_dpp_rx_action(struct hostapd_data *hapd,
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -64,6 +64,12 @@ hostapd.data.bss_info_fields = {
+@@ -64,6 +64,18 @@ hostapd.data.bss_info_fields = {
  hostapd.data.mld = {};
  hostapd.data.dpp_hooks = {};
  
@@ -108,61 +108,74 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +const HAPD_IFACE_DFS = 5;
 +const NOTIFY_CMD_SETUP_FAILED = 5;
 +
++const SETUP_FAIL_REASON = {
++	[HAPD_IFACE_ACS]: "ACS_FAILED",
++	[HAPD_IFACE_DFS]: "DFS_FAILED",
++	[HAPD_IFACE_HT_SCAN]: "HT_SCAN_FAILED",
++};
++
  function iface_remove(cfg)
  {
  	if (!cfg || !cfg.bss || !cfg.bss[0] || !cfg.bss[0].ifname)
-@@ -1023,24 +1029,30 @@ function iface_set_config(name, config)
+@@ -1025,7 +1037,7 @@ function iface_config_remove(name, old_c
+ 	return iface_remove(old_config);
+ }
+ 
+-function iface_set_config(name, config)
++function iface_set_config_apply(name, config)
+ {
+ 	let old_config = hostapd.data.config[name];
+ 
+@@ -1060,8 +1072,20 @@ function iface_set_config(name, config)
  	}
  
- 	hostapd.data.config[name] = config;
-+	hostapd.data.configuring = name;
- 
- 	let phy = config.phy;
- 	let phydev = phy_open(phy, config.radio_idx);
- 	if (!phydev) {
- 		hostapd.printf(`Failed to open phy ${phy}`);
-+		delete hostapd.data.configuring;
- 		return false;
- 	}
- 
- 	config.orig_bss = [ ...config.bss ];
- 	iface_check_mld(phydev, name, config);
--	if (!length(config.bss))
--		return iface_config_remove(name, old_config);
-+	if (!length(config.bss)) {
-+		let ret = iface_config_remove(name, old_config);
-+		delete hostapd.data.configuring;
-+		return ret;
-+	}
- 
- 	try {
- 		let ret = iface_reload_config(name, phydev, config, old_config);
- 		if (ret) {
- 			iface_update_supplicant_macaddr(phydev, config);
- 			hostapd.printf(`Reloaded settings for phy ${name}`);
-+			delete hostapd.data.configuring;
- 			return 0;
- 		}
- 	} catch (e) {
-@@ -1050,6 +1062,7 @@ function iface_set_config(name, config)
  	hostapd.printf(`Restart interface for phy ${name}`);
- 	let ret = iface_restart(phydev, config, old_config);
+-	let ret = iface_restart(phydev, config, old_config);
++	return iface_restart(phydev, config, old_config);
++}
++
++function iface_set_config(name, config)
++{
++	let ret;
  
++	hostapd.data.configuring = name;
++	try {
++		ret = iface_set_config_apply(name, config);
++	} catch (e) {
++		ret = ex_handler(e);
++	}
 +	delete hostapd.data.configuring;
  	return ret;
  }
  
-@@ -1461,7 +1474,9 @@ let main_obj = {
+@@ -1473,7 +1497,9 @@ let main_obj = {
  
  			if (!req.args.up) {
  				delete hostapd.data.apsta_freq[phy];
-+				hostapd.data.apsta_stopping = phy;
++				hostapd.data.configuring = phy;
  				iface.stop();
-+				delete hostapd.data.apsta_stopping;
++				delete hostapd.data.configuring;
  				return 0;
  			}
  
-@@ -1589,6 +1604,7 @@ let main_obj = {
+@@ -1525,7 +1551,15 @@ let main_obj = {
+ 			if (!freq_info)
+ 				return 0;
+ 
+-			if (!iface.start(freq_info))
++			/*
++			 * Starting a parked iface goes through a disable/enable
++			 * cycle whose DFS->DISABLED transition must not be
++			 * reported as a setup failure.
++			 */
++			hostapd.data.configuring = phy;
++			let ret = iface.start(freq_info);
++			delete hostapd.data.configuring;
++			if (!ret)
+ 				return fail();
+ 
+ 			return 0;
+@@ -1612,6 +1646,7 @@ let main_obj = {
  			radio: 0,
  			config: "",
  			prev_config: "",
@@ -170,7 +183,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
  		call: function(req) {
  			let phy = req.args.phy;
-@@ -1596,18 +1612,23 @@ let main_obj = {
+@@ -1619,18 +1654,23 @@ let main_obj = {
  			let name = phy_name(phy, radio);
  			let file = req.args.config;
  			let prev_file = req.args.prev_config;
@@ -195,7 +208,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			hostapd.printf(`Set new config for phy ${name}: ${file}`);
  			iface_set_config(name, config);
-@@ -1826,4 +1847,38 @@ return {
+@@ -1849,4 +1889,26 @@ return {
  			return null;
  		return response;
  	},
@@ -203,28 +216,16 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		if (new_state != HAPD_IFACE_DISABLED)
 +			return;
 +
-+		if (old_state != HAPD_IFACE_ACS &&
-+		    old_state != HAPD_IFACE_DFS &&
-+		    old_state != HAPD_IFACE_HT_SCAN)
++		let reason = SETUP_FAIL_REASON[old_state];
++		if (!reason)
 +			return;
 +
 +		if (hostapd.data.configuring == phy)
 +			return;
 +
-+		if (hostapd.data.apsta_stopping == phy)
-+			return;
-+
 +		let cfg = hostapd.data.config[phy];
 +		if (!cfg || !cfg.device)
 +			return;
-+
-+		let reason;
-+		if (old_state == HAPD_IFACE_ACS)
-+			reason = "ACS_FAILED";
-+		else if (old_state == HAPD_IFACE_DFS)
-+			reason = "DFS_FAILED";
-+		else
-+			reason = "HT_SCAN_FAILED";
 +
 +		hostapd.printf(`Interface ${phy} setup failed: ${reason}`);
 +		ubus.call("network.wireless", "notify", {
