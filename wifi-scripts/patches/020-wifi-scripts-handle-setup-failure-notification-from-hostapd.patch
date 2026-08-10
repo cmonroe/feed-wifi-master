@@ -14,15 +14,48 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/lib/netifd/wireless-device.uc
 +++ b/src/lib/netifd/wireless-device.uc
-@@ -8,6 +8,7 @@ const NOTIFY_CMD_UP = 0;
+@@ -8,6 +8,8 @@ const NOTIFY_CMD_UP = 0;
  const NOTIFY_CMD_SET_DATA = 1;
  const NOTIFY_CMD_PROCESS_ADD = 2;
  const NOTIFY_CMD_SET_RETRY = 4;
 +const NOTIFY_CMD_SETUP_FAILED = 5;
++const SETUP_FAIL_LIMIT = 5;
  
  const DEFAULT_RETRY = 3;
  const DEFAULT_SCRIPT_TIMEOUT = 30 * 1000;
-@@ -547,6 +548,18 @@ function notify(req)
+@@ -378,6 +380,15 @@ function wdev_reset(wdev)
+ 	delete wdev.retry_setup_failed;
+ }
+ 
++function wdev_has_sta_vif(wdev)
++{
++	for (let vif in wdev.data.vif)
++		if (vif.config?.mode == "sta" && !wdev.disabled_vifs?.[vif.name])
++			return true;
++
++	return false;
++}
++
+ function update(data)
+ {
+ 	if (is_equal(this.data, data))
+@@ -387,6 +398,7 @@ function update(data)
+ 		this.data = data;
+ 		this.ifindex_cache = {};
+ 		delete this.retry_setup_failed;
++		delete this.setup_fail_count;
+ 		delete this.delete;
+ 	}
+ 
+@@ -471,6 +483,7 @@ function wdev_mark_up(wdev)
+ 	}
+ 
+ 	wdev_reset(wdev);
++	delete wdev.setup_fail_count;
+ 
+ 	for (let section, data in wdev.handler_data) {
+ 		if (data.ifname)
+@@ -547,6 +560,35 @@ function notify(req)
  		else
  			this.retry = DEFAULT_RETRY;
  		return 0;
@@ -31,9 +64,26 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +			return 0;
 +
 +		netifd.log(netifd.L_WARNING, `wireless: ${this.name}: setup failed: ${data?.reason ?? "unknown"}\n`);
-+		if (this.retry > 0)
-+			this.retry--;
-+		else
++
++		/*
++		 * With a colocated STA the device must stay up: a teardown
++		 * would destroy the STA link the deferred AP depends on. The
++		 * AP side retries through hostapd once the STA provides a
++		 * usable channel.
++		 */
++		if (wdev_has_sta_vif(this)) {
++			netifd.log(netifd.L_WARNING, `wireless: ${this.name}: keeping device up for STA link\n`);
++			return 0;
++		}
++
++		/*
++		 * retry/retry_setup_failed are re-armed by wdev_reset() on
++		 * every start(), so a restart loop never exhausts them. Track
++		 * failures in a counter only cleared on config change or a
++		 * successful setup.
++		 */
++		this.setup_fail_count = (this.setup_fail_count ?? 0) + 1;
++		if (this.setup_fail_count >= SETUP_FAIL_LIMIT)
 +			this.retry_setup_failed = true;
 +
 +		this.teardown();

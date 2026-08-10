@@ -13,8 +13,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/netifd/wireless-device.uc
 +++ b/src/lib/netifd/wireless-device.uc
-@@ -379,11 +379,51 @@ function wdev_reset(wdev)
- 	delete wdev.retry_setup_failed;
+@@ -389,11 +389,51 @@ function wdev_has_sta_vif(wdev)
+ 	return false;
  }
  
 +function wdev_channel_only_change(old_data, new_data)
