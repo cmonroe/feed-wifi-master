@@ -1,0 +1,39 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 10 Jun 2026 05:57:34 -0700
+Subject: [PATCH] wifi-scripts: replace wifi config with wifi-detect in ieee80211 hotplug
+
+The ieee80211 hotplug ran 'wifi config' concurrently with the boot-time
+uci-defaults scripts writing the wireless config. uci batch is not
+atomic and its commit truncates the shared delta file, so concurrent
+writers corrupt /etc/config/wireless: radio sections land mid-file and
+uncommitted options are silently lost.
+
+Config generation moved to the uci-defaults sequence, so drop the
+'wifi config' call and run 'wifi-detect' in its place.
+'wifi-detect' is what refreshes /etc/board.json's wlan hardware capabilities,
+and those still need refreshing here: init.d/boot runs 'wifi config'
+before the phys register, and board.json is regenerated every boot,
+so otherwise the wlan caps stay empty and the ucode iwinfo reports
+no modes on every boot after the first.
+wifi-detect only rewrites /etc/board.json and touches no uci state,
+so it does not reintroduce the config race.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
+---
+ src/etc/hotplug.d/ieee80211/10-wifi-detect |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/src/etc/hotplug.d/ieee80211/10-wifi-detect
++++ b/src/etc/hotplug.d/ieee80211/10-wifi-detect
+@@ -1,6 +1,9 @@
+ #!/bin/sh
+
++# wireless config generation happens in the uci-defaults sequence;
++# running 'wifi config' here raced those scripts' uncommitted changes
+ [ "${ACTION}" = "add" ] && [ -f /etc/board.json ] && {
+-	/sbin/wifi config
++	# but board.json's wlan caps still need refreshing once the phys are up
++	ucode /usr/share/hostap/wifi-detect.uc
+ 	ubus call network.wireless retry
+ }
