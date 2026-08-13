@@ -1,0 +1,40 @@
+From: colinw <colin.whittaker@adtran.com>
+Date: Thu, 13 Aug 2026 12:43:34 -0700
+Subject: [PATCH] hostapd: send WPS passphrase even when wpa_psk_file is set
+
+When wpa_psk_file is set, hostapd_init_wps() and hostapd_update_wps()
+left wps->network_key NULL. WPS credential generation then fell through
+to a random per-device PSK in wps_build_cred(). Copy the configured
+wpa_passphrase or wpa_psk into network_key even when wpa_psk_file is set,
+so WPS sends the shared passphrase to the enrollee. The wpa_psk_file
+per-device lookup path stays in place.
+
+Signed-off-by: colinw <colin.whittaker@adtran.com>
+---
+ src/ap/wps_hostapd.c |    8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+--- a/src/ap/wps_hostapd.c
++++ b/src/ap/wps_hostapd.c
+@@ -1235,9 +1235,7 @@ int hostapd_init_wps(struct hostapd_data
+ 		wps->auth_types |= WPS_AUTH_OPEN;
+ 	}
+ 
+-	if (conf->ssid.wpa_psk_file) {
+-		/* Use per-device PSKs */
+-	} else if (conf->ssid.wpa_passphrase) {
++	if (conf->ssid.wpa_passphrase) {
+ 		wps->network_key = (u8 *) os_strdup(conf->ssid.wpa_passphrase);
+ 		wps->network_key_len = os_strlen(conf->ssid.wpa_passphrase);
+ 	} else if (conf->ssid.wpa_psk) {
+@@ -1483,9 +1481,7 @@ void hostapd_update_wps(struct hostapd_d
+ 	wps->network_key = NULL;
+ 	wps->network_key_len = 0;
+ 	wps->psk_set = 0;
+-	if (conf->ssid.wpa_psk_file) {
+-		/* Use per-device PSKs */
+-	} else if (conf->ssid.wpa_passphrase) {
++	if (conf->ssid.wpa_passphrase) {
+ 		wps->network_key = (u8 *) os_strdup(conf->ssid.wpa_passphrase);
+ 		if (!wps->network_key)
+ 			return;
