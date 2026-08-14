@@ -1,0 +1,46 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 14 Aug 2026 06:14:14 -0700
+Subject: [PATCH] wifi-scripts: derive 6G LPI settings from country
+
+Emit the lpi_psd and lpi_bcn_enhance hostapd options for a 6G radio
+when the active country uses PSD limits (US, CA, KR, BR, CL, MY). The
+country list must match psd_country_list in the mt76 driver.
+
+The previous approach (SDG-1871) used static wifi-device options. The
+uci defaults set them once from the factory country, and later country
+changes never re-evaluated them. A unit moved to a non-PSD country
+kept LPI mode enabled. Its beacons went out as 80 MHz duplicates with
+no PSD power boost, so a 20 MHz scan receiver measured them about
+6 dB low. Mesh link scoring and backhaul throughput suffered.
+
+Derive the setting from country_code at config generation time so it
+follows every country change on wifi reload.
+
+Fixes: SDG-8629
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+--- a/src/usr/share/ucode/wifi/hostapd.uc
++++ b/src/usr/share/ucode/wifi/hostapd.uc
+@@ -16,6 +16,9 @@ const NL80211_EXT_FEATURE_RADAR_BACKGROU
+ 
+ const WLAN_CIPHER_SUITE_GCMP_256 = 0x000fac09;
+ 
++/* must match psd_country_list in mt76 mt7996_is_psd_country() */
++const lpi_psd_countries = [ 'US', 'CA', 'KR', 'BR', 'CL', 'MY' ];
++
+ let phy_features = {};
+ let phy_capabilities = {};
+ 
+@@ -534,6 +537,11 @@ function generate(config) {
+ 	if (config.acs_exclude_6ghz_non_psc)
+ 		append('acs_exclude_6ghz_non_psc', 1);
+ 
++	if (config.band == '6g' && index(lpi_psd_countries, config.country_code) >= 0) {
++		append('lpi_psd', 1);
++		append('lpi_bcn_enhance', 1);
++	}
++
+ 	/* TX Power */
+ 	append_vars(config, [ 'min_tx_power' ]);
+ 
