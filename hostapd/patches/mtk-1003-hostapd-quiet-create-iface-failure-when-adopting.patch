@@ -1,0 +1,61 @@
+From: Koral Ilgun <koral.ilgun@adtran.com>
+Subject: [PATCH] nl80211: do not log an adopted interface clash as an error
+
+nl80211_create_iface() is called with use_existing=1 during radio
+reconfiguration. The kernel returns ENFILE from NL80211_CMD_NEW_INTERFACE
+when a netdev of that name already exists, and the caller then adopts it
+("Continue using existing interface"). The failure is expected on that
+path, but it was logged at error level, so every boot produced several
+"Failed to create interface wifiXg: -23 (Too many open files in system)"
+lines that look like fd exhaustion.
+
+Pass use_existing down and log the clash at debug level when the netdev
+exists. A real create failure, and the retry after the interface is
+removed, still log at error level.
+
+Index: hostapd-2026.07.09~f08f2749/src/drivers/driver_nl80211.c
+===================================================================
+--- hostapd-2026.07.09~f08f2749.orig/src/drivers/driver_nl80211.c
++++ hostapd-2026.07.09~f08f2749/src/drivers/driver_nl80211.c
+@@ -6851,7 +6851,7 @@ static int nl80211_create_iface_once(str
+ 				     enum nl80211_iftype iftype,
+ 				     const u8 *addr, int wds, u32 radio_mask,
+ 				     int (*handler)(struct nl_msg *, void *),
+-				     void *arg)
++				     void *arg, int use_existing)
+ {
+ 	struct nl_msg *msg;
+ 	int ifidx;
+@@ -6927,7 +6927,12 @@ static int nl80211_create_iface_once(str
+ 	if (ret) {
+ 	fail:
+ 		nlmsg_free(msg);
+-		wpa_printf(MSG_ERROR, "Failed to create interface %s: %d (%s)",
++		/* With use_existing the caller adopts the existing netdev, so a
++		 * name clash here is expected and handled in
++		 * nl80211_create_iface(). Do not report it as an error. */
++		wpa_printf((use_existing && if_nametoindex(ifname)) ?
++			   MSG_DEBUG : MSG_ERROR,
++			   "Failed to create interface %s: %d (%s)",
+ 			   ifname, ret, strerror(-ret));
+ 		return ret;
+ 	}
+@@ -6973,7 +6978,7 @@ int nl80211_create_iface(struct wpa_driv
+ 	int ret;
+ 
+ 	ret = nl80211_create_iface_once(drv, ifname, iftype, addr, wds, radio_mask,
+-					handler, arg);
++					handler, arg, use_existing);
+ 
+ 	/* if error occurred and interface exists already */
+ 	if (ret < 0 && if_nametoindex(ifname)) {
+@@ -6999,7 +7004,8 @@ int nl80211_create_iface(struct wpa_driv
+ 
+ 		/* Try to create the interface again */
+ 		ret = nl80211_create_iface_once(drv, ifname, iftype, addr,
+-						wds, radio_mask, handler, arg);
++						wds, radio_mask, handler, arg,
++						0);
+ 	}
+ 
+ 	if (ret >= 0 && is_p2p_net_interface(iftype)) {
