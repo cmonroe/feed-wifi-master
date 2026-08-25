@@ -240,7 +240,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	u32 rxfilter;
  	u64 omac_mask;
-@@ -859,6 +860,7 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -867,6 +868,7 @@ int mt7996_mcu_get_chan_mib_info(struct
  int mt7996_mcu_get_temperature(struct mt7996_phy *phy);
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);

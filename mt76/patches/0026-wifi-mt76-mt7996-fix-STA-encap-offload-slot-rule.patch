@@ -1,0 +1,97 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 24 Aug 2026 17:29:19 -0700
+Subject: [PATCH] wifi: mt76: mt7996: fix STA encap offload slot rule
+
+Hardware header translation in station mode only works for own-MAC
+slots HW_BSSID_1..3. Since the switch to a single multi-radio wiphy
+the slot is assigned at chanctx time, and clearing vif->offload_flags
+in mt7996_vif_link_add() comes too late to change the netdev TX path.
+The 4th and later station interfaces on a band therefore send data
+through an unusable hardware encap path and never pass traffic.
+
+Apply the rule in an .update_vif_offload callback, which mac80211
+calls after chanctx changes, and drop the zeroing in
+mt7996_vif_link_add(), which also wiped ENCAP_4ADDR and misfired for
+offchannel scan links. Keeping hardware encap on extended slots with
+MDP address translation disabled was tested and still fails.
+
+Fixes: d258f4e3e1ca ("wifi: mt76: mt7996: switch to single multi-radio wiphy")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c   |   33 +++++++++++++++++++++++++++++----
+ mt7996/mt7996.h |    8 ++++++++
+ 2 files changed, 37 insertions(+), 4 deletions(-)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -359,10 +359,6 @@ int mt7996_vif_link_add(struct mt76_phy
+ 	mt7996_mac_wtbl_update(dev, idx,
+ 			       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
+ 
+-	if (vif->type != NL80211_IFTYPE_AP &&
+-	    (!mlink->omac_idx || mlink->omac_idx > 3))
+-		vif->offload_flags = 0;
+-
+ 	if (phy->mt76->chandef.chan->band != NL80211_BAND_2GHZ)
+ 		mlink->basic_rates_idx = MT7996_BASIC_RATES_TBL + 4;
+ 	else
+@@ -2089,6 +2085,34 @@ static void mt7996_sta_set_4addr(struct
+ 	mutex_unlock(&dev->mt76.mutex);
+ }
+ 
++static void mt7996_update_vif_offload(struct ieee80211_hw *hw,
++				      struct ieee80211_vif *vif)
++{
++	struct mt7996_vif *mvif = (struct mt7996_vif *)vif->drv_priv;
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	unsigned long links = mvif->mt76.valid_links;
++	unsigned int link_id;
++
++	if (vif->type == NL80211_IFTYPE_AP)
++		return;
++
++	mutex_lock(&dev->mt76.mutex);
++
++	for_each_set_bit(link_id, &links, IEEE80211_MLD_MAX_NUM_LINKS) {
++		struct mt7996_vif_link *link;
++
++		link = mt7996_vif_link(dev, vif, link_id);
++		if (!link || mt7996_omac_idx_hw_capable(link->mt76.omac_idx))
++			continue;
++
++		vif->offload_flags &= ~(IEEE80211_OFFLOAD_ENCAP_ENABLED |
++					IEEE80211_OFFLOAD_DECAP_ENABLED);
++		break;
++	}
++
++	mutex_unlock(&dev->mt76.mutex);
++}
++
+ static void mt7996_sta_set_decap_offload(struct ieee80211_hw *hw,
+ 					 struct ieee80211_vif *vif,
+ 					 struct ieee80211_sta *sta,
+@@ -2626,6 +2650,7 @@ const struct ieee80211_ops mt7996_ops =
+ 	.set_coverage_class = mt7996_set_coverage_class,
+ 	.sta_statistics = mt7996_sta_statistics,
+ 	.sta_set_4addr = mt7996_sta_set_4addr,
++	.update_vif_offload = mt7996_update_vif_offload,
+ 	.sta_set_decap_offload = mt7996_sta_set_decap_offload,
+ 	.sta_set_airtime_weight = mt7996_sta_set_airtime_weight,
+ 	.add_twt_setup = mt7996_mac_add_twt_setup,
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -670,6 +670,14 @@ mt7996_band_phy(struct mt7996_dev *dev,
+ 	return mphy->priv;
+ }
+ 
++/* Non-AP interfaces only have hardware own-MAC support (TX header
++ * translation, MDP address translation) on slots HW_BSSID_1..3.
++ */
++static inline bool mt7996_omac_idx_hw_capable(u8 omac_idx)
++{
++	return omac_idx >= HW_BSSID_1 && omac_idx <= HW_BSSID_MAX;
++}
++
+ static inline struct mt7996_vif_link *
+ mt7996_vif_link(struct mt7996_dev *dev, struct ieee80211_vif *vif, int link_id)
+ {

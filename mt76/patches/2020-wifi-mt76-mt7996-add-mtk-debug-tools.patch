@@ -288,7 +288,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool vow_atf_en;
  };
  
-@@ -1033,6 +1045,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1041,6 +1053,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  

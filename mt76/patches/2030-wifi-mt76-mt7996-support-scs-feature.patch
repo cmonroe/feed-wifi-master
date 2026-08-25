@@ -43,7 +43,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2347,6 +2347,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2350,6 +2350,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  		set_bit(MT76_RESET, &phy->mt76->state);
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
  	}
@@ -81,7 +81,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wiphy_delayed_work_cancel(phy->mt76->hw->wiphy,
  				  &phy->mt76->assoc_chan_work);
  
-@@ -2683,6 +2690,8 @@ mt7996_reconfig_complete(struct ieee8021
+@@ -2707,6 +2714,8 @@ mt7996_reconfig_complete(struct ieee8021
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -266,7 +266,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -1051,6 +1064,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+@@ -1059,6 +1072,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
  #endif
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);

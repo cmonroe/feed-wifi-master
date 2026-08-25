@@ -1,0 +1,34 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 24 Aug 2026 20:35:50 -0700
+Subject: [PATCH] wifi: mt76: mt7996: disable MAT for STA on ext slots
+
+MDP address translation only has usable own-MAC state for slots
+HW_BSSID_1..3. Since the MLO rework enables it for all data frames, a
+non-MLD station link on an extended BSSID slot gets its unicast data
+mangled and never acknowledged. EAPOL, management and multicast
+frames already carry MT_TXD6_DIS_MAT, so the interface associates but
+passes no data.
+
+Disable MAT for non-AP, non-MLD interfaces on slots outside
+HW_BSSID_1..3. AP interfaces and MLD links keep the translation.
+
+Fixes: e0b422f2acaf ("wifi: mt76: mt7996: rework mt7996_mac_write_txwi() for MLO support")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mac.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -975,7 +975,10 @@ void mt7996_mac_write_txwi(struct mt7996
+ 
+ 	val = MT_TXD6_DAS | MT_TXD6_VTA;
+ 	if ((q_idx >= MT_LMAC_ALTX0 && q_idx <= MT_LMAC_BCN0) ||
+-	    skb->protocol == cpu_to_be16(ETH_P_PAE))
++	    skb->protocol == cpu_to_be16(ETH_P_PAE) ||
++	    (vif && vif->type != NL80211_IFTYPE_AP &&
++	     !ieee80211_vif_is_mld(vif) &&
++	     !mt7996_omac_idx_hw_capable(omac_idx)))
+ 		val |= MT_TXD6_DIS_MAT;
+ 
+ 	if (is_mt7996(&dev->mt76))

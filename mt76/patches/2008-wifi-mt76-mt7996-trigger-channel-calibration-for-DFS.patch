@@ -43,7 +43,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -2667,6 +2674,44 @@ mt7996_set_eml_op_mode(struct ieee80211_
+@@ -2691,6 +2698,44 @@ mt7996_set_eml_op_mode(struct ieee80211_
  	return ret;
  }
  
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  const struct ieee80211_ops mt7996_ops = {
  	.add_chanctx = mt76_add_chanctx,
  	.remove_chanctx = mt76_remove_chanctx,
-@@ -2699,6 +2744,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2723,6 +2768,7 @@ const struct ieee80211_ops mt7996_ops =
  	.get_txpower = mt7996_get_txpower,
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
  	.post_channel_switch = mt7996_post_channel_switch,

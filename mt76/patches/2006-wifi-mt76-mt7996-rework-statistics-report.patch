@@ -271,7 +271,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  /* The HW does not translate the mac header to 802.3 for mesh point */
  static int mt7996_reverse_frag0_hdr_trans(struct sk_buff *skb, u16 hdr_gap)
  {
-@@ -1465,8 +1352,6 @@ next:
+@@ -1468,8 +1355,6 @@ next:
  		}
  	}
  
@@ -280,7 +280,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -1480,25 +1365,25 @@ next:
+@@ -1483,25 +1368,25 @@ next:
  
  static bool
  mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
@@ -315,7 +315,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		skb = mt76_tx_status_skb_get(mdev, wcid, pid, &list);
  		if (skb) {
  			info = IEEE80211_SKB_CB(skb);
-@@ -1511,119 +1396,33 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1514,119 +1399,33 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  
  			info->status.rates[0].idx = -1;
  		}
@@ -453,7 +453,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	mt76_tx_status_unlock(mdev, &list);
  
  	return !!skb;
-@@ -1631,13 +1430,13 @@ out:
+@@ -1634,13 +1433,13 @@ out:
  
  static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
  {
@@ -470,7 +470,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	pid = le32_get_bits(txs_data[3], MT_TXS3_PID);
  
  	if (pid < MT_PACKET_ID_NO_SKB)
-@@ -1649,14 +1448,16 @@ static void mt7996_mac_add_txs(struct mt
+@@ -1652,14 +1451,16 @@ static void mt7996_mac_add_txs(struct mt
  	if (!wcid)
  		goto out;
  
@@ -492,7 +492,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -3034,34 +2835,81 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -3037,34 +2838,81 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -585,7 +585,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1140,7 +1140,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1136,7 +1136,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
  	struct mt7996_phy *phy = mt7996_vif_link_phy(link);
  	struct mt7996_sta_link *msta_link;
@@ -594,7 +594,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	if (!phy)
  		return -EINVAL;
-@@ -1179,6 +1179,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1175,6 +1175,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
  
  	ewma_avg_signal_init(&msta_link->avg_ack_signal);
  	ewma_signal_init(&msta_link->wcid.rssi);
@@ -604,7 +604,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	rcu_assign_pointer(msta->link[link_id], msta_link);
  
-@@ -1933,6 +1936,87 @@ static void mt7996_sta_statistics(struct
+@@ -1929,6 +1932,87 @@ static void mt7996_sta_statistics(struct
  	}
  }
  
@@ -692,14 +692,14 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
  					 struct mt7996_sta_link *msta_link)
  {
-@@ -2628,6 +2712,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2652,6 +2736,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_bitrate_mask = mt7996_set_bitrate_mask,
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,
 +	.link_sta_statistics = mt7996_link_sta_statistics,
  	.sta_set_4addr = mt7996_sta_set_4addr,
+ 	.update_vif_offload = mt7996_update_vif_offload,
  	.sta_set_decap_offload = mt7996_sta_set_decap_offload,
- 	.sta_set_airtime_weight = mt7996_sta_set_airtime_weight,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
 @@ -639,42 +639,167 @@ out:
@@ -1314,7 +1314,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	unsigned long changed;
  
  	struct mt76_connac_sta_key_conf bip;
-@@ -856,7 +867,9 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -864,7 +875,9 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);

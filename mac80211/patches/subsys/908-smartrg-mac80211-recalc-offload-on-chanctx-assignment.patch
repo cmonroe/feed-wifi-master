@@ -1,0 +1,108 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 24 Aug 2026 17:29:07 -0700
+Subject: [PATCH] wifi: mac80211: recalc offload on chanctx assignment
+
+mac80211 selects the netdev TX path (802.3 or 802.11 ops) once in
+ieee80211_do_open(), right after .add_interface, and never re-reads
+vif->offload_flags. A driver with a single multi-radio wiphy only
+learns per-radio offload constraints when a link is bound to a
+channel context, so a veto at that point has no effect on TX.
+
+Re-run the offload recalculation after a link is assigned to,
+released from, or switched between channel contexts. Consult the
+driver via .update_vif_offload even when the mac80211 policy flags
+did not change, and re-check fast rx after the driver adjusted them.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/mac80211/chan.c        |   18 ++++++++++++++++++
+ net/mac80211/ieee80211_i.h |    1 +
+ net/mac80211/iface.c       |    2 +-
+ 3 files changed, 20 insertions(+), 1 deletion(-)
+
+--- a/net/mac80211/chan.c
++++ b/net/mac80211/chan.c
+@@ -899,6 +899,21 @@ static void ieee80211_recalc_radar_chanc
+ 	drv_change_chanctx(local, chanctx, IEEE80211_CHANCTX_CHANGE_RADAR);
+ }
+ 
++/* Drivers may only learn the offload capabilities of a link once it is bound
++ * to a channel context (e.g. hardware address slots assigned per radio), so
++ * let them veto the encap/decap offload flags again and re-select the netdev
++ * ops accordingly.
++ */
++static void ieee80211_link_recalc_offload(struct ieee80211_link_data *link)
++{
++	struct ieee80211_sub_if_data *sdata = link->sdata;
++
++	if (!ieee80211_sdata_running(sdata))
++		return;
++
++	ieee80211_recalc_sdata_offload(sdata);
++}
++
+ static int ieee80211_assign_link_chanctx(struct ieee80211_link_data *link,
+ 					 struct ieee80211_chanctx *new_ctx,
+ 					 bool assign_on_failure)
+@@ -981,6 +996,7 @@ static int ieee80211_assign_link_chanctx
+ 	}
+ 
+ 	ieee80211_check_fast_xmit_iface(sdata);
++	ieee80211_link_recalc_offload(link);
+ 
+ 	return ret;
+ }
+@@ -1418,6 +1434,7 @@ ieee80211_link_use_reserved_reassign(str
+ 		__ieee80211_link_copy_chanctx_to_vlans(link, false);
+ 
+ 	ieee80211_check_fast_xmit_iface(sdata);
++	ieee80211_link_recalc_offload(link);
+ 
+ 	if (ieee80211_chanctx_refcount(local, old_ctx) == 0)
+ 		ieee80211_free_chanctx(local, old_ctx, false);
+@@ -1762,6 +1779,7 @@ static int ieee80211_vif_use_reserved_sw
+ 								       false);
+ 
+ 			ieee80211_check_fast_xmit_iface(sdata);
++			ieee80211_link_recalc_offload(link);
+ 
+ 			link->radar_required = link->reserved_radar_required;
+ 
+--- a/net/mac80211/ieee80211_i.h
++++ b/net/mac80211/ieee80211_i.h
+@@ -2123,6 +2123,7 @@ void ieee80211_del_virtual_monitor(struc
+ bool __ieee80211_recalc_txpower(struct ieee80211_link_data *link);
+ void ieee80211_recalc_txpower(struct ieee80211_link_data *link,
+ 			      bool update_bss);
++void ieee80211_recalc_sdata_offload(struct ieee80211_sub_if_data *sdata);
+ void ieee80211_recalc_offload(struct ieee80211_local *local);
+ 
+ static inline bool ieee80211_sdata_running(struct ieee80211_sub_if_data *sdata)
+--- a/net/mac80211/iface.c
++++ b/net/mac80211/iface.c
+@@ -1088,15 +1088,20 @@ static void ieee80211_set_vif_encap_ops(
+ 					   &ieee80211_dataif_ops;
+ }
+ 
+-static void ieee80211_recalc_sdata_offload(struct ieee80211_sub_if_data *sdata)
++void ieee80211_recalc_sdata_offload(struct ieee80211_sub_if_data *sdata)
+ {
+ 	struct ieee80211_local *local = sdata->local;
+ 	struct ieee80211_sub_if_data *vsdata;
+ 
+-	if (ieee80211_set_sdata_offload_flags(sdata)) {
+-		drv_update_vif_offload(local, sdata);
+-		ieee80211_set_vif_encap_ops(sdata);
+-	}
++	/* The driver veto below may depend on state the policy flags cannot
++	 * see (e.g. per-radio address slots assigned at chanctx time), so
++	 * consult the driver even when the policy flags did not change, and
++	 * re-check fast rx only after the driver adjusted the flags.
++	 */
++	ieee80211_set_sdata_offload_flags(sdata);
++	drv_update_vif_offload(local, sdata);
++	ieee80211_check_fast_rx_iface(sdata);
++	ieee80211_set_vif_encap_ops(sdata);
+ 
+ 	list_for_each_entry(vsdata, &local->interfaces, list) {
+ 		if (vsdata->vif.type != NL80211_IFTYPE_AP_VLAN ||

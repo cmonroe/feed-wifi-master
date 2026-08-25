@@ -113,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
  
-@@ -688,6 +701,8 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -684,6 +697,8 @@ int mt7996_set_channel(struct mt76_phy *
  {
  	struct mt7996_phy *phy = mphy->priv;
  	int ret;
@@ -122,7 +122,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
-@@ -706,7 +721,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -702,7 +717,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
@@ -133,7 +133,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (ret)
  		goto out;
  
-@@ -902,7 +919,7 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -898,7 +915,7 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -330,7 +330,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		target_power = DIV_ROUND_UP(target_power, 2);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -919,7 +919,7 @@ void mt7996_mac_write_txwi(struct mt7996
+@@ -922,7 +922,7 @@ void mt7996_mac_write_txwi(struct mt7996
  		if (mcast)
  			val |= MT_TXD6_DIS_MAT;
  		if (dev->mt76.phys[band_idx]->cap.has_6ghz &&

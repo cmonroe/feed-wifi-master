@@ -99,7 +99,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -990,6 +993,7 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
+@@ -998,6 +1001,7 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
  int mt7996_mcu_ps_leave(struct mt7996_dev *dev, struct mt7996_vif_link *link,
  			struct mt7996_sta_link *msta_link);
  int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode);

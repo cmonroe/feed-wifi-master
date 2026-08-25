@@ -476,7 +476,7 @@ Squash of the following MediaTek commits:
  	struct {
  		u16 table_mask;
  		u8 n_agrt;
-@@ -785,6 +806,7 @@ int mt7996_vif_link_add(struct mt76_phy
+@@ -793,6 +814,7 @@ int mt7996_vif_link_add(struct mt76_phy
  void mt7996_vif_link_remove(struct mt76_phy *mphy, struct ieee80211_vif *vif,
  			    struct ieee80211_bss_conf *link_conf,
  			    struct mt76_vif_link *mlink);
@@ -484,7 +484,7 @@ Squash of the following MediaTek commits:
  int mt7996_eeprom_init(struct mt7996_dev *dev);
  int mt7996_eeprom_parse_hw_cap(struct mt7996_dev *dev, struct mt7996_phy *phy);
  int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
-@@ -1064,6 +1086,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+@@ -1072,6 +1094,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
  #endif
  int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
@@ -510,7 +510,7 @@ Squash of the following MediaTek commits:
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -686,6 +686,12 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -682,6 +682,12 @@ int mt7996_set_channel(struct mt76_phy *
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
  

@@ -58,7 +58,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		int target_power = mt7996_eeprom_get_target_power(dev, chan);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -915,8 +915,13 @@ void mt7996_mac_write_txwi(struct mt7996
+@@ -918,8 +918,13 @@ void mt7996_mac_write_txwi(struct mt7996
  		}
  
  		val = FIELD_PREP(MT_TXD6_TX_RATE, idx) | MT_TXD6_FIXED_BW;
@@ -74,7 +74,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	}
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -893,6 +893,7 @@ static u8
+@@ -889,6 +889,7 @@ static u8
  mt7996_get_rates_table(struct mt7996_phy *phy, struct ieee80211_bss_conf *conf,
  		       bool beacon, bool mcast)
  {
@@ -82,7 +82,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_vif_link *mvif = mt76_vif_conf_link(&dev->mt76, conf->vif, conf);
  	u16 rate;
-@@ -901,6 +902,9 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -897,6 +898,9 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -92,7 +92,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* odd index for driver, even index for firmware */
  		idx = MT7996_BEACON_RATES_TBL + 2 * phy->mt76->band_idx;
  		if (phy->beacon_rate != rate)
-@@ -1082,7 +1086,7 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1078,7 +1082,7 @@ mt7996_link_info_changed(struct ieee8021
  	if (changed & BSS_CHANGED_TXPOWER &&
  	    info->txpower != phy->txpower) {
  		phy->txpower = info->txpower;
@@ -283,7 +283,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -915,7 +915,8 @@ int mt7996_mcu_get_temperature(struct mt
+@@ -923,7 +923,8 @@ int mt7996_mcu_get_temperature(struct mt
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);
  int mt7996_mcu_set_thermal_info_query(struct mt7996_phy *phy);

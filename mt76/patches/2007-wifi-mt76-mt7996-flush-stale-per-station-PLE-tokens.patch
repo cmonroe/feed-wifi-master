@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		struct sk_buff *head;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -985,6 +985,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -988,6 +988,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
  	if (id < 0)
  		return id;
  
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* Since the rules of HW MLD address translation are not fully
  	 * compatible with 802.11 EAPOL frame, we do the translation by
  	 * software
-@@ -1211,6 +1215,20 @@ mt7996_txwi_free(struct mt7996_dev *dev,
+@@ -1214,6 +1218,20 @@ mt7996_txwi_free(struct mt7996_dev *dev,
  	__le32 *txwi;
  	u16 wcid_idx;
  
@@ -83,7 +83,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt7996_txp_skb_unmap(mdev, t);
  	if (!t->skb)
  		goto out;
-@@ -1334,6 +1352,12 @@ next:
+@@ -1337,6 +1355,12 @@ next:
  
  			wcid->stats.tx_retries += tx_retries;
  			wcid->stats.tx_failed += tx_failed;
@@ -96,7 +96,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			continue;
  		}
  
-@@ -2868,6 +2892,41 @@ static int mt7996_mac_sta_poll(struct mt
+@@ -2871,6 +2895,41 @@ static int mt7996_mac_sta_poll(struct mt
  	return mt7996_mcu_get_per_sta_info(dev, UNI_PER_STA_PKT_CNT, i, sta_list);
  }
  
@@ -138,7 +138,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt7996_mac_work(struct work_struct *work)
  {
  	struct mt7996_phy *phy;
-@@ -2904,6 +2963,11 @@ void mt7996_mac_work(struct work_struct
+@@ -2907,6 +2966,11 @@ void mt7996_mac_work(struct work_struct
  			           test_bit(MT76_STATE_RUNNING, &mdev->phys[i]->state))
  				break;
  		}
@@ -219,7 +219,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT7996_TX_RING_SIZE		2048
  #define MT7996_TX_MCU_RING_SIZE		256
  #define MT7996_TX_FWDL_RING_SIZE	128
-@@ -824,6 +829,8 @@ int mt7996_mcu_set_fixed_rate_ctrl(struc
+@@ -832,6 +837,8 @@ int mt7996_mcu_set_fixed_rate_ctrl(struc
  int mt7996_mcu_set_fixed_field(struct mt7996_dev *dev, struct mt7996_sta *msta,
  			       void *data, u8 link_id, u32 field);
  int mt7996_mcu_set_eeprom(struct mt7996_dev *dev);
