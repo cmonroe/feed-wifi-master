@@ -21,18 +21,18 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -5214,6 +5214,7 @@ struct cfg80211_ops {
- 				   struct cfg80211_ml_reconf_req *req);
- 	int	(*set_epcs)(struct wiphy *wiphy, struct net_device *dev,
+@@ -5636,6 +5636,7 @@ struct cfg80211_ops {
  			    bool val);
+ 	int	(*start_pd)(struct wiphy *wiphy, struct wireless_dev *wdev);
+ 	void	(*stop_pd)(struct wiphy *wiphy, struct wireless_dev *wdev);
 +	void	(*skip_cac)(struct wireless_dev *wdev, unsigned int link_id);
  };
  
  /*
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -5546,6 +5546,30 @@ ieee80211_set_epcs(struct wiphy *wiphy,
- 	return ieee80211_mgd_set_epcs(sdata, enable);
+@@ -5988,6 +5988,31 @@ ieee80211_set_peer_nan_sched(struct wiph
+ 	return ieee80211_nan_set_peer_sched(sdata, sched);
  }
  
 +static void
@@ -47,25 +47,26 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	if (!link)
 +		return;
 +
-+	wiphy_delayed_work_cancel(sdata->local->hw.wiphy,
++	wiphy_hrtimer_work_cancel(sdata->local->hw.wiphy,
 +				  &link->dfs_cac_timer_work);
-+	if (wdev->cac_started) {
++	if (wdev->links[link_id].cac_started) {
 +		ieee80211_link_release_channel(link);
-+		cac_time_ms = wdev->cac_time_ms;
-+		wdev->cac_start_time = jiffies -
++		cac_time_ms = wdev->links[link_id].cac_time_ms;
++		wdev->links[link_id].cac_start_time = jiffies -
 +				       msecs_to_jiffies(cac_time_ms + 1);
 +		cfg80211_cac_event(wdev->netdev, &link->conf->chanreq.oper,
-+				   NL80211_RADAR_CAC_FINISHED, GFP_KERNEL);
++				   NL80211_RADAR_CAC_FINISHED, GFP_KERNEL,
++				   link_id);
 +	}
 +}
 +
  const struct cfg80211_ops mac80211_config_ops = {
  	.add_virtual_intf = ieee80211_add_iface,
  	.del_virtual_intf = ieee80211_del_iface,
-@@ -5662,4 +5686,5 @@ const struct cfg80211_ops mac80211_confi
- 	.get_radio_mask = ieee80211_get_radio_mask,
- 	.assoc_ml_reconf = ieee80211_assoc_ml_reconf,
+@@ -6106,4 +6131,5 @@ const struct cfg80211_ops mac80211_confi
  	.set_epcs = ieee80211_set_epcs,
+ 	.nan_set_local_sched = ieee80211_set_local_nan_sched,
+ 	.nan_set_peer_sched = ieee80211_set_peer_nan_sched,
 +	.skip_cac = ieee80211_skip_cac,
  };
 --- a/net/wireless/core.h
@@ -90,7 +91,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  #define DEBUGFS_READONLY_FILE(name, buflen, fmt, value...)		\
  static ssize_t name## _read(struct file *file, char __user *userbuf,	\
-@@ -97,18 +98,329 @@ static const struct file_operations ht40
+@@ -118,8 +119,317 @@ static const struct file_operations ht40
  	.llseek = default_llseek,
  };
  
@@ -185,10 +186,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +				if (remain_time > wait_time_ms)
 +					remain_time = 0;
 +			} else if (chan->dfs_state == NL80211_DFS_USABLE) {
-+				if (wdev->cac_started &&
++				if (wdev->links[link_id].cac_started &&
 +				    cfg80211_is_sub_chan(chandef, chan, false)) {
-+					jiffies_passed = jiffies - wdev->cac_start_time;
-+					wait_time_ms = wdev->cac_time_ms;
++					jiffies_passed = jiffies -
++						wdev->links[link_id].cac_start_time;
++					wait_time_ms = wdev->links[link_id].cac_time_ms;
 +					remain_time = (wait_time_ms -
 +						       jiffies_to_msecs(jiffies_passed));
 +				}
@@ -334,7 +336,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +					continue;
 +
 +				if (cfg80211_chandef_dfs_required(wiphy, c, wdev->iftype) > 0 &&
-+				    cfg80211_chandef_dfs_usable(wiphy, c) && wdev->cac_started) {
++				    cfg80211_chandef_dfs_usable(wiphy, c) &&
++				    wdev->links[link_id].cac_started) {
 +					rdev_skip_cac(rdev, wdev, link_id);
 +				}
 +			}
@@ -406,9 +409,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +#define DEBUGFS_ADD(name, chmod)						\
 +	debugfs_create_file(#name, chmod, phyd, &rdev->wiphy, &name## _ops)
  
- void cfg80211_debugfs_rdev_add(struct cfg80211_registered_device *rdev)
- {
- 	struct dentry *phyd = rdev->wiphy.debugfsdir;
+ #define DEBUGFS_RADIO_ADD(name, radio_idx)				\
+ 	debugfs_create_file(#name, 0444, radiod,			\
+@@ -132,11 +442,15 @@ void cfg80211_debugfs_rdev_add(struct cf
+ 	struct dentry *radiod;
+ 	u8 i;
  
 -	DEBUGFS_ADD(rts_threshold);
 -	DEBUGFS_ADD(fragmentation_threshold);
@@ -424,29 +429,30 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	DEBUGFS_ADD(dfs_skip_nop, 0600);
 +	DEBUGFS_ADD(dfs_skip_cac, 0600);
 +	DEBUGFS_ADD(dfs_available_reset, 0600);
- }
  
- struct debugfs_read_work {
+ 	for (i = 0; i < rdev->wiphy.n_radio; i++) {
+ 		radiod = rdev->wiphy.radio_cfg[i].radio_debugfsdir;
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1198,13 +1198,16 @@ __cfg80211_background_cac_event(struct c
+@@ -1250,14 +1250,17 @@ __cfg80211_background_cac_event(struct c
+ 		memcpy(&rdev->cac_done_chandef, chandef, sizeof(*chandef));
  		queue_work(cfg80211_wq, &rdev->propagate_cac_done_wk);
  		cfg80211_sched_dfs_chan_update(rdev);
- 		wdev = rdev->background_radar_wdev;
 +		rdev->background_cac_started = false;
  		break;
  	case NL80211_RADAR_CAC_ABORTED:
+ 		cfg80211_set_cac_state(wiphy, chandef, false);
  		if (!cancel_delayed_work(&rdev->background_cac_done_wk))
  			return;
- 		wdev = rdev->background_radar_wdev;
 +		rdev->background_cac_started = false;
  		break;
  	case NL80211_RADAR_CAC_STARTED:
+ 		cfg80211_set_cac_state(wiphy, chandef, true);
 +		rdev->background_cac_started = true;
  		break;
  	default:
  		return;
-@@ -1285,8 +1288,10 @@ cfg80211_start_background_radar_detectio
+@@ -1340,8 +1343,10 @@ cfg80211_start_background_radar_detectio
  	if (!cac_time_ms)
  		cac_time_ms = IEEE80211_DFS_MIN_CAC_TIME_MS;
  
@@ -459,7 +465,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  					NL80211_RADAR_CAC_STARTED);
 --- a/net/wireless/rdev-ops.h
 +++ b/net/wireless/rdev-ops.h
-@@ -1584,4 +1584,17 @@ rdev_set_epcs(struct cfg80211_registered
+@@ -1636,4 +1636,17 @@ rdev_set_epcs(struct cfg80211_registered
  	return ret;
  }
  
@@ -479,9 +485,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  #endif /* __CFG80211_RDEV_OPS */
 --- a/net/wireless/trace.h
 +++ b/net/wireless/trace.h
-@@ -4226,6 +4226,20 @@ TRACE_EVENT(cfg80211_nan_cluster_joined,
- 		  WDEV_PR_ARG, __entry->cluster_id,
- 		  __entry->new_cluster ? " [new]" : "")
+@@ -4409,6 +4409,20 @@ TRACE_EVENT(cfg80211_nan_channel_evac,
+ 	TP_printk(WDEV_PR_FMT ", " WIPHY_PR_FMT ", " CHAN_DEF_PR_FMT,
+ 		  WDEV_PR_ARG, WIPHY_PR_ARG, CHAN_DEF_PR_ARG)
  );
 +
 +TRACE_EVENT(rdev_skip_cac,

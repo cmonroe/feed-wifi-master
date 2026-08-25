@@ -11,11 +11,11 @@ Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
 
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -1581,6 +1581,7 @@ static int ieee80211_start_ap(struct wip
+@@ -1755,6 +1755,7 @@ static int ieee80211_start_ap(struct wip
  		link_conf->eht_su_beamformer = false;
  		link_conf->eht_su_beamformee = false;
  		link_conf->eht_mu_beamformer = false;
 +		link_conf->eht_support = false;
  	}
  
- 	if (sdata->vif.type == NL80211_IFTYPE_AP &&
+ 	if (params->beacon.uhr_oper) {

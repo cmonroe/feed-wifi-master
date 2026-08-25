@@ -16,7 +16,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
 
 --- a/net/mac80211/tx.c
 +++ b/net/mac80211/tx.c
-@@ -1243,6 +1243,13 @@ ieee80211_tx_prepare(struct ieee80211_su
+@@ -1245,6 +1245,13 @@ ieee80211_tx_prepare(struct ieee80211_su
  		if (!tx->sta && !is_multicast_ether_addr(hdr->addr1)) {
  			tx->sta = sta_info_get(sdata, hdr->addr1);
  			aggr_check = true;

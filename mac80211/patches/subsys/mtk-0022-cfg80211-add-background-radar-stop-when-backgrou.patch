@@ -11,9 +11,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -11231,6 +11231,11 @@ static int nl80211_start_radar_detection
- 	wdev->links[link_id].cac_start_time = jiffies;
+@@ -11980,6 +11980,11 @@ static int nl80211_start_radar_detection
  	wdev->links[link_id].cac_time_ms = cac_time_ms;
+ 	cfg80211_set_cac_state(wiphy, &chandef, true);
  
 +	if (rdev->background_cac_started &&
 +	    cfg80211_is_sub_chan(&chandef, rdev->background_radar_chandef.chan, false)) {

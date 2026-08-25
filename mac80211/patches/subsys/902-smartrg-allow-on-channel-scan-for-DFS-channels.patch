@@ -13,19 +13,19 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/net/mac80211/chan.c
 +++ b/net/mac80211/chan.c
-@@ -665,6 +665,9 @@ bool ieee80211_is_radar_required(struct
- 			continue;
- 
- 		chan = link->conf->chanreq.oper.chan;
+@@ -966,6 +966,9 @@ bool ieee80211_is_radar_required(struct
+ 	for_each_sdata_link(local, link) {
+ 		if (link->radar_required) {
+ 			chan = link->conf->chanreq.oper.chan;
 +
-+		if (req->n_channels == 1 && req->channels[0] == chan)
-+			continue;
- 		radio_idx = cfg80211_get_radio_idx_by_chan(wiphy, chan);
++			if (req->n_channels == 1 && req->channels[0] == chan)
++				continue;
+ 			radio_idx = cfg80211_get_radio_idx_by_chan(wiphy, chan);
  
- 		if (ieee80211_is_radio_idx_in_scan_req(wiphy, req,
+ 			if (ieee80211_is_radio_idx_in_scan_req(wiphy, req,
 --- a/net/mac80211/scan.c
 +++ b/net/mac80211/scan.c
-@@ -1279,8 +1279,9 @@ int ieee80211_request_ibss_scan(struct i
+@@ -1231,8 +1231,9 @@ int ieee80211_request_ibss_scan(struct i
  				struct ieee80211_channel *tmp_ch =
  				    &local->hw.wiphy->bands[band]->channels[i];
  

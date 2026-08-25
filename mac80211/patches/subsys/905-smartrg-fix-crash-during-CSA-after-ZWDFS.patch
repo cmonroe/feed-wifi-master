@@ -1,11 +1,49 @@
---- a/net/mac80211/vht.c
-+++ b/net/mac80211/vht.c
-@@ -365,7 +365,7 @@ __ieee80211_sta_cap_rx_bw(struct link_st
- 		enum nl80211_band band;
- 		u8 info;
+--- a/net/mac80211/sta_info.c
++++ b/net/mac80211/sta_info.c
+@@ -3779,6 +3779,26 @@ ieee80211_sta_usable_bw(struct link_sta_
+ 	return bw;
+ }
  
--		if (chandef) {
-+		if (chandef && chandef->chan) {
- 			band = chandef->chan->band;
- 		} else {
- 			struct ieee80211_bss_conf *link_conf;
++static enum nl80211_band
++ieee80211_sta_chandef_band(struct link_sta_info *link_sta,
++			   struct cfg80211_chan_def *chandef)
++{
++	struct ieee80211_sub_if_data *sdata = link_sta->sta->sdata;
++	struct ieee80211_bss_conf *link_conf;
++	enum nl80211_band band;
++
++	if (chandef->chan)
++		return chandef->chan->band;
++
++	/* the reserved chandef may have no channel during CSA after ZWDFS */
++	rcu_read_lock();
++	link_conf = rcu_dereference(sdata->vif.link_conf[link_sta->link_id]);
++	band = link_conf->chanreq.oper.chan->band;
++	rcu_read_unlock();
++
++	return band;
++}
++
+ static enum ieee80211_sta_rx_bandwidth
+ ieee80211_sta_current_bw_rx_from_sta(struct link_sta_info *link_sta,
+ 				     struct cfg80211_chan_def *chandef)
+@@ -3793,7 +3813,9 @@ ieee80211_sta_current_bw_rx_from_sta(str
+ 	 * at a higher bandwidth first while reducing bandwidth, and
+ 	 * change the chanctx only after the peer accepts, etc.)
+ 	 */
+-	return min(ieee80211_sta_usable_bw(link_sta, chandef->chan->band),
++	return min(ieee80211_sta_usable_bw(link_sta,
++					   ieee80211_sta_chandef_band(link_sta,
++								      chandef)),
+ 		   link_sta->rx_omi_bw_rx);
+ }
+ 
+@@ -3807,7 +3829,7 @@ ieee80211_sta_current_bw_tx_to_sta(struc
+ 	enum nl80211_band band;
+ 
+ 	bss_width = chandef->width;
+-	band = chandef->chan->band;
++	band = ieee80211_sta_chandef_band(link_sta, chandef);
+ 
+ 	bw = ieee80211_sta_usable_bw(link_sta, band);
+ 	bw = min(bw, link_sta->op_mode_bw);

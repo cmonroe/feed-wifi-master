@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/net/mac80211/mlme.c
 +++ b/net/mac80211/mlme.c
-@@ -2616,7 +2616,8 @@ ieee80211_sta_abort_chanswitch(struct ie
+@@ -3102,7 +3102,8 @@ ieee80211_sta_abort_chanswitch(struct ie
  	if (!local->ops->abort_channel_switch)
  		return;
  
@@ -30,7 +30,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		ieee80211_link_unreserve_chanctx(link);
  
  	ieee80211_vif_unblock_queues_csa(sdata);
-@@ -9135,12 +9136,12 @@ static bool ieee80211_mgd_csa_present(st
+@@ -9780,12 +9781,12 @@ static bool ieee80211_mgd_csa_present(st
  
  	if (csa && csa->count == 0)
  		csa = NULL;

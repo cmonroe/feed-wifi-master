@@ -12,7 +12,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -2064,7 +2064,7 @@ struct cfg80211_tid_stats {
+@@ -2186,7 +2186,7 @@ struct cfg80211_tid_stats {
  	struct cfg80211_txq_stats txq_stats;
  };
  

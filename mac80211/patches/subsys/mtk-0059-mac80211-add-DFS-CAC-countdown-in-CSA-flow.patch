@@ -57,7 +57,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -4713,6 +4713,8 @@ struct mgmt_frame_regs {
+@@ -5112,6 +5112,8 @@ struct mgmt_frame_regs {
   *
   * @start_radar_detection: Start radar detection in the driver.
   *
@@ -66,7 +66,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
   * @end_cac: End running CAC, probably because a related CAC
   *	was finished on another phy.
   *
-@@ -5102,6 +5104,11 @@ struct cfg80211_ops {
+@@ -5517,6 +5519,11 @@ struct cfg80211_ops {
  					 struct net_device *dev,
  					 struct cfg80211_chan_def *chandef,
  					 u32 cac_time_ms, int link_id);
@@ -78,7 +78,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	void	(*end_cac)(struct wiphy *wiphy,
  			   struct net_device *dev, unsigned int link_id);
  	int	(*update_ft_ies)(struct wiphy *wiphy, struct net_device *dev,
-@@ -9399,11 +9406,15 @@ static inline void cfg80211_report_obss_
+@@ -9947,11 +9954,15 @@ static inline void cfg80211_report_obss_
   *	NOTE: If this is set, wiphy mutex must be held.
   * @reg_power: &enum ieee80211_ap_reg_power value indicating the
   *	advertised/used 6 GHz regulatory power setting
@@ -94,7 +94,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
  
  /**
-@@ -9467,6 +9478,46 @@ cfg80211_reg_can_beacon_relax(struct wip
+@@ -10015,6 +10026,46 @@ cfg80211_reg_can_beacon_relax(struct wip
  }
  
  /**
@@ -143,7 +143,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
   * @chandef: the new channel definition
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -1785,7 +1785,7 @@ static int ieee80211_change_beacon(struc
+@@ -1998,7 +1998,7 @@ static int ieee80211_change_beacon(struc
  	return 0;
  }
  
@@ -152,7 +152,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  {
  	if (!link->u.ap.next_beacon)
  		return;
-@@ -4100,6 +4100,40 @@ static int ieee80211_set_after_csa_beaco
+@@ -4465,6 +4465,40 @@ static int ieee80211_set_after_csa_beaco
  	return 0;
  }
  
@@ -166,7 +166,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	struct ieee80211_local *local = sdata->local;
 +	struct ieee80211_link_data *link;
 +
-+	if (ieee80211_scanning_busy(local, chandef))
++	if (ieee80211_is_scan_ongoing(wiphy, local, chandef))
 +		return -EBUSY;
 +
 +	link = sdata_dereference(sdata->link[link_id], sdata);
@@ -184,8 +184,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	link->conf->enable_beacon = false;
 +	ieee80211_link_info_change_notify(sdata, link, BSS_CHANGED_BEACON_ENABLED);
 +
-+	wiphy_delayed_work_queue(wiphy, &link->dfs_cac_timer_work,
-+				 msecs_to_jiffies(cac_time_ms));
++	wiphy_hrtimer_work_queue(wiphy, &link->dfs_cac_timer_work,
++				 ms_to_ktime(cac_time_ms));
 +
 +	return 1;
 +}
@@ -193,7 +193,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int __ieee80211_csa_finalize(struct ieee80211_link_data *link_data)
  {
  	struct ieee80211_sub_if_data *sdata = link_data->sdata;
-@@ -4133,6 +4167,12 @@ static int __ieee80211_csa_finalize(stru
+@@ -4498,6 +4532,12 @@ static int __ieee80211_csa_finalize(stru
  					&link_data->csa.chanreq.oper))
  		return -EINVAL;
  
@@ -206,8 +206,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	link_conf->csa_active = false;
  
  	err = ieee80211_set_after_csa_beacon(link_data, &changed);
-@@ -4349,9 +4389,6 @@ __ieee80211_channel_switch(struct wiphy
- 	if (ieee80211_scanning_busy(local, &params->chandef))
+@@ -4727,9 +4767,6 @@ __ieee80211_channel_switch(struct wiphy
+ 	if (ieee80211_is_scan_ongoing(wiphy, local, &params->chandef))
  		return -EBUSY;
  
 -	if (sdata->wdev.links[link_id].cac_started)
@@ -216,7 +216,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (WARN_ON(link_id >= IEEE80211_MLD_MAX_NUM_LINKS))
  		return -EINVAL;
  
-@@ -4364,10 +4401,6 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4742,10 +4779,6 @@ __ieee80211_channel_switch(struct wiphy
  	if (chanreq.oper.punctured && !link_conf->eht_support)
  		return -EINVAL;
  
@@ -227,7 +227,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	conf = wiphy_dereference(wiphy, link_conf->chanctx_conf);
  	if (!conf) {
  		err = -EBUSY;
-@@ -4388,6 +4421,15 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4766,6 +4799,15 @@ __ieee80211_channel_switch(struct wiphy
  
  	chanctx = container_of(conf, struct ieee80211_chanctx, conf);
  
@@ -243,13 +243,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	ch_switch.timestamp = 0;
  	ch_switch.device_timestamp = 0;
  	ch_switch.block_tx = params->block_tx;
-@@ -5561,8 +5603,15 @@ ieee80211_skip_cac(struct wireless_dev *
- 
- 	wiphy_delayed_work_cancel(sdata->local->hw.wiphy,
+@@ -6004,7 +6046,14 @@ ieee80211_skip_cac(struct wireless_dev *
+ 	wiphy_hrtimer_work_cancel(sdata->local->hw.wiphy,
  				  &link->dfs_cac_timer_work);
--	if (wdev->cac_links & BIT(link_id)) {
+ 	if (wdev->links[link_id].cac_started) {
 -		ieee80211_link_release_channel(link);
-+	if (wdev->links[link_id].cac_started) {
 +		if (link->conf->csa_active) {
 +			/* beacon is disabled during CAC period */
 +			link->conf->enable_beacon = true;
@@ -260,8 +258,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		}
  		cac_time_ms = wdev->links[link_id].cac_time_ms;
  		wdev->links[link_id].cac_start_time = jiffies -
- 						      msecs_to_jiffies(cac_time_ms + 1);
-@@ -5654,6 +5703,7 @@ const struct cfg80211_ops mac80211_confi
+ 				       msecs_to_jiffies(cac_time_ms + 1);
+@@ -6097,6 +6146,7 @@ const struct cfg80211_ops mac80211_confi
  #endif
  	.get_channel = ieee80211_cfg_get_channel,
  	.start_radar_detection = ieee80211_start_radar_detection,
@@ -271,7 +269,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	.set_qos_map = ieee80211_set_qos_map,
 --- a/net/mac80211/ieee80211_i.h
 +++ b/net/mac80211/ieee80211_i.h
-@@ -2085,6 +2085,7 @@ int ieee80211_mgmt_tx_cancel_wait(struct
+@@ -2168,6 +2168,7 @@ int ieee80211_mgmt_tx_cancel_wait(struct
  void ieee80211_csa_finalize_work(struct wiphy *wiphy, struct wiphy_work *work);
  int ieee80211_channel_switch(struct wiphy *wiphy, struct net_device *dev,
  			     struct cfg80211_csa_settings *params);
@@ -281,7 +279,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  void ieee80211_color_change_finalize_work(struct wiphy *wiphy,
 --- a/net/mac80211/mlme.c
 +++ b/net/mac80211/mlme.c
-@@ -3509,7 +3509,14 @@ void ieee80211_dfs_cac_timer_work(struct
+@@ -3995,7 +3995,14 @@ void ieee80211_dfs_cac_timer_work(struct
  	lockdep_assert_wiphy(sdata->local->hw.wiphy);
  
  	if (sdata->wdev.links[link->link_id].cac_started) {
@@ -299,7 +297,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  				   GFP_KERNEL, link->link_id);
 --- a/net/mac80211/util.c
 +++ b/net/mac80211/util.c
-@@ -3615,7 +3615,13 @@ void ieee80211_dfs_cac_cancel(struct iee
+@@ -3691,7 +3691,13 @@ void ieee80211_dfs_cac_cancel(struct iee
  				continue;
  
  			chandef = link->conf->chanreq.oper;
@@ -316,7 +314,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  					   GFP_KERNEL, link_id);
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -1568,8 +1568,13 @@ static bool _cfg80211_reg_can_beacon(str
+@@ -1838,8 +1838,13 @@ static bool _cfg80211_reg_can_beacon(str
  	check_radar = dfs_required != 0;
  
  	if (dfs_required > 0 &&
@@ -332,7 +330,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		prohibited_flags &= ~IEEE80211_CHAN_NO_IR;
  		check_radar = false;
  	}
-@@ -1607,6 +1612,9 @@ bool cfg80211_reg_check_beaconing(struct
+@@ -1877,6 +1882,9 @@ bool cfg80211_reg_check_beaconing(struct
  							   chandef->chan);
  	}
  
@@ -342,7 +340,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (cfg->reg_power == IEEE80211_REG_VLP_AP)
  		permitting_flags |= IEEE80211_CHAN_ALLOW_6GHZ_VLP_AP;
  
-@@ -1622,6 +1630,51 @@ bool cfg80211_reg_check_beaconing(struct
+@@ -1892,6 +1900,51 @@ bool cfg80211_reg_check_beaconing(struct
  }
  EXPORT_SYMBOL(cfg80211_reg_check_beaconing);
  
@@ -396,7 +394,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  				 struct cfg80211_chan_def *chandef)
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -11452,8 +11452,9 @@ skip_beacons:
+@@ -12211,8 +12211,9 @@ skip_beacons:
  		cfg80211_set_dfs_state(&rdev->wiphy, &params.chandef, NL80211_DFS_AVAILABLE);
  	}
  
@@ -410,7 +408,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
 --- a/net/wireless/rdev-ops.h
 +++ b/net/wireless/rdev-ops.h
-@@ -1221,6 +1221,24 @@ rdev_start_radar_detection(struct cfg802
+@@ -1273,6 +1273,24 @@ rdev_start_radar_detection(struct cfg802
  	return ret;
  }
  
@@ -437,7 +435,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	     struct net_device *dev, unsigned int link_id)
 --- a/net/wireless/reg.c
 +++ b/net/wireless/reg.c
-@@ -2413,8 +2413,12 @@ static bool reg_wdev_chan_valid(struct w
+@@ -2426,8 +2426,12 @@ static bool reg_wdev_chan_valid(struct w
  		case NL80211_IFTYPE_P2P_GO:
  		case NL80211_IFTYPE_ADHOC:
  		case NL80211_IFTYPE_MESH_POINT:
