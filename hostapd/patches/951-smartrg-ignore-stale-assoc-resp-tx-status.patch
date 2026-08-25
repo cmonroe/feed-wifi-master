@@ -38,7 +38,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8583,9 +8583,30 @@ static void handle_assoc_cb(struct hosta
+@@ -8635,9 +8635,30 @@ static void handle_assoc_cb(struct hosta
  			       HOSTAPD_LEVEL_DEBUG,
  			       "did not acknowledge association response");
  		sta->flags &= ~WLAN_STA_ASSOC_REQ_OK;

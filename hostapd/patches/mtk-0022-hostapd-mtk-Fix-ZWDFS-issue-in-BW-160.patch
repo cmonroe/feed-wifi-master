@@ -108,7 +108,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	if (is_6ghz_freq(iface->freq))
  		return 1;
-@@ -927,7 +939,7 @@ int hostapd_handle_dfs(struct hostapd_if
+@@ -941,7 +953,7 @@ int hostapd_handle_dfs(struct hostapd_if
  	/* Finally start CAC */
  	hostapd_set_state(iface, HAPD_IFACE_DFS);
  	wpa_printf(MSG_DEBUG, "DFS start CAC on %d MHz%s", iface->freq,
@@ -117,7 +117,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
  		"freq=%d chan=%d sec_chan=%d, width=%d, seg0=%d, seg1=%d, cac_time=%ds",
  		iface->freq,
-@@ -937,6 +949,16 @@ int hostapd_handle_dfs(struct hostapd_if
+@@ -951,6 +963,16 @@ int hostapd_handle_dfs(struct hostapd_if
  		hostapd_get_oper_centr_freq_seg1_idx(iface->conf),
  		iface->dfs_cac_ms / 1000);
  
@@ -134,7 +134,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	res = hostapd_start_dfs_cac(
  		iface, iface->conf->hw_mode, iface->freq, iface->conf->channel,
  		iface->conf->ieee80211n, iface->conf->ieee80211ac,
-@@ -945,14 +967,14 @@ int hostapd_handle_dfs(struct hostapd_if
+@@ -959,14 +981,14 @@ int hostapd_handle_dfs(struct hostapd_if
  		hostapd_get_oper_chwidth(iface->conf),
  		hostapd_get_oper_centr_freq_seg0_idx(iface->conf),
  		hostapd_get_oper_centr_freq_seg1_idx(iface->conf),
@@ -151,7 +151,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		/* Cache background radar parameters. */
  		iface->radar_background.channel = iface->conf->channel;
  		iface->radar_background.secondary_channel =
-@@ -973,6 +995,35 @@ int hostapd_handle_dfs(struct hostapd_if
+@@ -987,6 +1009,35 @@ int hostapd_handle_dfs(struct hostapd_if
  
  		iface->radar_background.temp_ch = 1;
  		return 1;
@@ -187,7 +187,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	return 0;
-@@ -1281,6 +1332,15 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1295,6 +1346,15 @@ int hostapd_dfs_complete_cac(struct host
  				hostapd_setup_interface_complete(iface, 0);
  				iface->cac_started = 0;
  			}

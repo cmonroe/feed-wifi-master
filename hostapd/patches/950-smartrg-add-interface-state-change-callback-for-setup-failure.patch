@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  
  static int hostapd_flush_old_stations(struct hostapd_data *hapd, u16 reason);
-@@ -4352,10 +4353,13 @@ const char * hostapd_state_text(enum hos
+@@ -4399,10 +4400,13 @@ const char * hostapd_state_text(enum hos
  
  void hostapd_set_state(struct hostapd_iface *iface, enum hostapd_iface_state s)
  {
@@ -117,7 +117,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function iface_remove(cfg)
  {
  	if (!cfg || !cfg.bss || !cfg.bss[0] || !cfg.bss[0].ifname)
-@@ -1025,7 +1037,7 @@ function iface_config_remove(name, old_c
+@@ -1090,7 +1102,7 @@ function iface_config_remove(name, old_c
  	return iface_remove(old_config);
  }
  
@@ -126,7 +126,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	let old_config = hostapd.data.config[name];
  
-@@ -1060,8 +1072,20 @@ function iface_set_config(name, config)
+@@ -1125,8 +1137,20 @@ function iface_set_config(name, config)
  	}
  
  	hostapd.printf(`Restart interface for phy ${name}`);
@@ -148,7 +148,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return ret;
  }
  
-@@ -1473,7 +1497,9 @@ let main_obj = {
+@@ -1534,7 +1558,9 @@ let main_obj = {
  
  			if (!req.args.up) {
  				delete hostapd.data.apsta_freq[phy];
@@ -158,7 +158,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				return 0;
  			}
  
-@@ -1525,7 +1551,15 @@ let main_obj = {
+@@ -1586,7 +1612,15 @@ let main_obj = {
  			if (!freq_info)
  				return 0;
  
@@ -175,7 +175,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				return fail();
  
  			return 0;
-@@ -1612,6 +1646,7 @@ let main_obj = {
+@@ -1662,6 +1696,7 @@ let main_obj = {
  			radio: 0,
  			config: "",
  			prev_config: "",
@@ -183,7 +183,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
  		call: function(req) {
  			let phy = req.args.phy;
-@@ -1619,18 +1654,23 @@ let main_obj = {
+@@ -1669,18 +1704,23 @@ let main_obj = {
  			let name = phy_name(phy, radio);
  			let file = req.args.config;
  			let prev_file = req.args.prev_config;
@@ -208,7 +208,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			hostapd.printf(`Set new config for phy ${name}: ${file}`);
  			iface_set_config(name, config);
-@@ -1849,4 +1889,26 @@ return {
+@@ -1899,4 +1939,26 @@ return {
  			return null;
  		return response;
  	},

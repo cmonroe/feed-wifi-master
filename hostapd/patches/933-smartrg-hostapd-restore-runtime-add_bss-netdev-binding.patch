@@ -21,20 +21,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  src/ap/ucode.c   |    2 +-
  2 files changed, 2 insertions(+), 4 deletions(-)
 
---- a/src/ap/ucode.c
-+++ b/src/ap/ucode.c
-@@ -470,7 +470,7 @@ uc_hostapd_iface_add_bss(uc_vm_t *vm, si
- 
- 	if (iface->state == HAPD_IFACE_ENABLED) {
- 		hapd->conf->start_disabled = 0;
--		if (hostapd_setup_bss(hapd, -1, true))
-+		if (hostapd_setup_bss(hapd, false, true))
- 			goto deinit_ctrl;
- 	}
- 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1487,7 +1487,6 @@ int hostapd_setup_bss(struct hostapd_dat
+@@ -1532,7 +1532,6 @@ int hostapd_setup_bss(struct hostapd_dat
  
  	if (!first) {
  		u8 *addr = hapd->own_addr;
@@ -42,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  #ifdef CONFIG_IEEE80211BE
  		if (hapd->conf->mld_ap)
-@@ -1527,7 +1526,6 @@ int hostapd_setup_bss(struct hostapd_dat
+@@ -1572,7 +1571,6 @@ int hostapd_setup_bss(struct hostapd_dat
  					   hapd->mld_link_id, hapd->conf->iface);
  				goto setup_mld;
  			}
@@ -50,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -1536,7 +1534,7 @@ int hostapd_setup_bss(struct hostapd_dat
+@@ -1581,7 +1579,7 @@ int hostapd_setup_bss(struct hostapd_dat
  				   conf->iface, addr, hapd,
  				   &hapd->drv_priv, force_ifname, if_addr,
  				   conf->bridge[0] ? conf->bridge : NULL,

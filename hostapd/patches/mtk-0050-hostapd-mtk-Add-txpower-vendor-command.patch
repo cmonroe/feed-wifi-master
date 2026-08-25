@@ -24,7 +24,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5076,6 +5076,14 @@ static int hostapd_config_fill(struct ho
+@@ -5313,6 +5313,14 @@ static int hostapd_config_fill(struct ho
  		u8 en = strtol(pos, NULL, 10);
  
  		conf->dfs_detect_mode = en;
@@ -54,7 +54,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	conf->disable_mcs15_rx = true;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1315,6 +1315,9 @@ struct hostapd_config {
+@@ -1368,6 +1368,9 @@ struct hostapd_config {
  	s8 edcca_compensation;
  	int *edcca_threshold;
  	u8 dfs_detect_mode;
@@ -98,7 +98,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2830,6 +2830,8 @@ dfs_offload:
+@@ -2888,6 +2888,8 @@ dfs_offload:
  		goto fail;
  	if (hostapd_drv_mu_ctrl(hapd) < 0)
  		goto fail;
@@ -151,7 +151,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  #define ETH_ALEN 6
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5886,6 +5886,17 @@ struct wpa_driver_ops {
+@@ -5897,6 +5897,17 @@ struct wpa_driver_ops {
  	 int (*mu_ctrl)(void *priv, u8 mu_onoff);
  	 int (*mu_dump)(void *priv, u8 *mu_onoff);
  
@@ -186,7 +186,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  static struct nl_sock * nl_create_handle(struct nl_cb *cb, const char *dbg)
  {
  	struct nl_sock *handle;
-@@ -17037,6 +17045,52 @@ static void nl80211_stop_peer_measuremen
+@@ -17091,6 +17099,52 @@ static void nl80211_stop_peer_measuremen
  #endif /* CONFIG_PR */
  
  
@@ -239,7 +239,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -17216,6 +17270,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -17270,6 +17324,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.configure_edcca_enable = nl80211_configure_edcca_enable,
  	.configure_edcca_threshold = nl80211_configure_edcca_threshold,
  	.get_edcca = nl80211_get_edcca,
@@ -249,7 +249,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	.nan_stop = wpa_driver_nl80211_nan_stop,
 --- a/src/drivers/driver_nl80211.h
 +++ b/src/drivers/driver_nl80211.h
-@@ -221,6 +221,7 @@ struct wpa_driver_nl80211_data {
+@@ -223,6 +223,7 @@ struct wpa_driver_nl80211_data {
  	unsigned int connect_ext_vendor_cmd_avail:1;
  	unsigned int mtk_edcca_vendor_cmd_avail:1;
  	unsigned int mtk_mu_vendor_cmd_avail:1;

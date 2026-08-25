@@ -30,7 +30,7 @@ Subject: [PATCH 19/28] hostapd: mtk: Mark DFS channel as available for CSA.
  			iface, bandwidth, settings.freq_params.center_freq1);
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1796,7 +1796,7 @@ static const struct hostapd_cli_cmd host
+@@ -1830,7 +1830,7 @@ static const struct hostapd_cli_cmd host
  	  "<addr> = send QoS Map Configure frame" },
  	{ "chan_switch", hostapd_cli_cmd_chan_switch, NULL,
  	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]\n"

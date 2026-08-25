@@ -49,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return iface.start(freq_info) >= 0;
  }
  
-@@ -228,6 +237,7 @@ function __iface_pending_next(pending, s
+@@ -254,6 +263,7 @@ function __iface_pending_next(pending, s
  		return "check_phy";
  	case "check_phy":
  		let phy_status = data;
@@ -57,7 +57,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (phy_status && phy_status.state == "COMPLETED") {
  			if (iface_add(phy, config, phy_status))
  				return "done";
-@@ -241,7 +251,7 @@ function __iface_pending_next(pending, s
+@@ -267,7 +277,7 @@ function __iface_pending_next(pending, s
  		});
  		return "wpas_stopped";
  	case "wpas_stopped":
@@ -66,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			hostapd.printf(`hostapd.add_iface failed for phy ${phy} ifname=${bss.ifname}`);
  		pending.call("wpa_supplicant", "phy_set_state", {
  			phy: phydev.phy,
-@@ -1485,24 +1495,35 @@ let main_obj = {
+@@ -1546,24 +1556,35 @@ let main_obj = {
  				return 0;
  			}
  
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1231,6 +1231,25 @@ hostapd_check_chans(struct hostapd_iface
+@@ -1318,6 +1318,25 @@ hostapd_check_chans(struct hostapd_iface
  	 * which is used to trigger ACS.
  	 */
  

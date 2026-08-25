@@ -25,7 +25,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3238,6 +3238,8 @@ static int hostapd_config_fill(struct ho
+@@ -3374,6 +3374,8 @@ static int hostapd_config_fill(struct ho
  			conf->channel = atoi(pos);
  			conf->acs = conf->channel == 0;
  		}
@@ -48,7 +48,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		let type = i > 0 ? "bss" : "interface";
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1101,6 +1101,7 @@ struct hostapd_config {
+@@ -1112,6 +1112,7 @@ struct hostapd_config {
  	int fragm_threshold;
  	u8 op_class;
  	u8 channel;

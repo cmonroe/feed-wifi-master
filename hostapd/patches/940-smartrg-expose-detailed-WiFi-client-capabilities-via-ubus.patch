@@ -24,7 +24,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6152,6 +6152,14 @@ skip_wpa_ies:
+@@ -6193,6 +6193,14 @@ skip_wpa_ies:
  		hostapd_wfa_capab(hapd, sta, elems->wfa_capab,
  				  elems->wfa_capab + elems->wfa_capab_len);
  
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		struct wpa_state_machine *sm = sta->wpa_sm;
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -480,6 +480,8 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -492,6 +492,8 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->t_c_url);
  	wpabuf_free(sta->hs20_deauth_req);
  	os_free(sta->hs20_session_info_url);
@@ -52,8 +52,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	sae_clear_data(sta->sae);
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -350,6 +350,9 @@ struct sta_info {
- 	struct link_reconf_req_list *reconf_req;
+@@ -355,6 +355,9 @@ struct sta_info {
+ 	u8 auth_link_addr[ETH_ALEN];
  #endif /* CONFIG_IEEE80211BE */
  
 +	struct wpabuf *vendors_ie;
@@ -996,7 +996,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -1647,6 +2325,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1682,6 +2360,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),

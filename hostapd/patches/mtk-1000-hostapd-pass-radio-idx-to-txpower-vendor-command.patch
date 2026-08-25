@@ -43,7 +43,7 @@
  };
  
  static struct nl_sock * nl_create_handle(struct nl_cb *cb, const char *dbg)
-@@ -17075,7 +17075,7 @@ static void nl80211_stop_peer_measuremen
+@@ -17129,7 +17129,7 @@ static void nl80211_stop_peer_measuremen
  
  
  static int nl80211_txpower_ctrl(void *priv, u8 lpi_psd, u8 sku_idx, u8 lpi_bcn_enhance,
@@ -52,7 +52,7 @@
  {
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-@@ -17105,7 +17105,8 @@ static int nl80211_txpower_ctrl(void *pr
+@@ -17159,7 +17159,8 @@ static int nl80211_txpower_ctrl(void *pr
  	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD, lpi_psd);
  	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX, sku_idx);
  	nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE, lpi_bcn_enhance);
@@ -64,7 +64,7 @@
  	ret = send_and_recv_cmd(drv, msg);
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5892,10 +5892,10 @@ struct wpa_driver_ops {
+@@ -5903,10 +5903,10 @@ struct wpa_driver_ops {
  	* @lpi_psd: 1 to enable lpi psd compensate, 0 to disable
  	* @lpi_bcn_enhance: 1 to enable beacon duplicate enhancement in 6G lpi mode, 0 to disable enhancement
  	* @sku_idx: index used to indicate which sku table should be used

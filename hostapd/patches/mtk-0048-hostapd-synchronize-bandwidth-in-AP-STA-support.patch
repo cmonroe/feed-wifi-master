@@ -431,7 +431,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  function iface_add(phy, config, phy_status, start_disabled)
-@@ -1479,6 +1484,8 @@ let main_obj = {
+@@ -1539,6 +1544,8 @@ let main_obj = {
  			up: true,
  			frequency: 0,
  			sec_chan_offset: 0,
@@ -440,7 +440,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			csa: true,
  			csa_count: 0,
  			no_link: true,
-@@ -1488,6 +1495,9 @@ let main_obj = {
+@@ -1548,6 +1555,9 @@ let main_obj = {
  			if (req.args.up == null || !phy)
  				return libubus.STATUS_INVALID_ARGUMENT;
  
@@ -450,7 +450,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			let config = hostapd.data.config[phy];
  			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)
  				return 0;
-@@ -1536,6 +1546,8 @@ let main_obj = {
+@@ -1596,6 +1606,8 @@ let main_obj = {
  				if (!freq_info)
  					return fail();
  
@@ -461,7 +461,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  					if (!iface.switch_channel(freq_info))
 --- a/openwrt/files/wpa_supplicant.uc
 +++ b/openwrt/files/wpa_supplicant.uc
-@@ -877,6 +877,8 @@ function iface_hostapd_notify(ifname, if
+@@ -904,6 +904,8 @@ function iface_hostapd_notify(ifname, if
  		if (!mld) {
  			msg.frequency = status.frequency;
  			msg.sec_chan_offset = status.sec_chan_offset;
@@ -470,7 +470,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  		break;
  	default:
-@@ -929,6 +931,8 @@ function iface_channel_switch(ifname, if
+@@ -956,6 +958,8 @@ function iface_channel_switch(ifname, if
  		csa_count: info.csa_count ? info.csa_count - 1 : 0,
  		frequency: info.frequency,
  		sec_chan_offset: info.sec_chan_offset,
