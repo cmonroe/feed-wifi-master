@@ -36,7 +36,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		q_idx = MT_LMAC_ALTX0;
 --- a/tx.c
 +++ b/tx.c
-@@ -689,7 +689,9 @@ mt76_txq_schedule_pending_wcid(struct mt
+@@ -694,7 +694,9 @@ mt76_txq_schedule_pending_wcid(struct mt
  		    (!ieee80211_is_bufferable_mmpdu(skb) ||
  		     ieee80211_is_deauth(hdr->frame_control) ||
  		     ieee80211_is_disassoc(hdr->frame_control) ||
@@ -49,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		q = phy->q_tx[qid];
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1405,6 +1405,7 @@ mt7996_mac_sta_event(struct mt7996_dev *
+@@ -1412,6 +1412,7 @@ mt7996_mac_sta_event(struct mt7996_dev *
  				goto unlock;
  
  			msta_link->wcid.tx_info |= MT_WCID_TX_INFO_SET;

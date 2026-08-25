@@ -74,7 +74,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	}
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -886,6 +886,7 @@ static u8
+@@ -893,6 +893,7 @@ static u8
  mt7996_get_rates_table(struct mt7996_phy *phy, struct ieee80211_bss_conf *conf,
  		       bool beacon, bool mcast)
  {
@@ -82,7 +82,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_vif_link *mvif = mt76_vif_conf_link(&dev->mt76, conf->vif, conf);
  	u16 rate;
-@@ -894,6 +895,9 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -901,6 +902,9 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -92,7 +92,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		/* odd index for driver, even index for firmware */
  		idx = MT7996_BEACON_RATES_TBL + 2 * phy->mt76->band_idx;
  		if (phy->beacon_rate != rate)
-@@ -1075,7 +1079,7 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1082,7 +1086,7 @@ mt7996_link_info_changed(struct ieee8021
  	if (changed & BSS_CHANGED_TXPOWER &&
  	    info->txpower != phy->txpower) {
  		phy->txpower = info->txpower;

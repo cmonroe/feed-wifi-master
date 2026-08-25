@@ -113,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
  
-@@ -681,6 +694,8 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -688,6 +701,8 @@ int mt7996_set_channel(struct mt76_phy *
  {
  	struct mt7996_phy *phy = mphy->priv;
  	int ret;
@@ -122,7 +122,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
-@@ -699,7 +714,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -706,7 +721,9 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
@@ -133,7 +133,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (ret)
  		goto out;
  
-@@ -895,7 +912,7 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -902,7 +919,7 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {

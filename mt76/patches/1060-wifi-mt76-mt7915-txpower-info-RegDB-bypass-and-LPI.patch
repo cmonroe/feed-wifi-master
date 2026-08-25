@@ -417,7 +417,7 @@ Squash of the following MediaTek commits:
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1999,7 +2002,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
+@@ -2006,7 +2009,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
  void mt76_set_irq_mask(struct mt76_dev *dev, u32 addr, u32 clear, u32 set);
  
  struct device_node *

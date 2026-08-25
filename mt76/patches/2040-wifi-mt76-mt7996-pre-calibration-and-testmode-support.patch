@@ -495,7 +495,7 @@ Squash of the following MediaTek commits:
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1342,6 +1342,12 @@ static int mt7996_init_hardware(struct m
+@@ -1343,6 +1343,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -510,7 +510,7 @@ Squash of the following MediaTek commits:
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -679,6 +679,12 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -686,6 +686,12 @@ int mt7996_set_channel(struct mt76_phy *
  	if (mphy->offchannel)
  		mt7996_mac_update_beacons(phy);
  

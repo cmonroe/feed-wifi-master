@@ -33,7 +33,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TXPOWER = 0x2b,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1791,6 +1791,7 @@ int mt7996_register_device(struct mt7996
+@@ -1792,6 +1792,7 @@ int mt7996_register_device(struct mt7996
  	dev->mt76.phy.priv = &dev->phy;
  	INIT_WORK(&dev->rc_work, mt7996_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7996_mac_work);
@@ -81,7 +81,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wiphy_delayed_work_cancel(phy->mt76->hw->wiphy,
  				  &phy->mt76->assoc_chan_work);
  
-@@ -2676,6 +2683,8 @@ mt7996_reconfig_complete(struct ieee8021
+@@ -2683,6 +2690,8 @@ mt7996_reconfig_complete(struct ieee8021
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
