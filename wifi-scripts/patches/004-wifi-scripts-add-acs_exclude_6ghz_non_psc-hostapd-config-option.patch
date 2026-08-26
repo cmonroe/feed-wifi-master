@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			"type": "boolean",
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -531,6 +531,9 @@ function generate(config) {
+@@ -533,6 +533,9 @@ function generate(config) {
  
  	append_vars(config, [ 'acs_chan_bias', 'acs_exclude_dfs', 'acs_num_scans', 'enable_background_radar' ]);
  

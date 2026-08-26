@@ -18,7 +18,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -524,7 +524,7 @@ function generate(config) {
+@@ -529,7 +529,7 @@ function generate(config) {
  	append_vars(config, [ 'rssi_reject_assoc_rssi', 'rssi_reject_assoc_timeout', 'rssi_ignore_probe_request', 'iface_max_num_sta' ]);
  
  	/* ACS / Radar*/
@@ -27,7 +27,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		delete config.enable_background_radar;
  	else
  		set_default(config, 'enable_background_radar', false);
-@@ -582,6 +582,8 @@ export function setup(data) {
+@@ -587,6 +587,8 @@ export function setup(data) {
  
  	data.config.phy = data.phy;
  

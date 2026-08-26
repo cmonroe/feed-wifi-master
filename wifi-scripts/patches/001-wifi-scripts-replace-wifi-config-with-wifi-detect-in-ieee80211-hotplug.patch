@@ -28,7 +28,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
 +++ b/src/etc/hotplug.d/ieee80211/10-wifi-detect
 @@ -1,6 +1,9 @@
  #!/bin/sh
-
+ 
 +# wireless config generation happens in the uci-defaults sequence;
 +# running 'wifi config' here raced those scripts' uncommitted changes
  [ "${ACTION}" = "add" ] && [ -f /etc/board.json ] && {

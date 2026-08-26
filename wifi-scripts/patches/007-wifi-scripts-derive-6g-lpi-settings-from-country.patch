@@ -32,7 +32,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  let phy_features = {};
  let phy_capabilities = {};
  
-@@ -534,6 +537,11 @@ function generate(config) {
+@@ -536,6 +539,11 @@ function generate(config) {
  	if (config.acs_exclude_6ghz_non_psc)
  		append('acs_exclude_6ghz_non_psc', 1);
  
