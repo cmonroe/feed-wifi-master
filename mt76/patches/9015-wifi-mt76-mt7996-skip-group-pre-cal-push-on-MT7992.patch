@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5074,6 +5074,16 @@ int mt7996_mcu_apply_group_cal(struct mt
+@@ -5076,6 +5076,16 @@ int mt7996_mcu_apply_group_cal(struct mt
  	u32 offs = MT_EE_DO_PRE_CAL;
  	int ret = 0;
  

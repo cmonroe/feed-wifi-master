@@ -443,7 +443,7 @@ Squash of the following MediaTek commits:
 @@ -1,10 +1,10 @@
  # SPDX-License-Identifier: BSD-3-Clause-Clear
  
--EXTRA_CFLAGS += -DCONFIG_MT76_LEDS
+-ccflags-y += -DCONFIG_MT76_LEDS
 +ccflags-y += -DCONFIG_MT76_LEDS -DCONFIG_MTK_VENDOR
  obj-$(CONFIG_MT7915E) += mt7915e.o
  

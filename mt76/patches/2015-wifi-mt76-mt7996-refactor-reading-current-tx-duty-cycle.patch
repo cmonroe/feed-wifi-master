@@ -151,7 +151,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	case MCU_UNI_EVENT_PS_SYNC:
  		mt7996_mcu_rx_ps_sync(dev, skb);
  		break;
-@@ -5216,12 +5218,14 @@ int mt7996_mcu_set_thermal_throttling(st
+@@ -5218,12 +5220,14 @@ int mt7996_mcu_set_thermal_throttling(st
  	for (level = 0; level < 4; level++) {
  		req.ctrl.duty.duty_level = level;
  		req.ctrl.duty.duty_cycle = state;
@@ -167,7 +167,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	}
  
  	return 0;
-@@ -5265,6 +5269,29 @@ int mt7996_mcu_set_thermal_protect(struc
+@@ -5267,6 +5271,29 @@ int mt7996_mcu_set_thermal_protect(struc
  
  	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(THERMAL),
  				 &req, sizeof(req), false);

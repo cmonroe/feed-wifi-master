@@ -92,7 +92,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6377,6 +6377,122 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6379,6 +6379,122 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  				 &req, sizeof(req), false);
  }
  

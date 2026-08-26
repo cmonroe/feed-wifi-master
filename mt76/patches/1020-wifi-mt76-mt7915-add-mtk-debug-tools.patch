@@ -91,7 +91,7 @@ Squash of the following MediaTek commits:
  enum {
 --- a/mt7915/Makefile
 +++ b/mt7915/Makefile
-@@ -4,7 +4,7 @@ EXTRA_CFLAGS += -DCONFIG_MT76_LEDS
+@@ -4,7 +4,7 @@ ccflags-y += -DCONFIG_MT76_LEDS
  obj-$(CONFIG_MT7915E) += mt7915e.o
  
  mt7915e-y := pci.o init.o dma.o eeprom.o main.o mcu.o mac.o \

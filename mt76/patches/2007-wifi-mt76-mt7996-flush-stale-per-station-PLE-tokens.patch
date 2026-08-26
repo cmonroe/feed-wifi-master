@@ -152,7 +152,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mutex_unlock(&mdev->mutex);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4135,6 +4135,42 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -4137,6 +4137,42 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  				 sizeof(data), false);
  }
  

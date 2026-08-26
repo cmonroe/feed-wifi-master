@@ -323,7 +323,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  void mt7996_init_txpower(struct mt7996_phy *phy)
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5713,9 +5713,42 @@ int mt7996_mcu_set_sniffer_mode(struct m
+@@ -5715,9 +5715,42 @@ int mt7996_mcu_set_sniffer_mode(struct m
  				 sizeof(req), true);
  }
  
@@ -366,7 +366,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_phy *mphy = phy->mt76;
  	struct tx_power_limit_table_ctrl {
-@@ -5733,45 +5766,88 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -5735,45 +5768,88 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		.power_limit_type = TX_POWER_LIMIT_TABLE_RATE,
  		.band_idx = phy->mt76->band_idx,
  	};
