@@ -1,0 +1,168 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 27 Aug 2026 17:54:40 -0700
+Subject: [PATCH] hostapd: add channel_fallback_acs for an unusable fixed channel
+
+A fixed channel that the current regulatory domain does not offer makes
+hostapd_check_chans() return HOSTAPD_CHAN_INVALID and the interface fails
+to start. A unit whose country changes at run time keeps its configured
+channel, so a channel pinned under one domain can be unusable under the
+next.
+
+Add channel_fallback_acs. When set, a configured channel that ACS could not
+have chosen falls back to ACS instead: the channel is not available in the
+regulatory domain, it is outside chanlist, or it is a DFS channel while
+acs_exclude_dfs=1. The reason is logged. channel_follow=1 is exempt because
+the STA owns the channel there.
+
+Fixes: ISSUE-33106
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ hostapd/config_file.c |    2 +
+ hostapd/hostapd.conf  |    9 +++++
+ src/ap/ap_config.h    |    1 
+ src/ap/hw_features.c  |   81 ++++++++++++++++++++++++++++++++++++++++++++++----
+ 4 files changed, 88 insertions(+), 5 deletions(-)
+
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
+@@ -3376,6 +3376,8 @@ static int hostapd_config_fill(struct ho
+ 		}
+ 	} else if (os_strcmp(buf, "channel_follow") == 0) {
+ 		conf->channel_follow = atoi(pos);
++	} else if (os_strcmp(buf, "channel_fallback_acs") == 0) {
++		conf->channel_fallback_acs = atoi(pos);
+ 	} else if (os_strcmp(buf, "edmg_channel") == 0) {
+ 		conf->edmg_channel = atoi(pos);
+ 	} else if (os_strcmp(buf, "enable_edmg") == 0) {
+--- a/hostapd/hostapd.conf
++++ b/hostapd/hostapd.conf
+@@ -164,6 +164,15 @@ hw_mode=g
+ # which will enable the ACS survey based algorithm.
+ channel=1
+ 
++# Fall back to ACS when the configured channel fails a hard constraint that
++# ACS enforces on its own candidates: not available in the current regulatory
++# domain, the configured width does not fit, indoor-only while the country
++# string is outdoor, outside chanlist or freqlist, below min_tx_power, or a
++# DFS channel while acs_exclude_dfs=1. acs_exclude_dfs=2 is a preference and
++# does not override a fixed channel. Without this the interface fails to
++# start. Ignored with channel_follow=1.
++#channel_fallback_acs=1
++
+ # Global operating class (IEEE 802.11, Annex E, Table E-4)
+ # This option allows hostapd to specify the operating class of the channel
+ # configured with the channel parameter. channel and op_class together can
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -1113,6 +1113,7 @@ struct hostapd_config {
+ 	u8 op_class;
+ 	u8 channel;
+ 	int channel_follow;
++	int channel_fallback_acs;
+ 	int enable_edmg;
+ 	u8 edmg_channel;
+ 	u8 acs;
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -1296,21 +1296,96 @@ int hostapd_determine_mode(struct hostap
+ }
+ 
+ 
++/* With channel_fallback_acs, a configured channel yields to ACS when it fails
++ * a hard constraint ACS enforces on its own candidates: the regulatory
++ * domain, the configured width, indoor-only outdoors, chanlist, freqlist,
++ * min_tx_power, or acs_exclude_dfs=1. acs_exclude_dfs=2 is deliberately not
++ * applied: it is a selection preference, and an explicit DFS pin wins over a
++ * preference. Returns NULL when the channel stands. */
++static const char *
++hostapd_fixed_chan_fallback_reason(struct hostapd_iface *iface, int usable)
++{
++	struct hostapd_config *conf = iface->conf;
++	struct hostapd_channel_data *chan;
++
++	/* Only an operator-fixed channel falls back. hostapd_check_chans()
++	 * also runs from acs_study() and hostapd_acs_completed() to validate
++	 * the channel ACS itself picked (conf->acs is set there), and a
++	 * fallback would re-enter acs_init() from inside ACS completion. */
++	if (conf->acs || !conf->channel_fallback_acs || conf->channel_follow)
++		return NULL;
++
++	/* A NO_IR channel (usable < 0) keeps the existing wait for a channel
++	 * list update; a fallback here would race it. */
++	if (usable < 0)
++		return NULL;
++
++	chan = iface->current_mode ?
++		hw_get_channel_freq(iface->current_mode->mode, iface->freq,
++				    NULL, iface->hw_features,
++				    iface->num_hw_features) : NULL;
++
++	if (usable == 0) {
++		/* hostapd_is_usable_chans() also fails on the secondary and
++		 * center channels, so tell a missing primary apart from a
++		 * width that does not fit around it. */
++		if (!chan || (chan->flag & HOSTAPD_CHAN_DISABLED))
++			return "is not available in the current regulatory domain";
++		return "cannot fit the configured channel width";
++	}
++
++	if (!chan)
++		return NULL;
++
++	if ((chan->flag & HOSTAPD_CHAN_INDOOR_ONLY) &&
++	    conf->country[2] == 0x4f)
++		return "is indoor-only and the country string is outdoor";
++
++	if (conf->acs_ch_list.num &&
++	    !freq_range_list_includes(&conf->acs_ch_list, conf->channel))
++		return "is outside chanlist";
++
++	if (conf->acs_freq_list.num &&
++	    !freq_range_list_includes(&conf->acs_freq_list, iface->freq))
++		return "is outside freqlist";
++
++	if (chan->max_tx_power < conf->min_tx_power)
++		return "is below min_tx_power";
++
++	if (conf->acs_exclude_dfs == 1 && (chan->flag & HOSTAPD_CHAN_RADAR))
++		return "is a DFS channel and acs_exclude_dfs=1";
++
++	return NULL;
++}
++
++
+ static enum hostapd_chan_status
+ hostapd_check_chans(struct hostapd_iface *iface)
+ {
+ 	if (iface->freq) {
++		const char *reason;
+ 		int err;
+ 
+ 		hostapd_determine_mode(iface);
+ 
+ 		err = hostapd_is_usable_chans(iface);
+-		if (err <= 0) {
+-			if (!err)
+-				return HOSTAPD_CHAN_INVALID;
+-			return HOSTAPD_CHAN_INVALID_NO_IR;
++		reason = hostapd_fixed_chan_fallback_reason(iface, err);
++		if (!reason) {
++			if (err <= 0) {
++				if (!err)
++					return HOSTAPD_CHAN_INVALID;
++				return HOSTAPD_CHAN_INVALID_NO_IR;
++			}
++			return HOSTAPD_CHAN_VALID;
+ 		}
+-		return HOSTAPD_CHAN_VALID;
++
++		hostapd_logger(iface->bss[0], NULL, HOSTAPD_MODULE_IEEE80211,
++			       HOSTAPD_LEVEL_WARNING,
++			       "Configured channel %d %s; falling back to ACS",
++			       iface->conf->channel, reason);
++		iface->freq = 0;
++		iface->conf->channel = 0;
++		iface->conf->acs = 1;
+ 	}
+ 
+ 	/*
