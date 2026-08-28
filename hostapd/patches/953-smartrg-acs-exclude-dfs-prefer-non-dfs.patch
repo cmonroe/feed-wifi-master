@@ -1,0 +1,188 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 27 Aug 2026 17:54:40 -0700
+Subject: [PATCH] hostapd: add acs_exclude_dfs=2 to prefer non-DFS channels
+
+acs_exclude_dfs=1 removes every DFS channel from the ACS candidate set. In a
+regulatory domain where all remaining channels of a radio are DFS, for
+example channels 100-140 on a high-band 5 GHz radio under ETSI rules, ACS
+has no candidate and the interface fails to start.
+
+Add value 2: DFS channels are excluded only while at least one non-DFS
+channel passes the other ACS constraints (chanlist, freqlist, min_tx_power,
+indoor-only). acs_init() evaluates this once per ACS run and records the
+outcome in the interface, so the three candidate filters agree. The
+candidate test is factored into acs_chan_is_candidate() and shared with
+acs_request_scan_add_freqs(). With driver ACS offload the value behaves
+like 1.
+
+Fixes: ISSUE-33106
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ hostapd/hostapd.conf |    4 ++
+ src/ap/acs.c         |   86 +++++++++++++++++++++++++++++++++++++--------------
+ src/ap/hostapd.h     |    2 +
+ 3 files changed, 69 insertions(+), 23 deletions(-)
+
+--- a/hostapd/hostapd.conf
++++ b/hostapd/hostapd.conf
+@@ -216,6 +216,10 @@ channel=1
+ # Exclude DFS channels from ACS
+ # This option can be used to exclude all DFS channels from the ACS channel list
+ # in cases where the driver supports DFS channels.
++# 0 = DFS channels are ACS candidates (default)
++# 1 = DFS channels are never ACS candidates
++# 2 = DFS channels are ACS candidates only when no non-DFS channel is available
++#     (with driver ACS offload this behaves like 1)
+ #acs_exclude_dfs=1
+ 
+ # Include only preferred scan channels from 6 GHz band for ACS
+--- a/src/ap/acs.c
++++ b/src/ap/acs.c
+@@ -601,6 +601,53 @@ static int is_in_freqlist(struct hostapd
+ }
+ 
+ 
++/* acs_exclude_dfs=2 excludes DFS channels until the search proves that no
++ * non-DFS channel works; acs_dfs_fallback_arm() lifts it for this run. */
++static int acs_exclude_dfs(struct hostapd_iface *iface)
++{
++	return iface->conf->acs_exclude_dfs && !iface->acs_dfs_fallback;
++}
++
++
++static int acs_chan_is_candidate(struct hostapd_iface *iface,
++				 struct hostapd_channel_data *chan)
++{
++	if (chan->flag & HOSTAPD_CHAN_DISABLED)
++		return 0;
++
++	if ((chan->flag & HOSTAPD_CHAN_RADAR) && acs_exclude_dfs(iface))
++		return 0;
++
++	if (!is_in_chanlist(iface, chan))
++		return 0;
++
++	if (!is_in_freqlist(iface, chan))
++		return 0;
++
++	if (chan->max_tx_power < iface->conf->min_tx_power)
++		return 0;
++
++	if ((chan->flag & HOSTAPD_CHAN_INDOOR_ONLY) &&
++	    iface->conf->country[2] == 0x4f)
++		return 0;
++
++	return 1;
++}
++
++
++static int acs_dfs_fallback_arm(struct hostapd_iface *iface)
++{
++	if (iface->conf->acs_exclude_dfs != 2 || iface->acs_dfs_fallback)
++		return 0;
++
++	iface->acs_dfs_fallback = true;
++	wpa_printf(MSG_INFO,
++		   "ACS(%s): no non-DFS channel available, including DFS channels",
++		   iface->conf->bss[0]->iface);
++	return 1;
++}
++
++
+ static void acs_survey_mode_interference_factor(
+ 	struct hostapd_iface *iface, struct hostapd_hw_modes *mode)
+ {
+@@ -613,8 +660,7 @@ static void acs_survey_mode_interference
+ 		if (!acs_usable_chan(chan))
+ 			continue;
+ 
+-		if ((chan->flag & HOSTAPD_CHAN_RADAR) &&
+-		    iface->conf->acs_exclude_dfs)
++		if ((chan->flag & HOSTAPD_CHAN_RADAR) && acs_exclude_dfs(iface))
+ 			continue;
+ 
+ 		if (!is_in_chanlist(iface, chan))
+@@ -926,7 +972,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 			}
+ 
+ 			if ((chan2->flag & HOSTAPD_CHAN_RADAR) &&
+-			    iface->conf->acs_exclude_dfs)
++			    acs_exclude_dfs(iface))
+ 				break;
+ 
+ 			if (chan2->max_tx_power < iface->conf->min_tx_power)
+@@ -1357,6 +1403,14 @@ static void acs_study(struct hostapd_ifa
+ 
+ 	ideal_chan = acs_find_ideal_chan(iface);
+ 	if (!ideal_chan) {
++		/* acs_exclude_dfs=2: lift the exclusion only when the real
++		 * search found nothing without DFS, bandwidth included, and
++		 * scan once more so the DFS channels have survey data. */
++		if (acs_dfs_fallback_arm(iface)) {
++			err = acs_request_scan(iface);
++			if (!err || err == -EBUSY)
++				return;
++		}
+ 		wpa_printf(MSG_ERROR, "ACS(%s): Failed to compute ideal channel",
+ 			   iface->conf->bss[0]->iface);
+ 		err = -1;
+@@ -1448,25 +1502,8 @@ static int * acs_request_scan_add_freqs(
+ 
+ 	for (i = 0; i < mode->num_channels; i++) {
+ 		chan = &mode->channels[i];
+-		if ((chan->flag & HOSTAPD_CHAN_DISABLED) ||
+-		    ((chan->flag & HOSTAPD_CHAN_RADAR) &&
+-		     iface->conf->acs_exclude_dfs))
+-			continue;
+-
+-		if (!is_in_chanlist(iface, chan))
+-			continue;
+-
+-		if (!is_in_freqlist(iface, chan))
+-			continue;
+-
+-		if (chan->max_tx_power < iface->conf->min_tx_power)
+-			continue;
+-
+-		if ((chan->flag & HOSTAPD_CHAN_INDOOR_ONLY) &&
+-		    iface->conf->country[2] == 0x4f)
+-			continue;
+-
+-		*freq++ = chan->freq;
++		if (acs_chan_is_candidate(iface, chan))
++			*freq++ = chan->freq;
+ 	}
+ 
+ 	return freq;
+@@ -1504,9 +1541,11 @@ static int acs_request_scan(struct hosta
+ 	*freq = 0;
+ 
+ 	if (params.freqs == freq) {
++		os_free(params.freqs);
++		if (acs_dfs_fallback_arm(iface))
++			return acs_request_scan(iface);
+ 		wpa_printf(MSG_ERROR, "ACS(%s): No available channels found",
+ 			   iface->conf->bss[0]->iface);
+-		os_free(params.freqs);
+ 		return -1;
+ 	}
+ 
+@@ -1598,6 +1637,7 @@ enum hostapd_chan_status acs_init(struct
+ 		return HOSTAPD_CHAN_INVALID;
+ 
+ 	acs_cleanup(iface);
++	iface->acs_dfs_fallback = false;
+ 
+ 	if (acs_request_scan(iface) < 0)
+ 		return HOSTAPD_CHAN_INVALID;
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -752,6 +752,8 @@ struct hostapd_iface {
+ #ifdef CONFIG_ACS
+ 	unsigned int acs_num_completed_scans;
+ 	unsigned int acs_num_retries;
++	/* acs_exclude_dfs=2 found no non-DFS candidate: DFS channels are in play */
++	bool acs_dfs_fallback;
+ #endif /* CONFIG_ACS */
+ 
+ 	void (*scan_cb)(struct hostapd_iface *iface);
