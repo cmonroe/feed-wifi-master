@@ -1,0 +1,120 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 27 Aug 2026 17:54:40 -0700
+Subject: [PATCH] wifi-scripts: derive acs_exclude_dfs from the DFS policy
+
+The DFS policy for the 5 GHz radios lives in wireless.advanced
+(dfs_support, autodfs). That is not a wifi-device section, so netifd never
+saw a change to it and nothing reloaded the radios. An external script
+used to copy the policy into each radio's acs_exclude_dfs and channels
+from the live regulatory domain, which raced the reload that applied a new
+country.
+
+Derive acs_exclude_dfs in config_init() for every 5 GHz radio that does
+not set it in UCI: 1 when dfs_support is 0, 0 when autodfs is 1 or the
+htmode is 160 MHz, otherwise 2 (hostapd: exclude DFS unless no non-DFS
+channel is available). The value is part of the device data, so a policy
+change reloads exactly the radios whose value changed. The schema makes
+acs_exclude_dfs a number and adds channel_fallback_acs (default on), which
+hostapd.uc emits so a pinned channel the domain does not offer falls back
+to ACS instead of failing.
+
+Fixes: ISSUE-33106
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/lib/netifd/wireless.uc                     |   32 +++++++++++++++++++++++++
+ src/usr/share/schema/wireless.wifi-device.json |   13 +++++++---
+ src/usr/share/ucode/wifi/hostapd.uc            |    2 -
+ 3 files changed, 43 insertions(+), 4 deletions(-)
+
+--- a/src/lib/netifd/wireless.uc
++++ b/src/lib/netifd/wireless.uc
+@@ -110,6 +110,36 @@ function update_config(new_devices, mlo_
+ 	}
+ }
+ 
++/* wireless.advanced holds the DFS policy for the 5 GHz radios, but it is not a
++ * wifi-device section, so a change to it alone never reaches the device data
++ * netifd compares. Deriving each 5 GHz radio's acs_exclude_dfs here makes the
++ * policy part of that data. The derived value overwrites a stored one: no
++ * operator surface writes the per-radio option, earlier releases stored a
++ * derived copy in UCI, and a stored copy would pin the old policy forever.
++ * A per-radio DFS restriction is expressed through chanlist instead. */
++function device_is_5g(config)
++{
++	let hwmode = config.hwmode ?? config.hw_mode;
++
++	if (config.band)
++		return config.band == "5g";
++
++	return hwmode == "a" || hwmode == "11a";
++}
++
++function device_acs_exclude_dfs(config, advanced)
++{
++	/* Anything but an affirmative UCI boolean disables DFS, matching the
++	 * recompute script this replaces, which tested for the literal 1. */
++	if (advanced.dfs_support != null && parse_bool(advanced.dfs_support) != true)
++		return 1;
++
++	if (parse_bool(advanced.autodfs) == true || wildcard(config.htmode ?? "", "*160"))
++		return 0;
++
++	return 2;
++}
++
+ function config_init(uci)
+ {
+ 	let config = uci.get_all("wireless");
+@@ -288,6 +318,12 @@ function config_init(uci)
+ 		}
+ 	}
+ 
++	for (let name, dev in devices) {
++		if (!device_is_5g(dev.config))
++			continue;
++
++		dev.config.acs_exclude_dfs = device_acs_exclude_dfs(dev.config, config.advanced ?? {});
++	}
+ 
+ 	udata = ubus.call({
+ 		object: "service",
+--- a/src/usr/share/schema/wireless.wifi-device.json
++++ b/src/usr/share/schema/wireless.wifi-device.json
+@@ -14,9 +14,11 @@
+ 			"default": false
+ 		},
+ 		"acs_exclude_dfs": {
+-			"description": "Exclude DFS channels from ACS",
+-			"type": "boolean",
+-			"default": false
++			"description": "Exclude DFS channels from ACS: 0 never, 1 always, 2 unless no non-DFS channel is available",
++			"type": "number",
++			"default": 0,
++			"minimum": 0,
++			"maximum": 2
+ 		},
+ 		"acs_num_scans": {
+ 			"description": "Number of scans to perform during ACS",
+@@ -112,6 +114,11 @@
+ 			"description": "Specifies the wireless channel. “auto” defaults to the lowest available channel, or utilizes the ACS algorithm depending on hardware/driver support",
+ 			"type": "string"
+ 		},
++		"channel_fallback_acs": {
++			"description": "Fall back to ACS when the configured channel is not available in the regulatory domain, is outside chanlist, or is a DFS channel while acs_exclude_dfs is 1",
++			"type": "boolean",
++			"default": true
++		},
+ 		"channels": {
+ 			"type": "alias",
+ 			"default": "chanlist"
+--- a/src/usr/share/ucode/wifi/hostapd.uc
++++ b/src/usr/share/ucode/wifi/hostapd.uc
+@@ -534,7 +534,7 @@ function generate(config) {
+ 	else
+ 		set_default(config, 'enable_background_radar', false);
+ 
+-	append_vars(config, [ 'acs_chan_bias', 'acs_exclude_dfs', 'acs_num_scans', 'enable_background_radar' ]);
++	append_vars(config, [ 'acs_chan_bias', 'acs_exclude_dfs', 'acs_num_scans', 'enable_background_radar', 'channel_fallback_acs' ]);
+ 
+ 	if (config.acs_exclude_6ghz_non_psc)
+ 		append('acs_exclude_6ghz_non_psc', 1);
