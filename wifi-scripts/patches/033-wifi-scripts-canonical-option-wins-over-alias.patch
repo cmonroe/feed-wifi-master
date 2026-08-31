@@ -1,0 +1,18 @@
+--- a/src/usr/share/ucode/wifi/validate.uc
++++ b/src/usr/share/ucode/wifi/validate.uc
+@@ -99,7 +99,14 @@ export function validate(schema, dict) {
+ 		if (schema[k].default == null)
+ 			abort(`${k} alias does not have a default value`);
+ 
+-		dict[schema[k].default] = v;
++		/* An option set under its canonical name wins over an alias:
++		 * iteration order is undefined, and a legacy spelling must not
++		 * silently replace an explicit value (a restored pre-upgrade
++		 * backup can carry channels next to a written chanlist). */
++		if (exists(dict, schema[k].default))
++			log(`${k} ignored: ${schema[k].default} is set`);
++		else
++			dict[schema[k].default] = v;
+ 		delete dict[k];
+ 	}
+ 
