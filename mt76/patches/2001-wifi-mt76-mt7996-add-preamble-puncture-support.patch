@@ -14,7 +14,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1361,6 +1361,7 @@ enum {
+@@ -1364,6 +1364,7 @@ enum {
  	MCU_UNI_CMD_CHANNEL_SWITCH = 0x34,
  	MCU_UNI_CMD_THERMAL = 0x35,
  	MCU_UNI_CMD_VOW = 0x37,
@@ -70,7 +70,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1078,6 +1078,16 @@ enum {
+@@ -1081,6 +1081,16 @@ enum {
  	MT7996_SEC_MODE_MAX,
  };
  

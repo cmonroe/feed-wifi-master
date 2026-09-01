@@ -330,7 +330,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		target_power = DIV_ROUND_UP(target_power, 2);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -922,7 +922,7 @@ void mt7996_mac_write_txwi(struct mt7996
+@@ -919,7 +919,7 @@ void mt7996_mac_write_txwi(struct mt7996
  		if (mcast)
  			val |= MT_TXD6_DIS_MAT;
  		if (dev->mt76.phys[band_idx]->cap.has_6ghz &&

@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -491,6 +491,27 @@ mt76_phy_init(struct mt76_phy *phy, stru
+@@ -492,6 +492,27 @@ mt76_phy_init(struct mt76_phy *phy, stru
  	return 0;
  }
  
@@ -54,7 +54,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_phy *
  mt76_alloc_radio_phy(struct mt76_dev *dev, unsigned int size,
  		     u8 band_idx)
-@@ -508,6 +529,8 @@ mt76_alloc_radio_phy(struct mt76_dev *de
+@@ -509,6 +530,8 @@ mt76_alloc_radio_phy(struct mt76_dev *de
  	phy->hw = hw;
  	phy->priv = (void *)phy + phy_size;
  	phy->band_idx = band_idx;
@@ -63,7 +63,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	return phy;
  }
-@@ -531,6 +554,8 @@ mt76_alloc_phy(struct mt76_dev *dev, uns
+@@ -532,6 +555,8 @@ mt76_alloc_phy(struct mt76_dev *dev, uns
  	phy->hw = hw;
  	phy->priv = hw->priv + phy_size;
  	phy->band_idx = band_idx;
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	hw->wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
  	hw->wiphy->interface_modes =
-@@ -689,6 +714,8 @@ mt76_alloc_device(struct device *pdev, u
+@@ -691,6 +716,8 @@ mt76_alloc_device(struct device *pdev, u
  	phy->hw = hw;
  	phy->band_idx = MT_BAND0;
  	dev->phys[phy->band_idx] = phy;
@@ -83,7 +83,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	spin_lock_init(&dev->lock);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -890,6 +890,8 @@ struct mt76_phy {
+@@ -887,6 +887,8 @@ struct mt76_phy {
  	struct ieee80211_vif *roc_vif;
  	struct mt76_vif_link *roc_link;
  

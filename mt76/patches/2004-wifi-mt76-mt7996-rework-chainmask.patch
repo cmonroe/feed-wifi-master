@@ -26,7 +26,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -2011,9 +2011,11 @@ int mt76_get_antenna(struct ieee80211_hw
+@@ -2019,9 +2019,11 @@ int mt76_get_antenna(struct ieee80211_hw
  
  	mutex_lock(&dev->mutex);
  	*tx_ant = 0;

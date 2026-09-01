@@ -239,7 +239,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	err = mt7915_mcu_set_txpower_sku(phy);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -966,6 +966,8 @@ struct mt76_phy {
+@@ -963,6 +963,8 @@ struct mt76_phy {
  
  	int txpower_cur;
  	u8 sku_idx;

@@ -199,7 +199,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  int mt7996_mcu_set_ser(struct mt7996_dev *dev, u8 action, u8 val, u8 band)
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -397,7 +397,7 @@ enum {
+@@ -400,7 +400,7 @@ enum {
  	UNI_PS_MULTI_CLIENT_INFO_BITMAP = 2,
  };
  
@@ -208,7 +208,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	struct mt7996_mcu_rxd rxd;
  
  	u8 __rsv1[4];
-@@ -407,10 +407,9 @@ struct mt7996_mcu_thermal_notify {
+@@ -410,10 +410,9 @@ struct mt7996_mcu_thermal_notify {
  
  	u8 event_id;
  	u8 band_idx;
@@ -222,7 +222,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  } __packed;
  
  enum mt7996_chan_mib_offs {
-@@ -1108,6 +1107,7 @@ enum {
+@@ -1111,6 +1110,7 @@ enum {
  	UNI_CMD_THERMAL_PROTECT_ENABLE = 0x6,
  	UNI_CMD_THERMAL_PROTECT_DISABLE,
  	UNI_CMD_THERMAL_PROTECT_DUTY_CONFIG,

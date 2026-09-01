@@ -42,7 +42,7 @@ Squash of the following MediaTek commits:
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -987,7 +987,8 @@ void mt76_rx(struct mt76_dev *dev, enum
+@@ -995,7 +995,8 @@ void mt76_rx(struct mt76_dev *dev, enum
  	}
  
  #ifdef CONFIG_NL80211_TESTMODE
@@ -54,7 +54,7 @@ Squash of the following MediaTek commits:
  			phy->test.rx_stats.fcs_error[q]++;
 --- a/mt76.h
 +++ b/mt76.h
-@@ -802,6 +802,8 @@ struct mt76_testmode_ops {
+@@ -798,6 +798,8 @@ struct mt76_testmode_ops {
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
  };
  
@@ -63,7 +63,7 @@ Squash of the following MediaTek commits:
  struct mt76_testmode_data {
  	enum mt76_testmode_state state;
  
-@@ -833,6 +835,8 @@ struct mt76_testmode_data {
+@@ -829,6 +831,8 @@ struct mt76_testmode_data {
  
  	u8 addr[3][ETH_ALEN];
  
@@ -72,7 +72,7 @@ Squash of the following MediaTek commits:
  	u32 tx_pending;
  	u32 tx_queued;
  	u16 tx_queued_limit;
-@@ -840,7 +844,17 @@ struct mt76_testmode_data {
+@@ -836,7 +840,17 @@ struct mt76_testmode_data {
  	struct {
  		u64 packets[__MT_RXQ_MAX];
  		u64 fcs_error[__MT_RXQ_MAX];
@@ -92,7 +92,7 @@ Squash of the following MediaTek commits:
  struct mt76_vif_link {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1311,6 +1311,8 @@ enum {
+@@ -1314,6 +1314,8 @@ enum {
  	MCU_EXT_CMD_OFFCH_SCAN_CTRL = 0x9a,
  	MCU_EXT_CMD_SET_RDD_TH = 0x9d,
  	MCU_EXT_CMD_MURU_CTRL = 0x9f,
@@ -101,7 +101,7 @@ Squash of the following MediaTek commits:
  	MCU_EXT_CMD_SET_SPR = 0xa8,
  	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
  	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
-@@ -1318,6 +1320,7 @@ enum {
+@@ -1321,6 +1323,7 @@ enum {
  	MCU_EXT_CMD_EDCCA = 0xba,
  	MCU_EXT_CMD_WF_RF_PIN_CTRL = 0xbd,
  	MCU_EXT_CMD_SWLNA_ACI_CTRL = 0xc0,
@@ -763,7 +763,7 @@ Squash of the following MediaTek commits:
  }
  
  static int
-@@ -723,12 +1104,8 @@ static int
+@@ -720,12 +1101,8 @@ static int
  mt7915_tm_dump_stats(struct mt76_phy *mphy, struct sk_buff *msg)
  {
  	struct mt7915_phy *phy = mphy->priv;
@@ -776,7 +776,7 @@ Squash of the following MediaTek commits:
  
  	rx = nla_nest_start(msg, MT76_TM_STATS_ATTR_LAST_RX);
  	if (!rx)
-@@ -772,15 +1149,7 @@ mt7915_tm_dump_stats(struct mt76_phy *mp
+@@ -769,15 +1146,7 @@ mt7915_tm_dump_stats(struct mt76_phy *mp
  
  	nla_nest_end(msg, rx);
  
@@ -1096,7 +1096,7 @@ Squash of the following MediaTek commits:
  
  	bool sku_limit_en:1;
  	bool sku_path_en:1;
-@@ -711,6 +712,8 @@ void mt7915_vendor_register(struct mt791
+@@ -729,6 +730,8 @@ void mt7915_vendor_register(struct mt791
  
  int mt7915_mcu_set_edcca(struct mt7915_phy *phy, int mode, u8 *value, s8 compensation);
  int mt7915_mcu_get_edcca(struct mt7915_phy *phy, u8 mode, s8 *value);

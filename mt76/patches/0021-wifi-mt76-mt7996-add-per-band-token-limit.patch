@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -465,6 +465,8 @@ struct mt76_txwi_cache {
+@@ -461,6 +461,8 @@ struct mt76_txwi_cache {
  
  	u8 qid;
  	u8 phy_idx;
@@ -46,7 +46,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  struct mt76_rx_tid {
-@@ -932,6 +934,8 @@ struct mt76_phy {
+@@ -929,6 +931,8 @@ struct mt76_phy {
  		bool al;
  		u8 pin;
  	} leds;
@@ -75,7 +75,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt76_rx_token_consume(struct mt76_dev *dev, void *ptr,
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -754,6 +754,7 @@ mt76_alloc_device(struct device *pdev, u
+@@ -756,6 +756,7 @@ mt76_alloc_device(struct device *pdev, u
  	INIT_LIST_HEAD(&dev->txwi_cache);
  	INIT_LIST_HEAD(&dev->rxwi_cache);
  	dev->token_size = dev->drv->token_size;
@@ -100,7 +100,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	idr_destroy(&dev->token);
 --- a/tx.c
 +++ b/tx.c
-@@ -945,22 +945,33 @@ void __mt76_set_tx_blocked(struct mt76_d
+@@ -943,22 +943,33 @@ void __mt76_set_tx_blocked(struct mt76_d
  }
  EXPORT_SYMBOL_GPL(__mt76_set_tx_blocked);
  
@@ -137,7 +137,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  #ifdef CONFIG_NET_MEDIATEK_SOC_WED
-@@ -972,6 +983,7 @@ int mt76_token_consume(struct mt76_dev *
+@@ -970,6 +981,7 @@ int mt76_token_consume(struct mt76_dev *
  	if (dev->token_count >= dev->token_size - MT76_TOKEN_FREE_THR)
  		__mt76_set_tx_blocked(dev, true);
  
@@ -145,7 +145,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	spin_unlock_bh(&dev->token_lock);
  
  	return token;
-@@ -1000,12 +1012,16 @@ struct mt76_txwi_cache *
+@@ -998,12 +1010,16 @@ struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake)
  {
  	struct mt76_txwi_cache *txwi;
@@ -164,7 +164,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			struct mt76_phy *mphy = mt76_dev_phy(dev, txwi->phy_idx);
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -750,8 +750,9 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -749,8 +749,9 @@ int mt7915_tx_prepare_skb(struct mt76_de
  
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
@@ -248,7 +248,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -1091,8 +1091,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -1088,8 +1088,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
  
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
@@ -260,7 +260,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (id < 0)
  		return id;
  
-@@ -2277,8 +2279,12 @@ void mt7996_tx_token_put(struct mt7996_d
+@@ -2274,8 +2276,12 @@ void mt7996_tx_token_put(struct mt7996_d
  
  	spin_lock_bh(&dev->mt76.token_lock);
  	idr_for_each_entry(&dev->mt76.token, txwi, id) {

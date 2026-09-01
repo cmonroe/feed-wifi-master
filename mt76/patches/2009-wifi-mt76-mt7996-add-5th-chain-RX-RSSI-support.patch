@@ -27,7 +27,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -393,6 +393,8 @@ enum mt76_wcid_flags {
+@@ -389,6 +389,8 @@ enum mt76_wcid_flags {
  	MT_WCID_FLAG_4ADDR,
  	MT_WCID_FLAG_HDR_TRANS,
  	MT_WCID_FLAG_TDLS_PEER,
@@ -36,7 +36,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  #define MT76_N_WCIDS 1088
-@@ -769,25 +771,19 @@ struct mt76_mmio {
+@@ -765,25 +767,19 @@ struct mt76_mmio {
  	int npu_type;
  };
  
@@ -64,7 +64,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 flag;
  	u8 enc_flags;
  	u8 encoding:3, bw:4;
-@@ -802,14 +798,13 @@ struct mt76_rx_status {
+@@ -798,14 +794,13 @@ struct mt76_rx_status {
  			u8 gi:2;
  		} eht;
  	};

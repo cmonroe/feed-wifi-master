@@ -23,7 +23,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1349,6 +1349,7 @@ enum {
+@@ -1352,6 +1352,7 @@ enum {
  	MCU_UNI_CMD_GET_STAT_INFO = 0x23,
  	MCU_UNI_CMD_SNIFFER = 0x24,
  	MCU_UNI_CMD_SR = 0x25,
@@ -43,7 +43,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2350,6 +2350,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2347,6 +2347,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  		set_bit(MT76_RESET, &phy->mt76->state);
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
  	}
@@ -217,7 +217,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	struct mt7996_dev *dev = phy->dev;
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1186,6 +1186,12 @@ enum pp_mode {
+@@ -1189,6 +1189,12 @@ enum pp_mode {
  	PP_USR_MODE,
  };
  
