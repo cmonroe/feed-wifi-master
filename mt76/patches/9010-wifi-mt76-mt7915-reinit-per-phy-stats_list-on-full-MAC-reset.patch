@@ -11,14 +11,43 @@ so this fix only applies on top of it.
 
 Fixes: SDG-2422
 
+The same full-reset path has two more instances of this same bug
+class, both reachable when the very first MCU command times out
+during initial firmware bring-up, before mt76_register_device()
+ever ran:
+
+1. mt7915_mac_restart(), called from the retry loop below, calls
+   mt76_txq_schedule_all() as its first action. phy->tx_list is
+   only INIT_LIST_HEAD'd by mt76_phy_init(), which runs from
+   registration - so on an unregistered phy it is still raw zeroed
+   memory. list_empty() misreads next == NULL as non-empty,
+   list_splice_init() dereferences it, and writes to address 0x8
+   (the prev field of a NULL list_head), panicking the kernel from
+   this function's workqueue context.
+
+2. ieee80211_restart_hw() below queues local->restart_work, whose
+   first action is flush_workqueue(local->workqueue). That is only
+   set up by ieee80211_register_hw(), so on an unregistered phy this
+   crashes asynchronously in a kworker:
+     mutex_lock+0x14/0x58
+     __flush_workqueue+0x64/0x470
+     ieee80211_restart_work+0x3c/0x180 [mac80211]
+
+Guard both the same way this patch already guards stats_list: only
+touch/restart a phy that completed MT76_STATE_REGISTERED. An
+already-registered phy's tx_list may hold real pending entries that
+mt76_txq_schedule_all() still needs to drain, and it has a real
+ieee80211_restart_work to run - so this must not fire for it.
+
 Signed-off-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
 ---
- mt7915/mac.c |    7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ mt7915/mac.c |   18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
 
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1338,9 +1338,10 @@ static void
+@@ -1335,9 +1335,10 @@ static void
  mt7915_mac_full_reset(struct mt7915_dev *dev)
  {
  	struct mt76_phy *ext_phy;
@@ -29,8 +58,21 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	phy = &dev->phy;
  	ext_phy = dev->mt76.phys[MT_BAND1];
  	phy2 = ext_phy ? ext_phy->priv : NULL;
+
+@@ -1358,6 +1359,12 @@ mt7915_mac_full_reset(struct mt7915_dev
+ 	cancel_delayed_work_sync(&dev->scs_work);
  
-@@ -1378,6 +1379,10 @@ mt7915_mac_full_reset(struct mt7915_dev
+ 	mutex_lock(&dev->mt76.mutex);
++
++	if (!test_bit(MT76_STATE_REGISTERED, &dev->mphy.state))
++		INIT_LIST_HEAD(&dev->mphy.tx_list);
++	if (ext_phy && !test_bit(MT76_STATE_REGISTERED, &ext_phy->state))
++		INIT_LIST_HEAD(&ext_phy->tx_list);
++
+ 	for (i = 0; i < 10; i++) {
+ 		if (!mt7915_mac_restart(dev))
+ 			break;
+@@ -1375,6 +1382,10 @@ mt7915_mac_full_reset(struct mt7915_dev
  	INIT_LIST_HEAD(&dev->sta_rc_list);
  	INIT_LIST_HEAD(&dev->twt_list);
  
@@ -41,3 +83,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	i = mt76_wcid_alloc(dev->mt76.wcid_mask, MT7915_WTBL_STA);
  	dev->mt76.global_wcid.idx = i;
  	dev->recovery.hw_full_reset = false;
+@@ -1385,8 +1396,9 @@ mt7915_mac_full_reset(struct mt7915_dev
+ 	if (ext_phy)
+ 		ieee80211_wake_queues(ext_phy->hw);
+ 
+-	ieee80211_restart_hw(mt76_hw(dev));
+-	if (ext_phy)
++	if (test_bit(MT76_STATE_REGISTERED, &dev->mphy.state))
++		ieee80211_restart_hw(mt76_hw(dev));
++	if (ext_phy && test_bit(MT76_STATE_REGISTERED, &ext_phy->state))
+ 		ieee80211_restart_hw(ext_phy->hw);
+ }
