@@ -1,0 +1,99 @@
+From: Matthew Cather <matthew.cather@adtran.com>
+Date: Thu, 3 Sep 2026 13:40:00 -0600
+Subject: [PATCH] wifi-scripts: detail only the queried iwinfo interface
+
+iwinfo.uc ran update() at import, before the CLI had even looked at
+ARGV, and update() filled in survey, country, max power, assoclist and
+hardware id for every interface on the box. The survey is a netlink
+dump of one message per channel, and ucode-mod-nl80211 resolves the
+ifindex to a name per message, so "iwinfo <dev> info" on a satellite
+with ten VAPs and 95 channels spent 963 SIOCGIFNAME ioctls -- each with
+its own socket() and close() -- to report on one interface.
+
+Give update() an optional interface name and let the CLI pass it for a
+"<device> <command>" query; the whole-list paths still ask for every
+interface. hostapd/wpa_supplicant bss_info stays unconditional, since
+the OWE transition merge reads the partner interface's copy. The
+trailing comma after iface.mode becomes a semicolon so the assignments
+that now follow it are statements of their own.
+
+Measured on an SDG-8733A satellite, 20 reps of "iwinfo w6g-Client info":
+105.1 ms to 30.8 ms of CPU per call, 963 SIOCGIFNAME to 106, 4467
+syscalls to 1201. Bare "iwinfo" is unchanged. Output is byte-identical
+across info, assoclist, freqlist, htmodelist, countrylist, txpowerlist
+and the phy-name forms.
+
+Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
+---
+ src/usr/bin/iwinfo            |    5 +++++
+ src/usr/share/ucode/iwinfo.uc |   21 +++++++++++++--------
+ 2 files changed, 19 insertions(+), 7 deletions(-)
+
+--- a/src/usr/bin/iwinfo
++++ b/src/usr/bin/iwinfo
+@@ -139,6 +139,7 @@
+ }
+ 
+ if (!length(ARGV)) {
++	iwinfo.update();
+ 	let info = iwinfo.info();
+ 	if (pretty)
+ 		print_info(info);
+@@ -177,6 +178,10 @@
+ 	return 0;
+ }
+ 
++// A "<device> <command>" query only ever reads that device, so detail it
++// alone; everything else still needs every interface.
++iwinfo.update(length(ARGV) == 2 ? ARGV[0] : null);
++
+ let phy_only = !iwinfo.ifaces[ARGV[0]] && iwinfo.phy_by_name(ARGV[0]);
+ if (length(ARGV) == 2 && (iwinfo.ifaces[ARGV[0]] || phy_only))
+ 	for (let cmd, cb in commands)
+--- a/src/usr/share/ucode/iwinfo.uc
++++ b/src/usr/share/ucode/iwinfo.uc
+@@ -119,7 +119,11 @@
+ 
+ export let ifaces = {};
+ 
+-export function update() {
++// The survey dump alone is one netlink message per channel, so detailing
++// every interface costs channels x interfaces. Pass `only` to detail just
++// that one; bss_info stays unconditional because the OWE merge below reads
++// the partner interface's copy.
++export function update(only) {
+ 	phys = nl80211.request(nl80211.const.NL80211_CMD_GET_WIPHY, nl80211.const.NLM_F_DUMP, { split_wiphy_dump: true });
+ 	interfaces = nl80211.request(nl80211.const.NL80211_CMD_GET_INTERFACE, nl80211.const.NLM_F_DUMP);
+ 	wireless_status = ubus.call('network.wireless', 'status');
+@@ -128,17 +132,21 @@
+ 	for (let k, v in interfaces) {
+ 		let iface = ifaces[v.ifname] = v;
+ 
+-		iface.mode = iftypes[iface.iftype] ?? 'unknown',
++		iface.mode = iftypes[iface.iftype] ?? 'unknown';
++
++		iface.bss_info = ubus.call('hostapd', 'bss_info', { iface: v.ifname });
++		if (!iface.bss_info)
++			iface.bss_info = ubus.call('wpa_supplicant', 'bss_info', { iface: v.ifname });
++
++		if (only && only != v.ifname)
++			continue;
++
+ 		iface.survey = get_survey(iface);
+ 		iface.noise = get_noise(iface);
+ 		iface.country = get_country(iface);
+ 		iface.max_power = get_max_power(iface);
+ 		iface.assoclist = nl80211.request(nl80211.const.NL80211_CMD_GET_STATION, nl80211.const.NLM_F_DUMP, { dev: v.ifname }) ?? [];
+ 		iface.hardware = get_hardware_id(iface);
+-
+-		iface.bss_info = ubus.call('hostapd', 'bss_info', { iface: v.ifname });
+-		if (!iface.bss_info)
+-			iface.bss_info = ubus.call('wpa_supplicant', 'bss_info', { iface: v.ifname });
+ 	}
+ 
+ 	for (let radio, data in wireless_status)
+@@ -742,4 +750,3 @@
+ 	return cells;
+ };
+ 
+-update();
