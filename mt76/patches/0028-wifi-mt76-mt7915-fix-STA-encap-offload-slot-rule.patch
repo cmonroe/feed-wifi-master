@@ -1,0 +1,65 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 16 Sep 2026 04:27:30 -0700
+Subject: [PATCH] wifi: mt76: mt7915: fix STA encap offload slot rule
+
+Hardware header translation in station mode only works for own-MAC
+slots HW_BSSID_1..3. mt7915 applies this rule once in .add_interface,
+but mac80211 recomputes the offload flags later, for example when a
+monitor interface is added or removed, re-enables hardware encap and
+consults the driver only through .update_vif_offload. The 4th and
+later station interfaces on a band therefore switch to the 802.3 TX
+path and pass no data.
+
+Apply the slot rule in an .update_vif_offload callback as well, and
+share the slot check with mt7996.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7915/main.c |   21 ++++++++++++++++++---
+ 1 file changed, 18 insertions(+), 3 deletions(-)
+
+--- a/mt7915/main.c
++++ b/mt7915/main.c
+@@ -201,6 +201,22 @@ static void mt7915_init_bitrate_mask(str
+ 	}
+ }
+ 
++/* Also called from mt7915_add_interface() under dev->mt76.mutex, and
++ * omac_idx does not change after that, so take no lock here.
++ */
++static void mt7915_update_vif_offload(struct ieee80211_hw *hw,
++				      struct ieee80211_vif *vif)
++{
++	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
++
++	if (vif->type == NL80211_IFTYPE_AP ||
++	    mt76_connac_omac_idx_hw_capable(mvif->mt76.omac_idx))
++		return;
++
++	vif->offload_flags &= ~(IEEE80211_OFFLOAD_ENCAP_ENABLED |
++				IEEE80211_OFFLOAD_DECAP_ENABLED);
++}
++
+ static int mt7915_add_interface(struct ieee80211_hw *hw,
+ 				struct ieee80211_vif *vif)
+ {
+@@ -265,10 +281,8 @@ static int mt7915_add_interface(struct i
+ 		mtxq->wcid = idx;
+ 	}
+ 
+-	if (vif->type != NL80211_IFTYPE_AP &&
+-	    (!mvif->mt76.omac_idx || mvif->mt76.omac_idx > 3))
+-		vif->offload_flags = 0;
+ 	vif->offload_flags |= IEEE80211_OFFLOAD_ENCAP_4ADDR;
++	mt7915_update_vif_offload(hw, vif);
+ 
+ 	mt7915_init_bitrate_mask(vif);
+ 	memset(&mvif->cap, -1, sizeof(mvif->cap));
+@@ -1895,6 +1909,7 @@ const struct ieee80211_ops mt7915_ops =
+ 	.sta_statistics = mt7915_sta_statistics,
+ 	.sta_set_txpwr = mt7915_sta_set_txpwr,
+ 	.sta_set_4addr = mt7915_sta_set_4addr,
++	.update_vif_offload = mt7915_update_vif_offload,
+ 	.sta_set_decap_offload = mt7915_sta_set_decap_offload,
+ 	.sta_set_airtime_weight = mt7915_sta_set_airtime_weight,
+ 	.add_twt_setup = mt7915_mac_add_twt_setup,

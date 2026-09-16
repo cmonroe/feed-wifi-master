@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	    skb->protocol == cpu_to_be16(ETH_P_PAE) ||
 +	    (vif && vif->type != NL80211_IFTYPE_AP &&
 +	     !ieee80211_vif_is_mld(vif) &&
-+	     !mt7996_omac_idx_hw_capable(omac_idx)))
++	     !mt76_connac_omac_idx_hw_capable(omac_idx)))
  		val |= MT_TXD6_DIS_MAT;
  
  	if (is_mt7996(&dev->mt76))

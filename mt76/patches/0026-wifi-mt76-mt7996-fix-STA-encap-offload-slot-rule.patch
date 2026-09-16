@@ -18,8 +18,8 @@ MDP address translation disabled was tested and still fails.
 Fixes: d258f4e3e1ca ("wifi: mt76: mt7996: switch to single multi-radio wiphy")
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7996/main.c   |   33 +++++++++++++++++++++++++++++----
- mt7996/mt7996.h |    8 ++++++++
+ mt76_connac.h |    8 ++++++++
+ mt7996/main.c |   33 +++++++++++++++++++++++++++++----
  2 files changed, 37 insertions(+), 4 deletions(-)
 
 --- a/mt7996/main.c
@@ -56,7 +56,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		struct mt7996_vif_link *link;
 +
 +		link = mt7996_vif_link(dev, vif, link_id);
-+		if (!link || mt7996_omac_idx_hw_capable(link->mt76.omac_idx))
++		if (!link || mt76_connac_omac_idx_hw_capable(link->mt76.omac_idx))
 +			continue;
 +
 +		vif->offload_flags &= ~(IEEE80211_OFFLOAD_ENCAP_ENABLED |
@@ -78,20 +78,20 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	.sta_set_decap_offload = mt7996_sta_set_decap_offload,
  	.sta_set_airtime_weight = mt7996_sta_set_airtime_weight,
  	.add_twt_setup = mt7996_mac_add_twt_setup,
---- a/mt7996/mt7996.h
-+++ b/mt7996/mt7996.h
-@@ -670,6 +670,14 @@ mt7996_band_phy(struct mt7996_dev *dev,
- 	return mphy->priv;
- }
+--- a/mt76_connac.h
++++ b/mt76_connac.h
+@@ -83,6 +83,14 @@ enum {
+ 	REPEATER_BSSID_MAX = 0x3f,
+ };
  
 +/* Non-AP interfaces only have hardware own-MAC support (TX header
 + * translation, MDP address translation) on slots HW_BSSID_1..3.
 + */
-+static inline bool mt7996_omac_idx_hw_capable(u8 omac_idx)
++static inline bool mt76_connac_omac_idx_hw_capable(u8 omac_idx)
 +{
 +	return omac_idx >= HW_BSSID_1 && omac_idx <= HW_BSSID_MAX;
 +}
 +
- static inline struct mt7996_vif_link *
- mt7996_vif_link(struct mt7996_dev *dev, struct ieee80211_vif *vif, int link_id)
- {
+ #define VOW_DRR_QUANTUM_NUM	8
+ 
+ /* Per-level DRR airtime quantum (unit: 256us). Halved from the hardware's

@@ -347,7 +347,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		cancel_delayed_work(&rdev->background_cac_done_wk);
 --- a/net/mac80211/chan.c
 +++ b/net/mac80211/chan.c
-@@ -2317,6 +2317,19 @@ int _ieee80211_link_use_channel(struct i
+@@ -2320,6 +2320,19 @@ int _ieee80211_link_use_channel(struct i
  					    sdata->wdev.iftype);
  	if (ret < 0)
  		goto out;

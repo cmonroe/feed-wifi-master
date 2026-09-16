@@ -13,7 +13,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -500,7 +500,8 @@ static int mt7915_config(struct ieee8021
+@@ -514,7 +514,8 @@ static int mt7915_config(struct ieee8021
  			rxfilter |= MT_WF_RFCR_DROP_OTHER_UC;
  			dev->monitor_mask &= ~BIT(band);
  		} else {
@@ -23,7 +23,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  			dev->monitor_mask |= BIT(band);
  		}
  
-@@ -563,13 +564,14 @@ static void mt7915_configure_filter(stru
+@@ -577,13 +578,14 @@ static void mt7915_configure_filter(stru
  			   MT_WF_RFCR_DROP_MCAST |
  			   MT_WF_RFCR_DROP_BCAST |
  			   MT_WF_RFCR_DROP_DUPLICATE |
@@ -40,7 +40,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	MT76_FILTER(FCSFAIL, MT_WF_RFCR_DROP_FCSFAIL);
  
-@@ -580,7 +582,8 @@ static void mt7915_configure_filter(stru
+@@ -594,7 +596,8 @@ static void mt7915_configure_filter(stru
  	*total_flags = flags;
  	rxfilter = phy->rxfilter;
  	if (hw->conf.flags & IEEE80211_CONF_MONITOR)

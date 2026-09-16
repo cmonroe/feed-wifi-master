@@ -219,7 +219,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT7996_TX_RING_SIZE		2048
  #define MT7996_TX_MCU_RING_SIZE		256
  #define MT7996_TX_FWDL_RING_SIZE	128
-@@ -832,6 +837,8 @@ int mt7996_mcu_set_fixed_rate_ctrl(struc
+@@ -824,6 +829,8 @@ int mt7996_mcu_set_fixed_rate_ctrl(struc
  int mt7996_mcu_set_fixed_field(struct mt7996_dev *dev, struct mt7996_sta *msta,
  			       void *data, u8 link_id, u32 field);
  int mt7996_mcu_set_eeprom(struct mt7996_dev *dev);
