@@ -1,0 +1,55 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 16 Sep 2026 13:06:10 -0700
+Subject: [PATCH] hostapd: use the long scan timeout for every scan
+
+wpa_driver_nl80211_scan() aborts a scan after 10 s until the driver
+delivers its first NL80211_CMD_NEW_SCAN_RESULTS event, and after 30 s
+from then on. The short timeout dates from drivers without a scan
+completion event. cfg80211 sends NL80211_CMD_NEW_SCAN_RESULTS or
+NL80211_CMD_SCAN_ABORTED for every triggered scan, so the timeout
+only guards against a driver that never completes the scan. The
+vendor scan path already uses 30 s for the same reason.
+
+A mac80211 software scan of the 5 GHz band takes 11 to 12 s while
+another interface on the same radio is associated, because mac80211
+suspends the scan on every channel. The 10 s timeout aborts the first
+scan of every interface that starts after the first association.
+Network selection does not retry an aborted scan, so those interfaces
+stay in SCANNING.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/drivers/driver_nl80211_scan.c |   22 +++++++++-------------
+ 1 file changed, 9 insertions(+), 13 deletions(-)
+
+--- a/src/drivers/driver_nl80211_scan.c
++++ b/src/drivers/driver_nl80211_scan.c
+@@ -455,19 +455,15 @@ int wpa_driver_nl80211_scan(struct i802_
+ 	}
+ 
+ 	drv->scan_state = SCAN_REQUESTED;
+-	/* Not all drivers generate "scan completed" wireless event, so try to
+-	 * read results after a timeout. */
+-	timeout = drv->uses_6ghz ? 20 : 10;
+-	if (drv->uses_s1g)
+-		timeout += 5;
+-	if (drv->scan_complete_events) {
+-		/*
+-		 * The driver seems to deliver events to notify when scan is
+-		 * complete, so use longer timeout to avoid race conditions
+-		 * with scanning and following association request.
+-		 */
+-		timeout = 30;
+-	}
++	/*
++	 * cfg80211 sends NL80211_CMD_NEW_SCAN_RESULTS or
++	 * NL80211_CMD_SCAN_ABORTED for every triggered scan, so this timeout
++	 * only guards against a driver that never completes the scan. A
++	 * shorter first-scan timeout aborts a mac80211 software scan that
++	 * runs while another interface on the radio is associated, and
++	 * network selection does not retry an aborted scan.
++	 */
++	timeout = 30;
+ 	wpa_printf(MSG_DEBUG, "Scan requested (ret=%d) - scan timeout %d "
+ 		   "seconds", ret, timeout);
+ 	eloop_cancel_timeout(wpa_driver_nl80211_scan_timeout, drv, bss->ctx);
