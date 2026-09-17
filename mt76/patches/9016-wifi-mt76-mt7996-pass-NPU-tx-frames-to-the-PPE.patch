@@ -1,0 +1,228 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 17 Sep 2026 12:33:27 -0700
+Subject: [PATCH] wifi: mt76: mt7996: pass NPU tx frames to the PPE
+
+The Airoha PPE binds most flows from netfilter flowtable rules, but
+forwarded traffic without a rule (bridged LAN, PON SFU, bridge-WAN
+flood) is bound by the ethernet driver from the transmit path. For
+wifi egress that pass never runs, so such flows stay on the CPU.
+
+Hand every 802.3 data frame that goes to the NPU to the PPE with the
+WDMA index, WCID, BSS index and TID, mirroring the receive side check
+in mt76_npu_check_ppe(). The values are taken from the resolved link
+and wcid in mt7996_tx_prepare_skb(), the same source the txp uses,
+so no txp parsing is needed and MLO links get their own band.
+
+On receive, hand the CPU reason to the PPE instead of filtering on
+one reason value in mt76; the PPE driver owns the reason semantics
+and needs the value for other reasons as well.
+
+The tx op is optional in struct airoha_ppe_dev, so an airoha driver
+without it links and the call is a no-op. The wdma index rule is
+shared with mt7996_net_fill_forward_path() through a helper.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ airoha_offload.h |   35 +++++++++++++++++++++++++++++++----
+ mt76.h           |    8 ++++++++
+ mt7996/mac.c     |   17 +++++++++++++++++
+ mt7996/main.c    |    8 +++-----
+ mt7996/mt7996.h  |   10 ++++++++++
+ npu.c            |   21 +++++++++++++++++----
+ 6 files changed, 86 insertions(+), 13 deletions(-)
+
+--- a/airoha_offload.h
++++ b/airoha_offload.h
+@@ -14,13 +14,24 @@ enum {
+ 	PPE_CPU_REASON_HIT_UNBIND_RATE_REACHED = 0x0f,
+ };
+ 
++struct airoha_wdma_info {
++	u8 idx;
++	u8 queue;
++	u16 wcid;
++	u8 bss;
++	u8 tid;
++};
++
+ struct airoha_ppe_dev {
+ 	struct {
+ 		int (*setup_tc_block_cb)(struct airoha_ppe_dev *dev,
+ 					 void *type_data);
+ 		void (*check_skb)(struct airoha_ppe_dev *dev,
+ 				  struct sk_buff *skb, u16 hash,
+-				  bool rx_wlan);
++				  u16 reason, bool rx_wlan);
++		void (*check_tx_skb)(struct airoha_ppe_dev *dev,
++				     struct sk_buff *skb,
++				     const struct airoha_wdma_info *info);
+ 	} ops;
+ 
+ 	void *priv;
+@@ -38,9 +49,19 @@ static inline int airoha_ppe_dev_setup_t
+ 
+ static inline void airoha_ppe_dev_check_skb(struct airoha_ppe_dev *dev,
+ 					    struct sk_buff *skb,
+-					    u16 hash, bool rx_wlan)
++					    u16 hash, u16 reason, bool rx_wlan)
+ {
+-	dev->ops.check_skb(dev, skb, hash, rx_wlan);
++	dev->ops.check_skb(dev, skb, hash, reason, rx_wlan);
++}
++
++static inline void airoha_ppe_dev_check_tx_skb(struct airoha_ppe_dev *dev,
++					       struct sk_buff *skb,
++					       const struct airoha_wdma_info *info)
++{
++	if (!dev->ops.check_tx_skb)
++		return;
++
++	dev->ops.check_tx_skb(dev, skb, info);
+ }
+ #else
+ static inline struct airoha_ppe_dev *airoha_ppe_get_dev(struct device *dev)
+@@ -60,7 +81,13 @@ static inline int airoha_ppe_setup_tc_bl
+ 
+ static inline void airoha_ppe_dev_check_skb(struct airoha_ppe_dev *dev,
+ 					    struct sk_buff *skb, u16 hash,
+-					    bool rx_wlan)
++					    u16 reason, bool rx_wlan)
++{
++}
++
++static inline void airoha_ppe_dev_check_tx_skb(struct airoha_ppe_dev *dev,
++					       struct sk_buff *skb,
++					       const struct airoha_wdma_info *info)
+ {
+ }
+ #endif
+--- a/mt76.h
++++ b/mt76.h
+@@ -1801,6 +1801,8 @@ int mt76_testmode_alloc_skb(struct mt76_
+ #ifdef CONFIG_MT76_NPU
+ void mt76_npu_check_ppe(struct mt76_dev *dev, struct sk_buff *skb,
+ 			u32 info);
++void mt76_npu_check_ppe_tx(struct mt76_dev *dev, struct sk_buff *skb,
++			   const struct airoha_wdma_info *info);
+ int mt76_npu_dma_add_buf(struct mt76_phy *phy, struct mt76_queue *q,
+ 			 struct sk_buff *skb, struct mt76_queue_buf *buf,
+ 			 void *txwi_ptr);
+@@ -1824,6 +1826,12 @@ static inline void mt76_npu_check_ppe(st
+ {
+ }
+ 
++static inline void mt76_npu_check_ppe_tx(struct mt76_dev *dev,
++					 struct sk_buff *skb,
++					 const struct airoha_wdma_info *info)
++{
++}
++
+ static inline int mt76_npu_dma_add_buf(struct mt76_phy *phy,
+ 				       struct mt76_queue *q,
+ 				       struct sk_buff *skb,
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -954,6 +954,20 @@ mt7996_tx_use_mgmt(struct mt7996_dev *de
+ 	return false;
+ }
+ 
++static void
++mt7996_npu_check_ppe_tx(struct mt7996_dev *dev, struct sk_buff *skb,
++			struct mt76_wcid *wcid, struct mt76_vif_link *mlink)
++{
++	struct airoha_wdma_info info = {
++		.idx = mt7996_npu_wdma_idx(dev, wcid->phy_idx, mlink->band_idx),
++		.bss = mlink->idx,
++		.wcid = wcid->idx,
++		.tid = skb->priority & IEEE80211_QOS_CTL_TID_MASK,
++	};
++
++	mt76_npu_check_ppe_tx(&dev->mt76, skb, &info);
++}
++
+ int mt7996_tx_prepare_skb(struct mt76_dev *mdev, void *txwi_ptr,
+ 			  enum mt76_txq_id qid, struct mt76_wcid *wcid,
+ 			  struct ieee80211_sta *sta,
+@@ -1134,6 +1148,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+ 
+ 		txp->fw.token = cpu_to_le16(id);
+ 		txp->fw.rept_wds_wcid = cpu_to_le16(sta ? wcid->idx : 0xfff);
++
++		if (is_8023 && sta && mlink && mt76_npu_device_active(mdev))
++			mt7996_npu_check_ppe_tx(dev, tx_info->skb, wcid, mlink);
+ 	}
+ 
+ 	tx_info->skb = NULL;
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -2764,11 +2764,9 @@ mt7996_net_fill_forward_path(struct ieee
+ 		path->mtk_wdma.wdma_idx = wed->wdma_idx;
+ 	else
+ #endif
+-	if (is_mt7996(&dev->mt76) && mt76_npu_device_active(&dev->mt76) &&
+-	    msta_link->wcid.phy_idx == MT_BAND2)
+-		path->mtk_wdma.wdma_idx = 1;
+-	else
+-		path->mtk_wdma.wdma_idx = link->mt76.band_idx;
++		path->mtk_wdma.wdma_idx =
++			mt7996_npu_wdma_idx(dev, msta_link->wcid.phy_idx,
++					    link->mt76.band_idx);
+ 	path->mtk_wdma.bss = link->mt76.idx;
+ 	path->mtk_wdma.queue = 0;
+ 	path->mtk_wdma.wcid = msta_link->wcid.idx;
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -736,6 +736,16 @@ mt7996_band_valid(struct mt7996_dev *dev
+ 	return band <= MT_BAND2;
+ }
+ 
++static inline u8
++mt7996_npu_wdma_idx(struct mt7996_dev *dev, u8 phy_idx, u8 band_idx)
++{
++	/* the NPU exposes two tx rings; on mt7996 band2 is served by ring 1 */
++	if (is_mt7996(&dev->mt76) && phy_idx == MT_BAND2)
++		return 1;
++
++	return band_idx;
++}
++
+ static inline struct mt7996_phy *
+ mt7996_band_phy(struct mt7996_dev *dev, enum nl80211_band band)
+ {
+--- a/npu.c
++++ b/npu.c
+@@ -130,17 +130,30 @@ void mt76_npu_check_ppe(struct mt76_dev
+ 
+ 	hash = FIELD_GET(NPU_RX_DMA_FOE_ID_MASK, info);
+ 	skb_set_hash(skb, hash, PKT_HASH_TYPE_L4);
++	skb_set_mac_header(skb, 0);
+ 
+ 	reason = FIELD_GET(NPU_RX_DMA_CRSN_MASK, info);
+-	if (reason == PPE_CPU_REASON_HIT_UNBIND_RATE_REACHED) {
+-		skb_set_mac_header(skb, 0);
+-		airoha_ppe_dev_check_skb(ppe_dev, skb, hash, true);
+-	}
++	airoha_ppe_dev_check_skb(ppe_dev, skb, hash, reason, true);
+ out:
+ 	rcu_read_unlock();
+ }
+ EXPORT_SYMBOL_GPL(mt76_npu_check_ppe);
+ 
++void mt76_npu_check_ppe_tx(struct mt76_dev *dev, struct sk_buff *skb,
++			   const struct airoha_wdma_info *info)
++{
++	struct airoha_ppe_dev *ppe_dev;
++
++	rcu_read_lock();
++
++	ppe_dev = rcu_dereference(dev->mmio.ppe_dev);
++	if (ppe_dev)
++		airoha_ppe_dev_check_tx_skb(ppe_dev, skb, info);
++
++	rcu_read_unlock();
++}
++EXPORT_SYMBOL_GPL(mt76_npu_check_ppe_tx);
++
+ static int mt76_npu_rx_poll(struct napi_struct *napi, int budget)
+ {
+ 	struct mt76_dev *dev = mt76_priv(napi->dev);
