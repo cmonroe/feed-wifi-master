@@ -138,7 +138,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static struct ubus_context *ctx;
  static struct blob_buf b;
-@@ -169,77 +183,689 @@ hostapd_bss_reload(struct ubus_context *
+@@ -169,77 +183,701 @@ hostapd_bss_reload(struct ubus_context *
  
  
  static void
@@ -793,8 +793,20 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	}
 +
 +	if (sta->eht_capab) {
++		struct ieee80211_eht_capabilities eht_sta;
++		size_t eht_len = sta->eht_capab_len;
++
++		/* sta->eht_capab is only eht_capab_len bytes, as little as
++		 * IEEE80211_EHT_CAPAB_MIN_LEN; eht_capab_add() walks the fixed
++		 * struct layout, so bounce through a zero-padded copy */
++		if (eht_len > sizeof(eht_sta))
++			eht_len = sizeof(eht_sta);
++
++		os_memset(&eht_sta, 0, sizeof(eht_sta));
++		os_memcpy(&eht_sta, sta->eht_capab, eht_len);
++
 +		table = blobmsg_open_table(&b, "eht");
-+		eht_capab_add(sta->eht_capab, sta->he_capab, freq, filter_false);
++		eht_capab_add(&eht_sta, sta->he_capab, freq, filter_false);
 +		blobmsg_close_table(&b, table);
 +	} else if (elems && elems->eht_capabilities && elems->he_capabilities &&
 +		   elems->he_capabilities_len >= IEEE80211_HE_CAPAB_MIN_LEN &&
