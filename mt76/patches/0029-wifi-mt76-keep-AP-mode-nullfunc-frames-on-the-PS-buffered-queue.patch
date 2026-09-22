@@ -1,0 +1,65 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 21 Sep 2026 18:25:55 -0700
+Subject: [PATCH] wifi: mt76: keep AP-mode nullfunc frames on the PS-buffered queue
+
+Routing every nullfunc frame on the mt76_tx() pending path to the ALTX
+queue is right for the frames a station sends to its AP, which must go
+out at once. An AP sends nullfunc frames for one purpose only: the
+reachability probe that ieee80211_probe_client() builds for
+NL80211_CMD_PROBE_CLIENT, which hostapd uses as its inactivity poll.
+On the ALTX queue that probe leaves without power save buffering, so a
+station in power save cannot receive it and never ACKs it, and hostapd
+disassociates a reachable station for inactivity.
+
+Keep AP-mode nullfunc frames on the regular data queue, where the
+firmware buffers them until the station wakes up, as mac80211 does in
+ieee80211_tx_h_unicast_ps_buf() for drivers without AP_LINK_PS. Frames
+to a wcid without a live station context, off-channel frames and PS
+responses keep the ALTX routing: with no station context there is no
+PS queue for the frame to wait in.
+
+Fixes: da6d90e4f66a ("wifi: mt76: route nullfunc frames to PSD/ALTX queue")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ tx.c |   23 ++++++++++++++++++++++-
+ 1 file changed, 22 insertions(+), 1 deletion(-)
+
+--- a/tx.c
++++ b/tx.c
+@@ -672,6 +672,27 @@ void mt76_txq_schedule(struct mt76_phy *
+ }
+ EXPORT_SYMBOL_GPL(mt76_txq_schedule);
+ 
++static bool
++mt76_pending_skb_ps_bufferable(struct mt76_wcid *wcid, struct sk_buff *skb)
++{
++	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
++	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
++	__le16 fc = hdr->frame_control;
++
++	if (ieee80211_is_bufferable_mmpdu(skb))
++		return true;
++
++	/* An AP sends nullfunc frames only as reachability probes
++	 * (ieee80211_probe_client), which a sleeping station can ACK only
++	 * once it wakes up, so they must not bypass PS buffering. Without a
++	 * live station context there is no PS queue to wait in.
++	 */
++	return wcid->sta && !wcid->sta_disabled &&
++	       ieee80211_is_any_nullfunc(fc) &&
++	       ieee80211_has_fromds(fc) && !ieee80211_has_tods(fc) &&
++	       !(info->control.flags & IEEE80211_TX_CTRL_PS_RESPONSE);
++}
++
+ static int
+ mt76_txq_schedule_pending_wcid(struct mt76_phy *phy, struct mt76_wcid *wcid,
+ 			       struct sk_buff_head *head)
+@@ -692,7 +713,7 @@ mt76_txq_schedule_pending_wcid(struct mt
+ 		    !(info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP) &&
+ 		    !ieee80211_is_data_present(hdr->frame_control) &&
+ 		    (!(wcid->tx_info & MT_WCID_TX_INFO_SET) ||
+-		     !ieee80211_is_bufferable_mmpdu(skb) ||
++		     !mt76_pending_skb_ps_bufferable(wcid, skb) ||
+ 		     ieee80211_is_deauth(hdr->frame_control) ||
+ 		     head == &wcid->tx_offchannel))
+ 			qid = MT_TXQ_PSD;
