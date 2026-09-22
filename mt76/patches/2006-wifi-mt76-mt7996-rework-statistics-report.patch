@@ -604,7 +604,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	rcu_assign_pointer(msta->link[link_id], msta_link);
  
-@@ -1929,6 +1932,87 @@ static void mt7996_sta_statistics(struct
+@@ -1931,6 +1934,87 @@ static void mt7996_sta_statistics(struct
  	}
  }
  
@@ -692,7 +692,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
  					 struct mt7996_sta_link *msta_link)
  {
-@@ -2652,6 +2736,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2654,6 +2738,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_bitrate_mask = mt7996_set_bitrate_mask,
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,

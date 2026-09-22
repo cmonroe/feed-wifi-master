@@ -1,0 +1,27 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 21 Sep 2026 18:46:51 -0700
+Subject: [PATCH] wifi: mt76: mt7996: restore station flags on association
+
+The DISASSOC event clears wcid.sta and sets wcid.sta_disabled, but the
+ASSOC event restores neither. A station that moves from ASSOC to AUTH
+and back on the same link keeps sta cleared, so wcid_to_sta() returns
+NULL and RX statistics, power save transitions and TX status for it
+are lost until it is removed. mt7915 already sets both flags on ASSOC;
+do the same for mt7996.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1408,6 +1408,8 @@ mt7996_mac_sta_event(struct mt7996_dev *
+ 				goto unlock;
+ 
+ 			msta_link->wcid.tx_info |= MT_WCID_TX_INFO_SET;
++			msta_link->wcid.sta = 1;
++			msta_link->wcid.sta_disabled = 0;
+ 			break;
+ 		case MT76_STA_EVENT_AUTHORIZE:
+ 			err = mt7996_mcu_add_sta(dev, link_conf, link_sta,

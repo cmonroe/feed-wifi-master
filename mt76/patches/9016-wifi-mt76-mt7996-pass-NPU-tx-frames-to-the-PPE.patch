@@ -155,7 +155,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	tx_info->skb = NULL;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2764,11 +2764,9 @@ mt7996_net_fill_forward_path(struct ieee
+@@ -2766,11 +2766,9 @@ mt7996_net_fill_forward_path(struct ieee
  		path->mtk_wdma.wdma_idx = wed->wdma_idx;
  	else
  #endif

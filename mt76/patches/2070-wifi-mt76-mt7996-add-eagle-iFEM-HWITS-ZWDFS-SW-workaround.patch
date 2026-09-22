@@ -50,7 +50,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7996_post_channel_switch(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  			   struct ieee80211_bss_conf *link_conf)
  {
-@@ -2539,21 +2563,104 @@ mt7996_twt_teardown_request(struct ieee8
+@@ -2541,21 +2565,104 @@ mt7996_twt_teardown_request(struct ieee8
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -161,7 +161,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -2566,13 +2673,14 @@ mt7996_set_radar_background(struct ieee8
+@@ -2568,13 +2675,14 @@ mt7996_set_radar_background(struct ieee8
  		goto out;
  	}
  
@@ -178,7 +178,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		ret = mt7996_mcu_rdd_background_enable(phy, NULL);
  		if (ret)
  			goto out;
-@@ -2581,7 +2689,9 @@ mt7996_set_radar_background(struct ieee8
+@@ -2583,7 +2691,9 @@ mt7996_set_radar_background(struct ieee8
  			goto update_phy;
  	}
  
@@ -189,7 +189,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (ret)
  		goto out;
  
-@@ -2814,6 +2924,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2816,6 +2926,7 @@ const struct ieee80211_ops mt7996_ops =
  	.release_buffered_frames = mt76_release_buffered_frames,
  	.get_txpower = mt7996_get_txpower,
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
