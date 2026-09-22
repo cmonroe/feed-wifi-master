@@ -1,6 +1,6 @@
 --- a/net/mac80211/sta_info.c
 +++ b/net/mac80211/sta_info.c
-@@ -3779,6 +3779,26 @@ ieee80211_sta_usable_bw(struct link_sta_
+@@ -3771,6 +3771,26 @@ ieee80211_sta_usable_bw(struct link_sta_
  	return bw;
  }
  
@@ -27,7 +27,7 @@
  static enum ieee80211_sta_rx_bandwidth
  ieee80211_sta_current_bw_rx_from_sta(struct link_sta_info *link_sta,
  				     struct cfg80211_chan_def *chandef)
-@@ -3793,7 +3813,9 @@ ieee80211_sta_current_bw_rx_from_sta(str
+@@ -3785,7 +3805,9 @@ ieee80211_sta_current_bw_rx_from_sta(str
  	 * at a higher bandwidth first while reducing bandwidth, and
  	 * change the chanctx only after the peer accepts, etc.)
  	 */
@@ -38,7 +38,7 @@
  		   link_sta->rx_omi_bw_rx);
  }
  
-@@ -3807,7 +3829,7 @@ ieee80211_sta_current_bw_tx_to_sta(struc
+@@ -3799,7 +3821,7 @@ ieee80211_sta_current_bw_tx_to_sta(struc
  	enum nl80211_band band;
  
  	bss_width = chandef->width;

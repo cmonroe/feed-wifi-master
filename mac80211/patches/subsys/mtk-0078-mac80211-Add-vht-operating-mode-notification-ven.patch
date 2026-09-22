@@ -68,7 +68,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	}
 --- a/net/mac80211/sta_info.c
 +++ b/net/mac80211/sta_info.c
-@@ -3789,7 +3789,7 @@ ieee80211_sta_chandef_band(struct link_s
+@@ -3781,7 +3781,7 @@ ieee80211_sta_chandef_band(struct link_s
  	struct ieee80211_bss_conf *link_conf;
  	enum nl80211_band band;
  
@@ -77,7 +77,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		return chandef->chan->band;
  
  	/* the reserved chandef may have no channel during CSA after ZWDFS */
-@@ -3888,6 +3888,40 @@ ieee80211_sta_current_bw(struct link_sta
+@@ -3880,6 +3880,40 @@ ieee80211_sta_current_bw(struct link_sta
  	return IEEE80211_STA_RX_BW_20;
  }
  
