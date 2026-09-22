@@ -87,7 +87,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1944,7 +1944,7 @@ int hostapd_ubus_handle_event(struct hos
+@@ -1951,7 +1951,7 @@ int hostapd_ubus_handle_event(struct hos
  		blobmsg_add_macaddr(&b, "target", req->mgmt_frame->da);
  	if (req->ssi_signal)
  		blobmsg_add_u32(&b, "signal", req->ssi_signal);

@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		struct wpa_state_machine *sm = sta->wpa_sm;
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -492,6 +492,8 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -494,6 +494,8 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->t_c_url);
  	wpabuf_free(sta->hs20_deauth_req);
  	os_free(sta->hs20_session_info_url);
@@ -1008,7 +1008,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -1682,6 +2360,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -1684,6 +2362,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),

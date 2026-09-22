@@ -1,0 +1,97 @@
+From: Matthew Cather <matthew.cather@adtran.com>
+Date: Fri, 18 Sep 2026 09:30:00 -0600
+Subject: [PATCH] hostapd_cli: stop caching the ctrl connection in eloop
+
+hostapd_cli_action() hands the ping timer and the read socket a copy of
+the struct wpa_ctrl pointer, but hostapd_cli_action_ping() may replace
+the connection: on a missed PING it calls hostapd_cli_close_connection(),
+which frees the object, and then hostapd_cli_reconnect(), which allocates
+a new one. The handler then re-arms itself with the pointer it was called
+with, so from the first missed PING onward the timer holds a dangling
+struct wpa_ctrl and dereferences it on every tick. It never recovers --
+the new connection is never the one being polled, and the read socket is
+still registered on the old fd.
+
+wpa_cli has the same shape but exits on a missed PING instead of
+reconnecting, so only hostapd_cli is affected.
+
+Use the ctrl_conn global, which close_connection() and reconnect() both
+keep current, and move the read socket across on reconnect.
+
+Seen under HWAddressSanitizer on an SDG-9000: a 224-byte use-after-free
+in wpa_ctrl_request(), repeating every ping interval for the life of the
+process.
+
+Not fixed upstream.
+
+--- a/hostapd/hostapd_cli.c
++++ b/hostapd/hostapd_cli.c
+@@ -2248,50 +2248,56 @@
+ }
+ 
+ 
++static void hostapd_cli_action_receive(int sock, void *eloop_ctx,
++				       void *sock_ctx);
++
++
+ static void hostapd_cli_action_ping(void *eloop_ctx, void *timeout_ctx)
+ {
+-	struct wpa_ctrl *ctrl = eloop_ctx;
+ 	char buf[256];
+ 	size_t len;
+ 
+ 	/* verify that connection is still working */
+ 	len = sizeof(buf) - 1;
+-	if (wpa_ctrl_request(ctrl, "PING", 4, buf, &len,
++	if (wpa_ctrl_request(ctrl_conn, "PING", 4, buf, &len,
+ 			     hostapd_cli_action_cb) < 0 ||
+ 	    len < 4 || os_memcmp(buf, "PONG", 4) != 0) {
+ 		printf("hostapd did not reply to PING command - open a new connection\n");
++		eloop_unregister_read_sock(wpa_ctrl_get_fd(ctrl_conn));
+ 		hostapd_cli_close_connection();
+ 		if (hostapd_cli_reconnect(ctrl_ifname)) {
+ 			printf("Failed to establish new connection - exit\n");
+ 			eloop_terminate();
+ 			return;
+ 		}
++		eloop_register_read_sock(wpa_ctrl_get_fd(ctrl_conn),
++					 hostapd_cli_action_receive, NULL, NULL);
+ 	}
+ 	eloop_register_timeout(ping_interval, 0, hostapd_cli_action_ping,
+-			       ctrl, NULL);
++			       NULL, NULL);
+ }
+ 
+ 
+ static void hostapd_cli_action_receive(int sock, void *eloop_ctx,
+ 				       void *sock_ctx)
+ {
+-	struct wpa_ctrl *ctrl = eloop_ctx;
++	if (!ctrl_conn)
++		return;
+ 
+-	hostapd_cli_recv_pending(ctrl, 0, 1);
++	hostapd_cli_recv_pending(ctrl_conn, 0, 1);
+ }
+ 
+ 
+ static void hostapd_cli_action(struct wpa_ctrl *ctrl)
+ {
+-	int fd;
+-
+-	fd = wpa_ctrl_get_fd(ctrl);
+ 	eloop_register_timeout(ping_interval, 0, hostapd_cli_action_ping,
+-			       ctrl, NULL);
+-	eloop_register_read_sock(fd, hostapd_cli_action_receive, ctrl, NULL);
++			       NULL, NULL);
++	eloop_register_read_sock(wpa_ctrl_get_fd(ctrl),
++				 hostapd_cli_action_receive, NULL, NULL);
+ 	eloop_run();
+-	eloop_cancel_timeout(hostapd_cli_action_ping, ctrl, NULL);
+-	eloop_unregister_read_sock(fd);
++	eloop_cancel_timeout(hostapd_cli_action_ping, NULL, NULL);
++	if (ctrl_conn)
++		eloop_unregister_read_sock(wpa_ctrl_get_fd(ctrl_conn));
+ }
+ 
+ 
