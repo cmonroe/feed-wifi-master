@@ -44,7 +44,7 @@ echo 1 > /sys/kernel/debug/tracing/events/mac80211/bss_color_collision/enable
  }
 --- a/net/mac80211/trace.h
 +++ b/net/mac80211/trace.h
-@@ -3436,6 +3436,26 @@ TRACE_EVENT(drv_nan_peer_sched_changed,
+@@ -3442,6 +3442,26 @@ TRACE_EVENT(drv_nan_peer_sched_changed,
  	)
  );
  

@@ -1,0 +1,159 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 23 Sep 2026 16:42:24 -0700
+Subject: [PATCH] wifi: mac80211: pass the QoS map to the driver
+
+Some hardware maps the IP DSCP of a frame to a user priority itself,
+with a table that defaults to the three most significant DSCP bits.
+mac80211 classifies with the hostapd QoS map, added in fa9ffc745610
+("cfg80211: Add support for QoS mapping"), and with the RFC 8325
+exceptions from 6fdb8b8781d5 ("wifi: cfg80211: Update the default
+DSCP-to-UP mapping"). The hardware can then send a frame on a TID
+other than the one mac80211 chose, where no BA session exists. The
+MediaTek SDK fixes this by passing the map to the driver; this is a
+port of that change.
+
+A new driver op receives the map when it changes, when a link gets a
+channel context, and after a hardware restart, because the firmware
+loses its table. Drivers without the op see no change, because the
+call then returns success. With the op, an AP_VLAN uses the map of
+its AP, because hostapd sets the map on the AP only and the hardware
+classifies VLAN frames with the table of that BSS.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ include/net/mac80211.h    |    6 ++++++
+ net/mac80211/cfg.c        |    6 +++++-
+ net/mac80211/chan.c       |    3 +++
+ net/mac80211/driver-ops.h |   26 ++++++++++++++++++++++++++
+ net/mac80211/trace.h      |    6 ++++++
+ net/mac80211/util.c       |    2 ++
+ net/mac80211/wme.c        |   10 ++++++++++
+ 7 files changed, 58 insertions(+), 1 deletion(-)
+
+--- a/include/net/mac80211.h
++++ b/include/net/mac80211.h
+@@ -4728,6 +4728,10 @@ struct ieee80211_prep_tx_info {
+  * @set_eml_op_mode: Configure eMLSR/eMLMR operation mode in the underlay
+  *	driver according to the parameter received in the EML Operating mode
+  *	notification frame.
++ * @set_qos_map: Pass the DSCP to UP map of the interface to hardware that
++ *	classifies frames by DSCP itself, for all links of the interface.
++ *	@qos_map is %NULL when no map is configured; the default mapping of
++ *	cfg80211_classify8021d() applies. The callback can sleep.
+  */
+ struct ieee80211_ops {
+ 	void (*tx)(struct ieee80211_hw *hw,
+@@ -5132,6 +5136,8 @@ struct ieee80211_ops {
+ 			       struct ieee80211_vif *vif,
+ 			       struct ieee80211_sta *sta,
+ 			       struct ieee80211_eml_params *eml_params);
++	int (*set_qos_map)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
++			   struct cfg80211_qos_map *qos_map);
+ };
+ 
+ /**
+--- a/net/mac80211/cfg.c
++++ b/net/mac80211/cfg.c
+@@ -5140,7 +5140,11 @@ static int ieee80211_set_qos_map(struct
+ 	if (old_qos_map)
+ 		kfree_rcu(old_qos_map, rcu_head);
+ 
+-	return 0;
++	/* otherwise the map reaches the driver on chanctx assignment */
++	if (!(sdata->flags & IEEE80211_SDATA_IN_DRIVER))
++		return 0;
++
++	return drv_set_qos_map(sdata->local, sdata);
+ }
+ 
+ static int ieee80211_set_ap_chanwidth(struct wiphy *wiphy,
+--- a/net/mac80211/chan.c
++++ b/net/mac80211/chan.c
+@@ -1277,6 +1277,9 @@ static int ieee80211_assign_link_chanctx
+ 	ieee80211_check_fast_xmit_iface(sdata);
+ 	ieee80211_link_recalc_offload(link);
+ 
++	if (conf && (sdata->flags & IEEE80211_SDATA_IN_DRIVER))
++		drv_set_qos_map(local, sdata);
++
+ 	return ret;
+ }
+ 
+--- a/net/mac80211/driver-ops.h
++++ b/net/mac80211/driver-ops.h
+@@ -1833,4 +1833,30 @@ drv_nan_peer_sched_changed(struct ieee80
+ 	return ret;
+ }
+ 
++static inline int drv_set_qos_map(struct ieee80211_local *local,
++				  struct ieee80211_sub_if_data *sdata)
++{
++	struct mac80211_qos_map *qos_map;
++	int ret;
++
++	might_sleep();
++	lockdep_assert_wiphy(local->hw.wiphy);
++
++	/* mac80211 classifies in software; the driver op is optional */
++	if (!local->ops->set_qos_map)
++		return 0;
++
++	if (!check_sdata_in_driver(sdata))
++		return -EIO;
++
++	qos_map = sdata_dereference(sdata->qos_map, sdata);
++
++	trace_drv_set_qos_map(local, sdata);
++	ret = local->ops->set_qos_map(&local->hw, &sdata->vif,
++				      qos_map ? &qos_map->qos_map : NULL);
++	trace_drv_return_int(local, ret);
++
++	return ret;
++}
++
+ #endif /* __MAC80211_DRIVER_OPS */
+--- a/net/mac80211/trace.h
++++ b/net/mac80211/trace.h
+@@ -2227,6 +2227,12 @@ DEFINE_EVENT(local_sdata_evt, drv_abort_
+ 	     TP_ARGS(local, sdata)
+ );
+ 
++DEFINE_EVENT(local_sdata_evt, drv_set_qos_map,
++	     TP_PROTO(struct ieee80211_local *local,
++		      struct ieee80211_sub_if_data *sdata),
++	     TP_ARGS(local, sdata)
++);
++
+ DEFINE_EVENT(chanswitch_evt, drv_channel_switch_rx_beacon,
+ 	TP_PROTO(struct ieee80211_local *local,
+ 		 struct ieee80211_sub_if_data *sdata,
+--- a/net/mac80211/util.c
++++ b/net/mac80211/util.c
+@@ -1723,6 +1723,8 @@ static void ieee80211_assign_chanctx(str
+ 	if (conf) {
+ 		ctx = container_of(conf, struct ieee80211_chanctx, conf);
+ 		drv_assign_vif_chanctx(local, sdata, link->conf, ctx);
++		if (sdata->flags & IEEE80211_SDATA_IN_DRIVER)
++			drv_set_qos_map(local, sdata);
+ 	}
+ }
+ 
+--- a/net/mac80211/wme.c
++++ b/net/mac80211/wme.c
+@@ -177,6 +177,16 @@ u16 ieee80211_select_queue(struct ieee80
+ 	/* use the data classifier to determine what 802.1d tag the
+ 	 * data frame has */
+ 	qos_map = rcu_dereference(sdata->qos_map);
++	/* hostapd sets the map on the AP only, and hardware that classifies
++	 * by DSCP uses the table of that BSS for the frames of its VLANs
++	 */
++	if (!qos_map && sdata->vif.type == NL80211_IFTYPE_AP_VLAN &&
++	    sdata->local->ops->set_qos_map) {
++		struct ieee80211_sub_if_data *ap;
++
++		ap = container_of(sdata->bss, struct ieee80211_sub_if_data, u.ap);
++		qos_map = rcu_dereference(ap->qos_map);
++	}
+ 	skb->priority = cfg80211_classify8021d(skb, qos_map ?
+ 					       &qos_map->qos_map : NULL);
+ 

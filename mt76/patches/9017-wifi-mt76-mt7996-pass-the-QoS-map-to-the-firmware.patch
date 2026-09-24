@@ -1,0 +1,191 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 23 Sep 2026 16:47:37 -0700
+Subject: [PATCH] wifi: mt76: mt7996: pass the QoS map to the firmware
+
+The firmware selects the TID and hardware queue of a data frame from
+its IP DSCP, with a per-BSS table that defaults to the three most
+significant DSCP bits, and ignores the TID in the TX descriptor.
+When mac80211 maps a DSCP differently, the frame leaves on a TID
+without a BA session and is sent without aggregation. The MediaTek
+SDK programs the table for this reason; this is a port of that
+change.
+
+The table follows the same DSCP lookup as mac80211, including the
+RFC 8325 exceptions for AF3x that the SDK table omits, because any
+difference sends frames to a TID without a BA session. Links without
+a channel context are skipped, because a link has no firmware BSS
+before its first context; mac80211 passes the map again then.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt76_connac_mcu.h |    1 
+ mt7996/main.c     |   30 ++++++++++++++++
+ mt7996/mcu.c      |   79 ++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mcu.h      |    1 
+ mt7996/mt7996.h   |    3 +
+ 5 files changed, 114 insertions(+)
+
+--- a/mt76_connac_mcu.h
++++ b/mt76_connac_mcu.h
+@@ -1325,6 +1325,7 @@ enum {
+ 	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
+ 	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
+ 	MCU_EXT_CMD_PHY_STAT_INFO = 0xad,
++	MCU_EXT_CMD_SET_QOS_MAP = 0xb4,
+ 	MCU_EXT_CMD_GET_ALL_STA_STATS = 0xb5,
+ 	MCU_EXT_CMD_EDCCA = 0xba,
+ 	MCU_EXT_CMD_WF_RF_PIN_CTRL = 0xbd,
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -2874,6 +2874,35 @@ mt7996_set_eml_op_mode(struct ieee80211_
+ 	return ret;
+ }
+ 
++static int
++mt7996_set_qos_map(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
++		   struct cfg80211_qos_map *qos_map)
++{
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	unsigned long valid_links = vif->valid_links ?: BIT(0);
++	unsigned int link_id;
++	int ret = 0;
++
++	mutex_lock(&dev->mt76.mutex);
++	for_each_set_bit(link_id, &valid_links, IEEE80211_MLD_MAX_NUM_LINKS) {
++		struct mt7996_vif_link *mconf;
++
++		mconf = mt7996_vif_link(dev, vif, link_id);
++		/* no firmware BSS before the first chanctx assignment, which
++		 * passes the map again
++		 */
++		if (!mconf || !mt7996_vif_link_phy(mconf))
++			continue;
++
++		ret = mt7996_mcu_set_qos_map(dev, mconf, qos_map);
++		if (ret)
++			break;
++	}
++	mutex_unlock(&dev->mt76.mutex);
++
++	return ret;
++}
++
+ static void
+ mt7996_event_callback(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+ 		      const struct ieee80211_event *event)
+@@ -2979,4 +3008,5 @@ const struct ieee80211_ops mt7996_ops =
+ 	.change_sta_links = mt7996_mac_sta_change_links,
+ 	.reconfig_complete = mt7996_reconfig_complete,
+ 	.set_eml_op_mode = mt7996_set_eml_op_mode,
++	.set_qos_map = mt7996_set_qos_map,
+ };
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -6664,6 +6664,85 @@ int mt7996_mcu_cp_support(struct mt7996_
+ 				 &cp_mode, sizeof(cp_mode), true);
+ }
+ 
++/* Same DSCP lookup order and RFC 8325 exceptions as cfg80211_classify8021d(),
++ * so that for IP frames the firmware selects the TID that mac80211 selected.
++ */
++static u8
++mt7996_qos_map_dscp_to_up(const struct cfg80211_qos_map *qos_map, u8 dscp)
++{
++	int i;
++
++	if (qos_map) {
++		for (i = 0; i < qos_map->num_des; i++)
++			if (qos_map->dscp_exception[i].dscp == dscp)
++				return qos_map->dscp_exception[i].up;
++
++		for (i = 0; i < IEEE80211_NUM_UPS; i++)
++			if (dscp >= qos_map->up[i].low &&
++			    dscp <= qos_map->up[i].high)
++				return i;
++	}
++
++	switch (dscp) {
++	case 10:
++	case 12:
++	case 14:
++	case 16:
++		return 0;
++	case 18:
++	case 20:
++	case 22:
++		return 3;
++	case 24:
++	case 26:
++	case 28:
++	case 30:
++		return 4;
++	case 44:
++	case 46:
++		return 6;
++	case 48:
++		return 7;
++	}
++
++	return dscp >> 3;
++}
++
++int mt7996_mcu_set_qos_map(struct mt7996_dev *dev,
++			   struct mt7996_vif_link *link,
++			   const struct cfg80211_qos_map *qos_map)
++{
++	struct {
++		u8 _rsv[4];
++
++		__le16 tag;
++		__le16 len;
++
++		struct {
++			u8 bss_idx;
++			u8 qos_map_enable;
++			u8 __rsv[2];
++			u8 qos_map[64];
++		} __packed data;
++	} __packed req = {
++		.tag = cpu_to_le16(UNI_CMD_SDO_SET_QOS_MAP),
++		.len = cpu_to_le16(sizeof(req) - 4),
++		.data.bss_idx = link->mt76.idx,
++		.data.qos_map_enable = true,
++	};
++	int i;
++
++	for (i = 0; i < ARRAY_SIZE(req.data.qos_map); i++)
++		req.data.qos_map[i] = mt7996_qos_map_dscp_to_up(qos_map, i);
++
++	if (!mt7996_has_wa(dev))
++		return mt76_mcu_send_msg(&dev->mt76, MCU_WA_UNI_CMD(SDO),
++					 &req, sizeof(req), false);
++
++	return mt76_mcu_send_msg(&dev->mt76, MCU_WA_EXT_CMD(SET_QOS_MAP),
++				 &req.data, sizeof(req.data), false);
++}
++
+ int mt7996_mcu_set_dup_wtbl(struct mt7996_dev *dev)
+ {
+ #define DUP_WTBL_NUM	80
+--- a/mt7996/mcu.h
++++ b/mt7996/mcu.h
+@@ -1172,6 +1172,7 @@ enum {
+ enum {
+ 	UNI_CMD_SDO_SET = 1,
+ 	UNI_CMD_SDO_QUERY,
++	UNI_CMD_SDO_SET_QOS_MAP = 4,
+ 	UNI_CMD_SDO_CP_MODE = 6,
+ };
+ 
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -1093,6 +1093,9 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
+ int mt7996_mcu_ps_leave(struct mt7996_dev *dev, struct mt7996_vif_link *link,
+ 			struct mt7996_sta_link *msta_link);
+ int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode);
++int mt7996_mcu_set_qos_map(struct mt7996_dev *dev,
++			   struct mt7996_vif_link *link,
++			   const struct cfg80211_qos_map *qos_map);
+ int mt7996_mcu_set_pp_en(struct mt7996_phy *phy, u8 mode, u16 bitmap);
+ int mt7996_mcu_set_emlsr_mode(struct mt7996_dev *dev,
+ 			      struct ieee80211_vif *vif,

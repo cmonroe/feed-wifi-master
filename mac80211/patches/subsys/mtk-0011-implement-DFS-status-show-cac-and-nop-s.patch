@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /*
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -5988,6 +5988,31 @@ ieee80211_set_peer_nan_sched(struct wiph
+@@ -5992,6 +5992,31 @@ ieee80211_set_peer_nan_sched(struct wiph
  	return ieee80211_nan_set_peer_sched(sdata, sched);
  }
  
@@ -63,7 +63,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  const struct cfg80211_ops mac80211_config_ops = {
  	.add_virtual_intf = ieee80211_add_iface,
  	.del_virtual_intf = ieee80211_del_iface,
-@@ -6106,4 +6131,5 @@ const struct cfg80211_ops mac80211_confi
+@@ -6110,4 +6135,5 @@ const struct cfg80211_ops mac80211_confi
  	.set_epcs = ieee80211_set_epcs,
  	.nan_set_local_sched = ieee80211_set_local_nan_sched,
  	.nan_set_peer_sched = ieee80211_set_peer_nan_sched,

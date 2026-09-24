@@ -243,7 +243,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	ch_switch.timestamp = 0;
  	ch_switch.device_timestamp = 0;
  	ch_switch.block_tx = params->block_tx;
-@@ -6004,7 +6046,14 @@ ieee80211_skip_cac(struct wireless_dev *
+@@ -6008,7 +6050,14 @@ ieee80211_skip_cac(struct wireless_dev *
  	wiphy_hrtimer_work_cancel(sdata->local->hw.wiphy,
  				  &link->dfs_cac_timer_work);
  	if (wdev->links[link_id].cac_started) {
@@ -259,7 +259,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		cac_time_ms = wdev->links[link_id].cac_time_ms;
  		wdev->links[link_id].cac_start_time = jiffies -
  				       msecs_to_jiffies(cac_time_ms + 1);
-@@ -6097,6 +6146,7 @@ const struct cfg80211_ops mac80211_confi
+@@ -6101,6 +6150,7 @@ const struct cfg80211_ops mac80211_confi
  #endif
  	.get_channel = ieee80211_cfg_get_channel,
  	.start_radar_detection = ieee80211_start_radar_detection,
@@ -297,7 +297,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  				   GFP_KERNEL, link->link_id);
 --- a/net/mac80211/util.c
 +++ b/net/mac80211/util.c
-@@ -3691,7 +3691,13 @@ void ieee80211_dfs_cac_cancel(struct iee
+@@ -3693,7 +3693,13 @@ void ieee80211_dfs_cac_cancel(struct iee
  				continue;
  
  			chandef = link->conf->chanreq.oper;

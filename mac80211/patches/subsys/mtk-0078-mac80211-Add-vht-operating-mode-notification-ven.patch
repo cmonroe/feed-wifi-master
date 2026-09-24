@@ -37,7 +37,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  };
  
  /**
-@@ -8227,4 +8230,18 @@ int ieee80211_encrypt_tx_skb(struct sk_b
+@@ -8233,4 +8236,18 @@ int ieee80211_encrypt_tx_skb(struct sk_b
   * @hw: pointer as obtained from ieee80211_alloc_hw()
   */
  unsigned long ieee80211_get_scanning(struct ieee80211_hw *hw);
