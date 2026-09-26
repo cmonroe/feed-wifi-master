@@ -15,8 +15,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  dma.c         |   12 ++++++++++++
  mt76.h        |   15 +++++++++++++++
  mt7996/init.c |   20 +++++++++++++++++---
- mt7996/npu.c  |   39 ++++++++++++++++++++++++++-------------
- 4 files changed, 70 insertions(+), 16 deletions(-)
+ mt7996/npu.c  |   36 +++++++++++++++++++++++-------------
+ 4 files changed, 67 insertions(+), 16 deletions(-)
 
 --- a/dma.c
 +++ b/dma.c
@@ -113,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/npu.c
 +++ b/mt7996/npu.c
-@@ -556,6 +556,18 @@ int __mt7996_npu_hw_init(struct mt7996_d
+@@ -556,6 +556,15 @@ int __mt7996_npu_hw_init(struct mt7996_d
  	return 0;
  }
  
@@ -123,16 +123,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	if (!dmam_alloc_coherent(dev->mt76.dma_dev, size, addr, GFP_KERNEL))
 +		return -ENOMEM;
 +
-+	if (!mt76_npu_device_active(&dev->mt76))
-+		return 0;
-+
 +	return mt76_npu_addr_check(&dev->mt76, "txd space", *addr, size);
 +}
 +
  int mt7996_npu_hw_init(struct mt7996_dev *dev)
  {
  	int i, err;
-@@ -569,19 +581,20 @@ int mt7996_npu_hw_init(struct mt7996_dev
+@@ -572,19 +581,20 @@ int mt7996_npu_hw_init(struct mt7996_dev
  						 : MT7996_NPU_RX_RING_SIZE / 2
  						 : MT7996_TX_RING_SIZE;
  
