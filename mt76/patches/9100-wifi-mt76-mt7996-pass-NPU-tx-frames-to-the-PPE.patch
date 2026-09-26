@@ -191,7 +191,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/npu.c
 +++ b/npu.c
-@@ -130,17 +130,30 @@ void mt76_npu_check_ppe(struct mt76_dev
+@@ -144,17 +144,30 @@ void mt76_npu_check_ppe(struct mt76_dev
  
  	hash = FIELD_GET(NPU_RX_DMA_FOE_ID_MASK, info);
  	skb_set_hash(skb, hash, PKT_HASH_TYPE_L4);

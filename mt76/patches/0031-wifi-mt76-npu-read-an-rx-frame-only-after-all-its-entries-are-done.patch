@@ -1,0 +1,72 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sat, 26 Sep 2026 14:20:37 -0700
+Subject: [PATCH] wifi: mt76: npu: read an rx frame only after all its entries are done
+
+The NPU can mark the head of a chained rx frame done before the
+later entries. The rx path then frees its partial skb, which returns
+the pages to the page pool while the ring still points at them. The
+refill and the next poll can then give one page to two users. The
+rx path also reads the frame count before the done bit, so a head
+that completes between the reads counts as a one-entry frame. After
+a failed refill it also takes a consumed entry, whose done bit stays
+set, as a new frame.
+
+Leave a chain on the ring until every entry of it is done, and never
+read past the filled entries. Read the count only after the done bit
+of the head and a DMA read barrier, because the NPU writes the count
+first.
+
+Fixes: 141a81557070 ("wifi: mt76: Introduce the NPU generic layer")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ npu.c |   24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
+
+--- a/npu.c
++++ b/npu.c
+@@ -59,6 +59,11 @@ void mt76_npu_queue_cleanup(struct mt76_
+ 	spin_unlock_bh(&q->lock);
+ }
+ 
++static bool mt76_npu_rx_desc_done(struct airoha_npu_rx_dma_desc *desc)
++{
++	return FIELD_GET(NPU_RX_DMA_DESC_DONE_MASK, READ_ONCE(desc->ctrl));
++}
++
+ static struct sk_buff *mt76_npu_dequeue(struct mt76_dev *dev,
+ 					struct mt76_queue *q,
+ 					u32 *info)
+@@ -67,19 +72,28 @@ static struct sk_buff *mt76_npu_dequeue(
+ 	int i, nframes, index = q->tail;
+ 	struct sk_buff *skb = NULL;
+ 
++	if (!q->queued || !mt76_npu_rx_desc_done(&desc[index]))
++		return NULL;
++
++	dma_rmb();
++
+ 	nframes = FIELD_GET(NPU_RX_DMA_PKT_COUNT_MASK, desc[index].info);
+ 	nframes = max_t(int, nframes, 1);
++	if (nframes > q->queued)
++		return NULL;
++
++	for (i = 1; i < nframes; i++) {
++		if (!mt76_npu_rx_desc_done(&desc[(index + i) % q->ndesc]))
++			return NULL;
++	}
++
++	dma_rmb();
+ 
+ 	for (i = 0; i < nframes; i++) {
+ 		struct mt76_queue_entry *e = &q->entry[index];
+ 		int len = FIELD_GET(NPU_RX_DMA_DESC_CUR_LEN_MASK,
+ 				    desc[index].ctrl);
+ 
+-		if (!FIELD_GET(NPU_RX_DMA_DESC_DONE_MASK, desc[index].ctrl)) {
+-			dev_kfree_skb(skb);
+-			return NULL;
+-		}
+-
+ 		dma_sync_single_for_cpu(dev->dma_dev, e->dma_addr[0],
+ 					e->dma_len[0],
+ 					page_pool_get_dma_dir(q->page_pool));
