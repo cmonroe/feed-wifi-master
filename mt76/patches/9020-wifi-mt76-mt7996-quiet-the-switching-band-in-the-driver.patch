@@ -38,7 +38,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	wiphy->txq_memory_limit = 32 << 20; /* 32 MiB */
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2341,10 +2341,14 @@ static void
+@@ -2324,10 +2324,14 @@ static void
  mt7996_mac_reset_vif_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
  {
  	struct mt76_vif_link *mlink = (struct mt76_vif_link *)vif->drv_priv;
@@ -53,7 +53,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	rcu_read_lock();
  	for (i = 0; i < ARRAY_SIZE(mvif->link); i++) {
  
-@@ -2392,8 +2396,11 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2375,8 +2379,11 @@ mt7996_mac_full_reset(struct mt7996_dev
  	if (i == 10)
  		dev_err(dev->mt76.dev, "chip full reset failed\n");
  
@@ -66,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  
-@@ -3104,6 +3111,21 @@ static int mt7996_dfs_start_radar_detect
+@@ -3087,6 +3094,21 @@ static int mt7996_dfs_start_radar_detect
  	return err;
  }
  
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_dfs_init_radar_detector(struct mt7996_phy *phy)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -3129,7 +3151,7 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3112,7 +3134,7 @@ int mt7996_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
  
@@ -97,7 +97,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (dfs_state == MT_DFS_STATE_CAC)
-@@ -3137,11 +3159,11 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3120,11 +3142,11 @@ int mt7996_dfs_init_radar_detector(struc
  
  	err = mt7996_mcu_rdd_cmd(dev, RDD_CAC_END, rdd_idx, 0);
  	if (err < 0) {
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  
  stop:
-@@ -3150,7 +3172,7 @@ stop:
+@@ -3133,7 +3155,7 @@ stop:
  		return err;
  
  	mt7996_dfs_stop_radar_detector(phy);
@@ -243,7 +243,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static void
-@@ -2977,6 +3046,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2979,6 +3048,7 @@ const struct ieee80211_ops mt7996_ops =
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
  	.pre_channel_switch = mt7996_pre_channel_switch,
  	.post_channel_switch = mt7996_post_channel_switch,

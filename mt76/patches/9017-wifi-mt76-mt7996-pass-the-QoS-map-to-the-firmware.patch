@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	MCU_EXT_CMD_WF_RF_PIN_CTRL = 0xbd,
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2874,6 +2874,35 @@ mt7996_set_eml_op_mode(struct ieee80211_
+@@ -2876,6 +2876,35 @@ mt7996_set_eml_op_mode(struct ieee80211_
  	return ret;
  }
  
@@ -73,7 +73,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
  mt7996_event_callback(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  		      const struct ieee80211_event *event)
-@@ -2979,4 +3008,5 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2981,4 +3010,5 @@ const struct ieee80211_ops mt7996_ops =
  	.change_sta_links = mt7996_mac_sta_change_links,
  	.reconfig_complete = mt7996_reconfig_complete,
  	.set_eml_op_mode = mt7996_set_eml_op_mode,
@@ -179,7 +179,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -1093,6 +1093,9 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
+@@ -1083,6 +1083,9 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
  int mt7996_mcu_ps_leave(struct mt7996_dev *dev, struct mt7996_vif_link *link,
  			struct mt7996_sta_link *msta_link);
  int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode);
