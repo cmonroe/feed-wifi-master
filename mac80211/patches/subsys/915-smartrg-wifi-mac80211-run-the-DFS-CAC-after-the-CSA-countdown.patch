@@ -1,63 +1,39 @@
-From ceafaab4907dd387e33c8e831cb5fcfda6e67244 Mon Sep 17 00:00:00 2001
 From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Tue, 6 Feb 2024 17:46:10 +0800
-Subject: [PATCH 059/107] mtk: mac80211: add DFS CAC countdown in CSA flow
+Subject: [PATCH] wifi: mac80211: run the DFS CAC after the CSA countdown
 
-Add DFS channel CAC countdown mechanism in CSA flow
+cfg80211 rejects a CSA to a DFS channel that still needs a CAC. An AP
+that must leave a radar channel therefore cannot move to such a
+channel with a CSA.
 
-Explicitly disable beaconing when CAC is required for a channel switch.
-Without this patch, when radar is detected during the CAC, the csa
-beacon might leak into the new channel after the channel switch
-triggered by radar detection.
-For example:
-1. Switching from ch 36 to ch 100
-2. Perform CAC on ch 100
-3. Radar detected & trigger another channel switch to ch 149
-4. CSA countdown only for other affiliated links since ch 100 is not
-   allowed to TX due to radar detection.
-5. Switching RF & allow TX in fw.
-6. The first beacon of ch 149  might be the csa beacon of ch 100
-   (contains CSA IE for switching to ch 149)
-7. Set csa after beacon in ieee80211_csa_finalize.
-Disabling the beacon in step 2 helps the firmware to reset the CSA state.
-This ensures that if the CAC is aborted (CSA after beacon is not set to
-reset the CSA state), the new CSA to channel 149 will not be affected
-by the previous CSA state.
-
-Allow channel switch during post-CSA radar detection
-
-Refactor cfg80211_reg_can_beacon_dfs_relax due to the following
-upstream refactor
-wifi: cfg80211: refactor regulatory beaconing checking
-
-Rebase the scanning condition based on felix's change.
+mac80211 now completes the countdown, runs the CAC on the new channel
+and finalizes the switch when the CAC ends. Beaconing stays off during
+the CAC, so that a later CSA does not reuse a stale CSA beacon. A
+radar during the CAC cancels it, allows a new CSA and tells the driver
+to end a quiet that it applied for the switch. A background chain that
+overlaps the new channel stops when the CAC starts. If a radar hit the
+new channel during the countdown, the AP stops instead, because a CAC
+would end the non-occupancy period early. The channel that the AP
+leaves keeps the two second grace before it expires.
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
-
-Add missing beacon_enable resuming
-Without this, ap will stop beaconing after skipping cac for post-csa CAC
-
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
-
-Remove the deauth here, as it should be done in hostapd to clear the
-info of all the disassociated STA.
-
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- include/net/cfg80211.h     | 52 +++++++++++++++++++++++++++-
- net/mac80211/cfg.c         | 70 ++++++++++++++++++++++++++++++++------
- net/mac80211/ieee80211_i.h |  1 +
- net/mac80211/mlme.c        |  9 ++++-
- net/mac80211/util.c        |  8 ++++-
- net/wireless/chan.c        | 57 +++++++++++++++++++++++++++++--
- net/wireless/nl80211.c     |  5 +--
- net/wireless/rdev-ops.h    | 18 ++++++++++
- net/wireless/reg.c         |  8 +++--
- 9 files changed, 209 insertions(+), 19 deletions(-)
+ include/net/cfg80211.h     |   51 +++++++++++++++++++++++++++++++++
+ net/mac80211/cfg.c         |   68 +++++++++++++++++++++++++++++++++++++++------
+ net/mac80211/ieee80211_i.h |    1 
+ net/mac80211/mlme.c        |    9 +++++
+ net/mac80211/util.c        |   10 +++++-
+ net/wireless/chan.c        |   57 ++++++++++++++++++++++++++++++++++++-
+ net/wireless/nl80211.c     |    5 +--
+ net/wireless/rdev-ops.h    |   18 +++++++++++
+ net/wireless/reg.c         |    8 +++--
+ 9 files changed, 210 insertions(+), 17 deletions(-)
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -5112,6 +5112,8 @@ struct mgmt_frame_regs {
+@@ -5111,6 +5111,8 @@ struct mgmt_frame_regs {
   *
   * @start_radar_detection: Start radar detection in the driver.
   *
@@ -66,7 +42,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
   * @end_cac: End running CAC, probably because a related CAC
   *	was finished on another phy.
   *
-@@ -5517,6 +5519,11 @@ struct cfg80211_ops {
+@@ -5516,6 +5518,11 @@ struct cfg80211_ops {
  					 struct net_device *dev,
  					 struct cfg80211_chan_def *chandef,
  					 u32 cac_time_ms, int link_id);
@@ -78,7 +54,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	void	(*end_cac)(struct wiphy *wiphy,
  			   struct net_device *dev, unsigned int link_id);
  	int	(*update_ft_ies)(struct wiphy *wiphy, struct net_device *dev,
-@@ -9947,11 +9954,15 @@ static inline void cfg80211_report_obss_
+@@ -9931,11 +9938,15 @@ static inline void cfg80211_report_obss_
   *	NOTE: If this is set, wiphy mutex must be held.
   * @reg_power: &enum ieee80211_ap_reg_power value indicating the
   *	advertised/used 6 GHz regulatory power setting
@@ -94,7 +70,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
  
  /**
-@@ -10015,6 +10026,46 @@ cfg80211_reg_can_beacon_relax(struct wip
+@@ -9999,6 +10010,46 @@ cfg80211_reg_can_beacon_relax(struct wip
  }
  
  /**
@@ -143,7 +119,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
   * @chandef: the new channel definition
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -1998,7 +1998,7 @@ static int ieee80211_change_beacon(struc
+@@ -1997,7 +1997,7 @@ static int ieee80211_change_beacon(struc
  	return 0;
  }
  
@@ -152,7 +128,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  {
  	if (!link->u.ap.next_beacon)
  		return;
-@@ -4465,6 +4465,40 @@ static int ieee80211_set_after_csa_beaco
+@@ -4464,6 +4464,40 @@ static int ieee80211_set_after_csa_beaco
  	return 0;
  }
  
@@ -193,7 +169,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int __ieee80211_csa_finalize(struct ieee80211_link_data *link_data)
  {
  	struct ieee80211_sub_if_data *sdata = link_data->sdata;
-@@ -4498,6 +4532,12 @@ static int __ieee80211_csa_finalize(stru
+@@ -4497,6 +4531,12 @@ static int __ieee80211_csa_finalize(stru
  					&link_data->csa.chanreq.oper))
  		return -EINVAL;
  
@@ -206,7 +182,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	link_conf->csa_active = false;
  
  	err = ieee80211_set_after_csa_beacon(link_data, &changed);
-@@ -4727,9 +4767,6 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4726,9 +4766,6 @@ __ieee80211_channel_switch(struct wiphy
  	if (ieee80211_is_scan_ongoing(wiphy, local, &params->chandef))
  		return -EBUSY;
  
@@ -216,7 +192,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (WARN_ON(link_id >= IEEE80211_MLD_MAX_NUM_LINKS))
  		return -EINVAL;
  
-@@ -4742,10 +4779,6 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4741,10 +4778,6 @@ __ieee80211_channel_switch(struct wiphy
  	if (chanreq.oper.punctured && !link_conf->eht_support)
  		return -EINVAL;
  
@@ -227,7 +203,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	conf = wiphy_dereference(wiphy, link_conf->chanctx_conf);
  	if (!conf) {
  		err = -EBUSY;
-@@ -4766,6 +4799,15 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4765,6 +4798,15 @@ __ieee80211_channel_switch(struct wiphy
  
  	chanctx = container_of(conf, struct ieee80211_chanctx, conf);
  
@@ -243,7 +219,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	ch_switch.timestamp = 0;
  	ch_switch.device_timestamp = 0;
  	ch_switch.block_tx = params->block_tx;
-@@ -6008,7 +6050,14 @@ ieee80211_skip_cac(struct wireless_dev *
+@@ -6007,7 +6049,14 @@ ieee80211_skip_cac(struct wireless_dev *
  	wiphy_hrtimer_work_cancel(sdata->local->hw.wiphy,
  				  &link->dfs_cac_timer_work);
  	if (wdev->links[link_id].cac_started) {
@@ -259,7 +235,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		cac_time_ms = wdev->links[link_id].cac_time_ms;
  		wdev->links[link_id].cac_start_time = jiffies -
  				       msecs_to_jiffies(cac_time_ms + 1);
-@@ -6101,6 +6150,7 @@ const struct cfg80211_ops mac80211_confi
+@@ -6100,6 +6149,7 @@ const struct cfg80211_ops mac80211_confi
  #endif
  	.get_channel = ieee80211_cfg_get_channel,
  	.start_radar_detection = ieee80211_start_radar_detection,
@@ -297,12 +273,14 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  				   GFP_KERNEL, link->link_id);
 --- a/net/mac80211/util.c
 +++ b/net/mac80211/util.c
-@@ -3693,7 +3693,13 @@ void ieee80211_dfs_cac_cancel(struct iee
+@@ -3693,7 +3693,15 @@ void ieee80211_dfs_cac_cancel(struct iee
  				continue;
  
  			chandef = link->conf->chanreq.oper;
 -			ieee80211_link_release_channel(link);
 +			if (link->conf->csa_active) {
++				/* the driver may still quiet the band for it */
++				drv_abort_channel_switch(link);
 +				link->conf->csa_active = false;
 +				link->conf->enable_beacon = true;
 +				ieee80211_free_next_beacon(link);
@@ -314,7 +292,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  					   GFP_KERNEL, link_id);
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -1838,8 +1838,13 @@ static bool _cfg80211_reg_can_beacon(str
+@@ -1812,8 +1812,13 @@ static bool _cfg80211_reg_can_beacon(str
  	check_radar = dfs_required != 0;
  
  	if (dfs_required > 0 &&
@@ -330,7 +308,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		prohibited_flags &= ~IEEE80211_CHAN_NO_IR;
  		check_radar = false;
  	}
-@@ -1877,6 +1882,9 @@ bool cfg80211_reg_check_beaconing(struct
+@@ -1851,6 +1856,9 @@ bool cfg80211_reg_check_beaconing(struct
  							   chandef->chan);
  	}
  
@@ -340,7 +318,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (cfg->reg_power == IEEE80211_REG_VLP_AP)
  		permitting_flags |= IEEE80211_CHAN_ALLOW_6GHZ_VLP_AP;
  
-@@ -1892,6 +1900,51 @@ bool cfg80211_reg_check_beaconing(struct
+@@ -1866,6 +1874,61 @@ bool cfg80211_reg_check_beaconing(struct
  }
  EXPORT_SYMBOL(cfg80211_reg_check_beaconing);
  
@@ -356,6 +334,12 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +
 +	if (cfg80211_chandef_dfs_available(wiphy, chandef))
 +		goto out;
++
++	/* a radar during the countdown can put the target into its
++	 * non-occupancy period; a CAC there would end that period early
++	 */
++	if (!cfg80211_chandef_dfs_usable(wiphy, chandef))
++		return -EINVAL;
 +
 +	/* Update DFS channel state especially when original channel include DFS channel */
 +	cfg80211_sched_dfs_chan_update(rdev);
@@ -374,10 +358,14 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	ret = rdev_start_radar_detection_post_csa(rdev, wdev->netdev, link_id,
 +						  chandef, cac_time_ms);
 +	if (ret > 0) {
++		if (wdev->links[link_id].ap.chandef.chan)
++			cfg80211_update_last_available(wiphy,
++						       &wdev->links[link_id].ap.chandef,
++						       0);
 +		wdev->links[link_id].ap.chandef = *chandef;
 +		wdev->links[link_id].cac_start_time = jiffies;
 +		wdev->links[link_id].cac_time_ms = cac_time_ms;
-+		if (rdev->background_cac_started &&
++		if (rdev->background_radar_wdev &&
 +		    cfg80211_is_sub_chan(chandef, rdev->background_radar_chandef.chan, false))
 +			cfg80211_stop_background_radar_detection(rdev->background_radar_wdev);
 +		cfg80211_cac_event(wdev->netdev, chandef,
@@ -394,7 +382,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  				 struct cfg80211_chan_def *chandef)
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -12211,8 +12211,9 @@ skip_beacons:
+@@ -12208,8 +12208,9 @@ skip_beacons:
  		cfg80211_set_dfs_state(&rdev->wiphy, &params.chandef, NL80211_DFS_AVAILABLE);
  	}
  

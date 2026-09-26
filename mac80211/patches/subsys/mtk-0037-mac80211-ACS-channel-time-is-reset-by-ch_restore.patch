@@ -45,7 +45,7 @@ Signed-off-by: fancy.liu <fancy.liu@mediatek.com>
  #endif /* MAC80211_H */
 --- a/net/mac80211/util.c
 +++ b/net/mac80211/util.c
-@@ -4736,3 +4736,11 @@ bool ieee80211_vif_nan_started(struct ie
+@@ -4744,3 +4744,11 @@ bool ieee80211_vif_nan_started(struct ie
  	return vif->type == NL80211_IFTYPE_NAN && sdata->u.nan.started;
  }
  EXPORT_SYMBOL_GPL(ieee80211_vif_nan_started);

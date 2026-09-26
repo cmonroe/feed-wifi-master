@@ -33,7 +33,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -9771,6 +9771,7 @@ void cfg80211_sta_opmode_change_notify(s
+@@ -9778,6 +9778,7 @@ void cfg80211_sta_opmode_change_notify(s
  /**
   * cfg80211_cac_event - Channel availability check (CAC) event
   * @netdev: network device

@@ -1,0 +1,161 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 11:26:34 -0700
+Subject: [PATCH] wifi: cfg80211: keep the background chain monitoring after CAC
+
+The background radar chain stops when its CAC completes. Outside ETSI
+a CAC result that no one uses expires after two seconds, so the
+channel that zero-wait DFS prepared is no longer available when a
+radar hits the operating channel later. Every radar then ends in a
+CSA plus a CAC on the new channel, with the AP off the air.
+
+The chain now stays on its channel after the CAC and keeps
+monitoring it, which keeps the channel available the same way an
+operating channel is kept. The chain stops when an AP switches onto
+its channel. A channel the chain leaves by a move, a stop or a failed
+retune gets the normal grace period, unless an AP operates on it.
+When the driver loses a chain that finished its CAC, cfg80211 reports
+a CAC abort, so the owner can arm the chain again. The chain also
+stays after the CAC in ETSI, and it stays with its interface until
+that interface stops it.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/wireless/mlme.c    |   34 +++++++++++++++++++++++++++++-----
+ net/wireless/nl80211.c |    9 +++++++++
+ 2 files changed, 38 insertions(+), 5 deletions(-)
+
+--- a/net/wireless/mlme.c
++++ b/net/wireless/mlme.c
+@@ -1267,6 +1267,23 @@ __cfg80211_background_cac_event(struct c
+ 	nl80211_radar_notify(rdev, chandef, event, netdev, GFP_KERNEL);
+ }
+ 
++static void
++cfg80211_background_chain_leave(struct cfg80211_registered_device *rdev)
++{
++	/* After its CAC the chain keeps monitoring the channel, which keeps
++	 * the channel available. A channel the chain leaves gets the same
++	 * grace period as an operating channel that goes out of use.
++	 */
++	if (!rdev->background_radar_wdev ||
++	    delayed_work_pending(&rdev->background_cac_done_wk) ||
++	    !cfg80211_chandef_valid(&rdev->background_radar_chandef))
++		return;
++
++	cfg80211_update_last_available(&rdev->wiphy,
++				       &rdev->background_radar_chandef);
++	cfg80211_sched_dfs_chan_update(rdev);
++}
++
+ void cfg80211_background_cac_done_wk(struct work_struct *work)
+ {
+ 	struct delayed_work *delayed_work = to_delayed_work(work);
+@@ -1277,34 +1294,45 @@ void cfg80211_background_cac_done_wk(str
+ 
+ 	guard(wiphy)(&rdev->wiphy);
+ 
+-	rdev_set_radar_background(rdev, NULL);
+-
+ 	__cfg80211_background_cac_event(rdev, rdev->background_radar_wdev,
+ 					&rdev->background_radar_chandef,
+ 					NL80211_RADAR_CAC_FINISHED);
+-
+-	rdev->background_radar_wdev = NULL;
+ }
+ 
+ void cfg80211_background_cac_abort_wk(struct work_struct *work)
+ {
+ 	struct cfg80211_registered_device *rdev;
+ 	struct wireless_dev *wdev;
++	bool driver_abort;
+ 
+ 	rdev = container_of(work, struct cfg80211_registered_device,
+ 			    background_cac_abort_wk);
+ 
+ 	guard(wiphy)(&rdev->wiphy);
+ 
++	driver_abort = READ_ONCE(rdev->background_driver_abort);
++	WRITE_ONCE(rdev->background_driver_abort, false);
++
+ 	wdev = rdev->background_radar_wdev;
+-	if (wdev)
+-		cfg80211_stop_background_radar_detection(wdev);
++	if (!wdev)
++		return;
++
++	/* a radar and a running CAC report themselves, but the owner must
++	 * also learn that the driver lost a chain that finished its CAC
++	 */
++	if (driver_abort && !delayed_work_pending(&rdev->background_cac_done_wk))
++		nl80211_radar_notify(rdev, &rdev->background_radar_chandef,
++				     NL80211_RADAR_CAC_ABORTED, wdev->netdev,
++				     GFP_KERNEL);
++
++	cfg80211_stop_background_radar_detection(wdev);
+ }
+ 
+ void cfg80211_background_cac_abort(struct wiphy *wiphy)
+ {
+ 	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
+ 
++	WRITE_ONCE(rdev->background_driver_abort, true);
+ 	queue_work(cfg80211_wq, &rdev->background_cac_abort_wk);
+ }
+ EXPORT_SYMBOL(cfg80211_background_cac_abort);
+@@ -1333,8 +1361,19 @@ cfg80211_start_background_radar_detectio
+ 		return -EBUSY;
+ 
+ 	err = rdev_set_radar_background(rdev, chandef);
+-	if (err)
++	if (err) {
++		/* a failed retune can leave the old detector running, or the
++		 * driver still owning a detector it stopped
++		 */
++		if (rdev->background_radar_wdev == wdev) {
++			rdev_set_radar_background(rdev, NULL);
++			cfg80211_background_chain_leave(rdev);
++			rdev->background_radar_wdev = NULL;
++		}
+ 		return err;
++	}
++
++	cfg80211_background_chain_leave(rdev);
+ 
+ 	cac_time_ms = cfg80211_chandef_dfs_cac_time(&rdev->wiphy, chandef);
+ 	if (!cac_time_ms)
+@@ -1383,6 +1422,7 @@ void cfg80211_stop_background_radar_dete
+ 		return;
+ 
+ 	rdev_set_radar_background(rdev, NULL);
++	cfg80211_background_chain_leave(rdev);
+ 
+ 	__cfg80211_background_cac_event(rdev, wdev,
+ 					&rdev->background_radar_chandef,
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -22391,6 +22391,15 @@ void cfg80211_ch_switch_notify(struct ne
+ 			cfg80211_update_last_available(wdev->wiphy,
+ 						       &wdev->links[link_id].ap.chandef);
+ 		wdev->links[link_id].ap.chandef = *chandef;
++
++		/* the AP now operates on the channel the chain monitors */
++		if (rdev->background_radar_wdev &&
++		    (cfg80211_is_sub_chan(chandef,
++					  rdev->background_radar_chandef.chan,
++					  false) ||
++		     cfg80211_is_sub_chan(&rdev->background_radar_chandef,
++					  chandef->chan, false)))
++			cfg80211_stop_background_radar_detection(rdev->background_radar_wdev);
+ 		break;
+ 	case NL80211_IFTYPE_ADHOC:
+ 		wdev->u.ibss.chandef = *chandef;
+--- a/net/wireless/core.h
++++ b/net/wireless/core.h
+@@ -95,6 +95,7 @@ struct cfg80211_registered_device {
+ 	struct cfg80211_chan_def background_radar_chandef;
+ 	struct delayed_work background_cac_done_wk;
+ 	struct work_struct background_cac_abort_wk;
++	bool background_driver_abort;
+ 
+ 	/* netlink port which started critical protocol (0 means not started) */
+ 	u32 crit_proto_nlportid;

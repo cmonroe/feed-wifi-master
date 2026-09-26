@@ -1,0 +1,179 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 13:15:07 -0700
+Subject: [PATCH] wifi: cfg80211: hold the chain channel for an AP that switches to it
+
+hostapd moves the background chain as soon as it requests a CSA onto
+the chain channel. The channel then keeps only the two second grace.
+The switch can take almost that long, so the AP can arrive on an
+expired channel and start a CAC.
+
+When an AP starts a CSA onto the channel of a chain that finished its
+CAC, cfg80211 now stops the chain and counts the channels that the AP
+takes over as in use. They stay in use until the AP link that started
+the CSA switches. If that link stops first, they get the usual grace
+from that point.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/wireless/ap.c      |    1 +
+ net/wireless/chan.c    |   11 ++++++++++-
+ net/wireless/core.h    |    9 +++++++++
+ net/wireless/mlme.c    |   48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ net/wireless/nl80211.c |   11 +++++------
+ 5 files changed, 73 insertions(+), 7 deletions(-)
+
+--- a/net/wireless/core.h
++++ b/net/wireless/core.h
+@@ -99,6 +99,9 @@ struct cfg80211_registered_device {
+ 	struct delayed_work background_cac_done_wk;
+ 	struct work_struct background_cac_abort_wk;
+ 	bool background_driver_abort;
++	struct wireless_dev *background_csa_wdev;
++	unsigned int background_csa_link_id;
++	struct cfg80211_chan_def background_csa_hold;
+ 
+ 	/* netlink port which started critical protocol (0 means not started) */
+ 	u32 crit_proto_nlportid;
+@@ -512,6 +515,15 @@ cfg80211_start_background_radar_detectio
+ 
+ void cfg80211_stop_radar_detection(struct wireless_dev *wdev);
+ void cfg80211_stop_background_radar_detection(struct wireless_dev *wdev);
++bool cfg80211_background_chain_overlaps(struct cfg80211_registered_device *rdev,
++					struct cfg80211_chan_def *chandef);
++void cfg80211_background_csa_hold(struct cfg80211_registered_device *rdev,
++				  struct wireless_dev *wdev,
++				  unsigned int link_id,
++				  struct cfg80211_chan_def *chandef);
++void cfg80211_background_csa_release(struct cfg80211_registered_device *rdev,
++				     struct wireless_dev *wdev,
++				     unsigned int link_id, bool switched);
+ 
+ void cfg80211_background_cac_done_wk(struct work_struct *work);
+ 
+--- a/net/wireless/mlme.c
++++ b/net/wireless/mlme.c
+@@ -1437,6 +1437,58 @@ void cfg80211_stop_background_radar_dete
+ 	rdev->background_radar_wdev = NULL;
+ }
+ 
++bool cfg80211_background_chain_overlaps(struct cfg80211_registered_device *rdev,
++					struct cfg80211_chan_def *chandef)
++{
++	return rdev->background_radar_wdev &&
++	       (cfg80211_is_sub_chan(chandef,
++				     rdev->background_radar_chandef.chan,
++				     false) ||
++		cfg80211_is_sub_chan(&rdev->background_radar_chandef,
++				     chandef->chan, false));
++}
++
++void cfg80211_background_csa_hold(struct cfg80211_registered_device *rdev,
++				  struct wireless_dev *wdev,
++				  unsigned int link_id,
++				  struct cfg80211_chan_def *chandef)
++{
++	struct cfg80211_chan_def *chain = &rdev->background_radar_chandef;
++
++	if (delayed_work_pending(&rdev->background_cac_done_wk) ||
++	    !cfg80211_background_chain_overlaps(rdev, chandef))
++		return;
++
++	/* the chain leaves before the AP arrives; until the AP switches or
++	 * stops, the channels it takes over from the chain stay in use
++	 */
++	if (cfg80211_chandef_get_width(chain) < cfg80211_chandef_get_width(chandef))
++		rdev->background_csa_hold = *chain;
++	else
++		rdev->background_csa_hold = *chandef;
++	rdev->background_csa_wdev = wdev;
++	rdev->background_csa_link_id = link_id;
++
++	cfg80211_stop_background_radar_detection(rdev->background_radar_wdev);
++}
++
++void cfg80211_background_csa_release(struct cfg80211_registered_device *rdev,
++				     struct wireless_dev *wdev,
++				     unsigned int link_id, bool switched)
++{
++	if (rdev->background_csa_wdev != wdev ||
++	    rdev->background_csa_link_id != link_id)
++		return;
++
++	rdev->background_csa_wdev = NULL;
++	if (switched)
++		return;
++
++	cfg80211_update_last_available(&rdev->wiphy,
++				       &rdev->background_csa_hold, 0);
++	cfg80211_sched_dfs_chan_update(rdev);
++}
++
+ int cfg80211_assoc_ml_reconf(struct cfg80211_registered_device *rdev,
+ 			     struct net_device *dev,
+ 			     struct cfg80211_ml_reconf_req *req)
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -22403,14 +22403,10 @@ void cfg80211_ch_switch_notify(struct ne
+ 						       &wdev->links[link_id].ap.chandef,
+ 						       0);
+ 		wdev->links[link_id].ap.chandef = *chandef;
++		cfg80211_background_csa_release(rdev, wdev, link_id, true);
+ 
+ 		/* the AP now operates on the channel the chain monitors */
+-		if (rdev->background_radar_wdev &&
+-		    (cfg80211_is_sub_chan(chandef,
+-					  rdev->background_radar_chandef.chan,
+-					  false) ||
+-		     cfg80211_is_sub_chan(&rdev->background_radar_chandef,
+-					  chandef->chan, false)))
++		if (cfg80211_background_chain_overlaps(rdev, chandef))
+ 			cfg80211_stop_background_radar_detection(rdev->background_radar_wdev);
+ 		break;
+ 	case NL80211_IFTYPE_ADHOC:
+@@ -22483,6 +22479,9 @@ void cfg80211_ch_switch_started_notify(s
+ 
+ 	trace_cfg80211_ch_switch_started_notify(dev, chandef, link_id);
+ 
++	if (wdev->iftype == NL80211_IFTYPE_AP ||
++	    wdev->iftype == NL80211_IFTYPE_P2P_GO)
++		cfg80211_background_csa_hold(rdev, wdev, link_id, chandef);
+ 
+ 	nl80211_ch_switch_notify(rdev, dev, link_id, chandef, GFP_KERNEL,
+ 				 NL80211_CMD_CH_SWITCH_STARTED_NOTIFY,
+--- a/net/wireless/ap.c
++++ b/net/wireless/ap.c
+@@ -45,6 +45,7 @@ static int ___cfg80211_stop_ap(struct cf
+ 		if (notify)
+ 			nl80211_send_ap_stopped(wdev, link_id);
+ 
++		cfg80211_background_csa_release(rdev, wdev, link_id, false);
+ 		cfg80211_sched_dfs_chan_update(rdev);
+ 	}
+ 
+--- a/net/wireless/chan.c
++++ b/net/wireless/chan.c
+@@ -1271,6 +1271,14 @@ cfg80211_offchan_chain_is_active(struct
+ 				    false);
+ }
+ 
++static bool
++cfg80211_background_csa_holds(struct cfg80211_registered_device *rdev,
++			      struct ieee80211_channel *channel)
++{
++	return rdev->background_csa_wdev &&
++	       cfg80211_is_sub_chan(&rdev->background_csa_hold, channel, false);
++}
++
+ bool cfg80211_any_wiphy_oper_chan(struct wiphy *wiphy,
+ 				  struct ieee80211_channel *chan)
+ {
+@@ -1290,7 +1298,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
+ 		guard(wiphy)(&rdev->wiphy);
+ 
+ 		found = cfg80211_is_wiphy_oper_chan(&rdev->wiphy, chan) ||
+-			cfg80211_offchan_chain_is_active(rdev, chan);
++			cfg80211_offchan_chain_is_active(rdev, chan) ||
++			cfg80211_background_csa_holds(rdev, chan);
+ 
+ 		if (found)
+ 			return true;

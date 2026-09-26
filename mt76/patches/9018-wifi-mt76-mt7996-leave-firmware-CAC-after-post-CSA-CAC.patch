@@ -1,0 +1,49 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 11:15:47 -0700
+Subject: [PATCH] wifi: mt76: mt7996: leave firmware CAC after a post-CSA CAC
+
+A CSA to a DFS channel that still needs CAC programs the new channel
+with the DFS switch reason and starts CAC in firmware, which mutes all
+TX on the band. mac80211 runs this CAC after the switch and then
+completes the switch without a chanctx change. Nothing tells the
+firmware that the CAC ended, so the band stays muted: no beacons go
+out and queued frames never complete.
+
+Program the channel again when the switch completes and the phy is
+still in CAC. cfg80211 has marked the channel available by then, so
+the firmware gets a normal switch and leaves CAC. The chanctx chandef
+is used rather than the link chandef, because a narrower BSS on a
+shared context must not narrow the phy.
+
+Based-on-work-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Based-on-work-by: Oskar Maroszek <oskar.maroszek@adtran.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mac80211.c    |    1 +
+ mt7996/main.c |    5 ++++-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -1111,6 +1111,7 @@ int mt76_set_channel(struct mt76_phy *ph
+ 
+ 	return ret;
+ }
++EXPORT_SYMBOL_GPL(mt76_set_channel);
+ 
+ int mt76_update_channel(struct mt76_phy *phy)
+ {
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1198,7 +1198,10 @@ mt7996_post_channel_switch(struct ieee80
+ out:
+ 	mutex_unlock(&dev->mt76.mutex);
+ 
+-	return ret;
++	if (ret || phy->mt76->dfs_state != MT_DFS_STATE_CAC)
++		return ret;
++
++	return mt76_set_channel(phy->mt76, &phy->mt76->main_chandef, false);
+ }
+ 
+ static void

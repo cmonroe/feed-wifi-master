@@ -1,0 +1,49 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 11:21:43 -0700
+Subject: [PATCH] wifi: mt76: mt7996: report radar on the band chanctx
+
+The driver reports a radar with a NULL channel context, which
+mac80211 treats as every context on the wiphy. With one wiphy for all
+radios, a radar on 5 GHz then cancels CAC and sends radar events for
+the 2.4 and 6 GHz channels too, and on a board with two 5 GHz radios
+it would mark the DFS channels of the other radio unavailable.
+
+Report the radar on the context of the band that detected it. A radar
+that arrives while the band swaps its context for a channel switch
+matches no context and is not reported; the detector restarts on the
+new channel in that window.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mcu.c |   16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -576,9 +576,24 @@ mt7996_mcu_rx_radar_detected(struct mt79
+ 						&dev->rdd2_chandef,
+ 						GFP_ATOMIC);
+ 	} else {
+-		phy->rdd_hw_value = chandef->chan->hw_value;
++		struct mt76_chanctx *ctx = READ_ONCE(phy->mt76->chanctx);
++
+ 		phy->rdd_tx_paused = true;
+-		ieee80211_radar_detected(mphy->hw, NULL);
++
++		/* a NULL context flags the contexts of every radio on the
++		 * wiphy, so a band without a context reports nothing
++		 */
++		if (ctx) {
++			phy->rdd_hw_value = chandef->chan->hw_value;
++			ieee80211_radar_detected(mphy->hw,
++						 container_of((void *)ctx,
++							      struct ieee80211_chanctx_conf,
++							      drv_priv));
++		} else {
++			dev_info(dev->mt76.dev,
++				 "%s: no channel context on band %d, radar not reported\n",
++				 __func__, phy->mt76->band_idx);
++		}
+ 	}
+ 	dev->hw_pattern++;
+ 

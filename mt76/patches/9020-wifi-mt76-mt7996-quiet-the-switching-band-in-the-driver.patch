@@ -1,0 +1,273 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 11:21:15 -0700
+Subject: [PATCH] wifi: mt76: mt7996: quiet the switching band in the driver
+
+A CSA with block_tx stops every hardware queue of the wiphy, because
+the driver has no per-queue control. With one wiphy for all radios,
+a radar on 5 GHz stops TX on 2.4 and 6 GHz as well, for the CSA
+countdown plus the CAC that follows the switch. A mesh backhaul on
+another band loses its link in that time.
+
+The driver now quiets only the band of the switching link and tells
+mac80211 that it handles the quiet. An AP link quiets once its CSA
+beacon is set, a station link as soon as a beacon or a protected
+frame carries the CSA; both resume when the switch completes or
+aborts, or when the link goes away. A CSA in an unprotected action
+frame gets no quiet until a beacon confirms it, as with other drivers
+that handle the quiet. Host frames for a band in CAC also wait in the
+host queues, because the firmware mutes the band and holds its frames
+until the CAC ends.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/init.c   |    1 
+ mt7996/mac.c    |   31 +++++++++++++++----
+ mt7996/main.c   |   75 ++++++++++++++++++++++++++++++++++++++++++++--
+ mt7996/mt7996.h |    4 ++
+ 4 files changed, 103 insertions(+), 8 deletions(-)
+
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -623,6 +623,7 @@ mt7996_init_wiphy(struct ieee80211_hw *h
+ 	ieee80211_hw_set(hw, SUPPORTS_MULTI_BSSID);
+ 	ieee80211_hw_set(hw, CHANCTX_STA_CSA);
+ 	ieee80211_hw_set(hw, CONNECTION_MONITOR);
++	ieee80211_hw_set(hw, HANDLES_QUIET_CSA);
+ 
+ 	hw->max_tx_fragments = 4;
+ 	wiphy->txq_memory_limit = 32 << 20; /* 32 MiB */
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2341,10 +2341,14 @@ static void
+ mt7996_mac_reset_vif_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
+ {
+ 	struct mt76_vif_link *mlink = (struct mt76_vif_link *)vif->drv_priv;
++	struct mt7996_vif_link *deflink = (struct mt7996_vif_link *)mlink;
+ 	struct mt76_vif_data *mvif = mlink->mvif;
+ 	struct mt7996_dev *dev = data;
+ 	int i;
+ 
++	deflink->csa_block_tx = false;
++	deflink->csa_quiet = false;
++
+ 	rcu_read_lock();
+ 	for (i = 0; i < ARRAY_SIZE(mvif->link); i++) {
+ 
+@@ -2392,8 +2396,11 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 	if (i == 10)
+ 		dev_err(dev->mt76.dev, "chip full reset failed\n");
+ 
+-	mt7996_for_each_phy(dev, phy)
++	mt7996_for_each_phy(dev, phy) {
+ 		phy->omac_mask = 0;
++		phy->csa_quiet_links = 0;
++		mt76_phy_tx_unblock(phy->mt76, MT76_TX_BLOCK_CSA);
++	}
+ 	dev->mld_idx_mask = 0;
+ 	dev->mld_remap_idx_mask = 0;
+ 
+@@ -3104,6 +3111,21 @@ static int mt7996_dfs_start_radar_detect
+ 	return err;
+ }
+ 
++static void
++mt7996_dfs_state_set(struct mt7996_phy *phy, enum mt76_dfs_state state)
++{
++	phy->mt76->dfs_state = state;
++
++	/* firmware mutes the band during CAC and holds its frames until the
++	 * CAC ends, so keep host frames out of it; an unknown state follows
++	 * a failed CAC end, which leaves the firmware in CAC
++	 */
++	if (state == MT_DFS_STATE_CAC)
++		mt76_phy_tx_block(phy->mt76, MT76_TX_BLOCK_CAC);
++	else if (state != MT_DFS_STATE_UNKNOWN)
++		mt76_phy_tx_unblock(phy->mt76, MT76_TX_BLOCK_CAC);
++}
++
+ int mt7996_dfs_init_radar_detector(struct mt7996_phy *phy)
+ {
+ 	struct mt7996_dev *dev = phy->dev;
+@@ -3129,7 +3151,7 @@ int mt7996_dfs_init_radar_detector(struc
+ 		if (err < 0)
+ 			return err;
+ 
+-		phy->mt76->dfs_state = MT_DFS_STATE_CAC;
++		mt7996_dfs_state_set(phy, MT_DFS_STATE_CAC);
+ 	}
+ 
+ 	if (dfs_state == MT_DFS_STATE_CAC)
+@@ -3137,11 +3159,11 @@ int mt7996_dfs_init_radar_detector(struc
+ 
+ 	err = mt7996_mcu_rdd_cmd(dev, RDD_CAC_END, rdd_idx, 0);
+ 	if (err < 0) {
+-		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
++		mt7996_dfs_state_set(phy, MT_DFS_STATE_UNKNOWN);
+ 		return err;
+ 	}
+ 
+-	phy->mt76->dfs_state = MT_DFS_STATE_ACTIVE;
++	mt7996_dfs_state_set(phy, MT_DFS_STATE_ACTIVE);
+ 	return 0;
+ 
+ stop:
+@@ -3150,7 +3172,7 @@ stop:
+ 		return err;
+ 
+ 	mt7996_dfs_stop_radar_detector(phy);
+-	phy->mt76->dfs_state = MT_DFS_STATE_DISABLED;
++	mt7996_dfs_state_set(phy, MT_DFS_STATE_DISABLED);
+ 
+ 	return 0;
+ }
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -130,6 +130,9 @@ static void mt7996_stop_phy(struct mt799
+ 	mt7996_mcu_rdd_resume_tx(phy);
+ 	mt7996_mcu_set_radio_en(phy, false);
+ 
++	phy->csa_quiet_links = 0;
++	mt76_phy_tx_unblock(phy->mt76, MT76_TX_BLOCK_CSA);
++
+ 	clear_bit(MT76_STATE_RUNNING, &phy->mt76->state);
+ 
+ 	mutex_unlock(&dev->mt76.mutex);
+@@ -501,6 +504,31 @@ static void mt7996_vif_link_destroy(stru
+ 	}
+ }
+ 
++static void
++mt7996_vif_link_csa_quiet_set(struct mt7996_phy *phy,
++			      struct mt7996_vif_link *link, bool quiet)
++{
++	if (!phy || link->csa_quiet == quiet)
++		return;
++
++	link->csa_quiet = quiet;
++	if (quiet) {
++		if (!phy->csa_quiet_links++)
++			mt76_phy_tx_block(phy->mt76, MT76_TX_BLOCK_CSA);
++		return;
++	}
++
++	if (phy->csa_quiet_links && !--phy->csa_quiet_links)
++		mt76_phy_tx_unblock(phy->mt76, MT76_TX_BLOCK_CSA);
++}
++
++static void
++mt7996_vif_link_csa_end(struct mt7996_phy *phy, struct mt7996_vif_link *link)
++{
++	link->csa_block_tx = false;
++	mt7996_vif_link_csa_quiet_set(phy, link, false);
++}
++
+ void mt7996_vif_link_remove(struct mt76_phy *mphy, struct ieee80211_vif *vif,
+ 			    struct ieee80211_bss_conf *link_conf,
+ 			    struct mt76_vif_link *mlink)
+@@ -511,6 +539,8 @@ void mt7996_vif_link_remove(struct mt76_
+ 	unsigned int link_id = msta_link->wcid.link_id;
+ 	struct mt7996_phy *phy = mphy->priv;
+ 
++	mt7996_vif_link_csa_end(phy, link);
++
+ 	/* Hw requires to destroy active links tearing down the interface, so
+ 	 * postpone it removing the interface.
+ 	 */
+@@ -1133,6 +1163,9 @@ mt7996_channel_switch_beacon(struct ieee
+ 		if (link_phy != phy)
+ 			continue;
+ 
++		if (link->csa_block_tx)
++			mt7996_vif_link_csa_quiet_set(phy, link, true);
++
+ 		/* Reset beacon when channel switch triggered during CAC to let
+ 		 * FW correctly perform CSA countdown
+ 		 */
+@@ -1154,9 +1187,21 @@ mt7996_pre_channel_switch(struct ieee802
+ 	struct mt7996_dev *dev = mt7996_hw_dev(hw);
+ 	struct cfg80211_chan_def *c = &ch_switch->chandef, *rdd2_chandef;
+ 	struct mt7996_phy *phy = mt7996_band_phy(dev, c->chan->band);
++	struct mt7996_vif_link *link;
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+ 
++	/* mac80211 has no abort callback when an AP switch fails after this
++	 * point, so an AP link quiets only once its CSA beacon is set
++	 */
++	link = mt7996_vif_link(dev, vif, ch_switch->link_id);
++	if (link) {
++		link->csa_block_tx = ch_switch->block_tx;
++		if (vif->type == NL80211_IFTYPE_STATION)
++			mt7996_vif_link_csa_quiet_set(mt7996_vif_link_phy(link),
++						      link, ch_switch->block_tx);
++	}
++
+ 	if (phy != dev->rdd2_phy)
+ 		goto out;
+ 
+@@ -1198,10 +1243,34 @@ mt7996_post_channel_switch(struct ieee80
+ out:
+ 	mutex_unlock(&dev->mt76.mutex);
+ 
+-	if (ret || phy->mt76->dfs_state != MT_DFS_STATE_CAC)
+-		return ret;
++	if (!ret && phy->mt76->dfs_state == MT_DFS_STATE_CAC)
++		ret = mt76_set_channel(phy->mt76, &phy->mt76->main_chandef,
++				       false);
++
++	/* a full reset can free the link while the mutex is dropped */
++	mutex_lock(&dev->mt76.mutex);
++	link = mt7996_vif_conf_link(dev, vif, link_conf);
++	if (link)
++		mt7996_vif_link_csa_end(phy, link);
++	mutex_unlock(&dev->mt76.mutex);
+ 
+-	return mt76_set_channel(phy->mt76, &phy->mt76->main_chandef, false);
++	return ret;
++}
++
++static void
++mt7996_abort_channel_switch(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
++			    struct ieee80211_bss_conf *link_conf)
++{
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	struct mt7996_vif_link *link;
++
++	mutex_lock(&dev->mt76.mutex);
++
++	link = mt7996_vif_conf_link(dev, vif, link_conf);
++	if (link)
++		mt7996_vif_link_csa_end(mt7996_vif_link_phy(link), link);
++
++	mutex_unlock(&dev->mt76.mutex);
+ }
+ 
+ static void
+@@ -2977,6 +3046,7 @@ const struct ieee80211_ops mt7996_ops =
+ 	.channel_switch_beacon = mt7996_channel_switch_beacon,
+ 	.pre_channel_switch = mt7996_pre_channel_switch,
+ 	.post_channel_switch = mt7996_post_channel_switch,
++	.abort_channel_switch = mt7996_abort_channel_switch,
+ 	.event_callback = mt7996_event_callback,
+ 	.get_stats = mt7996_get_stats,
+ 	.get_et_sset_count = mt7996_get_et_sset_count,
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -357,6 +357,9 @@ struct mt7996_vif_link {
+ 	struct cfg80211_bitrate_mask bitrate_mask;
+ 
+ 	u8 mld_idx;
++
++	bool csa_block_tx;
++	bool csa_quiet;
+ };
+ 
+ struct mt7996_vif_link_info {
+@@ -493,6 +496,7 @@ struct mt7996_phy {
+ 	s8 last_wf4_signal;
+ 	bool counter_reset;
+ 	bool rdd_tx_paused;
++	u8 csa_quiet_links;
+ 
+ 	bool sku_limit_en;
+ 	bool sku_path_en;

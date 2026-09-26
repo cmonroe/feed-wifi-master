@@ -1,0 +1,123 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 14:37:42 -0700
+Subject: [PATCH] hostapd: move the background chain after a radar during a CSA
+
+A radar on the background chain stops the chain in the kernel. While
+a CSA ran, hostapd ignored that radar, so the chain stayed off until
+a later event moved it. When the CSA ended with an AP stop instead,
+hostapd kept the old chain record across the restart, and no event
+armed the chain again.
+
+hostapd now records the radar and moves the chain when the CSA
+completes, or when a CAC abort ends the CSA. When a failed CSA makes
+hostapd restart the interface, it drops the chain record, so the next
+DFS event arms a new chain. The fallback of a CSA request that the
+driver rejects keeps the record, because it applies the chain channel
+after the restart.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/dfs.c           |   17 ++++++++++++++++-
+ src/ap/drv_callbacks.c |    5 +++++
+ src/ap/hostapd.c       |    1 +
+ src/ap/hostapd.h       |    3 +++
+ 4 files changed, 25 insertions(+), 1 deletion(-)
+
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -1178,6 +1178,17 @@ static void hostapd_dfs_update_backgroun
+ }
+ 
+ 
++void hostapd_dfs_csa_finished(struct hostapd_iface *iface)
++{
++	if (!iface->radar_background.update_after_csa)
++		return;
++
++	iface->radar_background.update_after_csa = 0;
++	if (dfs_use_radar_background(iface))
++		hostapd_dfs_update_background_chain(iface);
++}
++
++
+ static bool
+ hostapd_is_freq_in_current_hw_info(struct hostapd_iface *iface, int freq)
+ {
+@@ -1444,8 +1455,12 @@ hostapd_dfs_background_start_channel_swi
+ 		   hostapd_csa_in_progress(iface) ? "yes" : "no");
+ 
+ 	/* Check if CSA in progress */
+-	if (hostapd_csa_in_progress(iface))
++	if (hostapd_csa_in_progress(iface)) {
++		/* the kernel stopped the chain; move it once the CSA ends */
++		if (hostapd_dfs_is_background_event(iface, freq))
++			iface->radar_background.update_after_csa = 1;
+ 		return 0;
++	}
+ 
+ 	if (hostapd_dfs_is_background_event(iface, freq)) {
+ 		/*
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -1445,6 +1445,7 @@ void hostapd_event_ch_switch(struct host
+ 		wpa_msg(hapd->msg_ctx, MSG_INFO, AP_CSA_FINISHED
+ 			"freq=%d dfs=%d", freq, is_dfs);
+ 		hostapd_ubus_notify_csa(hapd, freq);
++		hostapd_dfs_csa_finished(hapd->iface);
+ 	} else if (hapd->iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD) {
+ 		/* Complete AP configuration for the first bring up. */
+ 		if (is_dfs0 > 0 &&
+@@ -2345,6 +2346,10 @@ static void hostapd_event_dfs_cac_aborte
+ 	hostapd_dfs_complete_cac(hapd->iface, 0, radar->freq, radar->ht_enabled,
+ 				 radar->chan_offset, radar->chan_width,
+ 				 radar->cf1, radar->cf2);
++
++	/* an aborted post-CSA CAC ends the switch without a switch event */
++	if (!hostapd_csa_in_progress(hapd->iface))
++		hostapd_dfs_csa_finished(hapd->iface);
+ }
+ 
+ 
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -3812,6 +3812,7 @@ int hostapd_disable_iface(struct hostapd
+ 	for (j = 0; j < hapd_iface->num_bss; j++)
+ 		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
+ #endif /* NEED_AP_MLME */
++	hapd_iface->radar_background.update_after_csa = 0;
+ 
+ 	/* same as hostapd_interface_deinit without deinitializing ctrl-iface */
+ 	for (j = 0; j < hapd_iface->num_bss; j++) {
+@@ -5046,6 +5047,13 @@ hostapd_switch_channel_fallback(struct h
+ 	iface->conf->ieee80211ax = freq_params->he_enabled;
+ 	iface->conf->ieee80211be = freq_params->eht_enabled;
+ 
++	/* the restart can drop the kernel chain; the next DFS event arms a
++	 * new one
++	 */
++	iface->radar_background.channel = -1;
++	iface->radar_background.cac_started = 0;
++	iface->radar_background.temp_ch = 0;
++
+ 	/*
+ 	 * cs_params must not be cleared earlier because the freq_params
+ 	 * argument may actually point to one of these.
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -689,6 +689,8 @@ struct hostapd_iface {
+ 		unsigned int temp_ch:1;
+ 		/* CAC started on radar offchain */
+ 		unsigned int cac_started:1;
++		/* Chain move deferred until the running CSA ends */
++		unsigned int update_after_csa:1;
+ 	} radar_background;
+ 
+ 	u16 hw_flags;
+@@ -872,6 +874,7 @@ void hostapd_channel_list_updated(struct
+ void hostapd_set_state(struct hostapd_iface *iface, enum hostapd_iface_state s);
+ const char * hostapd_state_text(enum hostapd_iface_state s);
+ int hostapd_csa_in_progress(struct hostapd_iface *iface);
++void hostapd_dfs_csa_finished(struct hostapd_iface *iface);
+ void hostapd_chan_switch_config(struct hostapd_data *hapd,
+ 				struct hostapd_freq_params *freq_params);
+ int hostapd_switch_channel(struct hostapd_data *hapd,

@@ -1,0 +1,147 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 11:18:40 -0700
+Subject: [PATCH] wifi: mt76: add per-phy TX block reasons
+
+On a wiphy with several radios, mac80211 cannot stop the queues of
+one radio: without per-queue control every vif maps to the same
+hardware queues. A driver that quiets one band during a channel switch
+or a CAC needs a TX gate of its own.
+
+A phy now holds a set of block reasons. While any reason is set, the
+TX worker skips the TXQs and pending frames of that phy, as it does
+during a reset; the other phys keep transmitting. Clearing the last
+reason schedules the TXQs of that phy again, so frames queued during
+the block go out without waiting for new traffic.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt76.h |    8 ++++++
+ tx.c   |   67 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 72 insertions(+), 3 deletions(-)
+
+--- a/mt76.h
++++ b/mt76.h
+@@ -213,6 +213,11 @@ enum mt76_dfs_state {
+ 	MT_DFS_STATE_ACTIVE,
+ };
+ 
++enum mt76_tx_block_reason {
++	MT76_TX_BLOCK_CSA,
++	MT76_TX_BLOCK_CAC,
++};
++
+ #define MT76_RNR_SCAN_MAX_BSSIDS       16
+ struct mt76_scan_rnr_param {
+ 	u8 bssid[MT76_RNR_SCAN_MAX_BSSIDS][ETH_ALEN];
+@@ -939,6 +944,7 @@ struct mt76_phy {
+ 	bool offchannel;
+ 	bool radar_enabled;
+ 	bool no_active_monitor;
++	unsigned long tx_block;
+ 
+ 	struct delayed_work roc_work;
+ 	struct ieee80211_vif *roc_vif;
+@@ -1679,6 +1685,8 @@ void mt76_tx_check_agg_ssn(struct ieee80
+ void mt76_txq_schedule(struct mt76_phy *phy, enum mt76_txq_id qid);
+ void mt76_txq_schedule_all(struct mt76_phy *phy);
+ void mt76_txq_schedule_pending(struct mt76_phy *phy);
++void mt76_phy_tx_block(struct mt76_phy *phy, enum mt76_tx_block_reason reason);
++void mt76_phy_tx_unblock(struct mt76_phy *phy, enum mt76_tx_block_reason reason);
+ void mt76_tx_worker_run(struct mt76_dev *dev);
+ void mt76_tx_worker(struct mt76_worker *w);
+ void mt76_release_buffered_frames(struct ieee80211_hw *hw,
+--- a/tx.c
++++ b/tx.c
+@@ -531,7 +531,8 @@ mt76_txq_send_burst(struct mt76_phy *phy
+ 		goto out;
+ 
+ 	do {
+-		if (test_bit(MT76_RESET, &phy->state) || phy->offchannel)
++		if (test_bit(MT76_RESET, &phy->state) || phy->offchannel ||
++		    READ_ONCE(phy->tx_block))
+ 			break;
+ 
+ 		if (stop || mt76_txq_stopped(q))
+@@ -586,7 +587,8 @@ mt76_txq_schedule_list(struct mt76_phy *
+ 			continue;
+ 
+ 		phy = mt76_dev_phy(dev, wcid->phy_idx);
+-		if (test_bit(MT76_RESET, &phy->state) || phy->offchannel)
++		if (test_bit(MT76_RESET, &phy->state) || phy->offchannel ||
++		    READ_ONCE(phy->tx_block))
+ 			continue;
+ 
+ 		q = phy->q_tx[qid];
+@@ -719,7 +721,8 @@ mt76_txq_schedule_pending_wcid(struct mt
+ 			qid = MT_TXQ_PSD;
+ 
+ 		q = phy->q_tx[qid];
+-		if (mt76_txq_stopped(q) || test_bit(MT76_RESET, &phy->state)) {
++		if (mt76_txq_stopped(q) || test_bit(MT76_RESET, &phy->state) ||
++		    READ_ONCE(phy->tx_block)) {
+ 			ret = -1;
+ 			break;
+ 		}
+@@ -792,6 +795,62 @@ void mt76_txq_schedule_all(struct mt76_p
+ }
+ EXPORT_SYMBOL_GPL(mt76_txq_schedule_all);
+ 
++void mt76_phy_tx_block(struct mt76_phy *phy, enum mt76_tx_block_reason reason)
++{
++	set_bit(reason, &phy->tx_block);
++}
++EXPORT_SYMBOL_GPL(mt76_phy_tx_block);
++
++static void
++mt76_phy_txq_reschedule(struct mt76_phy *phy, struct ieee80211_txq *txq)
++{
++	struct mt76_wcid *wcid;
++	struct mt76_txq *mtxq;
++
++	if (!txq)
++		return;
++
++	mtxq = (struct mt76_txq *)txq->drv_priv;
++	wcid = __mt76_wcid_ptr(phy->dev, mtxq->wcid);
++	if (wcid && wcid->phy_idx == phy->band_idx)
++		__ieee80211_schedule_txq(phy->hw, txq, false);
++}
++
++static void
++mt76_phy_txq_reschedule_sta(void *data, struct ieee80211_sta *sta)
++{
++	int i;
++
++	for (i = 0; i < ARRAY_SIZE(sta->txq); i++)
++		mt76_phy_txq_reschedule(data, sta->txq[i]);
++}
++
++static void
++mt76_phy_txq_reschedule_vif(void *data, u8 *mac, struct ieee80211_vif *vif)
++{
++	mt76_phy_txq_reschedule(data, vif->txq);
++}
++
++void mt76_phy_tx_unblock(struct mt76_phy *phy, enum mt76_tx_block_reason reason)
++{
++	if (!test_and_clear_bit(reason, &phy->tx_block) || phy->tx_block)
++		return;
++
++	/* The TX gate takes blocked TXQs off the mac80211 schedule without
++	 * returning them, so frames queued during the block would otherwise
++	 * wait for new traffic on the same TXQ.
++	 */
++	ieee80211_iterate_stations_atomic(phy->hw,
++					  mt76_phy_txq_reschedule_sta, phy);
++	ieee80211_iterate_active_interfaces_atomic(phy->hw,
++						   IEEE80211_IFACE_ITER_NORMAL,
++						   mt76_phy_txq_reschedule_vif,
++						   phy);
++
++	mt76_worker_schedule(&phy->dev->tx_worker);
++}
++EXPORT_SYMBOL_GPL(mt76_phy_tx_unblock);
++
+ void mt76_tx_worker_run(struct mt76_dev *dev)
+ {
+ 	struct mt76_phy *phy;

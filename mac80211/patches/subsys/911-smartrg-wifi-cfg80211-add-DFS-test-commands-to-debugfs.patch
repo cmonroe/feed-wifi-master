@@ -1,27 +1,40 @@
-From 31d439c962e59fb22fe570f4ba9a806c50c4081b Mon Sep 17 00:00:00 2001
-From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
-Date: Thu, 22 Sep 2022 14:27:41 +0800
-Subject: [PATCH 012/107] mtk: cfg80211: implement DFS status show, cac and nop
- skip command via debugfs
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 16:59:43 -0700
+Subject: [PATCH] wifi: cfg80211: add DFS test commands to debugfs
 
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+DFS tests wait for a 60 s CAC, a 10 min weather radar CAC or a 30 min
+non-occupancy period, and the DFS state of a channel is not visible
+without netlink tools.
 
-Refactor DFS debugfs command for MLO
+Each wiphy now has these debugfs files:
+- dfs_status (read): the DFS state of each radar channel and the
+  remaining CAC or non-occupancy time, for each interface link and
+  for the background chain.
+- dfs_skip_cac (write, root): end a running CAC; bit 0 selects the
+  main chain, bit 1 the background chain.
+- dfs_skip_nop (write, root): end every non-occupancy period.
+- dfs_available_reset (write, root): return every available channel
+  to usable.
 
-Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+mac80211 gets a skip_cac operation that finishes its CAC timer, and
+cfg80211 records the start and length of a background CAC. The write
+files bypass regulatory timers and are for tests only.
+
+Based-on-work-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- include/net/cfg80211.h  |   1 +
- net/mac80211/cfg.c      |  25 +++
- net/wireless/core.h     |   3 +
- net/wireless/debugfs.c  | 326 +++++++++++++++++++++++++++++++++++++++-
- net/wireless/mlme.c     |   5 +
- net/wireless/rdev-ops.h |  13 ++
- net/wireless/trace.h    |  13 ++
- 7 files changed, 379 insertions(+), 7 deletions(-)
+ include/net/cfg80211.h  |    1 
+ net/mac80211/cfg.c      |   26 +++
+ net/wireless/core.h     |    3 
+ net/wireless/debugfs.c  |  328 +++++++++++++++++++++++++++++++++++++-
+ net/wireless/mlme.c     |    5 
+ net/wireless/rdev-ops.h |   13 +
+ net/wireless/trace.h    |   14 +
+ 7 files changed, 383 insertions(+), 7 deletions(-)
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -5636,6 +5636,7 @@ struct cfg80211_ops {
+@@ -5635,6 +5635,7 @@ struct cfg80211_ops {
  			    bool val);
  	int	(*start_pd)(struct wiphy *wiphy, struct wireless_dev *wdev);
  	void	(*stop_pd)(struct wiphy *wiphy, struct wireless_dev *wdev);
@@ -80,7 +93,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	unsigned int background_cac_time_ms;
  	struct delayed_work background_cac_done_wk;
  	struct work_struct background_cac_abort_wk;
- 
+ 	bool background_driver_abort;
 --- a/net/wireless/debugfs.c
 +++ b/net/wireless/debugfs.c
 @@ -10,6 +10,7 @@
@@ -452,7 +465,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		break;
  	default:
  		return;
-@@ -1340,8 +1343,10 @@ cfg80211_start_background_radar_detectio
+@@ -1379,8 +1382,10 @@ cfg80211_start_background_radar_detectio
  	if (!cac_time_ms)
  		cac_time_ms = IEEE80211_DFS_MIN_CAC_TIME_MS;
  

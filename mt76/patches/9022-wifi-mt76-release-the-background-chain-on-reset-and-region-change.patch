@@ -1,0 +1,124 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 11:22:55 -0700
+Subject: [PATCH] wifi: mt76: release the background chain on reset and region change
+
+cfg80211 keeps a background radar chain on its channel after the CAC,
+and the channel stays available while the chain monitors it. A full
+chip reset reloads the firmware without the background detector, and
+a region change leaves it running with the rules of the old region,
+yet cfg80211 still counts the channel as monitored.
+
+Abort the background chain in both cases, so cfg80211 releases the
+channel and tells hostapd to arm the chain again. Stopping the
+detector is now allowed while the region is unset, so the driver and
+cfg80211 agree that the chain is off.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7915/init.c |   12 ++++++++++++
+ mt7915/mac.c  |    6 ++++++
+ mt7915/main.c |    2 +-
+ mt7996/init.c |    9 +++++++++
+ mt7996/mac.c  |    6 ++++++
+ mt7996/main.c |    2 +-
+ 6 files changed, 35 insertions(+), 2 deletions(-)
+
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -384,10 +384,22 @@ mt7915_regd_notifier(struct wiphy *wiphy
+ 	struct mt7915_dev *dev = mt7915_hw_dev(hw);
+ 	struct mt76_phy *mphy = hw->priv;
+ 	struct mt7915_phy *phy = mphy->priv;
++	bool changed;
++
++	changed = memcmp(dev->mt76.alpha2, request->alpha2,
++			 sizeof(dev->mt76.alpha2)) ||
++		  dev->mt76.region != request->dfs_region;
+ 
+ 	memcpy(dev->mt76.alpha2, request->alpha2, sizeof(dev->mt76.alpha2));
+ 	dev->mt76.region = request->dfs_region;
+ 
++	/* the background detector still runs with the old region rules; the
++	 * device state is shared, so the first notifier of a change aborts
++	 * the chain on whichever wiphy owns it
++	 */
++	if (changed && dev->rdd2_phy)
++		cfg80211_background_cac_abort(dev->rdd2_phy->mt76->hw->wiphy);
++
+ 	if (dev->mt76.region == NL80211_DFS_UNSET)
+ 		mt7915_mcu_rdd_background_enable(phy, NULL);
+ 
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -1376,6 +1376,12 @@ mt7915_mac_full_reset(struct mt7915_dev
+ 	if (phy2)
+ 		phy2->omac_mask = 0;
+ 
++	/* the firmware reload drops the background detector and nothing
++	 * arms it again, so cfg80211 must stop treating it as monitoring
++	 */
++	if (dev->rdd2_phy)
++		cfg80211_background_cac_abort(dev->rdd2_phy->mt76->hw->wiphy);
++
+ 	mt76_reset_device(&dev->mt76);
+ 
+ 	INIT_LIST_HEAD(&dev->sta_rc_list);
+--- a/mt7915/main.c
++++ b/mt7915/main.c
+@@ -1845,7 +1845,7 @@ mt7915_set_radar_background(struct ieee8
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+ 
+-	if (dev->mt76.region == NL80211_DFS_UNSET)
++	if (chandef && dev->mt76.region == NL80211_DFS_UNSET)
+ 		goto out;
+ 
+ 	if (dev->rdd2_phy && dev->rdd2_phy != phy) {
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -479,10 +479,19 @@ mt7996_regd_notifier(struct wiphy *wiphy
+ 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
+ 	struct mt7996_dev *dev = mt7996_hw_dev(hw);
+ 	struct mt7996_phy *phy;
++	bool changed;
++
++	changed = memcmp(dev->mt76.alpha2, request->alpha2,
++			 sizeof(dev->mt76.alpha2)) ||
++		  dev->mt76.region != request->dfs_region;
+ 
+ 	memcpy(dev->mt76.alpha2, request->alpha2, sizeof(dev->mt76.alpha2));
+ 	dev->mt76.region = request->dfs_region;
+ 
++	/* the background detector still runs with the old region rules */
++	if (changed && dev->rdd2_phy)
++		cfg80211_background_cac_abort(wiphy);
++
+ 	mt7996_for_each_phy(dev, phy) {
+ 		if (dev->mt76.region == NL80211_DFS_UNSET)
+ 			mt7996_mcu_rdd_background_enable(phy, NULL);
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2404,6 +2404,12 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 	dev->mld_idx_mask = 0;
+ 	dev->mld_remap_idx_mask = 0;
+ 
++	/* the firmware reload drops the background detector and nothing
++	 * arms it again, so cfg80211 must stop treating it as monitoring
++	 */
++	if (dev->rdd2_phy)
++		cfg80211_background_cac_abort(hw->wiphy);
++
+ 	ieee80211_iterate_stations_atomic(hw, mt7996_mac_reset_sta_iter, dev);
+ 	mt76_reset_device(&dev->mt76);
+ 	ieee80211_iterate_active_interfaces_atomic(hw,
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -2757,7 +2757,7 @@ mt7996_set_radar_background(struct ieee8
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+ 
+-	if (dev->mt76.region == NL80211_DFS_UNSET)
++	if (chandef && dev->mt76.region == NL80211_DFS_UNSET)
+ 		goto out;
+ 
+ 	if (dev->rdd2_phy && dev->rdd2_phy != phy) {

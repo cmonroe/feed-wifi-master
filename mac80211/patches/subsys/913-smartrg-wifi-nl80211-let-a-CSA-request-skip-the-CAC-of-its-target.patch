@@ -1,0 +1,34 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 16:59:43 -0700
+Subject: [PATCH] wifi: nl80211: let a CSA request skip the CAC of its target
+
+Tests and operator commands need a CSA onto a DFS channel without the
+CAC, for example the skip_cac option of the hostapd chan_switch
+command.
+
+A CSA request that carries NL80211_ATTR_RADAR_BACKGROUND now marks its
+target AVAILABLE before the beaconing check, so the switch completes
+without a CAC. The attribute serves as the skip flag because nl80211
+has no other one for this. The flag bypasses the regulatory CAC;
+hostapd sends it only for the skip_cac option.
+
+Based-on-work-by: himanshu.goyal <himanshu.goyal@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/wireless/nl80211.c |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -12198,6 +12198,11 @@ static int nl80211_channel_switch(struct
+ 		goto free;
+ 
+ skip_beacons:
++	/* Use RADAR_BACKGROUND attribute here for skipping CAC */
++	if (info->attrs[NL80211_ATTR_RADAR_BACKGROUND]) {
++		cfg80211_set_dfs_state(&rdev->wiphy, &params.chandef, NL80211_DFS_AVAILABLE);
++	}
++
+ 	if (!cfg80211_reg_can_beacon_relax(&rdev->wiphy, &params.chandef,
+ 					   wdev->iftype)) {
+ 		err = -EINVAL;

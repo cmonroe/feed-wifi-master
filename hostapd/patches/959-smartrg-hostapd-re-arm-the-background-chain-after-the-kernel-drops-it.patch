@@ -1,0 +1,130 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 25 Sep 2026 14:38:46 -0700
+Subject: [PATCH] hostapd: re-arm the background chain after the kernel drops it
+
+The kernel stops an idle background chain without an event when an
+AP switches to an overlapping channel, when a main CAC starts on one,
+or when the interface stops. hostapd then still counted the chain as
+armed, so the chain stayed off.
+
+When the last channel of such a chain that the AP does not use
+expires, hostapd now arms the chain again. It waits for that channel
+because the kernel reports each 20 MHz channel on its own, and
+hostapd cannot pick a block for a CAC while part of it is still
+available. It records the chain width when it arms the chain,
+because the AP width can change later without a chain move.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/ap_drv_ops.c |    6 ++++--
+ src/ap/dfs.c        |   32 ++++++++++++++++++++++++++++++++
+ src/ap/hostapd.h    |    2 ++
+ 3 files changed, 38 insertions(+), 2 deletions(-)
+
+--- a/src/ap/ap_drv_ops.c
++++ b/src/ap/ap_drv_ops.c
+@@ -1141,10 +1141,12 @@ int hostapd_start_dfs_cac(struct hostapd
+ 
+ 	res = hapd->driver->start_dfs_cac(hapd->drv_priv, &data);
+ 	if (!res) {
+-		if (radar_background)
++		if (radar_background) {
+ 			iface->radar_background.cac_started = 1;
+-		else
++			iface->radar_background.chwidth = oper_chwidth;
++		} else {
+ 			iface->cac_started = 1;
++		}
+ 		os_get_reltime(&iface->dfs_cac_start);
+ 	}
+ 
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -1217,6 +1217,54 @@ hostapd_dfs_is_background_event(struct h
+ }
+ 
+ 
++static bool dfs_background_chandef_contains(struct hostapd_iface *iface,
++					    int freq)
++{
++	int center = 5000 + iface->radar_background.centr_freq_seg0_idx * 5;
++	int center2 = 5000 + iface->radar_background.centr_freq_seg1_idx * 5;
++
++	switch (iface->radar_background.chwidth) {
++	case CONF_OPER_CHWIDTH_80MHZ:
++		return abs(freq - center) < 40;
++	case CONF_OPER_CHWIDTH_160MHZ:
++		return abs(freq - center) < 80;
++	case CONF_OPER_CHWIDTH_80P80MHZ:
++		return abs(freq - center) < 40 || abs(freq - center2) < 40;
++	default:
++		return freq == iface->radar_background.freq ||
++			freq == iface->radar_background.freq +
++			iface->radar_background.secondary_channel * 20;
++	}
++}
++
++
++static bool dfs_background_chandef_available(struct hostapd_iface *iface)
++{
++	struct hostapd_hw_modes *mode = iface->current_mode;
++	struct hostapd_channel_data *chan;
++	int i;
++
++	for (i = 0; i < mode->num_channels; i++) {
++		chan = &mode->channels[i];
++
++		if (!(chan->flag & HOSTAPD_CHAN_RADAR) ||
++		    !dfs_background_chandef_contains(iface, chan->freq))
++			continue;
++
++		/* the channels that the AP uses never expire */
++		if (dfs_are_channels_overlapped(iface, chan->freq,
++						CHAN_WIDTH_20, 0, 0))
++			continue;
++
++		if ((chan->flag & HOSTAPD_CHAN_DFS_MASK) ==
++		    HOSTAPD_CHAN_DFS_AVAILABLE)
++			return true;
++	}
++
++	return false;
++}
++
++
+ static int
+ hostapd_dfs_start_channel_switch_background(struct hostapd_iface *iface)
+ {
+@@ -1343,6 +1391,21 @@ int hostapd_dfs_pre_cac_expired(struct h
+ 	set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
+ 		      cf1, cf2, HOSTAPD_CHAN_DFS_USABLE);
+ 
++	/* the kernel expires the channels of a chain only after it lost the
++	 * chain, with one event per channel; re-arm after the last one that
++	 * the AP does not use. Return after the attempt, so that no later
++	 * handler repeats it with the same inputs.
++	 */
++	if (dfs_use_radar_background(iface) &&
++	    iface->radar_background.channel != -1 &&
++	    !iface->radar_background.cac_started &&
++	    dfs_background_chandef_contains(iface, freq) &&
++	    !dfs_background_chandef_available(iface)) {
++		iface->radar_background.channel = -1;
++		hostapd_dfs_update_background_chain(iface);
++		return 0;
++	}
++
+ 	return 0;
+ }
+ 
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -683,6 +683,8 @@ struct hostapd_iface {
+ 		int freq;
+ 		int centr_freq_seg0_idx;
+ 		int centr_freq_seg1_idx;
++		/* The AP width can change later without a chain move */
++		int chwidth;
+ 		/* Main chain is on temporary channel during
+ 		 * CAC detection on radar offchain.
+ 		 */
