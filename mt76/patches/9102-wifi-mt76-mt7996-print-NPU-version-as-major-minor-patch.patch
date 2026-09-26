@@ -1,0 +1,25 @@
+From: monish.v <monish.v@airoha.com>
+Date: Wed, 23 Sep 2026 00:00:00 +0800
+Subject: [PATCH] wifi: mt76: mt7996: print NPU version as major.minor.patch
+
+The NPU fw version word is encoded as major[31:24].minor[23:16].patch[15:0].
+Decode it accordingly instead of printing the upper 16 bits as one field.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/npu.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/mt7996/npu.c
++++ b/mt7996/npu.c
+@@ -210,8 +210,8 @@ static int mt7996_npu_offload_init(struc
+ 		return err;
+ 	}
+ 
+-	dev_info(dev->mt76.dev, "NPU version: %0d.%d\n",
+-		 (val >> 16) & 0xffff, val & 0xffff);
++	dev_info(dev->mt76.dev, "NPU version: %u.%u.%u\n",
++		 (val >> 24) & 0xff, (val >> 16) & 0xff, val & 0xffff);
+ 
+ 	err = mt76_npu_send_msg(npu, 0, WLAN_FUNC_SET_WAIT_PCIE_PORT_TYPE,
+ 				dev->mt76.mmio.npu_type, GFP_KERNEL);
