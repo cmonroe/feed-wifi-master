@@ -22,27 +22,12 @@ Squash of the following MediaTek commits:
 - wifi: mt76: mt7915: support thermal recal debug command
   (Howard Hsu, 2023-12-21)
 ---
- mt76.h                |    3
- mt76_connac_mcu.c     |   15
- mt76_connac_mcu.h     |    8
- mt7915/Makefile       |    2
- mt7915/debugfs.c      |   87
- mt7915/mac.c          |   29
- mt7915/main.c         |    1
- mt7915/mcu.c          |   70
- mt7915/mcu.h          |    4
- mt7915/mt7915.h       |   59
- mt7915/mt7915_debug.h | 1442 +++++++++++++++
- mt7915/mtk_debugfs.c  | 3805 ++++++++++++++++++++++++++++++++++++++++
- mt7915/mtk_mcu.c      |   51
- mt7915/soc.c          |    7
- tools/fwlog.c         |   44
  mt76.h                |    3 
  mt76_connac_mcu.c     |   15 
  mt76_connac_mcu.h     |    8 
  mt7915/Makefile       |    2 
  mt7915/debugfs.c      |   87 +
- mt7915/mac.c          |   29 
+ mt7915/mac.c          |   24 
  mt7915/main.c         |    1 
  mt7915/mcu.c          |   70 
  mt7915/mcu.h          |    4 
@@ -52,7 +37,7 @@ Squash of the following MediaTek commits:
  mt7915/mtk_mcu.c      |   51 
  mt7915/soc.c          |    7 
  tools/fwlog.c         |   45 
- 15 files changed, 5645 insertions(+), 22 deletions(-)
+ 15 files changed, 5640 insertions(+), 22 deletions(-)
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
@@ -293,16 +278,15 @@ Squash of the following MediaTek commits:
  	if (hdr_trans && ieee80211_has_morefrags(fc)) {
  		struct ieee80211_vif *vif;
  		int err;
-@@ -735,6 +743,8 @@ int mt7915_tx_prepare_skb(struct mt76_de
- 	if (id < 0)
- 		return id;
- 
+@@ -730,6 +738,7 @@ int mt7915_tx_prepare_skb(struct mt76_de
+ 	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
+ 	t->skb = tx_info->skb;
+ 	t->wcid = wcid->idx;
 +	t->jiffies = jiffies;
-+
- 	pid = mt76_tx_status_skb_add(mdev, wcid, tx_info->skb);
- 	mt7915_mac_write_txwi(mdev, txwi_ptr, tx_info->skb, wcid, pid, key,
- 			      qid, 0);
-@@ -773,6 +783,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
+ 
+ 	id = mt76_token_consume(mdev, &t, wcid->phy_idx);
+ 	if (id < 0)
+@@ -773,6 +782,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	tx_info->buf[1].skip_unmap = true;
  	tx_info->nbuf = MT_CT_DMA_BUF_NUM;
  
@@ -315,25 +299,7 @@ Squash of the following MediaTek commits:
  	return 0;
  }
  
-@@ -925,6 +941,8 @@ mt7915_mac_tx_free(struct mt7915_dev *de
- 			if (!txwi)
- 				continue;
- 
-+			txwi->jiffies = 0;
-+
- 			mt76_connac2_txwi_free(mdev, txwi, sta, &free_list);
- 		}
- 	}
-@@ -957,6 +975,8 @@ mt7915_mac_tx_free_v0(struct mt7915_dev
- 		if (!txwi)
- 			continue;
- 
-+		txwi->jiffies = 0;
-+
- 		mt76_connac2_txwi_free(mdev, txwi, NULL, &free_list);
- 	}
- 
-@@ -1472,6 +1492,9 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1472,6 +1487,9 @@ void mt7915_mac_reset_work(struct work_s
  	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
  		return;
  
@@ -343,7 +309,7 @@ Squash of the following MediaTek commits:
  	ieee80211_stop_queues(mt76_hw(dev));
  	if (ext_phy)
  		ieee80211_stop_queues(ext_phy->hw);
-@@ -1552,6 +1575,9 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1552,6 +1570,9 @@ void mt7915_mac_reset_work(struct work_s
  		ieee80211_queue_delayed_work(ext_phy->hw,
  					     &phy2->mt76->mac_work,
  					     MT7915_WATCHDOG_TIME);
@@ -353,7 +319,7 @@ Squash of the following MediaTek commits:
  }
  
  /* firmware coredump */
-@@ -1626,6 +1652,9 @@ skip_coredump:
+@@ -1626,6 +1647,9 @@ skip_coredump:
  
  void mt7915_reset(struct mt7915_dev *dev)
  {
@@ -6068,7 +6034,7 @@ Squash of the following MediaTek commits:
  }
 --- a/mt76.h
 +++ b/mt76.h
-@@ -968,6 +968,9 @@ struct mt76_dev {
+@@ -973,6 +973,9 @@ struct mt76_dev {
  	struct device *dma_dev;
  
  	struct mt76_mcu mcu;
