@@ -42,7 +42,7 @@ Squash of the following MediaTek commits:
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -995,7 +995,8 @@ void mt76_rx(struct mt76_dev *dev, enum
+@@ -999,7 +999,8 @@ void mt76_rx(struct mt76_dev *dev, enum
  	}
  
  #ifdef CONFIG_NL80211_TESTMODE
@@ -54,7 +54,7 @@ Squash of the following MediaTek commits:
  			phy->test.rx_stats.fcs_error[q]++;
 --- a/mt76.h
 +++ b/mt76.h
-@@ -798,6 +798,8 @@ struct mt76_testmode_ops {
+@@ -803,6 +803,8 @@ struct mt76_testmode_ops {
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
  };
  
@@ -63,7 +63,7 @@ Squash of the following MediaTek commits:
  struct mt76_testmode_data {
  	enum mt76_testmode_state state;
  
-@@ -829,6 +831,8 @@ struct mt76_testmode_data {
+@@ -834,6 +836,8 @@ struct mt76_testmode_data {
  
  	u8 addr[3][ETH_ALEN];
  
@@ -72,7 +72,7 @@ Squash of the following MediaTek commits:
  	u32 tx_pending;
  	u32 tx_queued;
  	u16 tx_queued_limit;
-@@ -836,7 +840,17 @@ struct mt76_testmode_data {
+@@ -841,7 +845,17 @@ struct mt76_testmode_data {
  	struct {
  		u64 packets[__MT_RXQ_MAX];
  		u64 fcs_error[__MT_RXQ_MAX];

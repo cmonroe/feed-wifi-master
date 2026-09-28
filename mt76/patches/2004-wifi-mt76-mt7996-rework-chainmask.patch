@@ -26,7 +26,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -2019,9 +2019,11 @@ int mt76_get_antenna(struct ieee80211_hw
+@@ -2023,9 +2023,11 @@ int mt76_get_antenna(struct ieee80211_hw
  
  	mutex_lock(&dev->mutex);
  	*tx_ant = 0;
@@ -43,7 +43,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1088,6 +1088,8 @@ struct mt76_dev {
+@@ -1097,6 +1097,8 @@ struct mt76_dev {
  
  	atomic_t bus_hung;
  

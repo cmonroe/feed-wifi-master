@@ -1,0 +1,316 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 28 Sep 2026 13:40:00 -0700
+Subject: [PATCH] wifi: mt76: mt7915: trigger L1 SER on stuck TX tokens
+
+A TX token that the firmware never returns stays in the host token
+table until a reset, and enough of them block transmission for every
+station on the band.
+
+The driver checks the token table every 10 s and requests an L1 SER
+for the band of the oldest token older than 420 s, because hostapd
+removes an inactive station after 300 s and the frames of a sleeping
+station hold tokens until then. The mt7915 TX path stamps each token
+before it enters the table, because the check reads that stamp. The
+debugfs knobs token_timeout and token_ser, present on every driver,
+set the age and turn the SER off for a log-only run. A PLE hang SER
+from the severe check arms the same hold-off, so one fault does not
+produce two L1 requests. The deadlines are correct on 64-bit jiffies;
+a 32-bit device with every radio stopped for 2^31 jiffies would need
+a reinit.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ debugfs.c    |    2 
+ mac80211.c   |    4 +
+ mt76.h       |   12 ++++
+ mt7915/mac.c |   28 +++++++++-
+ tx.c         |  154 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 198 insertions(+), 2 deletions(-)
+
+--- a/debugfs.c
++++ b/debugfs.c
+@@ -113,6 +113,8 @@ mt76_register_debugfs_fops(struct mt76_p
+ 	debugfs_create_bool("led_active_low", 0600, dir, &phy->leds.al);
+ 	debugfs_create_u32("regidx", 0600, dir, &dev->debugfs_reg);
+ 	debugfs_create_file_unsafe("regval", 0600, dir, dev, fops);
++	debugfs_create_u32("token_timeout", 0600, dir, &dev->token_timeout);
++	debugfs_create_bool("token_ser", 0600, dir, &dev->token_ser);
+ 	debugfs_create_file_unsafe("napi_threaded", 0600, dir, dev,
+ 				   &fops_napi_threaded);
+ 	debugfs_create_blob("eeprom", 0400, dir, &dev->eeprom);
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -757,6 +757,10 @@ mt76_alloc_device(struct device *pdev, u
+ 	INIT_LIST_HEAD(&dev->rxwi_cache);
+ 	dev->token_size = dev->drv->token_size;
+ 	dev->token_threshold = dev->token_size;
++	dev->token_timeout = MT76_TOKEN_TIMEOUT_DEFAULT;
++	dev->token_ser = true;
++	dev->token_check_next = jiffies;
++	dev->token_event_next = jiffies;
+ 	INIT_DELAYED_WORK(&dev->scan_work, mt76_scan_work);
+ 	spin_lock_init(&dev->scan_lock);
+ 
+--- a/mt76.h
++++ b/mt76.h
+@@ -34,6 +34,11 @@
+ 
+ #define MT76_TOKEN_FREE_THR	64
+ 
++#define MT76_TOKEN_TIMEOUT_DEFAULT	420
++#define MT76_TOKEN_TIMEOUT_MAX		86400
++#define MT76_TOKEN_CHECK_INTERVAL	(10 * HZ)
++#define MT76_TOKEN_STALE_LOG_MAX	8
++
+ #define MT76_WED_WDS_MIN	256
+ #define MT76_WED_WDS_MAX	272
+ 
+@@ -990,6 +995,10 @@ struct mt76_dev {
+ 	u16 token_start;
+ 	u16 token_size;
+ 	u16 token_threshold;
++	u32 token_timeout;
++	bool token_ser;
++	unsigned long token_check_next;
++	unsigned long token_event_next;
+ 
+ 	spinlock_t rx_token_lock;
+ 	struct idr rx_token;
+@@ -2077,6 +2086,9 @@ struct mt76_txwi_cache *
+ mt76_token_release(struct mt76_dev *dev, int token, bool *wake);
+ int mt76_token_consume(struct mt76_dev *dev, struct mt76_txwi_cache **ptxwi,
+ 		       u8 phy_idx);
++bool mt76_token_check_due(struct mt76_dev *dev);
++int mt76_token_check_stale(struct mt76_dev *dev);
++void mt76_token_event_hold(struct mt76_dev *dev);
+ void __mt76_set_tx_blocked(struct mt76_dev *dev, bool blocked);
+ struct mt76_txwi_cache *mt76_rx_token_release(struct mt76_dev *dev, int token);
+ int mt76_rx_token_consume(struct mt76_dev *dev, void *ptr,
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -750,6 +750,7 @@ int mt7915_tx_prepare_skb(struct mt76_de
+ 	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
+ 	t->skb = tx_info->skb;
+ 	t->wcid = wcid->idx;
++	t->jiffies = jiffies;
+ 
+ 	id = mt76_token_consume(mdev, &t, wcid->phy_idx);
+ 	if (id < 0)
+@@ -1929,6 +1930,27 @@ void mt7915_mac_update_stats(struct mt79
+ 	}
+ }
+ 
++static void mt7915_mac_token_check(struct mt7915_phy *phy)
++{
++	struct mt7915_dev *dev = phy->dev;
++	int band, ret;
++
++	if (dev->recovery.restart || !mt76_token_check_due(&dev->mt76))
++		return;
++
++	band = mt76_token_check_stale(&dev->mt76);
++	if (band < 0)
++		return;
++
++	ret = mt7915_mcu_set_ser(dev, SER_ENABLE, BIT(SER_SET_RECOVER_L1), band);
++	if (!ret)
++		ret = mt7915_mcu_set_ser(dev, SER_RECOVER, SER_SET_RECOVER_L1,
++					 band);
++	if (ret)
++		dev_err(dev->mt76.dev, "band%d: L1 SER trigger failed: %d\n",
++			band, ret);
++}
++
+ static void mt7915_mac_severe_check(struct mt7915_phy *phy)
+ {
+ 	struct mt7915_dev *dev = phy->dev;
+@@ -1959,8 +1981,9 @@ static void mt7915_mac_severe_check(stru
+ 		dev_warn(dev->mt76.dev,
+ 			 "band%d: PLE error 0x%x detected, triggering L1 SER\n",
+ 			 phy->mt76->band_idx, ple_err);
+-		mt7915_mcu_set_ser(dev, SER_RECOVER, SER_SET_RECOVER_L1,
+-				   phy->mt76->band_idx);
++		if (!mt7915_mcu_set_ser(dev, SER_RECOVER, SER_SET_RECOVER_L1,
++					phy->mt76->band_idx))
++			mt76_token_event_hold(&dev->mt76);
+ 	}
+ 	dev->ple1_sts = ple_err;
+ }
+@@ -2018,6 +2041,7 @@ void mt7915_mac_work(struct work_struct
+ 
+ 		mt7915_mac_update_stats(phy);
+ 		mt7915_mac_severe_check(phy);
++		mt7915_mac_token_check(phy);
+ 
+ 		if (phy->dev->muru_debug)
+ 			mt7915_mcu_muru_debug_get(phy);
+--- a/tx.c
++++ b/tx.c
+@@ -3,6 +3,7 @@
+  * Copyright (C) 2016 Felix Fietkau <nbd@nbd.name>
+  */
+ 
++#include <linux/sort.h>
+ #include "mt76.h"
+ 
+ static int
+@@ -1076,6 +1077,159 @@ mt76_token_release(struct mt76_dev *dev,
+ }
+ EXPORT_SYMBOL_GPL(mt76_token_release);
+ 
++static unsigned long mt76_token_hold_time(struct mt76_dev *dev)
++{
++	u32 timeout = min_t(u32, READ_ONCE(dev->token_timeout),
++			    MT76_TOKEN_TIMEOUT_MAX);
++
++	return max_t(unsigned long, (unsigned long)timeout * HZ,
++		     MT76_TOKEN_CHECK_INTERVAL);
++}
++
++void mt76_token_event_hold(struct mt76_dev *dev)
++{
++	dev->token_event_next = jiffies + mt76_token_hold_time(dev);
++}
++EXPORT_SYMBOL_GPL(mt76_token_event_hold);
++
++bool mt76_token_check_due(struct mt76_dev *dev)
++{
++	unsigned long now = jiffies;
++
++	lockdep_assert_held(&dev->mutex);
++
++	/* an expired deadline left far behind jiffies reads as future
++	 * again after a wrap, so keep both deadlines near jiffies
++	 */
++	if (time_after(now, dev->token_event_next))
++		dev->token_event_next = now;
++	if (time_after(now, dev->token_check_next))
++		dev->token_check_next = now;
++
++	if (test_bit(MT76_MCU_RESET, &dev->phy.state))
++		return false;
++
++	if (time_before(now, dev->token_check_next))
++		return false;
++
++	dev->token_check_next = now + MT76_TOKEN_CHECK_INTERVAL;
++
++	return true;
++}
++EXPORT_SYMBOL_GPL(mt76_token_check_due);
++
++struct mt76_token_stale {
++	u32 age_ms;
++	u16 id;
++	u16 wcid;
++	u8 band;
++	bool slot;
++};
++
++static void
++mt76_token_stale_record(struct mt76_token_stale *stale, int *n,
++			const struct mt76_token_stale *entry)
++{
++	int i, youngest = 0;
++
++	if (*n < MT76_TOKEN_STALE_LOG_MAX) {
++		stale[(*n)++] = *entry;
++		return;
++	}
++
++	for (i = 1; i < MT76_TOKEN_STALE_LOG_MAX; i++)
++		if (stale[i].age_ms < stale[youngest].age_ms)
++			youngest = i;
++
++	if (entry->age_ms > stale[youngest].age_ms)
++		stale[youngest] = *entry;
++}
++
++static int mt76_token_stale_cmp(const void *a, const void *b)
++{
++	const struct mt76_token_stale *sa = a, *sb = b;
++
++	if (sa->age_ms == sb->age_ms)
++		return 0;
++
++	return sa->age_ms > sb->age_ms ? -1 : 1;
++}
++
++int mt76_token_check_stale(struct mt76_dev *dev)
++{
++	struct mt76_token_stale stale[MT76_TOKEN_STALE_LOG_MAX];
++	int count[__MT_MAX_BAND] = {};
++	struct mt76_txwi_cache *t;
++	unsigned long now = jiffies, tmo;
++	int id, i, n = 0, total = 0, oldest = -1;
++	u32 oldest_age = 0, tmo_s;
++	const char *action;
++	bool ser;
++
++	lockdep_assert_held(&dev->mutex);
++
++	tmo_s = min_t(u32, READ_ONCE(dev->token_timeout),
++		      MT76_TOKEN_TIMEOUT_MAX);
++	if (!tmo_s || time_before(now, dev->token_event_next))
++		return -1;
++
++	tmo = (unsigned long)tmo_s * HZ;
++
++	spin_lock_bh(&dev->token_lock);
++	idr_for_each_entry(&dev->token, t, id) {
++		struct mt76_token_stale entry;
++		struct mt76_phy *phy;
++
++		if (!time_after(now, t->jiffies + tmo))
++			continue;
++
++		phy = mt76_dev_phy(dev, t->phy_idx);
++		count[phy->band_idx]++;
++		total++;
++
++		entry.age_ms = jiffies_to_msecs(now - t->jiffies);
++		entry.id = id;
++		entry.wcid = t->wcid;
++		entry.band = phy->band_idx;
++		entry.slot = t->wcid < ARRAY_SIZE(dev->wcid) &&
++			     rcu_access_pointer(dev->wcid[t->wcid]);
++		mt76_token_stale_record(stale, &n, &entry);
++
++		if (oldest < 0 || entry.age_ms > oldest_age) {
++			oldest = phy->band_idx;
++			oldest_age = entry.age_ms;
++		}
++	}
++	spin_unlock_bh(&dev->token_lock);
++
++	if (!total)
++		return -1;
++
++	mt76_token_event_hold(dev);
++	ser = READ_ONCE(dev->token_ser);
++	action = ser ? "triggering L1 SER" : "log only";
++
++	for (i = 0; i < __MT_MAX_BAND; i++) {
++		if (!count[i])
++			continue;
++
++		dev_warn(dev->dev, "%s band%d: %d tx token(s) pending > %u s, %s\n",
++			 wiphy_name(mt76_dev_phy(dev, i)->hw->wiphy), i,
++			 count[i], tmo_s, action);
++	}
++
++	sort(stale, n, sizeof(stale[0]), mt76_token_stale_cmp, NULL);
++	for (i = 0; i < n; i++)
++		dev_info(dev->dev,
++			 "%s band%u: stale token %u wcid %u age %u ms wcid slot %s\n",
++			 wiphy_name(mt76_dev_phy(dev, stale[i].band)->hw->wiphy),
++			 stale[i].band, stale[i].id, stale[i].wcid,
++			 stale[i].age_ms, stale[i].slot ? "occupied" : "empty");
++
++	return ser ? oldest : -1;
++}
++EXPORT_SYMBOL_GPL(mt76_token_check_stale);
++
+ struct mt76_txwi_cache *
+ mt76_rx_token_release(struct mt76_dev *dev, int token)
+ {

@@ -21,7 +21,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -213,6 +213,11 @@ enum mt76_dfs_state {
+@@ -218,6 +218,11 @@ enum mt76_dfs_state {
  	MT_DFS_STATE_ACTIVE,
  };
  
@@ -33,7 +33,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT76_RNR_SCAN_MAX_BSSIDS       16
  struct mt76_scan_rnr_param {
  	u8 bssid[MT76_RNR_SCAN_MAX_BSSIDS][ETH_ALEN];
-@@ -939,6 +944,7 @@ struct mt76_phy {
+@@ -944,6 +949,7 @@ struct mt76_phy {
  	bool offchannel;
  	bool radar_enabled;
  	bool no_active_monitor;
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct delayed_work roc_work;
  	struct ieee80211_vif *roc_vif;
-@@ -1679,6 +1685,8 @@ void mt76_tx_check_agg_ssn(struct ieee80
+@@ -1688,6 +1694,8 @@ void mt76_tx_check_agg_ssn(struct ieee80
  void mt76_txq_schedule(struct mt76_phy *phy, enum mt76_txq_id qid);
  void mt76_txq_schedule_all(struct mt76_phy *phy);
  void mt76_txq_schedule_pending(struct mt76_phy *phy);
@@ -52,7 +52,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt76_release_buffered_frames(struct ieee80211_hw *hw,
 --- a/tx.c
 +++ b/tx.c
-@@ -544,7 +544,8 @@ mt76_txq_send_burst(struct mt76_phy *phy
+@@ -545,7 +545,8 @@ mt76_txq_send_burst(struct mt76_phy *phy
  		goto out;
  
  	do {
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
  
  		if (stop || mt76_txq_stopped(q))
-@@ -596,7 +597,8 @@ mt76_txq_schedule_list(struct mt76_phy *
+@@ -597,7 +598,8 @@ mt76_txq_schedule_list(struct mt76_phy *
  			continue;
  
  		phy = mt76_dev_phy(dev, wcid->phy_idx);
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			continue;
  
  		q = phy->q_tx[qid];
-@@ -729,7 +731,8 @@ mt76_txq_schedule_pending_wcid(struct mt
+@@ -730,7 +732,8 @@ mt76_txq_schedule_pending_wcid(struct mt
  			qid = MT_TXQ_PSD;
  
  		q = phy->q_tx[qid];
@@ -82,7 +82,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			ret = -1;
  			break;
  		}
-@@ -802,6 +805,62 @@ void mt76_txq_schedule_all(struct mt76_p
+@@ -803,6 +806,62 @@ void mt76_txq_schedule_all(struct mt76_p
  }
  EXPORT_SYMBOL_GPL(mt76_txq_schedule_all);
  

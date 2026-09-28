@@ -82,7 +82,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1249,6 +1249,11 @@ struct mt76_power_limits {
+@@ -1258,6 +1258,11 @@ struct mt76_power_limits {
  	} path;
  };
  
@@ -94,7 +94,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -2102,6 +2107,9 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -2111,6 +2116,9 @@ s8 mt76_get_rate_power_limits(struct mt7
  			      struct ieee80211_channel *chan,
  			      struct mt76_power_limits *dest,
  			      s8 target_power);

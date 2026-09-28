@@ -6,19 +6,25 @@ Stations that disconnect or stall can leave TX tokens stranded in the
 PLE, eventually exhausting the pool and blocking transmission for
 other clients.
 
+The flush waits 5 minutes after the last successful transmission to a
+station, because hostapd removes an inactive station after 300 s and
+the frames of a sleeping station are legitimate until then. The check
+shares the 10 s token cadence of the core, so it runs once per device
+and not once per band.
+
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mac80211.c      |    2 +
- mt76.h          |    6 ++++-
+ mt76.h          |    4 +++
  mt7996/mac.c    |   64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7996/mcu.c    |   36 +++++++++++++++++++++++++++++++
- mt7996/mcu.h    |    1
+ mt7996/mcu.h    |    1 
  mt7996/mt7996.h |    7 ++++++
- 6 files changed, 115 insertions(+), 1 deletion(-)
+ 6 files changed, 114 insertions(+)
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -1758,6 +1758,8 @@ void mt76_wcid_init(struct mt76_wcid *wc
+@@ -1762,6 +1762,8 @@ void mt76_wcid_init(struct mt76_wcid *wc
  	idr_init(&wcid->pktid);
  
  	INIT_LIST_HEAD(&wcid->poll_list);
@@ -29,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -449,6 +449,10 @@ struct mt76_wcid {
+@@ -454,6 +454,10 @@ struct mt76_wcid {
  	struct list_head poll_list;
  
  	struct mt76_wcid *def_wcid;
@@ -40,28 +46,19 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  struct mt76_txq {
-@@ -951,7 +955,7 @@ struct mt76_phy {
- #endif
- 
- 	struct delayed_work mac_work;
--	u8 mac_work_count;
-+	u16 mac_work_count;
- 
- 	struct {
- 		struct sk_buff *head;
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -985,6 +985,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
- 	if (id < 0)
- 		return id;
+@@ -1020,6 +1020,10 @@ int mt7996_tx_prepare_skb(struct mt76_de
+ 					   tx_info->buf[1].len, DMA_TO_DEVICE);
+ 	}
  
 +	spin_lock_bh(&wcid->token_lock);
 +	wcid->used_token++;
 +	spin_unlock_bh(&wcid->token_lock);
 +
- 	/* Since the rules of HW MLD address translation are not fully
- 	 * compatible with 802.11 EAPOL frame, we do the translation by
- 	 * software
+ 	wcid = mt7996_get_tx_wcid(wcid);
+ 
+ 	pid = mt76_tx_status_skb_add(mdev, wcid, tx_info->skb);
 @@ -1211,6 +1215,20 @@ mt7996_txwi_free(struct mt7996_dev *dev,
  	__le32 *txwi;
  	u16 wcid_idx;
@@ -96,14 +93,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			continue;
  		}
  
-@@ -2868,6 +2892,41 @@ static int mt7996_mac_sta_poll(struct mt
+@@ -2896,6 +2920,43 @@ static int mt7996_mac_sta_poll(struct mt
  	return mt7996_mcu_get_per_sta_info(dev, UNI_PER_STA_PKT_CNT, i, sta_list);
  }
  
-+static void mt7996_flush_pending_token(struct mt7996_dev *dev)
++static int mt7996_flush_pending_token(struct mt7996_dev *dev)
 +{
 +#define MT7996_PLE_FLUSH_THRESHOLD	128
-+#define MT7996_PLE_FLUSH_TIMEOUT	(2 * 60 * HZ)
++#define MT7996_PLE_FLUSH_TIMEOUT	(5 * 60 * HZ)
 +	u8 sta_bitmap[MT7996_WTBL_GROUP_SIZE_MT7996];
 +	u16 sta_cnt = 0, i;
 +
@@ -133,23 +130,23 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		mt7996_mcu_flush_ple(dev, MT7996_PLE_FLUSH_THRESHOLD,
 +				     sta_bitmap, sta_cnt);
 +	}
++
++	return sta_cnt;
 +}
 +
  void mt7996_mac_work(struct work_struct *work)
  {
  	struct mt7996_phy *phy;
-@@ -2904,6 +2963,11 @@ void mt7996_mac_work(struct work_struct
- 			           test_bit(MT76_STATE_RUNNING, &mdev->phys[i]->state))
- 				break;
+@@ -2934,7 +2995,8 @@ void mt7996_mac_work(struct work_struct
  		}
-+
-+		if (mphy->mac_work_count == 1200) {
-+			mphy->mac_work_count = 0;
-+			mt7996_flush_pending_token(phy->dev);
-+		}
+ 
+ 		if (!phy->dev->recovery.restart &&
+-		    mt76_token_check_due(&phy->dev->mt76))
++		    mt76_token_check_due(&phy->dev->mt76) &&
++		    !mt7996_flush_pending_token(phy->dev))
+ 			mt7996_mac_token_check(phy);
  	}
  
- 	mutex_unlock(&mdev->mutex);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
 @@ -4137,6 +4137,42 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
