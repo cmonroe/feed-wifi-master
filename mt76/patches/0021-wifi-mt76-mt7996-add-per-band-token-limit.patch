@@ -28,12 +28,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7915/mac.c      |    3 +
  mt7921/pci_mac.c  |    4 +-
  mt7925/pci_mac.c  |    8 ++++
- mt7996/debugfs.c  |   89 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/debugfs.c  |   93 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7996/init.c     |    2 +
  mt7996/mac.c      |    8 ++++
  mt7996/mt7996.h   |    3 +
  tx.c              |   22 +++++++++++--
- 11 files changed, 144 insertions(+), 8 deletions(-)
+ 11 files changed, 148 insertions(+), 8 deletions(-)
 
 --- a/mt76.h
 +++ b/mt76.h
@@ -275,7 +275,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	idr_destroy(&dev->mt76.token);
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -839,6 +839,90 @@ mt7996_twt_stats(struct seq_file *s, voi
+@@ -839,6 +839,94 @@ mt7996_twt_stats(struct seq_file *s, voi
  	return 0;
  }
  
@@ -318,6 +318,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	struct sk_buff *skb = NULL;
 +	u8 *txwi_buf;
 +	size_t txwi_len = mdev->drv->txwi_size;
++	u16 wcid = 0;
++	u8 phy_idx = 0;
 +
 +	txwi_buf = kzalloc(txwi_len, GFP_KERNEL);
 +	if (!txwi_buf)
@@ -327,6 +329,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	t = idr_find(&mdev->token, dev->token_debug_idx);
 +	if (t) {
 +		memcpy(txwi_buf, mt76_get_txwi_ptr(mdev, t), txwi_len);
++		wcid = t->wcid;
++		phy_idx = t->phy_idx;
 +		if (t->skb)
 +			skb = skb_get(t->skb);
 +	}
@@ -338,7 +342,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	}
 +
 +	seq_printf(s, "token %u (wcid %u, phy %u)\n",
-+		   dev->token_debug_idx, t->wcid, t->phy_idx);
++		   dev->token_debug_idx, wcid, phy_idx);
 +	seq_puts(s, "[TXD]\n");
 +	seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 1, txwi_buf,
 +		     txwi_len, false);
@@ -366,7 +370,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /* The index of RF registers use the generic regidx, combined with two parts:
   * WF selection [31:24] and offset [23:0].
   */
-@@ -928,6 +1012,11 @@ int mt7996_init_debugfs(struct mt7996_de
+@@ -928,6 +1016,11 @@ int mt7996_init_debugfs(struct mt7996_de
  			    &fops_implicit_txbf);
  	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
  				    mt7996_twt_stats);

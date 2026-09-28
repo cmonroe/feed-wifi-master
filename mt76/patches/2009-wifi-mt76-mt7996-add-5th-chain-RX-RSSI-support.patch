@@ -85,7 +85,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	const struct cfg80211_sar_freq_ranges *range;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -1193,11 +1193,246 @@ static const struct file_operations fops
+@@ -1197,11 +1197,246 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
