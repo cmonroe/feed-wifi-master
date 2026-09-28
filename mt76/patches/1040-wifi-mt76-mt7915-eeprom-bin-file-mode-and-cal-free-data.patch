@@ -512,7 +512,7 @@ Squash of the following MediaTek commits:
  
  #ifdef MTK_DEBUG
  #define LWTBL_IDX2BASE_ID		GENMASK(14, 8)
-@@ -3671,6 +3672,47 @@ static int mt7915_fw_wm_info_read(struct
+@@ -3708,6 +3709,47 @@ static int mt7915_fw_wm_info_read(struct
  	return 0;
  }
  
@@ -560,7 +560,7 @@ Squash of the following MediaTek commits:
  static int
  mt7915_sw_aci_set(void *data, u64 val)
  {
-@@ -3717,6 +3759,7 @@ mt7915_thermal_recal_set(void *data, u64
+@@ -3754,6 +3796,7 @@ mt7915_thermal_recal_set(void *data, u64
  DEFINE_DEBUGFS_ATTRIBUTE(fops_thermal_recal, NULL,
  			 mt7915_thermal_recal_set, "%llu\n");
  
@@ -568,7 +568,7 @@ Squash of the following MediaTek commits:
  int mt7915_mtk_init_debugfs(struct mt7915_phy *phy, struct dentry *dir)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -3797,6 +3840,8 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3834,6 +3877,8 @@ int mt7915_mtk_init_debugfs(struct mt791
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
  

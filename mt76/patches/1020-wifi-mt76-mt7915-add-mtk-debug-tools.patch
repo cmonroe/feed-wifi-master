@@ -48,11 +48,11 @@ Squash of the following MediaTek commits:
  mt7915/mcu.h          |    4 
  mt7915/mt7915.h       |   59 
  mt7915/mt7915_debug.h | 1442 ++++++++++++++++++
- mt7915/mtk_debugfs.c  | 3807 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7915/mtk_debugfs.c  | 3844 ++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7915/mtk_mcu.c      |   51 
  mt7915/soc.c          |    7 
  tools/fwlog.c         |   45 
- 15 files changed, 5608 insertions(+), 22 deletions(-)
+ 15 files changed, 5645 insertions(+), 22 deletions(-)
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
@@ -2038,7 +2038,7 @@ Squash of the following MediaTek commits:
 +#endif
 --- /dev/null
 +++ b/mt7915/mtk_debugfs.c
-@@ -0,0 +1,3807 @@
+@@ -0,0 +1,3844 @@
 +#include<linux/inet.h>
 +#include "mt7915.h"
 +#include "mt7915_debug.h"
@@ -4574,24 +4574,61 @@ Squash of the following MediaTek commits:
 +static int mt7915_token_txd_read(struct seq_file *s, void *data)
 +{
 +	struct mt7915_dev *dev = dev_get_drvdata(s->private);
++	struct mt76_dev *mdev = &dev->mt76;
++	size_t txwi_len = mdev->drv->txwi_size;
++	const u32 frame_max = 512;
 +	struct mt76_txwi_cache *t;
-+	u8* txwi;
++	u32 skb_len = 0, dump_len = 0;
++	u8 *txwi_buf, *frame_buf;
++	bool has_skb = false;
++	u16 wcid = 0;
++	u8 phy_idx = 0;
 +
-+	seq_printf(s, "\n");
-+	spin_lock_bh(&dev->mt76.token_lock);
++	txwi_buf = kzalloc(txwi_len + frame_max, GFP_KERNEL);
++	if (!txwi_buf)
++		return -ENOMEM;
 +
-+	t = idr_find(&dev->mt76.token, dev->dbg.token_idx);
++	frame_buf = txwi_buf + txwi_len;
 +
-+	if (t != NULL) {
-+		struct mt76_dev *mdev = &dev->mt76;
-+		txwi = ((u8*)(t)) - (mdev->drv->txwi_size);
-+		mt7915_dump_tmac_info((u8*) txwi);
-+		seq_printf(s, "\n");
-+		printk("[SKB]\n");
-+		print_hex_dump(KERN_ERR , "", DUMP_PREFIX_OFFSET, 16, 1, (u8 *)t->skb->data, t->skb->len, false);
-+		seq_printf(s, "\n");
++	/* TX completion can change the frame, so copy it under the lock */
++	spin_lock_bh(&mdev->token_lock);
++	t = idr_find(&mdev->token, dev->dbg.token_idx);
++	if (t) {
++		memcpy(txwi_buf, mt76_get_txwi_ptr(mdev, t), txwi_len);
++		wcid = t->wcid;
++		phy_idx = t->phy_idx;
++		if (t->skb) {
++			has_skb = true;
++			skb_len = t->skb->len;
++			dump_len = min_t(u32, skb_len, frame_max);
++			if (skb_copy_bits(t->skb, 0, frame_buf, dump_len))
++				dump_len = 0;
++		}
 +	}
-+	spin_unlock_bh(&dev->mt76.token_lock);
++	spin_unlock_bh(&mdev->token_lock);
++
++	if (!t) {
++		seq_printf(s, "token %u not in use\n", dev->dbg.token_idx);
++		goto out;
++	}
++
++	seq_printf(s, "token %u (wcid %u, phy %u)\n",
++		   dev->dbg.token_idx, wcid, phy_idx);
++	seq_puts(s, "[TXD]\n");
++	seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 1, txwi_buf,
++		     txwi_len, false);
++
++	if (has_skb) {
++		seq_printf(s, "\n[SKB len=%u dump=%u]\n", skb_len, dump_len);
++		seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 1,
++			     frame_buf, dump_len, false);
++	} else {
++		seq_puts(s, "\n[SKB] none\n");
++	}
++
++out:
++	kfree(txwi_buf);
++
 +	return 0;
 +}
 +

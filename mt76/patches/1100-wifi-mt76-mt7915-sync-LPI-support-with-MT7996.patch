@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL,
 --- a/mt7915/mtk_debugfs.c
 +++ b/mt7915/mtk_debugfs.c
-@@ -3861,7 +3861,7 @@ int mt7915_mtk_init_debugfs(struct mt791
+@@ -3898,7 +3898,7 @@ int mt7915_mtk_init_debugfs(struct mt791
  			    &fops_txpower_level);
  
  	debugfs_create_u8("sku_disable", 0600, dir, &dev->dbg.sku_disable);
