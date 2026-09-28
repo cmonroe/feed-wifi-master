@@ -1,0 +1,93 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 27 Sep 2026 20:17:59 -0700
+Subject: [PATCH] wifi: mt76: skip TX rate lookup for 802.3 frames
+
+mac80211 sets no band for an 802.3 frame, so the band reads as
+2.4 GHz. When a station roams to another AP interface of the same
+device, the mt7915 driver disables the old entry. The driver then
+looks up the rates of each frame to that entry. mac80211 still queues
+802.3 frames to it until user space removes the entry. On a wiphy
+without a 2.4 GHz band the lookup finds no band, and the TX worker
+dereferences a NULL pointer.
+
+The TX descriptor of an 802.3 frame does not use the rates of the
+lookup. The driver therefore skips the lookup for 802.3 frames, so
+this lookup no longer crashes the TX worker after such a roam.
+
+Fixes: 0898393ee0a0 ("wifi: mt76: use ALTX queue for packets to disassociated stations")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ tx.c |   34 ++++++++++++++++++++++------------
+ 1 file changed, 22 insertions(+), 12 deletions(-)
+
+--- a/tx.c
++++ b/tx.c
+@@ -353,6 +353,24 @@ __mt76_tx_queue_skb(struct mt76_phy *phy
+ 	return idx;
+ }
+ 
++static void
++mt76_tx_rates_fill(struct ieee80211_vif *vif, struct ieee80211_sta *sta,
++		   struct mt76_wcid *wcid, struct sk_buff *skb)
++{
++	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
++
++	if (wcid->tx_info & MT_WCID_TX_INFO_SET)
++		return;
++
++	/* mac80211 sets no band for 802.3 frames, and their TX descriptor
++	 * does not use these rates
++	 */
++	if (info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP)
++		return;
++
++	ieee80211_get_tx_rates(vif, sta, skb, info->control.rates, 1);
++}
++
+ void
+ mt76_tx(struct mt76_phy *phy, struct ieee80211_sta *sta,
+ 	struct mt76_wcid *wcid, struct sk_buff *skb)
+@@ -369,9 +387,8 @@ mt76_tx(struct mt76_phy *phy, struct iee
+ 	if (WARN_ON(skb_get_queue_mapping(skb) >= MT_TXQ_PSD))
+ 		skb_set_queue_mapping(skb, MT_TXQ_BE);
+ 
+-	if (wcid && !(wcid->tx_info & MT_WCID_TX_INFO_SET))
+-		ieee80211_get_tx_rates(info->control.vif, sta, skb,
+-				       info->control.rates, 1);
++	if (wcid)
++		mt76_tx_rates_fill(info->control.vif, sta, wcid, skb);
+ 
+ 	info->hw_queue |= FIELD_PREP(MT_TX_HW_QUEUE_PHY, phy->band_idx);
+ 
+@@ -495,7 +512,6 @@ mt76_txq_send_burst(struct mt76_phy *phy
+ 	struct mt76_dev *dev = phy->dev;
+ 	struct ieee80211_txq *txq = mtxq_to_txq(mtxq);
+ 	enum mt76_txq_id qid = mt76_txq_get_qid(txq);
+-	struct ieee80211_tx_info *info;
+ 	struct sk_buff *skb;
+ 	int n_frames = 1;
+ 	bool stop = false;
+@@ -516,10 +532,7 @@ mt76_txq_send_burst(struct mt76_phy *phy
+ 	if (!skb)
+ 		return 0;
+ 
+-	info = IEEE80211_SKB_CB(skb);
+-	if (!(wcid->tx_info & MT_WCID_TX_INFO_SET))
+-		ieee80211_get_tx_rates(txq->vif, txq->sta, skb,
+-				       info->control.rates, 1);
++	mt76_tx_rates_fill(txq->vif, txq->sta, wcid, skb);
+ 
+ 	spin_lock(&q->lock);
+ 	idx = __mt76_tx_queue_skb(phy, qid, skb, wcid, txq->sta, &stop);
+@@ -541,10 +554,7 @@ mt76_txq_send_burst(struct mt76_phy *phy
+ 		if (!skb)
+ 			break;
+ 
+-		info = IEEE80211_SKB_CB(skb);
+-		if (!(wcid->tx_info & MT_WCID_TX_INFO_SET))
+-			ieee80211_get_tx_rates(txq->vif, txq->sta, skb,
+-					       info->control.rates, 1);
++		mt76_tx_rates_fill(txq->vif, txq->sta, wcid, skb);
+ 
+ 		spin_lock(&q->lock);
+ 		idx = __mt76_tx_queue_skb(phy, qid, skb, wcid, txq->sta, &stop);
