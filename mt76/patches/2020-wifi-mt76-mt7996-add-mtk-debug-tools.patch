@@ -260,7 +260,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -576,6 +576,7 @@ struct mt7996_dev {
+@@ -571,6 +571,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -268,7 +268,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	u32 token_debug_idx;
  
-@@ -595,6 +596,17 @@ struct mt7996_dev {
+@@ -590,6 +591,17 @@ struct mt7996_dev {
  		u8 fem:4;
  	} var;
  
@@ -286,7 +286,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool vow_atf_en;
  };
  
-@@ -1033,6 +1045,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1026,6 +1038,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
@@ -5720,7 +5720,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6378,3 +6378,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6342,3 +6342,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
@@ -5760,7 +5760,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1113,8 +1113,33 @@ enum {
+@@ -1112,8 +1112,33 @@ enum {
  	UNI_CMD_THERMAL_PROTECT_INFO,
  };
  

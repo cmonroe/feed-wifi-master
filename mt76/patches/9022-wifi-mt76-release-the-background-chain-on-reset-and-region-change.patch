@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			mt7996_mcu_rdd_background_enable(phy, NULL);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2387,6 +2387,12 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2363,6 +2363,12 @@ mt7996_mac_full_reset(struct mt7996_dev
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  

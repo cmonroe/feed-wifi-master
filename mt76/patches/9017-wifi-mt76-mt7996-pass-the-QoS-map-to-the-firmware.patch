@@ -81,7 +81,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6654,6 +6654,85 @@ int mt7996_mcu_cp_support(struct mt7996_
+@@ -6618,6 +6618,85 @@ int mt7996_mcu_cp_support(struct mt7996_
  				 &cp_mode, sizeof(cp_mode), true);
  }
  
@@ -169,7 +169,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define DUP_WTBL_NUM	80
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1172,6 +1172,7 @@ enum {
+@@ -1171,6 +1171,7 @@ enum {
  enum {
  	UNI_CMD_SDO_SET = 1,
  	UNI_CMD_SDO_QUERY,
@@ -179,7 +179,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -1083,6 +1083,9 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
+@@ -1076,6 +1076,9 @@ int mt7996_mcu_wtbl_update_hdr_trans(str
  int mt7996_mcu_ps_leave(struct mt7996_dev *dev, struct mt7996_vif_link *link,
  			struct mt7996_sta_link *msta_link);
  int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode);
