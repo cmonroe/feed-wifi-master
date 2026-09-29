@@ -11,21 +11,22 @@ for the band of the oldest token older than 420 s, because hostapd
 removes an inactive station after 300 s and the frames of a sleeping
 station hold tokens until then. The mt7915 TX path stamps each token
 before it enters the table, because the check reads that stamp. The
-debugfs knobs token_timeout and token_ser, present on every driver,
-set the age and turn the SER off for a log-only run. A PLE hang SER
-from the severe check arms the same hold-off, so one fault does not
-produce two L1 requests. The deadlines are correct on 64-bit jiffies;
-a 32-bit device with every radio stopped for 2^31 jiffies would need
-a reinit.
+walk reads the table under RCU without the token lock, so it never
+stalls the TX and TX-free paths. The debugfs knobs token_timeout and
+token_ser, present on every driver, set the age and turn the SER off
+for a log-only run. A PLE hang SER from the severe check arms the
+same hold-off, so one fault does not produce two L1 requests. The
+deadlines are correct on 64-bit jiffies; a 32-bit device with every
+radio stopped for 2^31 jiffies would need a reinit.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  debugfs.c    |    2 
  mac80211.c   |    4 +
- mt76.h       |   12 ++++
- mt7915/mac.c |   28 +++++++++-
- tx.c         |  154 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 198 insertions(+), 2 deletions(-)
+ mt76.h       |   12 +++
+ mt7915/mac.c |   28 +++++++-
+ tx.c         |  197 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 241 insertions(+), 2 deletions(-)
 
 --- a/debugfs.c
 +++ b/debugfs.c
@@ -154,7 +155,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "mt76.h"
  
  static int
-@@ -1076,6 +1077,159 @@ mt76_token_release(struct mt76_dev *dev,
+@@ -1076,6 +1077,202 @@ mt76_token_release(struct mt76_dev *dev,
  }
  EXPORT_SYMBOL_GPL(mt76_token_release);
  
@@ -236,54 +237,97 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	return sa->age_ms > sb->age_ms ? -1 : 1;
 +}
 +
++struct mt76_token_scan {
++	struct mt76_dev *dev;
++	unsigned long now;
++	unsigned long tmo;
++	struct mt76_token_stale stale[MT76_TOKEN_STALE_LOG_MAX];
++	int count[__MT_MAX_BAND];
++	int n;
++	int total;
++	int oldest;
++	u32 oldest_age;
++};
++
++/* same result as mt76_dev_phy(dev, phy_idx)->band_idx, without a
++ * dereference of an extra phy that its removal may free meanwhile
++ */
++static u8 mt76_token_band(struct mt76_dev *dev, u8 phy_idx)
++{
++	if ((phy_idx == MT_BAND1 || phy_idx == MT_BAND2) &&
++	    READ_ONCE(dev->phys[phy_idx]))
++		return phy_idx;
++
++	return dev->phy.band_idx;
++}
++
++static int mt76_token_scan_one(int id, void *p, void *data)
++{
++	struct mt76_token_scan *scan = data;
++	struct mt76_dev *dev = scan->dev;
++	struct mt76_txwi_cache *t = p;
++	struct mt76_token_stale entry;
++	unsigned long stamp;
++	u16 wcid;
++
++	if (!t)
++		return 0;
++
++	stamp = READ_ONCE(t->jiffies);
++	if (!time_after(scan->now, stamp + scan->tmo))
++		return 0;
++
++	wcid = READ_ONCE(t->wcid);
++	entry.age_ms = jiffies_to_msecs(scan->now - stamp);
++	entry.id = id;
++	entry.wcid = wcid;
++	entry.band = mt76_token_band(dev, READ_ONCE(t->phy_idx));
++	entry.slot = wcid < ARRAY_SIZE(dev->wcid) &&
++		     rcu_access_pointer(dev->wcid[wcid]);
++
++	scan->count[entry.band]++;
++	scan->total++;
++	mt76_token_stale_record(scan->stale, &scan->n, &entry);
++
++	if (scan->oldest < 0 || entry.age_ms > scan->oldest_age) {
++		scan->oldest = entry.band;
++		scan->oldest_age = entry.age_ms;
++	}
++
++	return 0;
++}
++
 +int mt76_token_check_stale(struct mt76_dev *dev)
 +{
-+	struct mt76_token_stale stale[MT76_TOKEN_STALE_LOG_MAX];
-+	int count[__MT_MAX_BAND] = {};
-+	struct mt76_txwi_cache *t;
-+	unsigned long now = jiffies, tmo;
-+	int id, i, n = 0, total = 0, oldest = -1;
-+	u32 oldest_age = 0, tmo_s;
++	struct mt76_token_scan scan = {
++		.dev = dev,
++		.now = jiffies,
++		.oldest = -1,
++	};
 +	const char *action;
++	u32 tmo_s;
 +	bool ser;
++	int i;
 +
 +	lockdep_assert_held(&dev->mutex);
 +
 +	tmo_s = min_t(u32, READ_ONCE(dev->token_timeout),
 +		      MT76_TOKEN_TIMEOUT_MAX);
-+	if (!tmo_s || time_before(now, dev->token_event_next))
++	if (!tmo_s || time_before(scan.now, dev->token_event_next) ||
++	    !READ_ONCE(dev->token_count))
 +		return -1;
 +
-+	tmo = (unsigned long)tmo_s * HZ;
++	scan.tmo = (unsigned long)tmo_s * HZ;
 +
-+	spin_lock_bh(&dev->token_lock);
-+	idr_for_each_entry(&dev->token, t, id) {
-+		struct mt76_token_stale entry;
-+		struct mt76_phy *phy;
++	/* no token lock, so the walk never stalls the TX and TX-free paths:
++	 * txwi buffers stay allocated until mt76_dma_cleanup(), and a slot
++	 * that a concurrent release clears reads as NULL
++	 */
++	rcu_read_lock();
++	idr_for_each(&dev->token, mt76_token_scan_one, &scan);
++	rcu_read_unlock();
 +
-+		if (!time_after(now, t->jiffies + tmo))
-+			continue;
-+
-+		phy = mt76_dev_phy(dev, t->phy_idx);
-+		count[phy->band_idx]++;
-+		total++;
-+
-+		entry.age_ms = jiffies_to_msecs(now - t->jiffies);
-+		entry.id = id;
-+		entry.wcid = t->wcid;
-+		entry.band = phy->band_idx;
-+		entry.slot = t->wcid < ARRAY_SIZE(dev->wcid) &&
-+			     rcu_access_pointer(dev->wcid[t->wcid]);
-+		mt76_token_stale_record(stale, &n, &entry);
-+
-+		if (oldest < 0 || entry.age_ms > oldest_age) {
-+			oldest = phy->band_idx;
-+			oldest_age = entry.age_ms;
-+		}
-+	}
-+	spin_unlock_bh(&dev->token_lock);
-+
-+	if (!total)
++	if (!scan.total)
 +		return -1;
 +
 +	mt76_token_event_hold(dev);
@@ -291,23 +335,23 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	action = ser ? "triggering L1 SER" : "log only";
 +
 +	for (i = 0; i < __MT_MAX_BAND; i++) {
-+		if (!count[i])
++		if (!scan.count[i])
 +			continue;
 +
-+		dev_warn(dev->dev, "%s band%d: %d tx token(s) pending > %u s, %s\n",
-+			 wiphy_name(mt76_dev_phy(dev, i)->hw->wiphy), i,
-+			 count[i], tmo_s, action);
++		dev_warn(dev->dev, "band%d: %d tx token(s) pending > %u s, %s\n",
++			 i, scan.count[i], tmo_s, action);
 +	}
 +
-+	sort(stale, n, sizeof(stale[0]), mt76_token_stale_cmp, NULL);
-+	for (i = 0; i < n; i++)
++	sort(scan.stale, scan.n, sizeof(scan.stale[0]), mt76_token_stale_cmp,
++	     NULL);
++	for (i = 0; i < scan.n; i++)
 +		dev_info(dev->dev,
-+			 "%s band%u: stale token %u wcid %u age %u ms wcid slot %s\n",
-+			 wiphy_name(mt76_dev_phy(dev, stale[i].band)->hw->wiphy),
-+			 stale[i].band, stale[i].id, stale[i].wcid,
-+			 stale[i].age_ms, stale[i].slot ? "occupied" : "empty");
++			 "band%u: stale token %u wcid %u age %u ms wcid slot %s\n",
++			 scan.stale[i].band, scan.stale[i].id,
++			 scan.stale[i].wcid, scan.stale[i].age_ms,
++			 scan.stale[i].slot ? "occupied" : "empty");
 +
-+	return ser ? oldest : -1;
++	return ser ? scan.oldest : -1;
 +}
 +EXPORT_SYMBOL_GPL(mt76_token_check_stale);
 +
