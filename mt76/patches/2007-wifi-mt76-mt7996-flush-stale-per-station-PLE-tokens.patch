@@ -93,7 +93,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			continue;
  		}
  
-@@ -2896,6 +2920,43 @@ static int mt7996_mac_sta_poll(struct mt
+@@ -2909,6 +2933,43 @@ static int mt7996_mac_sta_poll(struct mt
  	return mt7996_mcu_get_per_sta_info(dev, UNI_PER_STA_PKT_CNT, i, sta_list);
  }
  
@@ -137,7 +137,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt7996_mac_work(struct work_struct *work)
  {
  	struct mt7996_phy *phy;
-@@ -2934,7 +2995,8 @@ void mt7996_mac_work(struct work_struct
+@@ -2954,7 +3015,8 @@ void mt7996_mac_work(struct work_struct
  		}
  
  		if (!phy->dev->recovery.restart &&

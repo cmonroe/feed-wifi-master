@@ -492,7 +492,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -3062,27 +2863,74 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -3075,14 +2876,49 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -540,6 +540,12 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	phy = mphy->priv;
 +	mdev = mphy->dev;
  
+ 	/* reset, reconfig and channel set queue this work without a test
+ 	 * of the radio state, and removal must not run it again
+@@ -3091,18 +2927,30 @@ void mt7996_mac_work(struct work_struct
+ 	    test_bit(MT76_REMOVED, &mphy->dev->phy.state))
+ 		return;
+ 
 -	mutex_lock(&mphy->dev->mutex);
 +	mutex_lock(&mdev->mutex);
  
@@ -574,7 +580,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		}
  
  		if (!phy->dev->recovery.restart &&
-@@ -3090,10 +2938,10 @@ void mt7996_mac_work(struct work_struct
+@@ -3110,10 +2958,10 @@ void mt7996_mac_work(struct work_struct
  			mt7996_mac_token_check(phy);
  	}
  
@@ -589,7 +595,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1136,7 +1136,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1141,7 +1141,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
  	struct mt7996_phy *phy = mt7996_vif_link_phy(link);
  	struct mt7996_sta_link *msta_link;
@@ -598,7 +604,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	if (!phy)
  		return -EINVAL;
-@@ -1175,6 +1175,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1180,6 +1180,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
  
  	ewma_avg_signal_init(&msta_link->avg_ack_signal);
  	ewma_signal_init(&msta_link->wcid.rssi);
@@ -608,7 +614,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	rcu_assign_pointer(msta->link[link_id], msta_link);
  
-@@ -1931,6 +1934,87 @@ static void mt7996_sta_statistics(struct
+@@ -1936,6 +1939,87 @@ static void mt7996_sta_statistics(struct
  	}
  }
  
@@ -696,7 +702,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
  					 struct mt7996_sta_link *msta_link)
  {
-@@ -2654,6 +2738,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2659,6 +2743,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_bitrate_mask = mt7996_set_bitrate_mask,
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,

@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	MCU_EXT_CMD_WF_RF_PIN_CTRL = 0xbd,
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2876,6 +2876,35 @@ mt7996_set_eml_op_mode(struct ieee80211_
+@@ -2881,6 +2881,35 @@ mt7996_set_eml_op_mode(struct ieee80211_
  	return ret;
  }
  
@@ -73,7 +73,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
  mt7996_event_callback(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  		      const struct ieee80211_event *event)
-@@ -2981,4 +3010,5 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2986,4 +3015,5 @@ const struct ieee80211_ops mt7996_ops =
  	.change_sta_links = mt7996_mac_sta_change_links,
  	.reconfig_complete = mt7996_reconfig_complete,
  	.set_eml_op_mode = mt7996_set_eml_op_mode,

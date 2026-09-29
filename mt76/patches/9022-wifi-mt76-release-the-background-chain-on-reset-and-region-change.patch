@@ -113,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ieee80211_iterate_active_interfaces_atomic(hw,
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2757,7 +2757,7 @@ mt7996_set_radar_background(struct ieee8
+@@ -2762,7 +2762,7 @@ mt7996_set_radar_background(struct ieee8
  
  	mutex_lock(&dev->mt76.mutex);
  

@@ -1,0 +1,105 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 29 Sep 2026 05:56:01 -0700
+Subject: [PATCH] wifi: mt76: mt7996: stop mac_work on idle radios
+
+A reset or a reconfig queues the MAC work on every radio, and the
+work queues itself again every 100 ms. Nothing cancels the work on a
+radio that is not running, so an idle radio polls its counters
+forever. At removal, its timer can fire after mac80211 destroys the
+workqueue.
+
+The work now ends on a radio that is not running, and the stop
+callback cancels it on every radio. Removal first stops the MCU
+interrupt from queueing a reset, then cancels the work on every radio
+before the workqueue goes away. A reset that runs during removal
+keeps its wakeups, and later MCU commands fail at once instead of
+timing out into a full restart.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/init.c |   11 +++++++++++
+ mt7996/mac.c  |   20 ++++++++++++++++++++
+ mt7996/main.c |    5 +++++
+ 3 files changed, 36 insertions(+)
+
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -1829,10 +1829,21 @@ error:
+ 
+ void mt7996_unregister_device(struct mt7996_dev *dev)
+ {
++	struct mt7996_phy *phy;
++
++	/* stop the MCU interrupt from queueing a reset, which would queue
++	 * mac_work again after the cancel below
++	 */
++	set_bit(MT76_REMOVED, &dev->mphy.state);
++	tasklet_disable(&dev->mt76.irq_tasklet);
++	tasklet_enable(&dev->mt76.irq_tasklet);
++
+ 	cancel_work_sync(&dev->dump_work);
+ 	cancel_work_sync(&dev->wed_rro.work);
+ 	cancel_work_sync(&dev->reset_work);
+ 	cancel_work_sync(&dev->rc_work);
++	mt7996_for_each_phy(dev, phy)
++		cancel_delayed_work_sync(&phy->mt76->mac_work);
+ 	mt7996_unregister_phy(mt7996_phy3(dev));
+ 	mt7996_unregister_phy(mt7996_phy2(dev));
+ 	mt7996_unregister_thermal(&dev->phy);
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2544,6 +2544,9 @@ void mt7996_mac_reset_work(struct work_s
+ 	dev = container_of(work, struct mt7996_dev, reset_work);
+ 	hw = mt76_hw(dev);
+ 
++	if (test_bit(MT76_REMOVED, &dev->mphy.state))
++		return;
++
+ 	/* chip full reset */
+ 	if (dev->recovery.restart) {
+ 		/* disable WA/WM WDT */
+@@ -2772,6 +2775,16 @@ void mt7996_reset(struct mt7996_dev *dev
+ 	if (!dev->recovery.hw_init_done)
+ 		return;
+ 
++	/* a reset that runs still needs its wakeups, and later MCU commands
++	 * must fail at once instead of timing out into a full restart
++	 */
++	if (test_bit(MT76_REMOVED, &dev->mphy.state)) {
++		set_bit(MT76_MCU_RESET, &dev->mphy.state);
++		wake_up(&dev->mt76.mcu.wait);
++		wake_up(&dev->reset_wait);
++		return;
++	}
++
+ 	if (dev->recovery.hw_full_reset)
+ 		return;
+ 
+@@ -3021,6 +3034,13 @@ void mt7996_mac_work(struct work_struct
+ 					       mac_work.work);
+ 	phy = mphy->priv;
+ 
++	/* reset, reconfig and channel set queue this work without a test
++	 * of the radio state, and removal must not run it again
++	 */
++	if (!test_bit(MT76_STATE_RUNNING, &mphy->state) ||
++	    test_bit(MT76_REMOVED, &mphy->dev->phy.state))
++		return;
++
+ 	mutex_lock(&mphy->dev->mutex);
+ 
+ 	mt76_update_survey(mphy);
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -89,6 +89,11 @@ static void mt7996_stop_phy(struct mt799
+ 
+ static void mt7996_stop(struct ieee80211_hw *hw, bool suspend)
+ {
++	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	struct mt7996_phy *phy;
++
++	mt7996_for_each_phy(dev, phy)
++		cancel_delayed_work_sync(&phy->mt76->mac_work);
+ }
+ 
+ static inline int get_free_idx(u64 mask, u8 start, u8 end)

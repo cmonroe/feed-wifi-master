@@ -66,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  
-@@ -3117,6 +3124,21 @@ static int mt7996_dfs_start_radar_detect
+@@ -3137,6 +3144,21 @@ static int mt7996_dfs_start_radar_detect
  	return err;
  }
  
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_dfs_init_radar_detector(struct mt7996_phy *phy)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -3142,7 +3164,7 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3162,7 +3184,7 @@ int mt7996_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
  
@@ -97,7 +97,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (dfs_state == MT_DFS_STATE_CAC)
-@@ -3150,11 +3172,11 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3170,11 +3192,11 @@ int mt7996_dfs_init_radar_detector(struc
  
  	err = mt7996_mcu_rdd_cmd(dev, RDD_CAC_END, rdd_idx, 0);
  	if (err < 0) {
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  
  stop:
-@@ -3163,7 +3185,7 @@ stop:
+@@ -3183,7 +3205,7 @@ stop:
  		return err;
  
  	mt7996_dfs_stop_radar_detector(phy);
@@ -132,7 +132,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	clear_bit(MT76_STATE_RUNNING, &phy->mt76->state);
  
  	mutex_unlock(&dev->mt76.mutex);
-@@ -501,6 +504,31 @@ static void mt7996_vif_link_destroy(stru
+@@ -506,6 +509,31 @@ static void mt7996_vif_link_destroy(stru
  	}
  }
  
@@ -164,7 +164,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt7996_vif_link_remove(struct mt76_phy *mphy, struct ieee80211_vif *vif,
  			    struct ieee80211_bss_conf *link_conf,
  			    struct mt76_vif_link *mlink)
-@@ -511,6 +539,8 @@ void mt7996_vif_link_remove(struct mt76_
+@@ -516,6 +544,8 @@ void mt7996_vif_link_remove(struct mt76_
  	unsigned int link_id = msta_link->wcid.link_id;
  	struct mt7996_phy *phy = mphy->priv;
  
@@ -173,7 +173,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* Hw requires to destroy active links tearing down the interface, so
  	 * postpone it removing the interface.
  	 */
-@@ -1133,6 +1163,9 @@ mt7996_channel_switch_beacon(struct ieee
+@@ -1138,6 +1168,9 @@ mt7996_channel_switch_beacon(struct ieee
  		if (link_phy != phy)
  			continue;
  
@@ -183,7 +183,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* Reset beacon when channel switch triggered during CAC to let
  		 * FW correctly perform CSA countdown
  		 */
-@@ -1154,9 +1187,21 @@ mt7996_pre_channel_switch(struct ieee802
+@@ -1159,9 +1192,21 @@ mt7996_pre_channel_switch(struct ieee802
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	struct cfg80211_chan_def *c = &ch_switch->chandef, *rdd2_chandef;
  	struct mt7996_phy *phy = mt7996_band_phy(dev, c->chan->band);
@@ -205,7 +205,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (phy != dev->rdd2_phy)
  		goto out;
  
-@@ -1198,10 +1243,34 @@ mt7996_post_channel_switch(struct ieee80
+@@ -1203,10 +1248,34 @@ mt7996_post_channel_switch(struct ieee80
  out:
  	mutex_unlock(&dev->mt76.mutex);
  
@@ -243,7 +243,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static void
-@@ -2979,6 +3048,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -2984,6 +3053,7 @@ const struct ieee80211_ops mt7996_ops =
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
  	.pre_channel_switch = mt7996_pre_channel_switch,
  	.post_channel_switch = mt7996_post_channel_switch,
