@@ -11,13 +11,14 @@ for the band of the oldest token older than 420 s, because hostapd
 removes an inactive station after 300 s and the frames of a sleeping
 station hold tokens until then. The mt7915 TX path stamps each token
 before it enters the table, because the check reads that stamp. The
-walk reads the table under RCU without the token lock, so it never
-stalls the TX and TX-free paths. The debugfs knobs token_timeout and
-token_ser, present on every driver, set the age and turn the SER off
-for a log-only run. A PLE hang SER from the severe check arms the
-same hold-off, so one fault does not produce two L1 requests. The
-deadlines are correct on 64-bit jiffies; a 32-bit device with every
-radio stopped for 2^31 jiffies would need a reinit.
+walk reads the table under RCU without a lock, so it never stalls TX
+or TX-free handling, and no new walk starts once removal begins. The
+debugfs knobs token_timeout and token_ser, present on every driver,
+set the age and turn the SER off for a log-only run. A PLE hang SER
+from the severe check arms the same hold-off, so one fault does not
+produce two L1 requests. The deadlines are correct on 64-bit jiffies;
+a 32-bit device with every radio stopped for 2^31 jiffies would need
+a reinit.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
@@ -25,8 +26,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mac80211.c   |    4 +
  mt76.h       |   12 +++
  mt7915/mac.c |   28 +++++++-
- tx.c         |  197 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 241 insertions(+), 2 deletions(-)
+ tx.c         |  198 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 242 insertions(+), 2 deletions(-)
 
 --- a/debugfs.c
 +++ b/debugfs.c
@@ -155,7 +156,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "mt76.h"
  
  static int
-@@ -1076,6 +1077,202 @@ mt76_token_release(struct mt76_dev *dev,
+@@ -1076,6 +1077,203 @@ mt76_token_release(struct mt76_dev *dev,
  }
  EXPORT_SYMBOL_GPL(mt76_token_release);
  
@@ -188,7 +189,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	if (time_after(now, dev->token_check_next))
 +		dev->token_check_next = now;
 +
-+	if (test_bit(MT76_MCU_RESET, &dev->phy.state))
++	if (test_bit(MT76_MCU_RESET, &dev->phy.state) ||
++	    test_bit(MT76_REMOVED, &dev->phy.state))
 +		return false;
 +
 +	if (time_before(now, dev->token_check_next))
