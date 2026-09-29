@@ -291,7 +291,7 @@ Squash of the following MediaTek commits:
  	return 0;
  }
  
-@@ -1473,6 +1487,9 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1476,6 +1490,9 @@ void mt7915_mac_reset_work(struct work_s
  	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
  		return;
  
@@ -301,7 +301,7 @@ Squash of the following MediaTek commits:
  	ieee80211_stop_queues(mt76_hw(dev));
  	if (ext_phy)
  		ieee80211_stop_queues(ext_phy->hw);
-@@ -1553,6 +1570,9 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1556,6 +1573,9 @@ void mt7915_mac_reset_work(struct work_s
  		ieee80211_queue_delayed_work(ext_phy->hw,
  					     &phy2->mt76->mac_work,
  					     MT7915_WATCHDOG_TIME);
@@ -311,7 +311,7 @@ Squash of the following MediaTek commits:
  }
  
  /* firmware coredump */
-@@ -1627,6 +1647,9 @@ skip_coredump:
+@@ -1630,6 +1650,9 @@ skip_coredump:
  
  void mt7915_reset(struct mt7915_dev *dev)
  {
