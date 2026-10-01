@@ -75,7 +75,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (dev->recovery.hw_full_reset)
  		return;
  
-@@ -3021,6 +3034,13 @@ void mt7996_mac_work(struct work_struct
+@@ -3018,6 +3031,13 @@ void mt7996_mac_work(struct work_struct
  					       mac_work.work);
  	phy = mphy->priv;
  

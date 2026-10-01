@@ -10,18 +10,20 @@ The hook sends the request from the shared token check. It writes the
 SER enable word before the trigger on MT7996 and MT7992; the offsets
 and the value come from the field workaround, and MT7990 has no known
 offset, so the driver warns once and sends the trigger anyway. The
-MAC work runs the check on the token cadence of the core, so it runs
-once per device and not once per band.
+request carries only the trigger, because a SER mask command replaces
+the whole recovery mask of the firmware. The MAC work runs the check
+on the token cadence of the core, so it runs once per device and not
+once per band.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7996/mac.c  |   32 ++++++++++++++++++++++++++++++++
+ mt7996/mac.c  |   29 +++++++++++++++++++++++++++++
  mt7996/regs.h |    8 ++++++++
- 2 files changed, 40 insertions(+)
+ 2 files changed, 37 insertions(+)
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2937,6 +2937,34 @@ void mt7996_mac_update_stats(struct mt79
+@@ -2937,6 +2937,31 @@ void mt7996_mac_update_stats(struct mt79
  	}
  }
  
@@ -43,11 +45,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +			      "chip %04x: no SER enable offset, the L1 trigger may be ignored\n",
 +			      mt76_chip(&dev->mt76));
 +
-+	ret = mt7996_mcu_set_ser(dev, UNI_CMD_SER_SET,
-+				 BIT(UNI_CMD_SER_SET_RECOVER_L1), band);
-+	if (!ret)
-+		ret = mt7996_mcu_set_ser(dev, UNI_CMD_SER_TRIGGER,
-+					 UNI_CMD_SER_SET_RECOVER_L1, band);
++	ret = mt7996_mcu_set_ser(dev, UNI_CMD_SER_TRIGGER,
++				 UNI_CMD_SER_SET_RECOVER_L1, band);
 +	if (ret)
 +		dev_err(dev->mt76.dev, "band%d: L1 SER trigger failed: %d\n",
 +			band, ret);
@@ -56,7 +55,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt7996_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7996_dev *dev = container_of(work, struct mt7996_dev, rc_work);
-@@ -3006,6 +3034,10 @@ void mt7996_mac_work(struct work_struct
+@@ -3006,6 +3031,10 @@ void mt7996_mac_work(struct work_struct
  			mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_ADM_STAT);
  			mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_MSDU_COUNT);
  		}

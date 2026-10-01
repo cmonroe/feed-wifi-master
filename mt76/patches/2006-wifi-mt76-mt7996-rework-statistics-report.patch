@@ -492,7 +492,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -3075,14 +2876,49 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -3072,14 +2873,49 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -542,7 +542,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	/* reset, reconfig and channel set queue this work without a test
  	 * of the radio state, and removal must not run it again
-@@ -3091,18 +2927,30 @@ void mt7996_mac_work(struct work_struct
+@@ -3088,18 +2924,30 @@ void mt7996_mac_work(struct work_struct
  	    test_bit(MT76_REMOVED, &mphy->dev->phy.state))
  		return;
  
@@ -580,7 +580,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		}
  
  		if (!phy->dev->recovery.restart &&
-@@ -3110,10 +2958,10 @@ void mt7996_mac_work(struct work_struct
+@@ -3107,10 +2955,10 @@ void mt7996_mac_work(struct work_struct
  			mt7996_mac_token_check(phy);
  	}
  

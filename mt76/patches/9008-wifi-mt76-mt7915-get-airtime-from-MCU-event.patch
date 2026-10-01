@@ -137,7 +137,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		rate = &msta->wcid.rate;
  
  		switch (rate->bw) {
-@@ -2047,6 +1986,7 @@ void mt7915_mac_work(struct work_struct
+@@ -2044,6 +1983,7 @@ void mt7915_mac_work(struct work_struct
  {
  	struct mt7915_phy *phy;
  	struct mt76_phy *mphy;
@@ -145,7 +145,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	mphy = (struct mt76_phy *)container_of(work, struct mt76_phy,
  					       mac_work.work);
-@@ -2059,6 +1999,8 @@ void mt7915_mac_work(struct work_struct
+@@ -2056,6 +1996,8 @@ void mt7915_mac_work(struct work_struct
  	    test_bit(MT76_REMOVED, &mphy->dev->phy.state))
  		return;
  
@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mutex_lock(&mphy->dev->mutex);
  
  	mt76_update_survey(mphy);
-@@ -2071,6 +2013,8 @@ void mt7915_mac_work(struct work_struct
+@@ -2068,6 +2010,8 @@ void mt7915_mac_work(struct work_struct
  
  		if (phy->dev->muru_debug)
  			mt7915_mcu_muru_debug_get(phy);

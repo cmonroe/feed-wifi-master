@@ -16,18 +16,19 @@ or TX-free handling, and no new walk starts once removal begins. The
 debugfs knobs token_timeout and token_ser, present on every driver,
 set the age and turn the SER off for a log-only run. A PLE hang SER
 from the severe check arms the same hold-off, so one fault does not
-produce two L1 requests. The deadlines are correct on 64-bit jiffies;
-a 32-bit device with every radio stopped for 2^31 jiffies would need
-a reinit.
+produce two L1 requests. The request carries only the trigger,
+because a SER mask command replaces the whole recovery mask of the
+firmware. The deadlines are correct on 64-bit jiffies; a 32-bit
+device with every radio stopped for 2^31 jiffies would need a reinit.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  debugfs.c    |    2 
  mac80211.c   |    4 +
  mt76.h       |   12 +++
- mt7915/mac.c |   28 +++++++-
+ mt7915/mac.c |   25 ++++++-
  tx.c         |  198 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 242 insertions(+), 2 deletions(-)
+ 5 files changed, 239 insertions(+), 2 deletions(-)
 
 --- a/debugfs.c
 +++ b/debugfs.c
@@ -98,7 +99,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	id = mt76_token_consume(mdev, &t, wcid->phy_idx);
  	if (id < 0)
-@@ -1929,6 +1930,27 @@ void mt7915_mac_update_stats(struct mt79
+@@ -1929,6 +1930,24 @@ void mt7915_mac_update_stats(struct mt79
  	}
  }
  
@@ -114,10 +115,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	if (band < 0)
 +		return;
 +
-+	ret = mt7915_mcu_set_ser(dev, SER_ENABLE, BIT(SER_SET_RECOVER_L1), band);
-+	if (!ret)
-+		ret = mt7915_mcu_set_ser(dev, SER_RECOVER, SER_SET_RECOVER_L1,
-+					 band);
++	ret = mt7915_mcu_set_ser(dev, SER_RECOVER, SER_SET_RECOVER_L1, band);
 +	if (ret)
 +		dev_err(dev->mt76.dev, "band%d: L1 SER trigger failed: %d\n",
 +			band, ret);
@@ -126,7 +124,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void mt7915_mac_severe_check(struct mt7915_phy *phy)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -1959,8 +1981,9 @@ static void mt7915_mac_severe_check(stru
+@@ -1959,8 +1978,9 @@ static void mt7915_mac_severe_check(stru
  		dev_warn(dev->mt76.dev,
  			 "band%d: PLE error 0x%x detected, triggering L1 SER\n",
  			 phy->mt76->band_idx, ple_err);
@@ -138,7 +136,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  	dev->ple1_sts = ple_err;
  }
-@@ -2018,6 +2041,7 @@ void mt7915_mac_work(struct work_struct
+@@ -2018,6 +2038,7 @@ void mt7915_mac_work(struct work_struct
  
  		mt7915_mac_update_stats(phy);
  		mt7915_mac_severe_check(phy);

@@ -66,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  
-@@ -3075,6 +3082,21 @@ static int mt7996_dfs_start_radar_detect
+@@ -3072,6 +3079,21 @@ static int mt7996_dfs_start_radar_detect
  	return err;
  }
  
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_dfs_init_radar_detector(struct mt7996_phy *phy)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -3100,7 +3122,7 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3097,7 +3119,7 @@ int mt7996_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
  
@@ -97,7 +97,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (dfs_state == MT_DFS_STATE_CAC)
-@@ -3108,11 +3130,11 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3105,11 +3127,11 @@ int mt7996_dfs_init_radar_detector(struc
  
  	err = mt7996_mcu_rdd_cmd(dev, RDD_CAC_END, rdd_idx, 0);
  	if (err < 0) {
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  
  stop:
-@@ -3121,7 +3143,7 @@ stop:
+@@ -3118,7 +3140,7 @@ stop:
  		return err;
  
  	mt7996_dfs_stop_radar_detector(phy);
