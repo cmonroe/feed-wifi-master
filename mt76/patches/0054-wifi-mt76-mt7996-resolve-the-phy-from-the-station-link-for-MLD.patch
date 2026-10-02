@@ -1,0 +1,87 @@
+From: Piotr Kubik <piotr.kubik@adtran.com>
+Date: Fri, 02 Oct 2026 15:42:35 +0200
+Subject: [PATCH] wifi: mt76: mt7996: resolve the phy from the station link
+ for MLD
+
+mt7996_vif_link_phy(&mvif->deflink) returns NULL for an MLD vif,
+because the vif's links carry the chanctx and deflink carries none.
+Since the phy pointer was removed from mt7996_vif_link, every caller
+that reaches the device through deflink silently does nothing for an
+MLD station: rate control updates from link_sta_rc_update and
+set_bitrate_mask are dropped, the per-link fixed_rate debugfs file
+fails, and ethtool stats are empty.
+
+Resolve the phy from the link the caller works on: the station link
+for rate control and fixed_rate, and the vif's default link for
+ethtool stats. Link 0 stays on deflink, as in mt76_vif_link().
+
+Fixes: a87f63e269e4 ("wifi: mt76: mt7996: Remove unnecessary phy filed in mt7996_vif_link struct")
+Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
+---
+ mt7996/debugfs.c |    3 ++-
+ mt7996/main.c    |    6 ++++--
+ mt7996/mt7996.h  |   19 +++++++++++++++++++
+ 3 files changed, 25 insertions(+), 3 deletions(-)
+
+--- a/mt7996/debugfs.c
++++ b/mt7996/debugfs.c
+@@ -1210,7 +1210,8 @@ static ssize_t mt7996_link_sta_fixed_rat
+ #define LONG_PREAMBLE 1
+ 	struct ieee80211_link_sta *link_sta = file->private_data;
+ 	struct mt7996_sta *msta = (struct mt7996_sta *)link_sta->sta->drv_priv;
+-	struct mt7996_phy *link_phy = mt7996_vif_link_phy(&msta->vif->deflink);
++	struct mt7996_phy *link_phy = mt7996_vif_link_id_phy(msta->vif,
++							     link_sta->link_id);
+ 	struct mt7996_sta_link *msta_link;
+ 	struct ra_rate phy = {};
+ 	struct mt7996_dev *dev;
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -2461,7 +2461,8 @@ static void mt7996_link_rate_ctrl_update
+ 					 struct mt7996_sta_link *msta_link)
+ {
+ 	struct mt7996_sta *msta = msta_link->sta;
+-	struct mt7996_phy *phy = mt7996_vif_link_phy(&msta->vif->deflink);
++	struct mt7996_phy *phy = mt7996_vif_link_id_phy(msta->vif,
++							msta_link->wcid.link_id);
+ 	struct mt7996_dev *dev;
+ 	u32 *changed = data;
+ 
+@@ -2818,7 +2819,8 @@ void mt7996_get_et_stats(struct ieee8021
+ {
+ 	struct mt7996_dev *dev = mt7996_hw_dev(hw);
+ 	struct mt7996_vif *mvif = (struct mt7996_vif *)vif->drv_priv;
+-	struct mt7996_phy *phy = mt7996_vif_link_phy(&mvif->deflink);
++	struct mt7996_phy *phy = mt7996_vif_link_id_phy(mvif,
++							mvif->mt76.deflink_id);
+ 	struct mt76_mib_stats *mib = &phy->mib;
+ 	struct mt76_ethtool_worker_info wi = {
+ 		.data = data,
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -704,6 +704,25 @@ mt7996_vif_link_phy(struct mt7996_vif_li
+ 	return mphy->priv;
+ }
+ 
++/* An MLD vif has no chanctx on deflink; its links are in mt76.link[] */
++static inline struct mt7996_phy *
++mt7996_vif_link_id_phy(struct mt7996_vif *mvif, unsigned int link_id)
++{
++	struct mt76_vif_link *mlink;
++	struct mt76_phy *mphy = NULL;
++
++	if (!link_id || link_id >= IEEE80211_MLD_MAX_NUM_LINKS)
++		return mt7996_vif_link_phy(&mvif->deflink);
++
++	rcu_read_lock();
++	mlink = rcu_dereference(mvif->mt76.link[link_id]);
++	if (mlink)
++		mphy = mt76_vif_link_phy(mlink);
++	rcu_read_unlock();
++
++	return mphy ? mphy->priv : NULL;
++}
++
+ static inline struct mt7996_vif_link *
+ mt7996_vif_conf_link(struct mt7996_dev *dev, struct ieee80211_vif *vif,
+ 		     struct ieee80211_bss_conf *link_conf)

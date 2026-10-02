@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT76_N_WCIDS 1088
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -1282,11 +1282,246 @@ static const struct file_operations fops
+@@ -1282,11 +1282,247 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
@@ -163,7 +163,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +{
 +	struct ieee80211_link_sta *link_sta = file->private;
 +	struct mt7996_sta *msta = (struct mt7996_sta *)link_sta->sta->drv_priv;
-+	struct mt7996_phy *link_phy = mt7996_vif_link_phy(&msta->vif->deflink);
++	struct mt7996_phy *link_phy = mt7996_vif_link_id_phy(msta->vif,
++							     link_sta->link_id);
 +	struct mt7996_sta_link *msta_link;
 +	struct mt76_sta_stats *stats;
 +	struct mt76_wcid *wcid;
