@@ -1,0 +1,34 @@
+From 8a52915220c75dfd4926eff075eb56277a0ec767 Mon Sep 17 00:00:00 2001
+From: Jouni Malinen <jouni.malinen@oss.qualcomm.com>
+Date: Mon, 24 Aug 2026 13:59:17 +0300
+Subject: [PATCH] AP MLD: Resize the temporary buffer for MLE construction if
+ needed
+
+It is possible for some cases with a huge number of links to end up
+needing more room in the MLE in (Re)Association Response frame, so
+dynamically resize the temporary buffer, if needed.
+
+Thanks to Nebula Security for reporting the issue.
+
+Signed-off-by: Jouni Malinen <jouni.malinen@oss.qualcomm.com>
+---
+ src/ap/ieee802_11_eht.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+--- a/src/ap/ieee802_11_eht.c
++++ b/src/ap/ieee802_11_eht.c
+@@ -563,6 +563,14 @@ u8 * hostapd_eid_eht_basic_ml_common(str
+ 
+ 		total_len = sta_info_len + link->resp_sta_profile_len;
+ 
++		if (wpabuf_tailroom(buf) < 100 + total_len &&
++		    wpabuf_resize(&buf, 100 + total_len) < 0) {
++			wpa_printf(MSG_ERROR,
++				   "MLD: Could not allocate buffer for constructing MLE");
++			wpabuf_free(buf);
++			return eid;
++		}
++
+ 		/* Per-STA Profile subelement */
+ 		wpabuf_put_u8(buf, MULTI_LINK_SUB_ELEM_ID_PER_STA_PROFILE);
+ 
