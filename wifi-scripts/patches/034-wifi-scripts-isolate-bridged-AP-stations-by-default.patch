@@ -1,0 +1,36 @@
+From: Piotr Kubik <piotr.kubik@adtran.com>
+Date: Fri, 02 Oct 2026 18:08:36 +0200
+Subject: [PATCH] wifi-scripts: isolate bridged AP stations by default
+
+The shell scripts set ap_isolate on every bridged AP unless
+multicast_to_unicast was 0. The ucode scripts set it only when
+multicast_to_unicast or proxy_arp is set explicitly. netifd still
+turns on hairpin mode on the bridge port by default. With ap_isolate
+off, mac80211 forwards frames between two stations on the same BSS
+itself, and the frames never reach the bridge. Client isolation that
+filters on the bridge then does not apply to these stations.
+
+Restore the shell default: a bridged AP gets ap_isolate unless
+multicast_to_unicast is 0. Frames between stations then go through
+the bridge, which sends them back out through the hairpin port
+unless a filter drops them.
+
+Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
+---
+ src/usr/share/ucode/wifi/ap.uc |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/src/usr/share/ucode/wifi/ap.uc
++++ b/src/usr/share/ucode/wifi/ap.uc
+@@ -44,7 +44,10 @@ function iface_setup(config, phy, num_gl
+ 	else
+ 		append('bss', config.ifname);
+ 
+-	if (config.multicast_to_unicast || config.proxy_arp)
++	/* netifd hairpins a bridged AP port unless multicast_to_unicast is off;
++	 * isolate the BSS to match, so station-to-station frames pass through
++	 * the bridge and its filters instead of mac80211 forwarding them */
++	if ((config.network_bridge && (config.multicast_to_unicast ?? true)) || config.proxy_arp)
+ 		config.ap_isolate = 1;
+ 
+ 	if (config.proxy_arp)
