@@ -1,0 +1,43 @@
+From: Piotr Kubik <piotr.kubik@adtran.com>
+Date: Mon, 15 Jun 2026 17:01:52 +0200
+Subject: [PATCH] wifi: mt76: mt7996: keep RDD in detect-reporting mode
+
+When arming the radar detector, mt7996 only issues RDD_START and never
+puts the RDD into continuous detect-reporting mode. The firmware then
+reports a radar event once and stops reporting on the operating channel
+until the RDD is re-armed, which only happens on a channel switch
+(mt7996_set_channel -> mt7996_dfs_init_radar_detector).
+
+In hostapd DFS detect mode (DFS_DETECT_MODE) the AP intentionally does
+not switch channels after a radar event, so the RDD is never re-armed and
+detection goes silent after the first hit.
+
+mt7915 already issues RDD_DET_MODE unconditionally at the end of
+mt7915_dfs_start_rdd(); mt7996 was missing the equivalent call. Add it so
+the firmware keeps reporting radar on the operating channel.
+
+Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2972,7 +2972,7 @@ static void mt7996_dfs_stop_radar_detect
+ 
+ static int mt7996_dfs_start_rdd(struct mt7996_dev *dev, int rdd_idx)
+ {
+-	int region;
++	int err, region;
+ 
+ 	switch (dev->mt76.region) {
+ 	case NL80211_DFS_ETSI:
+@@ -2987,7 +2987,11 @@ static int mt7996_dfs_start_rdd(struct m
+ 		break;
+ 	}
+ 
+-	return mt7996_mcu_rdd_cmd(dev, RDD_START, rdd_idx, region);
++	err = mt7996_mcu_rdd_cmd(dev, RDD_START, rdd_idx, region);
++	if (err < 0)
++		return err;
++
++	return mt7996_mcu_rdd_cmd(dev, RDD_DET_MODE, rdd_idx, 1);
+ }
+ 
+ static int mt7996_dfs_start_radar_detector(struct mt7996_phy *phy)
