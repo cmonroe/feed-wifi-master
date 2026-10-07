@@ -94,7 +94,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -2112,6 +2117,9 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -2148,6 +2153,9 @@ s8 mt76_get_rate_power_limits(struct mt7
  			      struct ieee80211_channel *chan,
  			      struct mt76_power_limits *dest,
  			      s8 target_power);
@@ -198,7 +198,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -849,6 +849,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -851,6 +851,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);

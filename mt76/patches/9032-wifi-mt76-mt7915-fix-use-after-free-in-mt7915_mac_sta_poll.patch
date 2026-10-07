@@ -1,0 +1,47 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 10:39:43 -0700
+Subject: [PATCH] wifi: mt76: mt7915: fix use-after-free in mt7915_mac_sta_poll
+
+The station poll takes a station off the poll list under
+sta_poll_lock, drops the lock, and then reads and writes the station.
+If the station is removed in that window, the driver removal callback
+finds the entry already off the list and does not wait. mac80211 then
+frees the station while the poll still uses it. The poll runs in NAPI
+context without the device mutex. The RCU read lock does not help,
+because mac80211 frees the station with no grace period after the
+removal callback.
+
+Hold sta_poll_lock from the moment the poll takes a station off the
+list until it is done with that station, and release it before the
+next station. The removal callback then waits for the poll. mt7915 is
+an MMIO device, so the register access under the spinlock does not
+sleep.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7915/mac.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -111,8 +111,11 @@ static void mt7915_mac_sta_poll(struct m
+ 		msta = list_first_entry(&sta_poll_list,
+ 					struct mt7915_sta, wcid.poll_list);
+ 		list_del_init(&msta->wcid.poll_list);
+-		spin_unlock_bh(&dev->mt76.sta_poll_lock);
+ 
++		/* Keep the lock while msta is in use: mt7915_mac_sta_remove()
++		 * takes it, and mac80211 frees the station right after that
++		 * call, without a grace period.
++		 */
+ 		idx = msta->wcid.idx;
+ 
+ 		/* get signal strength of resp frames (CTS/BA/ACK) */
+@@ -128,6 +131,7 @@ static void mt7915_mac_sta_poll(struct m
+ 			mt76_rx_signal(msta->vif->phy->mt76->antenna_mask, rssi);
+ 
+ 		ewma_avg_signal_add(&msta->avg_ack_signal, -msta->ack_signal);
++		spin_unlock_bh(&dev->mt76.sta_poll_lock);
+ 	}
+ 
+ 	rcu_read_unlock();

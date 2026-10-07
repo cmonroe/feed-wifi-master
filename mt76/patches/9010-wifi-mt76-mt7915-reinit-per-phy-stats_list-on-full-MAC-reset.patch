@@ -72,7 +72,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  	for (i = 0; i < 10; i++) {
  		if (!mt7915_mac_restart(dev))
  			break;
-@@ -1372,6 +1379,10 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1373,6 +1380,10 @@ mt7915_mac_full_reset(struct mt7915_dev
  	INIT_LIST_HEAD(&dev->sta_rc_list);
  	INIT_LIST_HEAD(&dev->twt_list);
  
@@ -83,7 +83,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  	i = mt76_wcid_alloc(dev->mt76.wcid_mask, MT7915_WTBL_STA);
  	dev->mt76.global_wcid.idx = i;
  	dev->recovery.hw_full_reset = false;
-@@ -1382,8 +1393,9 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1383,8 +1394,9 @@ mt7915_mac_full_reset(struct mt7915_dev
  	if (ext_phy)
  		ieee80211_wake_queues(ext_phy->hw);
  

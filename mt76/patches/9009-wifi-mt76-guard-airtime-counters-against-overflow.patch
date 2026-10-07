@@ -2,41 +2,39 @@ From: Chad Monroe <chad@monroe.io>
 Date: Wed, 25 Mar 2026 21:01:17 -0700
 Subject: [PATCH] wifi: mt76: guard airtime counters against overflow
 
-Clamp per-STA and channel MIB airtime deltas to elapsed monotonic
-time between polls -- airtime physically cannot exceed it. Handle
-u32 counter wrap and trigger WTBL counter clears before BIT(30) to
-prevent wrap ambiguity.
+The firmware airtime and channel MIB counters can report a delta that
+is larger than the time between two polls. mac80211 then charges a
+station for airtime that it did not use, and the survey reports more
+busy time than elapsed time.
 
-Fix mt76_sta_stats tx/rx_airtime from u64 scalars to u32 per-AC
-arrays to match how the mt7915 MCU handler indexes them.
-
-Apply the same clamping to the mt7996 per-STA and channel MIB
-counters via the shared mt76_airtime_clamp() and
-mt76_chan_mib_delta() helpers. mt7996 firmware reports incremental
-counters where mt7915's are absolute, so the mt7996 path clamps
-each report against elapsed time directly.
-
-The tx/rx_duration reporting in mt7996_link_sta_statistics() is
-dropped: the u64 scalar totals it relied on no longer exist after
-the per-AC retype.
+Clamp each channel MIB delta to the time since the previous poll plus
+one jiffy, for the gap between the firmware sample and the jiffies
+read. Clamp each station airtime delta to the time since the end of
+the previous all-station report plus one request period, because the
+delivery delay of a report varies. Keep the station counters as u64
+per-AC values: the mt7915 firmware reports absolute counters, and the
+mt7996 sums must not wrap. Clear the mt7915 WTBL counters from the MAC
+work after BIT(30) is set, under the device mutex that the other WTBL
+update users hold. Drop a pending clear when the driver frees a WTBL
+index or does a full reset, so that the next owner keeps its counters.
+Report the mt7996 per-link TX and RX durations as the sums of the
+per-AC counters of the link.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt76.h           |   27 ++++++++++++++++++++--
- mt7915/mcu.c     |   54 +++++++++++++++++++++++++++++++++++----------
- mt7915/mt7915.h  |    1
+ mac80211.c       |    1 
+ mt76.h           |   63 +++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ mt7915/init.c    |    2 +
+ mt7915/mac.c     |   13 +++++++++++
+ mt7915/main.c    |    5 ++--
+ mt7915/mcu.c     |   51 ++++++++++++++++++++++++++++++++++----------
+ mt7915/mt7915.h  |   12 ++++++++++
  mt7996/debugfs.c |    8 +++++-
- mt7996/main.c    |    5 ----
- mt7996/mcu.c     |   52 ++++++++++++++++++++++++++++++-------------
- mt7996/mt7996.h  |    1
- mt76.h           |   27 +++++++++++++++++++++++++--
- mt7915/mcu.c     |   54 +++++++++++++++++++++++++++++++++++++++++++-----------
- mt7915/mt7915.h  |    1 +
- mt7996/debugfs.c |    8 ++++++--
- mt7996/main.c    |    5 -----
- mt7996/mcu.c     |   52 ++++++++++++++++++++++++++++++++++++----------------
- mt7996/mt7996.h  |    1 +
- 7 files changed, 112 insertions(+), 36 deletions(-)
+ mt7996/init.c    |    1 
+ mt7996/main.c    |   12 ++++++----
+ mt7996/mcu.c     |   46 ++++++++++++++++++++++++++--------------
+ mt7996/mt7996.h  |    3 ++
+ 12 files changed, 180 insertions(+), 37 deletions(-)
 
 --- a/mt76.h
 +++ b/mt76.h
@@ -45,7 +43,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 tx_retries;
  	u32 tx_failed;
 -	u64 tx_airtime;
-+	u32 tx_airtime[IEEE80211_NUM_ACS];
++	u64 tx_airtime[IEEE80211_NUM_ACS];
  	/* WED RX */
  	u64 rx_bytes;
  	u64 rx_bytes_per_ac[IEEE80211_NUM_ACS];
@@ -54,7 +52,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 rx_errors;
  	u32 rx_drops;
 -	u64 rx_airtime;
-+	u32 rx_airtime[IEEE80211_NUM_ACS];
++	u64 rx_airtime[IEEE80211_NUM_ACS];
  	u64 last_rx_bytes;
  };
  
@@ -66,30 +64,66 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	u32 rev;
  
-@@ -1534,6 +1535,28 @@ mt76_ac_to_tid(u8 ac)
+@@ -1534,6 +1535,64 @@ mt76_ac_to_tid(u8 ac)
  	return ac_to_tid[ac];
  }
  
++/* The firmware samples its counters before the host reads jiffies, and
++ * jiffies count whole ticks, so allow one tick more than measured.
++ */
++static inline u32
++mt76_poll_elapsed_us(unsigned long *last_poll)
++{
++	unsigned long now = jiffies;
++	u32 elapsed_us = jiffies_to_usecs(now - *last_poll + 1);
++
++	*last_poll = now;
++
++	return elapsed_us;
++}
++
++/* One all-station report can span several events. Every event of the
++ * report measures from the end of the previous report, and only the
++ * last event (no more flag) ends the report. The delay from the
++ * firmware sample to the event differs between reports, so the bound
++ * adds @margin_jiffies. The bound only has to reject wrapped or garbage
++ * counter values.
++ */
++static inline u32
++mt76_airtime_interval_us(struct mt76_dev *dev, bool more,
++			 unsigned long margin_jiffies)
++{
++	unsigned long now = jiffies;
++	u32 elapsed_us = jiffies_to_usecs(now - dev->airtime_last_poll +
++					  margin_jiffies);
++
++	if (!more)
++		dev->airtime_last_poll = now;
++
++	return elapsed_us;
++}
++
 +static inline u32
 +mt76_airtime_delta(u32 cur, u32 prev, u32 max_us)
 +{
 +	u32 diff = cur >= prev ? cur - prev : cur;
 +
-+	return diff <= max_us ? diff : 0;
++	return min(diff, max_us);
 +}
 +
 +static inline u32
 +mt76_airtime_clamp(u32 val, u32 max_us)
 +{
-+	return val <= max_us ? val : 0;
++	return min(val, max_us);
 +}
 +
 +static inline u64
 +mt76_chan_mib_delta(u64 cur, u64 prev, u32 max_us)
 +{
-+	u64 diff = cur - prev;
++	if (cur < prev)
++		return 0;
 +
-+	return diff <= max_us ? diff : 0;
++	return min_t(u64, cur - prev, max_us);
 +}
 +
  static inline struct ieee80211_txq *
@@ -105,16 +139,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u16 sta_num;
  	u16 i;
  
-@@ -488,13 +489,21 @@ mt7915_mcu_rx_all_sta_info_event(struct
+@@ -488,13 +489,18 @@ mt7915_mcu_rx_all_sta_info_event(struct
  	if (sta_num > (skb->len - sizeof(*res)) / sizeof(res->airtime[0]))
  		sta_num = (skb->len - sizeof(*res)) / sizeof(res->airtime[0]);
  
-+	if (res->tag == MCU_PHY_PER_STA_TXRX_AIR_TIME) {
-+		unsigned long now = jiffies;
-+
-+		elapsed_us = jiffies_to_usecs(now - dev->mt76.airtime_last_poll);
-+		dev->mt76.airtime_last_poll = now;
-+	}
++	if (res->tag == MCU_PHY_PER_STA_TXRX_AIR_TIME)
++		elapsed_us = mt76_airtime_interval_us(&dev->mt76, res->more,
++						      MT7915_AIRTIME_MARGIN);
 +
  	rcu_read_lock();
  	for (i = 0; i < sta_num; i++) {
@@ -128,15 +159,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		switch (res->tag) {
  		case MCU_PHY_PER_STA_TXRX_AIR_TIME:
-@@ -507,15 +516,29 @@ mt7915_mcu_rx_all_sta_info_event(struct
+@@ -507,15 +513,32 @@ mt7915_mcu_rx_all_sta_info_event(struct
  
  			for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac) {
  				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
 +				u32 cur_tx = le32_to_cpu(res->airtime[i].tx[lmac_ac]);
 +				u32 cur_rx = le32_to_cpu(res->airtime[i].rx[lmac_ac]);
- 
--				tx_airtime = le32_to_cpu(res->airtime[i].tx[lmac_ac]);
--				rx_airtime = le32_to_cpu(res->airtime[i].rx[lmac_ac]);
++
 +				diff_tx = mt76_airtime_delta(cur_tx,
 +							     wcid->stats.tx_airtime[ac],
 +							     elapsed_us);
@@ -146,7 +175,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +
 +				wcid->stats.tx_airtime[ac] = cur_tx;
 +				wcid->stats.rx_airtime[ac] = cur_rx;
-+
+ 
+-				tx_airtime = le32_to_cpu(res->airtime[i].tx[lmac_ac]);
+-				rx_airtime = le32_to_cpu(res->airtime[i].rx[lmac_ac]);
 +				if ((cur_tx | cur_rx) & BIT(30))
 +					clear = true;
  
@@ -157,22 +188,24 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +							       diff_tx, diff_rx);
  			}
 +
++			/* MT_WTBL_UPDATE is shared with the station add and
++			 * remove paths, which hold dev->mt76.mutex, so the MAC
++			 * work does the clear.
++			 */
 +			if (clear)
-+				mt7915_mac_wtbl_update(dev, wcid->idx,
-+						       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
++				set_bit(wcid->idx, dev->adm_count_clear);
  			break;
  		default:
  			break;
-@@ -3333,6 +3356,8 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3333,6 +3356,7 @@ int mt7915_mcu_get_chan_mib_info(struct
  	struct sk_buff *skb;
  	static const u32 *offs;
  	int i, ret, len, offs_cc;
-+	unsigned long now;
 +	u32 elapsed_us;
  	u64 cc_tx;
  
  	/* strict order */
-@@ -3383,11 +3408,18 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3383,11 +3407,16 @@ int mt7915_mcu_get_chan_mib_info(struct
  	if (chan_switch)
  		goto out;
  
@@ -181,9 +214,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -	state->cc_rx += __res_u64(2) + __res_u64(3) - state_ts->cc_rx;
 -	state->cc_busy += __res_u64(0) + cc_tx + __res_u64(2) + __res_u64(3) -
 -			  state_ts->cc_busy;
-+	now = jiffies;
-+	elapsed_us = jiffies_to_usecs(now - phy->chan_mib_last_poll);
-+	phy->chan_mib_last_poll = now;
++	elapsed_us = mt76_poll_elapsed_us(&phy->chan_mib_last_poll);
 +
 +	state->cc_tx += mt76_chan_mib_delta(cc_tx, state_ts->cc_tx, elapsed_us);
 +	state->cc_bss_rx += mt76_chan_mib_delta(__res_u64(2), state_ts->cc_bss_rx,
@@ -198,7 +229,16 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	state_ts->cc_tx = cc_tx;
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -249,6 +249,7 @@ struct mt7915_phy {
+@@ -18,6 +18,8 @@
+ 					 MT7915_MAX_INTERFACES)
+ 
+ #define MT7915_WATCHDOG_TIME		(HZ / 10)
++/* one all-station request period, see mt7915_mac_work() */
++#define MT7915_AIRTIME_MARGIN		(5 * MT7915_WATCHDOG_TIME)
+ #define MT7915_RESET_TIMEOUT		(30 * HZ)
+ 
+ #define MT7915_TX_RING_SIZE		2048
+@@ -249,6 +251,7 @@ struct mt7915_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -206,6 +246,29 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct delayed_work ipi_work;
  
  	bool sku_limit_en:1;
+@@ -333,6 +336,8 @@ struct mt7915_dev {
+ 	struct list_head twt_list;
+ 	spinlock_t reg_lock;
+ 
++	DECLARE_BITMAP(adm_count_clear, MT76_N_WCIDS);
++
+ 	u32 hw_pattern;
+ 	u32 ple1_sts;
+ 
+@@ -651,6 +656,13 @@ static inline u16 mt7915_wtbl_size(struc
+ 	return MT7916_WTBL_SIZE;
+ }
+ 
++/* a pending WTBL counter clear must not reach the next owner of idx */
++static inline void mt7915_wcid_idx_free(struct mt7915_dev *dev, int idx)
++{
++	clear_bit(idx, dev->adm_count_clear);
++	mt76_wcid_mask_clear(dev->mt76.wcid_mask, idx);
++}
++
+ static inline u16 mt7915_eeprom_size(struct mt7915_dev *dev)
+ {
+ 	return is_mt7915(&dev->mt76) ? MT7915_EEPROM_SIZE : MT7916_EEPROM_SIZE;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
 @@ -1592,7 +1592,9 @@ mt7996_link_sta_info_show(struct seq_fil
@@ -215,7 +278,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -	seq_printf(file, "\t\tAirtime: %llu (unit: 1.024 us)\n", stats->tx_airtime);
 +	seq_printf(file, "\t\tAirtime (unit: 1.024 us):\n");
 +	for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac)
-+		seq_printf(file, "\t\t\t%s: %u\n", ac_to_str(ac), stats->tx_airtime[ac]);
++		seq_printf(file, "\t\t\t%s: %llu\n", ac_to_str(ac), stats->tx_airtime[ac]);
  	seq_printf(file, "\t\tNumber of non-AQL packets: %u (Max: %u)\n",
  		   atomic_read(&wcid->non_aql_packets), MT_MAX_NON_AQL_PKT);
  	seq_printf(file, "\tRX:\n");
@@ -226,19 +289,27 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -	seq_printf(file, "\t\tAirtime: %llu (unit: 1.024 us)\n", stats->rx_airtime);
 +	seq_printf(file, "\t\tAirtime (unit: 1.024 us):\n");
 +	for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac)
-+		seq_printf(file, "\t\t\t%s: %u\n", ac_to_str(ac), stats->rx_airtime[ac]);
++		seq_printf(file, "\t\t\t%s: %llu\n", ac_to_str(ac), stats->rx_airtime[ac]);
  
  	seq_printf(file, "\tWCID flags:\n");
  	for (flag = 0; flag < NUM_MT76_WCID_FLAGS; flag++) {
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2621,11 +2621,6 @@ static void mt7996_link_sta_statistics(s
+@@ -2621,11 +2621,15 @@ static void mt7996_link_sta_statistics(s
  	link_sinfo->fcs_err_count = stats->rx_fcs_err;
  	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_FCS_ERROR_COUNT);
  
 -	link_sinfo->tx_duration = stats->tx_airtime;
 -	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_DURATION);
--
++	link_sinfo->tx_duration = 0;
++	link_sinfo->rx_duration = 0;
++	for (i = 0; i < IEEE80211_NUM_ACS; i++) {
++		link_sinfo->tx_duration += stats->tx_airtime[i];
++		link_sinfo->rx_duration += stats->rx_airtime[i];
++	}
++	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_DURATION) |
++			      BIT_ULL(NL80211_STA_INFO_RX_DURATION);
+ 
 -	link_sinfo->rx_duration = stats->rx_airtime;
 -	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_RX_DURATION);
  out:
@@ -254,21 +325,18 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 elem_size;
  	u16 sta_num;
  	u16 i;
-@@ -867,6 +868,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -867,6 +868,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
  	if (sta_num > (skb->len - sizeof(*res)) / elem_size)
  		sta_num = (skb->len - sizeof(*res)) / elem_size;
  
-+	if (le16_to_cpu(res->tag) == UNI_ALL_STA_TXRX_AIR_TIME) {
-+		unsigned long now = jiffies;
-+
-+		elapsed_us = jiffies_to_usecs(now - dev->mt76.airtime_last_poll);
-+		dev->mt76.airtime_last_poll = now;
-+	}
++	if (le16_to_cpu(res->tag) == UNI_ALL_STA_TXRX_AIR_TIME)
++		elapsed_us = mt76_airtime_interval_us(&dev->mt76, res->more,
++						      MT7996_AIRTIME_MARGIN);
 +
  	for (i = 0; i < sta_num; i++) {
  		u8 ac;
  		bool v1;
-@@ -874,7 +882,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -874,7 +879,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		struct mt76_wcid *wcid;
  		struct mt76_phy *mphy;
  		struct ieee80211_sta *sta;
@@ -277,7 +345,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		    tx_packets, rx_packets;
  
  		switch (le16_to_cpu(res->tag)) {
-@@ -944,13 +952,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -944,13 +949,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
  
  			for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac) {
  				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
@@ -300,16 +368,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			}
  			break;
  		case UNI_ALL_STA_RX_MPDU_COUNT:
-@@ -5315,6 +5327,8 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5315,6 +5324,7 @@ int mt7996_mcu_get_chan_mib_info(struct
  	struct mt7996_dev *dev = phy->dev;
  	struct mt7996_mcu_mib *res;
  	struct sk_buff *skb;
-+	unsigned long now;
 +	u32 elapsed_us;
  	int i, ret;
  
  	for (i = 0; i < IDX_NUM; i++) {
-@@ -5336,16 +5350,22 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5336,16 +5346,20 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)
@@ -323,9 +390,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -			  __res_u64(IDX_OBSS_AIRTIME) +
 -			  __res_u64(IDX_NON_WIFI_TIME) -
 -			  state_ts->cc_busy;
-+	now = jiffies;
-+	elapsed_us = jiffies_to_usecs(now - phy->chan_mib_last_poll);
-+	phy->chan_mib_last_poll = now;
++	elapsed_us = mt76_poll_elapsed_us(&phy->chan_mib_last_poll);
 +
 +	state->cc_tx += mt76_chan_mib_delta(__res_u64(IDX_TX_TIME),
 +					    state_ts->cc_tx, elapsed_us);
@@ -344,7 +409,16 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	state_ts->cc_bss_rx = __res_u64(IDX_RX_TIME);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -496,6 +496,7 @@ struct mt7996_phy {
+@@ -20,6 +20,8 @@
+ 					 mt7996_max_interface_num(dev))
+ 
+ #define MT7996_WATCHDOG_TIME		(HZ / 10)
++/* one all-station request period, see mt7996_mac_work() */
++#define MT7996_AIRTIME_MARGIN		(5 * MT7996_WATCHDOG_TIME)
+ #define MT7996_RESET_TIMEOUT		(30 * HZ)
+ 
+ #define MT7996_TX_RING_SIZE		2048
+@@ -496,6 +498,7 @@ struct mt7996_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -352,3 +426,98 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	u16 orig_chainmask;
  	u16 orig_antenna_mask;
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -1368,6 +1368,7 @@ mt7915_mac_full_reset(struct mt7915_dev
+ 		phy2->omac_mask = 0;
+ 
+ 	mt76_reset_device(&dev->mt76);
++	bitmap_zero(dev->adm_count_clear, MT76_N_WCIDS);
+ 
+ 	INIT_LIST_HEAD(&dev->sta_rc_list);
+ 	INIT_LIST_HEAD(&dev->twt_list);
+@@ -1979,6 +1980,17 @@ void mt7915_mac_sta_rc_work(struct work_
+ 	spin_unlock_bh(&dev->mt76.sta_poll_lock);
+ }
+ 
++static void mt7915_mac_adm_count_clear(struct mt7915_dev *dev)
++{
++	unsigned int idx;
++
++	for_each_set_bit(idx, dev->adm_count_clear, MT76_N_WCIDS) {
++		clear_bit(idx, dev->adm_count_clear);
++		mt7915_mac_wtbl_update(dev, idx,
++				       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
++	}
++}
++
+ void mt7915_mac_work(struct work_struct *work)
+ {
+ 	struct mt7915_phy *phy;
+@@ -2000,6 +2012,7 @@ void mt7915_mac_work(struct work_struct
+ 
+ 	mutex_lock(&mphy->dev->mutex);
+ 
++	mt7915_mac_adm_count_clear(phy->dev);
+ 	mt76_update_survey(mphy);
+ 	if (++mphy->mac_work_count == 5) {
+ 		mphy->mac_work_count = 0;
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -738,6 +738,7 @@ mt76_alloc_device(struct device *pdev, u
+ 	INIT_LIST_HEAD(&dev->wcid_list);
+ 	INIT_LIST_HEAD(&dev->sta_poll_list);
+ 	spin_lock_init(&dev->sta_poll_lock);
++	dev->airtime_last_poll = jiffies;
+ 
+ 	INIT_LIST_HEAD(&dev->txwi_cache);
+ 	INIT_LIST_HEAD(&dev->rxwi_cache);
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -417,6 +417,8 @@ mt7915_init_wiphy(struct mt7915_phy *phy
+ 	struct wiphy *wiphy = hw->wiphy;
+ 	struct mt7915_dev *dev = phy->dev;
+ 
++	phy->chan_mib_last_poll = jiffies;
++
+ 	hw->queues = 4;
+ 	hw->max_rx_aggregation_subframes = IEEE80211_MAX_AMPDU_BUF_HE;
+ 	hw->max_tx_aggregation_subframes = IEEE80211_MAX_AMPDU_BUF_HE;
+--- a/mt7915/main.c
++++ b/mt7915/main.c
+@@ -351,7 +351,7 @@ static void mt7915_remove_interface(stru
+ 	mutex_lock(&dev->mt76.mutex);
+ 	dev->mt76.vif_mask &= ~BIT_ULL(mvif->mt76.idx);
+ 	phy->omac_mask &= ~BIT_ULL(mvif->mt76.omac_idx);
+-	mt76_wcid_mask_clear(dev->mt76.wcid_mask, mvif->sta.wcid.idx);
++	mt7915_wcid_idx_free(dev, mvif->sta.wcid.idx);
+ 	mutex_unlock(&dev->mt76.mutex);
+ 
+ 	spin_lock_bh(&dev->mt76.sta_poll_lock);
+@@ -986,6 +986,7 @@ void mt7915_mac_sta_remove(struct mt76_d
+ 
+ 	mt7915_mac_wtbl_update(dev, msta->wcid.idx,
+ 			       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
++	clear_bit(msta->wcid.idx, dev->adm_count_clear);
+ 
+ 	spin_lock_bh(&mdev->sta_poll_lock);
+ 	if (!list_empty(&msta->wcid.poll_list))
+@@ -1417,7 +1418,7 @@ static void mt7915_sta_wed_set_4addr(str
+ 	synchronize_rcu();
+ 
+ 	rcu_assign_pointer(dev->mt76.wcid[prev_idx], NULL);
+-	mt76_wcid_mask_clear(dev->mt76.wcid_mask, prev_idx);
++	mt7915_wcid_idx_free(dev, prev_idx);
+ 	wcid.idx = prev_idx;
+ 	__mt7915_mcu_add_sta(dev, vif, sta, &wcid, CONN_STATE_DISCONNECT, false);
+ }
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -456,6 +456,7 @@ mt7996_init_wiphy_band(struct ieee80211_
+ 	phy->slottime = 9;
+ 	phy->beacon_rate = -1;
+ 	phy->rxfilter = MT_WF_RFCR_DROP_OTHER_UC;
++	phy->chan_mib_last_poll = jiffies;
+ 
+ 	if (phy->mt76->cap.has_2ghz) {
+ 		phy->mt76->sband_2g.sband.ht_cap.cap |=

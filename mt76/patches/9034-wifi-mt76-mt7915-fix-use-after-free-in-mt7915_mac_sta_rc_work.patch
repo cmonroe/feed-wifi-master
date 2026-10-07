@@ -1,0 +1,44 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 10:58:46 -0700
+Subject: [PATCH] wifi: mt76: mt7915: fix use-after-free in mt7915_mac_sta_rc_work
+
+The rate control work takes a station off the list under
+sta_poll_lock, drops the lock, and then sends MCU commands for the
+station, which sleep. The work does not hold the device mutex. If the
+station is removed in that window, the driver removal callback finds
+the entry already off the list and does not wait, and mac80211 frees
+the station while the work still uses it.
+
+Hold the device mutex for the whole work, as e2a5529fa153 ("wifi:
+mt76: mt7996: Add missing locking in mt7996_mac_sta_rc_work()") does
+for mt7996. Station removal holds the same mutex, so every station on
+the list stays valid until the work is done with it.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7915/mac.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -1954,6 +1954,11 @@ void mt7915_mac_sta_rc_work(struct work_
+ 	u32 changed;
+ 	LIST_HEAD(list);
+ 
++	/* Station removal holds this mutex, so a station on the list stays
++	 * valid while the MCU commands below sleep.
++	 */
++	mutex_lock(&dev->mt76.mutex);
++
+ 	spin_lock_bh(&dev->mt76.sta_poll_lock);
+ 	list_splice_init(&dev->sta_rc_list, &list);
+ 
+@@ -1979,6 +1984,8 @@ void mt7915_mac_sta_rc_work(struct work_
+ 	}
+ 
+ 	spin_unlock_bh(&dev->mt76.sta_poll_lock);
++
++	mutex_unlock(&dev->mt76.mutex);
+ }
+ 
+ static void mt7915_mac_adm_count_clear(struct mt7915_dev *dev)
