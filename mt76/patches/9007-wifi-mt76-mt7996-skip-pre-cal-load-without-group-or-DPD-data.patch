@@ -6,8 +6,13 @@ Bit 6 of MT_EE_DO_PRE_CAL only tells the firmware to work around
 OOB emission near 5412 MHz and carries no pre-cal payload, but the
 plain non-zero test treated it as "pre-cal present", allocating
 the full blob and issuing a doomed MTD/nvmem read. Gate the load
-on the group and DPD indicator bits, warn when the blob is missing
-and free the allocation on failure.
+on the group and DPD indicator bits.
+
+When the group or DPD bits are set and neither MTD nor nvmem holds
+the blob, warn, free the buffer and continue the probe with regular
+calibration, as 2135e201e7a9 ("mt76: mt7915: add fallback in case
+of missing precal data") does for mt7915. A failure to allocate the
+buffer still fails the probe.
 
 Fixes: SDG-1868
 
@@ -40,13 +45,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -	return mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
 +	ret = mt76_get_of_data_from_nvmem(mdev, dev->cal, "precal", size);
 +	if (!ret)
-+ 		return ret;
++		return ret;
 +
 +	dev_warn(mdev->dev, "missing precal data, size=%d\n", size);
 +	devm_kfree(mdev->dev, dev->cal);
 +	dev->cal = NULL;
 +
-+	return ret;
++	return 0;
  }
  
  int mt7996_eeprom_init(struct mt7996_dev *dev)
