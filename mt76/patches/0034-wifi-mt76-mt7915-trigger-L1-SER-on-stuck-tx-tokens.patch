@@ -79,7 +79,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spinlock_t rx_token_lock;
  	struct idr rx_token;
-@@ -2077,6 +2086,9 @@ struct mt76_txwi_cache *
+@@ -2079,6 +2088,9 @@ struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake);
  int mt76_token_consume(struct mt76_dev *dev, struct mt76_txwi_cache **ptxwi,
  		       u8 phy_idx);
@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "mt76.h"
  
  static int
-@@ -1076,6 +1077,203 @@ mt76_token_release(struct mt76_dev *dev,
+@@ -1081,6 +1082,203 @@ mt76_token_release(struct mt76_dev *dev,
  }
  EXPORT_SYMBOL_GPL(mt76_token_release);
  

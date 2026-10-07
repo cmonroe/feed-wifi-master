@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -4003,7 +4011,9 @@ int mt7996_mcu_init_firmware(struct mt79
+@@ -4030,7 +4038,9 @@ int mt7996_mcu_init_firmware(struct mt79
  int mt7996_mcu_init(struct mt7996_dev *dev)
  {
  	static const struct mt76_mcu_ops mt7996_mcu_ops = {

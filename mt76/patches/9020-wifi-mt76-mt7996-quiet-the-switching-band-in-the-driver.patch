@@ -38,7 +38,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	wiphy->txq_memory_limit = 32 << 20; /* 32 MiB */
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2300,10 +2300,14 @@ static void
+@@ -2303,10 +2303,14 @@ static void
  mt7996_mac_reset_vif_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
  {
  	struct mt76_vif_link *mlink = (struct mt76_vif_link *)vif->drv_priv;
@@ -53,7 +53,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	rcu_read_lock();
  	for (i = 0; i < ARRAY_SIZE(mvif->link); i++) {
  
-@@ -2351,8 +2355,11 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2354,8 +2358,11 @@ mt7996_mac_full_reset(struct mt7996_dev
  	if (i == 10)
  		dev_err(dev->mt76.dev, "chip full reset failed\n");
  
@@ -66,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  
-@@ -3072,6 +3079,21 @@ static int mt7996_dfs_start_radar_detect
+@@ -3079,6 +3086,21 @@ static int mt7996_dfs_start_radar_detect
  	return err;
  }
  
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_dfs_init_radar_detector(struct mt7996_phy *phy)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -3097,7 +3119,7 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3104,7 +3126,7 @@ int mt7996_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
  
@@ -97,7 +97,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (dfs_state == MT_DFS_STATE_CAC)
-@@ -3105,11 +3127,11 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3112,11 +3134,11 @@ int mt7996_dfs_init_radar_detector(struc
  
  	err = mt7996_mcu_rdd_cmd(dev, RDD_CAC_END, rdd_idx, 0);
  	if (err < 0) {
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  
  stop:
-@@ -3118,7 +3140,7 @@ stop:
+@@ -3125,7 +3147,7 @@ stop:
  		return err;
  
  	mt7996_dfs_stop_radar_detector(phy);
@@ -132,7 +132,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	clear_bit(MT76_STATE_RUNNING, &phy->mt76->state);
  
  	mutex_unlock(&dev->mt76.mutex);
-@@ -506,6 +509,31 @@ static void mt7996_vif_link_destroy(stru
+@@ -504,6 +507,31 @@ static void mt7996_vif_link_destroy(stru
  	}
  }
  
@@ -164,7 +164,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt7996_vif_link_remove(struct mt76_phy *mphy, struct ieee80211_vif *vif,
  			    struct ieee80211_bss_conf *link_conf,
  			    struct mt76_vif_link *mlink)
-@@ -516,6 +544,8 @@ void mt7996_vif_link_remove(struct mt76_
+@@ -514,6 +542,8 @@ void mt7996_vif_link_remove(struct mt76_
  	unsigned int link_id = msta_link->wcid.link_id;
  	struct mt7996_phy *phy = mphy->priv;
  
@@ -173,7 +173,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* Hw requires to destroy active links tearing down the interface, so
  	 * postpone it removing the interface.
  	 */
-@@ -1138,6 +1168,9 @@ mt7996_channel_switch_beacon(struct ieee
+@@ -1150,6 +1180,9 @@ mt7996_channel_switch_beacon(struct ieee
  		if (link_phy != phy)
  			continue;
  
@@ -183,7 +183,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* Reset beacon when channel switch triggered during CAC to let
  		 * FW correctly perform CSA countdown
  		 */
-@@ -1159,9 +1192,21 @@ mt7996_pre_channel_switch(struct ieee802
+@@ -1171,9 +1204,21 @@ mt7996_pre_channel_switch(struct ieee802
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	struct cfg80211_chan_def *c = &ch_switch->chandef, *rdd2_chandef;
  	struct mt7996_phy *phy = mt7996_band_phy(dev, c->chan->band);
@@ -205,7 +205,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (phy != dev->rdd2_phy)
  		goto out;
  
-@@ -1203,10 +1248,34 @@ mt7996_post_channel_switch(struct ieee80
+@@ -1215,10 +1260,34 @@ mt7996_post_channel_switch(struct ieee80
  out:
  	mutex_unlock(&dev->mt76.mutex);
  
@@ -243,7 +243,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static void
-@@ -2984,6 +3053,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -3478,6 +3547,7 @@ const struct ieee80211_ops mt7996_ops =
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
  	.pre_channel_switch = mt7996_pre_channel_switch,
  	.post_channel_switch = mt7996_post_channel_switch,
@@ -253,17 +253,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	.get_et_sset_count = mt7996_get_et_sset_count,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -352,6 +352,9 @@ struct mt7996_vif_link {
- 	struct cfg80211_bitrate_mask bitrate_mask;
+@@ -369,6 +369,9 @@ struct mt7996_vif_link {
  
  	u8 mld_idx;
+ 	u8 bmc_bssid[ETH_ALEN];
 +
 +	bool csa_block_tx;
 +	bool csa_quiet;
  };
  
  struct mt7996_vif_link_info {
-@@ -488,6 +491,7 @@ struct mt7996_phy {
+@@ -505,6 +508,7 @@ struct mt7996_phy {
  	s8 last_wf4_signal;
  	bool counter_reset;
  	bool rdd_tx_paused;

@@ -52,7 +52,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +mt7996e-y += mtk_debugfs.o mtk_mcu.o
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -320,11 +320,39 @@ mt7996_fw_debug_wm_set(void *data, u64 v
+@@ -313,11 +313,39 @@ mt7996_fw_debug_wm_set(void *data, u64 v
  		DEBUG_SPL,
  		DEBUG_RPT_RX,
  		DEBUG_RPT_RA = 68,
@@ -93,7 +93,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (dev->fw_debug_bin)
  		val = MCU_FW_LOG_RELAY;
-@@ -339,18 +367,21 @@ mt7996_fw_debug_wm_set(void *data, u64 v
+@@ -332,18 +360,21 @@ mt7996_fw_debug_wm_set(void *data, u64 v
  	if (ret)
  		return ret;
  
@@ -121,7 +121,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	return 0;
-@@ -423,6 +454,39 @@ remove_buf_file_cb(struct dentry *f)
+@@ -416,6 +447,39 @@ remove_buf_file_cb(struct dentry *f)
  }
  
  static int
@@ -161,7 +161,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7996_fw_debug_bin_set(void *data, u64 val)
  {
  	static struct rchan_callbacks relay_cb = {
-@@ -430,17 +494,23 @@ mt7996_fw_debug_bin_set(void *data, u64
+@@ -423,17 +487,23 @@ mt7996_fw_debug_bin_set(void *data, u64
  		.remove_buf_file = remove_buf_file_cb,
  	};
  	struct mt7996_dev *dev = data;
@@ -188,7 +188,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return mt7996_fw_debug_wm_set(dev, dev->fw_debug_wm);
  }
  
-@@ -993,6 +1063,30 @@ static int mt7996_vow_atf_get(void *data
+@@ -1078,6 +1148,30 @@ static int mt7996_vow_atf_get(void *data
  DEFINE_DEBUGFS_ATTRIBUTE(fops_vow_atf, mt7996_vow_atf_get, mt7996_vow_atf_set,
  			 "%lld\n");
  
@@ -219,7 +219,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_init_debugfs(struct mt7996_dev *dev)
  {
  	struct dentry *dir;
-@@ -1029,9 +1123,16 @@ int mt7996_init_debugfs(struct mt7996_de
+@@ -1114,9 +1208,16 @@ int mt7996_init_debugfs(struct mt7996_de
  			    &fops_radar_trigger);
  	debugfs_create_devm_seqfile(dev->mt76.dev, "rdd_monitor", dir,
  				    mt7996_rdd_monitor);
@@ -236,7 +236,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  }
  
-@@ -1043,7 +1144,11 @@ mt7996_debugfs_write_fwlog(struct mt7996
+@@ -1128,7 +1229,11 @@ mt7996_debugfs_write_fwlog(struct mt7996
  	unsigned long flags;
  	void *dest;
  
@@ -248,7 +248,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	dest = relay_reserve(dev->relay_fwlog, hdrlen + len + 4);
  	if (dest) {
  		*(u32 *)dest = hdrlen + len;
-@@ -1076,9 +1181,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
+@@ -1161,9 +1266,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -260,7 +260,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -571,6 +571,7 @@ struct mt7996_dev {
+@@ -588,6 +588,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -268,7 +268,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	u32 token_debug_idx;
  
-@@ -590,6 +591,17 @@ struct mt7996_dev {
+@@ -607,6 +608,17 @@ struct mt7996_dev {
  		u8 fem:4;
  	} var;
  
@@ -286,7 +286,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool vow_atf_en;
  };
  
-@@ -1026,6 +1038,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1062,6 +1074,12 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
@@ -294,7 +294,6 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
 +int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
 +#endif
-+int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
 +int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
 +
  int mt7996_dma_rro_init(struct mt7996_dev *dev);
@@ -5653,12 +5652,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -39,6 +39,21 @@ int mt7996_run(struct mt7996_phy *phy)
+@@ -39,8 +39,18 @@ int mt7996_run(struct mt7996_phy *phy)
  	if (ret)
  		return ret;
  
 +#ifdef CONFIG_MTK_DEBUG
-+	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
+ 	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
+-					   true);
 +						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
 +
 +	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL,
@@ -5669,15 +5669,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL,
 +						phy->sku_path_en);
 +#endif
-+	if (ret)
-+		return ret;
-+
- 	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
+ 	if (ret)
+ 		return ret;
  
- 	ieee80211_queue_delayed_work(dev->mphy.hw, &phy->mt76->mac_work,
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
-@@ -779,24 +779,29 @@ enum offs_rev {
+@@ -807,24 +807,29 @@ enum offs_rev {
  						 ((_wf) << 16) + (ofs))
  #define MT_WF_PHYRX_CSD_IRPI(_band, _wf)	MT_WF_PHYRX_CSD(_band, _wf, 0x1000)
  
@@ -5718,78 +5715,20 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT_WF_PHYRX_CSD_BAND_RXTD12_IRPI_SW_CLR_ONLY	BIT(18)
  #define MT_WF_PHYRX_CSD_BAND_RXTD12_IRPI_SW_CLR		BIT(29)
  
---- a/mt7996/mcu.c
-+++ b/mt7996/mcu.c
-@@ -6352,3 +6352,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
- 	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
- 				 &req, sizeof(req), false);
- }
-+
-+int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data)
-+{
-+	struct mt7996_dev *dev = phy->dev;
-+	struct tx_power_ctrl req = {
-+		.tag = cpu_to_le16(power_ctrl_id),
-+		.len = cpu_to_le16(sizeof(req) - 4),
-+		.power_ctrl_id = power_ctrl_id,
-+		.band_idx = phy->mt76->band_idx,
-+	};
-+
-+	switch (power_ctrl_id) {
-+	case UNI_TXPOWER_SKU_POWER_LIMIT_CTRL:
-+		req.sku_enable = !!data;
-+		break;
-+	case UNI_TXPOWER_PERCENTAGE_CTRL:
-+		req.percentage_ctrl_enable = !!data;
-+		break;
-+	case UNI_TXPOWER_PERCENTAGE_DROP_CTRL:
-+		req.power_drop_level = data;
-+		break;
-+	case UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL:
-+		req.bf_backoff_enable = !!data;
-+		break;
-+	case UNI_TXPOWER_ATE_MODE_CTRL:
-+		req.ate_mode_enable = !!data;
-+		break;
-+	default:
-+		req.sku_enable = !!data;
-+	}
-+
-+	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(TXPOWER),
-+				 &req, sizeof(req), false);
-+}
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1112,8 +1112,33 @@ enum {
- 	UNI_CMD_THERMAL_PROTECT_INFO,
- };
- 
-+struct tx_power_ctrl {
-+	u8 _rsv[4];
-+
-+	__le16 tag;
-+	__le16 len;
-+
-+	u8 power_ctrl_id;
-+	union {
-+		bool sku_enable;
-+		bool ate_mode_enable;
-+		bool percentage_ctrl_enable;
-+		bool bf_backoff_enable;
+@@ -1124,6 +1124,7 @@ struct tx_power_ctrl {
+ 		bool ate_mode_enable;
+ 		bool percentage_ctrl_enable;
+ 		bool bf_backoff_enable;
 +		u8 show_info_category;
-+		u8 power_drop_level;
-+	};
-+	u8 band_idx;
-+	u8 rsv[1];
-+} __packed;
-+
- enum {
-+	UNI_TXPOWER_SKU_POWER_LIMIT_CTRL = 0,
-+	UNI_TXPOWER_PERCENTAGE_CTRL = 1,
-+	UNI_TXPOWER_PERCENTAGE_DROP_CTRL = 2,
-+	UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL = 3,
+ 		u8 power_drop_level;
+ 	};
+ 	u8 band_idx;
+@@ -1137,6 +1138,7 @@ enum {
+ 	UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL = 3,
  	UNI_TXPOWER_POWER_LIMIT_TABLE_CTRL = 4,
-+	UNI_TXPOWER_ATE_MODE_CTRL = 6,
+ 	UNI_TXPOWER_ATE_MODE_CTRL = 6,
 +	UNI_TXPOWER_SHOW_INFO = 7,
  };
  

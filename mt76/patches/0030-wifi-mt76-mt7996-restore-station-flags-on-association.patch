@@ -16,8 +16,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1408,6 +1408,8 @@ mt7996_mac_sta_event(struct mt7996_dev *
- 				goto unlock;
+@@ -1497,6 +1497,8 @@ mt7996_mac_sta_links_event(struct mt7996
+ 				return err;
  
  			msta_link->wcid.tx_info |= MT_WCID_TX_INFO_SET;
 +			msta_link->wcid.sta = 1;

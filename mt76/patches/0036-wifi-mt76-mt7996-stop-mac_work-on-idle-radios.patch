@@ -24,12 +24,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1829,10 +1829,21 @@ error:
+@@ -1829,12 +1829,22 @@ error:
  
  void mt7996_unregister_device(struct mt7996_dev *dev)
  {
 +	struct mt7996_phy *phy;
-+
+ 	int i;
+ 
 +	/* stop the MCU interrupt from queueing a reset, which would queue
 +	 * mac_work again after the cancel below
 +	 */
@@ -48,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt7996_unregister_thermal(&dev->phy);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2544,6 +2544,9 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2548,6 +2548,9 @@ void mt7996_mac_reset_work(struct work_s
  	dev = container_of(work, struct mt7996_dev, reset_work);
  	hw = mt76_hw(dev);
  
@@ -58,7 +59,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* chip full reset */
  	if (dev->recovery.restart) {
  		/* disable WA/WM WDT */
-@@ -2772,6 +2775,16 @@ void mt7996_reset(struct mt7996_dev *dev
+@@ -2776,6 +2779,16 @@ void mt7996_reset(struct mt7996_dev *dev
  	if (!dev->recovery.hw_init_done)
  		return;
  
@@ -75,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (dev->recovery.hw_full_reset)
  		return;
  
-@@ -3018,6 +3031,13 @@ void mt7996_mac_work(struct work_struct
+@@ -3026,6 +3039,13 @@ void mt7996_mac_work(struct work_struct
  					       mac_work.work);
  	phy = mphy->priv;
  
@@ -91,7 +92,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt76_update_survey(mphy);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -89,6 +89,11 @@ static void mt7996_stop_phy(struct mt799
+@@ -94,6 +94,11 @@ static void mt7996_stop_phy(struct mt799
  
  static void mt7996_stop(struct ieee80211_hw *hw, bool suspend)
  {

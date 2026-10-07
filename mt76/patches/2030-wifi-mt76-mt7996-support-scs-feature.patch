@@ -43,7 +43,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2323,6 +2323,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2332,6 +2332,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  		set_bit(MT76_RESET, &phy->mt76->state);
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
  	}
@@ -81,7 +81,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wiphy_delayed_work_cancel(phy->mt76->hw->wiphy,
  				  &phy->mt76->assoc_chan_work);
  
-@@ -2714,6 +2721,8 @@ mt7996_reconfig_complete(struct ieee8021
+@@ -3216,6 +3223,8 @@ mt7996_reconfig_complete(struct ieee8021
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -92,8 +92,8 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6353,6 +6353,122 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
- 				 &req, sizeof(req), false);
+@@ -6149,6 +6149,122 @@ int mt7996_mcu_set_sniffer_mode(struct m
+ 				 sizeof(req), true);
  }
  
 +static int mt7996_mcu_set_scs_stats(struct mt7996_phy *phy)
@@ -232,7 +232,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -374,6 +374,16 @@ struct mt7996_hif {
+@@ -391,6 +391,16 @@ struct mt7996_hif {
  	enum pcie_link_width width;
  };
  
@@ -249,7 +249,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define WED_RRO_ADDR_SIGNATURE_MASK	GENMASK(31, 24)
  #define WED_RRO_ADDR_COUNT_MASK		GENMASK(14, 4)
  #define WED_RRO_ADDR_HEAD_HIGH_MASK	GENMASK(3, 0)
-@@ -469,6 +479,8 @@ struct mt7996_phy {
+@@ -486,6 +496,8 @@ struct mt7996_phy {
  
  	u8 pp_mode;
  	u16 punct_bitmap;
@@ -258,7 +258,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -504,6 +516,7 @@ struct mt7996_dev {
+@@ -521,6 +533,7 @@ struct mt7996_dev {
  	struct work_struct rc_work;
  	struct work_struct dump_work;
  	struct work_struct reset_work;
@@ -266,9 +266,9 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -1044,6 +1057,8 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+@@ -1079,6 +1092,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+ int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
- int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
 +int mt7996_mcu_set_scs(struct mt7996_phy *phy, u8 enable);
 +void mt7996_mcu_scs_sta_poll(struct work_struct *work);

@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/channel.c
 +++ b/channel.c
-@@ -377,6 +377,30 @@ void mt76_abort_roc(struct mt76_phy *phy
+@@ -380,6 +380,30 @@ void mt76_abort_roc(struct mt76_phy *phy
  }
  EXPORT_SYMBOL_GPL(mt76_abort_roc);
  
@@ -53,7 +53,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   enum ieee80211_roc_type type)
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1862,6 +1862,7 @@ void mt76_abort_scan(struct mt76_dev *de
+@@ -1864,6 +1864,7 @@ void mt76_abort_scan(struct mt76_dev *de
  void mt76_roc_complete_work(struct work_struct *work);
  void mt76_roc_complete(struct mt76_phy *phy);
  void mt76_abort_roc(struct mt76_phy *phy);
@@ -63,7 +63,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt76_put_vif_phy_link(struct mt76_phy *phy, struct ieee80211_vif *vif,
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2735,6 +2735,12 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2745,6 +2745,12 @@ void mt7996_mac_reset_work(struct work_s
  
  	mutex_unlock(&dev->mt76.mutex);
  

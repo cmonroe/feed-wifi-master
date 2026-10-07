@@ -17,12 +17,12 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -978,7 +978,7 @@ mt7996_link_info_changed(struct ieee8021
+@@ -995,7 +995,7 @@ mt7996_link_info_changed(struct ieee8021
  	 * and then peer references bss_info_rfch to set bandwidth cap.
  	 */
  	if ((changed & BSS_CHANGED_BSSID && !is_zero_ether_addr(info->bssid)) ||
--	    (changed & BSS_CHANGED_BEACON_ENABLED && info->enable_beacon)) {
-+	    (changed & BSS_CHANGED_BEACON_ENABLED)) {
- 		mt7996_mcu_add_bss_info(phy, vif, info, &link->mt76,
- 					&link->msta_link, true);
- 		mt7996_mcu_add_sta(dev, info, NULL, link, NULL,
+-	    (changed & BSS_CHANGED_BEACON_ENABLED && info->enable_beacon))
++	    (changed & BSS_CHANGED_BEACON_ENABLED))
+ 		mt7996_vif_link_bss_add(phy, vif, info, link,
+ 					!!(changed & BSS_CHANGED_BSSID));
+ 	else if (changed & BSS_CHANGED_BSSID)

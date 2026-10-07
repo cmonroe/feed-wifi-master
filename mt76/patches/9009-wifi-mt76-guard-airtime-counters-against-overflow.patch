@@ -201,7 +201,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool sku_limit_en:1;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -1507,7 +1507,9 @@ mt7996_link_sta_info_show(struct seq_fil
+@@ -1592,7 +1592,9 @@ mt7996_link_sta_info_show(struct seq_fil
  		   stats->tx_mpdus ? stats->tx_failed * 1000 / stats->tx_mpdus / 10 : 0,
  		   stats->tx_mpdus ? stats->tx_failed * 1000 / stats->tx_mpdus % 10 : 0);
  	seq_printf(file, "\t\tMPDU Retries: %u\n", stats->tx_retries);
@@ -212,7 +212,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	seq_printf(file, "\t\tNumber of non-AQL packets: %u (Max: %u)\n",
  		   atomic_read(&wcid->non_aql_packets), MT_MAX_NON_AQL_PKT);
  	seq_printf(file, "\tRX:\n");
-@@ -1518,7 +1520,9 @@ mt7996_link_sta_info_show(struct seq_fil
+@@ -1603,7 +1605,9 @@ mt7996_link_sta_info_show(struct seq_fil
  	seq_printf(file, "\t\tMPDU FCS Errors: %u (PER: %u.%u%%)\n", stats->rx_fcs_err,
  		   stats->rx_mpdus ? stats->rx_fcs_err * 1000 / stats->rx_mpdus / 10 : 0,
  		   stats->rx_mpdus ? stats->rx_fcs_err * 1000 / stats->rx_mpdus % 10 : 0);
@@ -225,7 +225,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (flag = 0; flag < NUM_MT76_WCID_FLAGS; flag++) {
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2108,11 +2108,6 @@ static void mt7996_link_sta_statistics(s
+@@ -2620,11 +2620,6 @@ static void mt7996_link_sta_statistics(s
  	link_sinfo->fcs_err_count = stats->rx_fcs_err;
  	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_FCS_ERROR_COUNT);
  
@@ -239,7 +239,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -813,6 +813,7 @@ static void
+@@ -821,6 +821,7 @@ static void
  mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
  	struct mt7996_mcu_all_sta_info_event *res;
@@ -247,7 +247,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 elem_size;
  	u16 sta_num;
  	u16 i;
-@@ -859,6 +860,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -867,6 +868,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
  	if (sta_num > (skb->len - sizeof(*res)) / elem_size)
  		sta_num = (skb->len - sizeof(*res)) / elem_size;
  
@@ -261,7 +261,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	rcu_read_lock();
  	for (i = 0; i < sta_num; i++) {
  		u8 ac;
-@@ -867,7 +875,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -875,7 +883,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		struct mt76_wcid *wcid;
  		struct mt76_phy *mphy;
  		struct ieee80211_sta *sta;
@@ -270,7 +270,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		    tx_packets, rx_packets;
  
  		switch (le16_to_cpu(res->tag)) {
-@@ -937,13 +945,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -945,13 +953,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
  
  			for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac) {
  				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
@@ -293,7 +293,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			}
  			break;
  		case UNI_ALL_STA_RX_MPDU_COUNT:
-@@ -5289,6 +5301,8 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5316,6 +5328,8 @@ int mt7996_mcu_get_chan_mib_info(struct
  	struct mt7996_dev *dev = phy->dev;
  	struct mt7996_mcu_mib *res;
  	struct sk_buff *skb;
@@ -302,7 +302,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i, ret;
  
  	for (i = 0; i < IDX_NUM; i++) {
-@@ -5310,16 +5324,22 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5337,16 +5351,22 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)
@@ -337,7 +337,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	state_ts->cc_bss_rx = __res_u64(IDX_RX_TIME);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -479,6 +479,7 @@ struct mt7996_phy {
+@@ -496,6 +496,7 @@ struct mt7996_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;

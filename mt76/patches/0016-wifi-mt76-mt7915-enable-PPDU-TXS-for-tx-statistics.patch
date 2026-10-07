@@ -54,7 +54,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt76_connac2_mac_decode_he_radiotap(struct mt76_dev *dev,
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -634,7 +634,7 @@ void mt76_connac2_mac_write_txwi(struct
+@@ -640,7 +640,7 @@ void mt76_connac2_mac_write_txwi(struct
  EXPORT_SYMBOL_GPL(mt76_connac2_mac_write_txwi);
  
  bool mt76_connac2_mac_fill_txs(struct mt76_dev *dev, struct mt76_wcid *wcid,
@@ -63,7 +63,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct mt76_sta_stats *stats = &wcid->stats;
  	struct ieee80211_supported_band *sband;
-@@ -646,15 +646,10 @@ bool mt76_connac2_mac_fill_txs(struct mt
+@@ -652,15 +652,10 @@ bool mt76_connac2_mac_fill_txs(struct mt
  	txs = le32_to_cpu(txs_data[0]);
  
  	/* PPDU based reporting */
@@ -80,7 +80,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		if (wcid->sta) {
  			struct ieee80211_sta *sta;
-@@ -668,6 +663,9 @@ bool mt76_connac2_mac_fill_txs(struct mt
+@@ -674,6 +669,9 @@ bool mt76_connac2_mac_fill_txs(struct mt
  		}
  	}
  
@@ -90,7 +90,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	txrate = FIELD_GET(MT_TXS0_TX_RATE, txs);
  
  	rate.mcs = FIELD_GET(MT_TX_RATE_IDX, txrate);
-@@ -762,13 +760,13 @@ bool mt76_connac2_mac_add_txs_skb(struct
+@@ -768,13 +766,13 @@ bool mt76_connac2_mac_add_txs_skb(struct
  				  int pid, __le32 *txs_data)
  {
  	struct sk_buff_head list;
@@ -109,7 +109,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (skb) {
  		struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
  
-@@ -780,7 +778,7 @@ bool mt76_connac2_mac_add_txs_skb(struct
+@@ -786,7 +784,7 @@ bool mt76_connac2_mac_add_txs_skb(struct
  			!!(info->flags & IEEE80211_TX_STAT_ACK);
  		info->status.rates[0].idx = -1;
  
@@ -120,7 +120,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt76_tx_status_unlock(dev, &list);
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -580,8 +580,7 @@ mt7915_mac_init_band(struct mt7915_dev *
+@@ -591,8 +591,7 @@ mt7915_mac_init_band(struct mt7915_dev *
  	/* MT_TXD5_TX_STATUS_HOST (MPDU format) has higher priority than
  	 * MT_AGG_ACR_PPDU_TXS2H (PPDU format) even though ACR bit is set.
  	 */

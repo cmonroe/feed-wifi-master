@@ -26,7 +26,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -2023,9 +2023,11 @@ int mt76_get_antenna(struct ieee80211_hw
+@@ -2038,9 +2038,11 @@ int mt76_get_antenna(struct ieee80211_hw
  
  	mutex_lock(&dev->mutex);
  	*tx_ant = 0;
@@ -90,7 +90,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	mt7996_set_stream_vht_txbf_caps(phy);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1845,33 +1845,36 @@ mt7996_set_antenna(struct ieee80211_hw *
+@@ -2359,33 +2359,36 @@ mt7996_set_antenna(struct ieee80211_hw *
  		   u32 tx_ant, u32 rx_ant)
  {
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
@@ -139,7 +139,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	mutex_unlock(&dev->mt76.mutex);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4416,7 +4416,7 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -4443,7 +4443,7 @@ int mt7996_mcu_set_chan_info(struct mt79
  		.center_ch = ieee80211_frequency_to_channel(freq1),
  		.bw = mt76_connac_chan_bw(chandef),
  		.tx_path_num = hweight16(phy->mt76->chainmask),
@@ -150,7 +150,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	};
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -482,8 +482,6 @@ struct mt7996_dev {
+@@ -499,8 +499,6 @@ struct mt7996_dev {
  	struct cfg80211_chan_def rdd2_chandef;
  	struct mt7996_phy *rdd2_phy;
  

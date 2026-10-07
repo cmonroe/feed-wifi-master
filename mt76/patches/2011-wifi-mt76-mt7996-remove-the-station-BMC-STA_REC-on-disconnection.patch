@@ -1,0 +1,35 @@
+From: Peter Chiu <chui-hao.chiu@mediatek.com>
+Date: Wed, 18 Jun 2025 13:26:13 +0800
+Subject: [PATCH] wifi: mt76: mt7996: remove the station BMC STA_REC on
+ disconnection
+
+A station link keeps its BMC STA_REC in the firmware after a
+disconnection. The next association adds the same entry as new
+again, and the entry then keeps the BSSID of the old AP. Commit
+500c18014d95 ("mt76: mt7915: add sta_rec with EXTRA_INFO_NEW for the
+first time only") also reports that the firmware can remove an entry
+that is added as new twice.
+
+Remove the BMC STA_REC when the BSSID of the link goes to zero on
+disconnection. The next association then creates a new entry with
+the new BSSID.
+
+Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1008,6 +1008,10 @@ mt7996_link_info_changed(struct ieee8021
+ 	else if (changed & BSS_CHANGED_BSSID)
+ 		eth_zero_addr(link->bmc_bssid);
+ 
++	if (changed & BSS_CHANGED_BSSID && is_zero_ether_addr(info->bssid))
++		mt7996_mcu_add_sta(dev, info, NULL, link, &link->msta_link,
++				   CONN_STATE_DISCONNECT, false);
++
+ 	if (changed & BSS_CHANGED_HT || changed & BSS_CHANGED_ERP_CTS_PROT)
+ 		mt7996_mcu_set_protection(phy, link, info->ht_operation_mode,
+ 					  info->use_cts_prot);

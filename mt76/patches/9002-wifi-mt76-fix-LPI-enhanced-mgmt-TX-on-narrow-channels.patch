@@ -27,10 +27,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -611,9 +611,15 @@ void mt76_connac2_mac_write_txwi(struct
- 							vif ? &vif->bss_conf : NULL,
- 							beacon, multicast);
+@@ -613,9 +613,15 @@ void mt76_connac2_mac_write_txwi(struct
  		u32 val = MT_TXD6_FIXED_BW;
+ 		u8 spe_idx = mt76_connac_spe_idx(mphy->antenna_mask);
+ 
 +		/* 80 MHz mgmt TX is only possible while the radio is on a
 +		 * chandef of at least that width; during scan/ROC dwells the
 +		 * phy sits on a 20 MHz channel and the forced bandwidth makes

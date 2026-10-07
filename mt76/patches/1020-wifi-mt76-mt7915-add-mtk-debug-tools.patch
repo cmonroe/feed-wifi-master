@@ -6038,7 +6038,7 @@ Squash of the following MediaTek commits:
  	struct net_device *tx_napi_dev;
 --- a/mt76_connac_mcu.c
 +++ b/mt76_connac_mcu.c
-@@ -3179,6 +3179,11 @@ int mt76_connac2_load_ram(struct mt76_de
+@@ -3174,6 +3174,11 @@ int mt76_connac2_load_ram(struct mt76_de
  		goto out;
  	}
  
@@ -6050,7 +6050,7 @@ Squash of the following MediaTek commits:
  	snprintf(dev->hw->wiphy->fw_version,
  		 sizeof(dev->hw->wiphy->fw_version),
  		 "%.10s-%.15s", hdr->fw_ver, hdr->build_date);
-@@ -3208,6 +3213,11 @@ int mt76_connac2_load_ram(struct mt76_de
+@@ -3203,6 +3208,11 @@ int mt76_connac2_load_ram(struct mt76_de
  		goto out;
  	}
  
@@ -6062,7 +6062,7 @@ Squash of the following MediaTek commits:
  	snprintf(dev->hw->wiphy->fw_version,
  		 sizeof(dev->hw->wiphy->fw_version),
  		 "%.10s-%.15s", hdr->fw_ver, hdr->build_date);
-@@ -3311,6 +3321,11 @@ int mt76_connac2_load_patch(struct mt76_
+@@ -3306,6 +3316,11 @@ int mt76_connac2_load_patch(struct mt76_
  	dev_info(dev->dev, "HW/SW Version: 0x%x, Build Time: %.16s",
  		 be32_to_cpu(hdr->hw_sw_ver), hdr->build_date);
  

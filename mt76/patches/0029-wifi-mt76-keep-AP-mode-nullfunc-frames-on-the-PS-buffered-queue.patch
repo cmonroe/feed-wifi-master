@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/tx.c
 +++ b/tx.c
-@@ -672,6 +672,27 @@ void mt76_txq_schedule(struct mt76_phy *
+@@ -677,6 +677,27 @@ void mt76_txq_schedule(struct mt76_phy *
  }
  EXPORT_SYMBOL_GPL(mt76_txq_schedule);
  
@@ -54,7 +54,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int
  mt76_txq_schedule_pending_wcid(struct mt76_phy *phy, struct mt76_wcid *wcid,
  			       struct sk_buff_head *head)
-@@ -692,7 +713,7 @@ mt76_txq_schedule_pending_wcid(struct mt
+@@ -697,7 +718,7 @@ mt76_txq_schedule_pending_wcid(struct mt
  		    !(info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP) &&
  		    !ieee80211_is_data_present(hdr->frame_control) &&
  		    (!(wcid->tx_info & MT_WCID_TX_INFO_SET) ||

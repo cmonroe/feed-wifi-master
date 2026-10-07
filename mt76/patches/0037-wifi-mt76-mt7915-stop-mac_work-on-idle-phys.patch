@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -1372,9 +1372,21 @@ free_phy2:
+@@ -1383,9 +1383,21 @@ free_phy2:
  
  void mt7915_unregister_device(struct mt7915_dev *dev)
  {

@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7615/mcu.c
 +++ b/mt7615/mcu.c
-@@ -386,7 +386,10 @@ mt7615_mcu_rx_radar_detected(struct mt76
+@@ -399,7 +399,10 @@ mt7615_mcu_rx_radar_detected(struct mt76
  
  	if (!dev->radar_pattern.n_pulses && !r->long_detected &&
  	    !r->constant_prf_detected && !r->staggered_prf_detected)
@@ -31,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (r->band_idx && dev->mt76.phys[MT_BAND1])
  		mphy = dev->mt76.phys[MT_BAND1];
-@@ -394,6 +397,12 @@ mt7615_mcu_rx_radar_detected(struct mt76
+@@ -407,6 +410,12 @@ mt7615_mcu_rx_radar_detected(struct mt76
  	if (mt76_phy_dfs_state(mphy) < MT_DFS_STATE_CAC)
  		return;
  
@@ -61,7 +61,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  						&dev->rdd2_chandef,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -549,6 +549,12 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -557,6 +557,12 @@ mt7996_mcu_rx_radar_detected(struct mt79
  	if (!mphy)
  		goto err;
  

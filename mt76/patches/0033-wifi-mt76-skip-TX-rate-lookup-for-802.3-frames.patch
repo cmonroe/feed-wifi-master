@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/tx.c
 +++ b/tx.c
-@@ -353,6 +353,24 @@ __mt76_tx_queue_skb(struct mt76_phy *phy
+@@ -358,6 +358,24 @@ __mt76_tx_queue_skb(struct mt76_phy *phy
  	return idx;
  }
  
@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void
  mt76_tx(struct mt76_phy *phy, struct ieee80211_sta *sta,
  	struct mt76_wcid *wcid, struct sk_buff *skb)
-@@ -369,9 +387,8 @@ mt76_tx(struct mt76_phy *phy, struct iee
+@@ -374,9 +392,8 @@ mt76_tx(struct mt76_phy *phy, struct iee
  	if (WARN_ON(skb_get_queue_mapping(skb) >= MT_TXQ_PSD))
  		skb_set_queue_mapping(skb, MT_TXQ_BE);
  
@@ -59,7 +59,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	info->hw_queue |= FIELD_PREP(MT_TX_HW_QUEUE_PHY, phy->band_idx);
  
-@@ -495,7 +512,6 @@ mt76_txq_send_burst(struct mt76_phy *phy
+@@ -500,7 +517,6 @@ mt76_txq_send_burst(struct mt76_phy *phy
  	struct mt76_dev *dev = phy->dev;
  	struct ieee80211_txq *txq = mtxq_to_txq(mtxq);
  	enum mt76_txq_id qid = mt76_txq_get_qid(txq);
@@ -67,7 +67,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct sk_buff *skb;
  	int n_frames = 1;
  	bool stop = false;
-@@ -516,10 +532,7 @@ mt76_txq_send_burst(struct mt76_phy *phy
+@@ -521,10 +537,7 @@ mt76_txq_send_burst(struct mt76_phy *phy
  	if (!skb)
  		return 0;
  
@@ -79,7 +79,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spin_lock(&q->lock);
  	idx = __mt76_tx_queue_skb(phy, qid, skb, wcid, txq->sta, &stop);
-@@ -541,10 +554,7 @@ mt76_txq_send_burst(struct mt76_phy *phy
+@@ -546,10 +559,7 @@ mt76_txq_send_burst(struct mt76_phy *phy
  		if (!skb)
  			break;
  

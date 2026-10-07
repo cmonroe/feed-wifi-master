@@ -54,7 +54,7 @@ environment can SR Tx or not.
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1213,6 +1213,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -1221,6 +1221,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_PS_SYNC:
  		mt7996_mcu_rx_ps_sync(dev, skb);
  		break;
@@ -68,7 +68,7 @@ environment can SR Tx or not.
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -491,6 +491,11 @@ struct mt7996_phy {
+@@ -508,6 +508,11 @@ struct mt7996_phy {
  	bool sku_limit_en;
  	bool sku_path_en;
  
@@ -80,15 +80,15 @@ environment can SR Tx or not.
  	u8 pp_mode;
  	u16 punct_bitmap;
  
-@@ -1100,6 +1105,8 @@ enum edcca_bw_id {
+@@ -1136,6 +1141,8 @@ enum edcca_bw_id {
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
 +int mt7996_mcu_set_sr_enable(struct mt7996_phy *phy, u8 action, u64 val, bool set);
 +void mt7996_mcu_rx_sr_event(struct mt7996_dev *dev, struct sk_buff *skb);
  #endif
- int mt7996_mcu_set_tx_power_ctrl(struct mt7996_phy *phy, u8 power_ctrl_id, u8 data);
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
+ int mt7996_mcu_apply_group_cal(struct mt7996_dev *dev);
 --- a/mt7996/mtk_debugfs.c
 +++ b/mt7996/mtk_debugfs.c
 @@ -2750,6 +2750,83 @@ static int mt7996_show_eeprom_mode(struc

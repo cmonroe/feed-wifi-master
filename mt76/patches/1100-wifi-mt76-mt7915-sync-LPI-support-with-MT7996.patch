@@ -40,10 +40,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct {
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
-@@ -611,7 +611,9 @@ void mt76_connac2_mac_write_txwi(struct
- 							vif ? &vif->bss_conf : NULL,
- 							beacon, multicast);
+@@ -613,7 +613,9 @@ void mt76_connac2_mac_write_txwi(struct
  		u32 val = MT_TXD6_FIXED_BW;
+ 		u8 spe_idx = mt76_connac_spe_idx(mphy->antenna_mask);
+ 
 -		if (dev->phys[band_idx]->beacon_dup)
 +		if (dev->phys[band_idx]->cap.has_6ghz &&
 +			dev->lpi_bcn_enhance &&
@@ -51,18 +51,18 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			val |= MT_TX_BW_IDX_80;
  		/* hardware won't add HTC for mgmt/ctrl frame */
  		txwi[2] |= cpu_to_le32(MT_TXD2_HTC_VLD);
-@@ -626,7 +628,7 @@ void mt76_connac2_mac_write_txwi(struct
- 			if (!spe_idx)
- 				spe_idx = 24 + phy_idx;
- 			txwi[7] |= cpu_to_le32(FIELD_PREP(MT_TXD7_SPE_IDX,
--							  dev->phys[band_idx]->mgmt_pwr_enhance ?
-+							  dev->mgmt_pwr_enhance ?
- 							  0 : spe_idx));
- 		}
+@@ -634,7 +636,7 @@ void mt76_connac2_mac_write_txwi(struct
+ 		if (!spe_idx && hweight8(mphy->antenna_mask) > 1)
+ 			spe_idx = 24 + phy_idx;
+ 		txwi[7] |= cpu_to_le32(FIELD_PREP(MT_TXD7_SPE_IDX,
+-						  dev->phys[band_idx]->mgmt_pwr_enhance ?
++						  dev->mgmt_pwr_enhance ?
+ 						  0 : spe_idx));
  
+ 		txwi[7] &= ~cpu_to_le32(MT_TXD7_HW_AMSDU);
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -367,10 +367,8 @@ void mt7915_init_txpower(struct mt7915_p
+@@ -378,10 +378,8 @@ void mt7915_init_txpower(struct mt7915_p
  		__mt7915_init_txpower(phy, &phy->mt76->sband_2g.sband);
  	if (phy->mt76->cap.has_5ghz)
  		__mt7915_init_txpower(phy, &phy->mt76->sband_5g.sband);

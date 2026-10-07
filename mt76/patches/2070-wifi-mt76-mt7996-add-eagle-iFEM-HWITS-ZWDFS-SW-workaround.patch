@@ -19,7 +19,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1129,6 +1129,30 @@ mt7996_channel_switch_beacon(struct ieee
+@@ -1141,6 +1141,30 @@ mt7996_channel_switch_beacon(struct ieee
  }
  
  static int
@@ -50,7 +50,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7996_post_channel_switch(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  			   struct ieee80211_bss_conf *link_conf)
  {
-@@ -2546,21 +2570,104 @@ mt7996_twt_teardown_request(struct ieee8
+@@ -3048,21 +3072,104 @@ mt7996_twt_teardown_request(struct ieee8
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -161,7 +161,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -2573,13 +2680,14 @@ mt7996_set_radar_background(struct ieee8
+@@ -3075,13 +3182,14 @@ mt7996_set_radar_background(struct ieee8
  		goto out;
  	}
  
@@ -178,7 +178,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		ret = mt7996_mcu_rdd_background_enable(phy, NULL);
  		if (ret)
  			goto out;
-@@ -2588,7 +2696,9 @@ mt7996_set_radar_background(struct ieee8
+@@ -3090,7 +3198,9 @@ mt7996_set_radar_background(struct ieee8
  			goto update_phy;
  	}
  
@@ -189,7 +189,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (ret)
  		goto out;
  
-@@ -2821,6 +2931,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -3323,6 +3433,7 @@ const struct ieee80211_ops mt7996_ops =
  	.release_buffered_frames = mt76_release_buffered_frames,
  	.get_txpower = mt7996_get_txpower,
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
@@ -199,7 +199,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	.get_stats = mt7996_get_stats,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -579,6 +579,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -587,6 +587,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
  			__func__, r->radar_type_idx, r->periodic_pulse_num, r->long_pulse_num, r->hw_pulse_num);
  
  	if (r->rdd_idx == MT_RDD_IDX_BACKGROUND) {
@@ -209,7 +209,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  						GFP_ATOMIC);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -598,6 +598,8 @@ struct mt7996_dev {
+@@ -615,6 +615,8 @@ struct mt7996_dev {
  
  	dma_addr_t npu_txd_addr[2 * MT7996_NPU_TXD_SIZE];
  

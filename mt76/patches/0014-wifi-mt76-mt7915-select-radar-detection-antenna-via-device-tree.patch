@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
-@@ -897,6 +897,11 @@ mt7915_init_hardware(struct mt7915_dev *
+@@ -908,6 +908,11 @@ mt7915_init_hardware(struct mt7915_dev *
  
  	INIT_WORK(&dev->init_work, mt7915_init_work);
  
