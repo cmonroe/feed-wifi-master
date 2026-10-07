@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			mt7996_mcu_rdd_background_enable(phy, NULL);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2372,6 +2372,12 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2370,6 +2370,12 @@ mt7996_mac_full_reset(struct mt7996_dev
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  
@@ -113,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ieee80211_iterate_active_interfaces_atomic(hw,
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -3264,7 +3264,7 @@ mt7996_set_radar_background(struct ieee8
+@@ -3265,7 +3265,7 @@ mt7996_set_radar_background(struct ieee8
  
  	mutex_lock(&dev->mt76.mutex);
  

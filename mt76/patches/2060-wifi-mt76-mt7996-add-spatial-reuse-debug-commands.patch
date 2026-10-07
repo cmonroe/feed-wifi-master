@@ -69,7 +69,7 @@ environment can SR Tx or not.
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -508,6 +508,11 @@ struct mt7996_phy {
+@@ -507,6 +507,11 @@ struct mt7996_phy {
  	bool sku_limit_en;
  	bool sku_path_en;
  
@@ -81,7 +81,7 @@ environment can SR Tx or not.
  	u8 pp_mode;
  	u16 punct_bitmap;
  
-@@ -1136,6 +1141,8 @@ enum edcca_bw_id {
+@@ -1135,6 +1140,8 @@ enum edcca_bw_id {
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);

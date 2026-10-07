@@ -6,7 +6,12 @@ Record per-antenna average data-frame RSSI in mt7996_mac_fill_rx() and add
 link_sta_info debugfs entry for signal, rate, and per-AC statistics.
 
 Use mt7996_rx_chainmask() instead of antenna_mask to support the 5th RX
-path on mt7990 6G 4T5R and mt7992 5G 5T5R.
+path on mt7990 6G 4T5R and mt7992 5G 5T5R. The receive vector has no
+RCPI for the aux RX chain; only the per-station RSSI poll reports it.
+Report that chain as -128 for frames without a station and until the
+first poll. The combined RSSI counts a 0 dBm chain as valid, so a
+default of 0 made probe, auth and assoc frames read 0 dBm. That broke
+RSSI-based association rejection, steering and scan results.
 
 Repack mt76_rx_status with bitfield consolidation and __packed to keep the
 struct within skb->cb[48] when IEEE80211_MAX_CHAINS is increased to 5.
@@ -20,15 +25,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt76.h           |   21 +---
  mt7996/debugfs.c |  235 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- mt7996/mac.c     |   28 +++++-
- mt7996/mcu.c     |    1
- mt7996/mt7996.h  |    1
- mt76.h           |   21 +---
- mt7996/debugfs.c |  235 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- mt7996/mac.c     |   28 +++++-
- mt7996/mcu.c     |    1 
- mt7996/mt7996.h  |    1 
- 5 files changed, 270 insertions(+), 16 deletions(-)
+ mt7996/mac.c     |   26 +++++-
+ mt7996/main.c    |    1 
+ 4 files changed, 267 insertions(+), 16 deletions(-)
 
 --- a/mt76.h
 +++ b/mt76.h
@@ -356,7 +355,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		msta_link = container_of(status->wcid, struct mt7996_sta_link,
  					 wcid);
  		msta = msta_link->sta;
-@@ -482,12 +481,35 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
+@@ -482,12 +481,33 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
  
  		v3 = le32_to_cpu(rxv[3]);
  
@@ -367,12 +366,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		status->chain_signal[2] = to_rssi(MT_PRXV_RCPI2, v3);
  		status->chain_signal[3] = to_rssi(MT_PRXV_RCPI3, v3);
  
-+		if (status->chains & BIT(4)) {
-+			if (msta_link)
-+				status->chain_signal[4] = msta_link->chain_signal_wf4;
-+			else
-+				status->chain_signal[4] = phy->last_wf4_signal;
-+		}
++		/* P-RXV has no RCPI for the aux RX chain, only the per-STA poll has it */
++		status->chain_signal[4] = -128;
++		if (msta_link && (status->chains & BIT(4)))
++			status->chain_signal[4] = msta_link->chain_signal_wf4;
 +
 +		if (msta_link) {
 +			u16 rx_mask = status->chains;
@@ -393,23 +390,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* RXD Group 5 - C-RXV */
  		if (rxd1 & MT_RXD1_NORMAL_GROUP_5) {
  			rxd += 24;
---- a/mt7996/mcu.c
-+++ b/mt7996/mcu.c
-@@ -5977,6 +5977,7 @@ int mt7996_mcu_get_per_sta_info(struct m
- 				msta_link->chain_signal_wf4 = to_rssi(MT_PRXV_RCPI0,
- 								      rssi->rcpi_wf4);
- 				msta_link->chain_ack_signal[4] = msta_link->chain_signal_wf4;
-+				phy->last_wf4_signal = msta_link->chain_signal_wf4;
- 			}
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1295,6 +1295,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
+ 	for (i = 0; i < IEEE80211_MAX_CHAINS; ++i)
+ 		ewma_avg_signal_init(msta_link->chain_signal_avg + i);
+ 	ewma_avg_signal_init(&msta_link->signal_avg);
++	msta_link->chain_signal_wf4 = -128;
  
- 			msta_link->ack_signal = mt76_rx_signal(rx_mask,
---- a/mt7996/mt7996.h
-+++ b/mt7996/mt7996.h
-@@ -476,6 +476,7 @@ struct mt7996_phy {
- 	u16 orig_antenna_mask;
- 
- 	bool has_aux_rx;
-+	s8 last_wf4_signal;
- 	bool counter_reset;
- 	bool rdd_tx_paused;
- 
+ 	rcu_assign_pointer(msta->link[link_id], msta_link);
+ 	msta->seclink_id = mt7996_sta_seclink_get(dev, msta);
