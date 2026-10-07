@@ -9,8 +9,6 @@ Reinitialize the lists next to the existing sta_rc_list and
 twt_list reinit. stats_list comes from the tx stats rework patch,
 so this fix only applies on top of it.
 
-Fixes: SDG-2422
-
 The same full-reset path has two more instances of this same bug
 class, both reachable when the very first MCU command times out
 during initial firmware bring-up, before mt76_register_device()

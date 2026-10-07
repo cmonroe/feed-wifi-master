@@ -6,8 +6,6 @@ Product decision: keep MT7615 out of VHT160 and 80+80 operation.
 Clear the capability bits in the DBDC-disable path instead of
 setting them.
 
-Fixes: OWRT-6583
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7615/init.c |    6 +++---

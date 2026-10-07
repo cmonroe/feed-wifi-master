@@ -7,8 +7,6 @@ favor of nvmem cells; this is the replacement breadcrumb showing
 which cell (eeprom, precal) was consumed at boot and how many
 bytes were taken.
 
-Fixes: SDG-2651
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  eeprom.c |    2 ++

@@ -8,8 +8,6 @@ the last command that still succeeded, so the log shows what the
 MCU was doing when it wedged. The two tracking fields live in
 struct mt76_dev but are only used by mt7915.
 
-Fixes: OWRT-5260
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt76.h       |    3 +++

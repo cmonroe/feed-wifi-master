@@ -8,8 +8,6 @@ the driver can outrun the MCU and the upload lands wrong or wedges
 the firmware; wait for each chunk to be acknowledged. Add a
 dev_dbg per chunk for tracing. Same fix as the mt7996 counterpart.
 
-Fixes: OWRT-9347
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7915/mcu.c |    5 ++++-

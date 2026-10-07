@@ -7,8 +7,6 @@ can itself crash the host while the chip is in an undefined state.
 Bail out of mt7915_coredump_build() for now until the dump walk is
 made safe.
 
-Fixes: SDG-2422
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7915/coredump.c |    2 ++

@@ -8,9 +8,6 @@ lines with the full pulse report, and an info line on mt7615 when
 the event carries no pulses. Debug aid for DFS troubleshooting in
 the field.
 
-Fixes: OWRT-5260
-Fixes: OWRT-6972
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7615/mcu.c |    9 +++++++++

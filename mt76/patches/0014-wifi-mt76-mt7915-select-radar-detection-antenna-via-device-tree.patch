@@ -9,8 +9,6 @@ matching firmware; a no-op unless the property is set. The start
 path passes rdd_idx while the stop path passes the phy band index,
 which are equivalent for the non-background detector.
 
-Fixes: OWRT-6832
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7915/init.c   |    5 +++++

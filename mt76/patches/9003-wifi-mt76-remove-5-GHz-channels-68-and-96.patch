@@ -16,8 +16,6 @@ the blob was under-read.
 The channel table hunk is generic mac80211.c code and affects all
 mt76 drivers, not only mt7996.
 
-Fixes: OWRT-9554
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mac80211.c      |    2 --

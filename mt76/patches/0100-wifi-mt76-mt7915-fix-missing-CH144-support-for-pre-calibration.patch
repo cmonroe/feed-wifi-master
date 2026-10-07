@@ -11,8 +11,6 @@ data at 5700 MHz instead.
 bandwidth lookups are unaffected]
 
 Fixes: 495184ac91bb ("mt76: mt7915: add support for applying pre-calibration data")
-Fixes: OWRT-8413
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7915/mcu.c |    3 +++

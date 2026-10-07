@@ -9,9 +9,6 @@ the firmware; wait for each chunk to be acknowledged. Add dev_dbg
 traces to the group-cal and DPD apply loops. Same fix as the
 mt7915 counterpart.
 
-Fixes: OWRT-9554
-Fixes: SDG-2651
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7996/mcu.c |    8 +++++++-

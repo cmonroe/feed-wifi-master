@@ -8,9 +8,6 @@ a wedged recovery shows exactly which stage hung. The recovery
 path can still crash with active stations; this exists to localize
 those cases.
 
-Fixes: SDG-4050
-Fixes: SDG-2921
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7996/mac.c |   33 +++++++++++++++++++++++++++++++--

@@ -14,8 +14,6 @@ calibration, as 2135e201e7a9 ("mt76: mt7915: add fallback in case
 of missing precal data") does for mt7915. A failure to allocate the
 buffer still fails the probe.
 
-Fixes: SDG-1868
-
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7996/eeprom.c |   18 ++++++++++++++++--
