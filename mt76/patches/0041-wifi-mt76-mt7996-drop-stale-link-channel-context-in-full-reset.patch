@@ -1,0 +1,57 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 06 Oct 2026 19:41:35 -0700
+Subject: [PATCH] wifi: mt76: mt7996: drop stale link channel context in full reset
+
+A full reset reloads the firmware, which then knows no BSS, but each
+interface keeps the channel context of its default link. The hardware
+restart adds the channel contexts before the links, so the channel
+set sends a beacon for every AP interface before its BSS exists. On
+MT7992 the 5 GHz band then sends no beacons, and later beacon updates
+do not start them.
+
+The full reset now clears that channel context, so no BSS command
+reaches the firmware until mac80211 assigns the context again, the
+same order as at the first start. A channel switch that completes
+before that reports success without firmware commands, because an
+error stops the AP; the restart adds the BSS on the new channel.
+
+Fixes: 31f1fdb7cdbf ("wifi: mt76: mt7996: clear stale link state on full reset")
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mac.c  |    6 ++++++
+ mt7996/main.c |    8 ++++++++
+ 2 files changed, 14 insertions(+)
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2457,6 +2457,12 @@ mt7996_mac_reset_vif_iter(void *data, u8
+ 	struct mt7996_dev *dev = data;
+ 	int i;
+ 
++	/* the reloaded firmware has no BSS for this link until mac80211
++	 * assigns the channel context again, so nothing may resolve a phy
++	 * through it and send BSS commands before that
++	 */
++	mlink->ctx = NULL;
++
+ 	rcu_read_lock();
+ 	for (i = 0; i < ARRAY_SIZE(mvif->link); i++) {
+ 
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1118,6 +1118,14 @@ mt7996_post_channel_switch(struct ieee80
+ 	if (!link)
+ 		goto out;
+ 
++	/* after a full reset the firmware has no BSS for this link, and the
++	 * restart adds it on the new channel; an error here would stop the AP
++	 */
++	if (!mt7996_vif_link_phy(link)) {
++		mutex_unlock(&dev->mt76.mutex);
++		return 0;
++	}
++
+ 	ret = mt7996_mcu_update_bss_rfch(phy, link);
+ 	if (ret)
+ 		goto out;

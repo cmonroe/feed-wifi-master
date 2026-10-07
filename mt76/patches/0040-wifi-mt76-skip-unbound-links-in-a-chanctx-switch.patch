@@ -1,0 +1,34 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 06 Oct 2026 19:41:35 -0700
+Subject: [PATCH] wifi: mt76: skip unbound links in a chanctx switch
+
+A driver can leave a link without a channel context while its
+firmware has no state for the link, for example after a full reset.
+A channel switch that ran before mac80211 restored the link bound it
+to the new context anyway, so beacon and BSS updates reached the
+firmware before the BSS existed.
+
+A link without a context now stays unbound in a switch, and the phy
+still moves to the new channel. mac80211 assigns the link again when
+it restores the hardware.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ channel.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/channel.c
++++ b/channel.c
+@@ -254,8 +254,11 @@ int mt76_switch_vif_chanctx(struct ieee8
+ 			need_update[phy->band_idx] = false;
+ 		}
+ 
++		/* a link without a context is not set up in the driver, for
++		 * example after a full reset; mac80211 assigns it again later
++		 */
+ 		mlink = mt76_vif_conf_link(dev, v->vif, v->link_conf);
+-		if (!mlink)
++		if (!mlink || !mlink->ctx)
+ 			continue;
+ 
+ 		if (old_phy != phy) {

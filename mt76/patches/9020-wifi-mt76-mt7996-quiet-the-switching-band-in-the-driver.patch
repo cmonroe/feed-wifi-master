@@ -50,10 +50,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	deflink->csa_block_tx = false;
 +	deflink->csa_quiet = false;
 +
- 	rcu_read_lock();
- 	for (i = 0; i < ARRAY_SIZE(mvif->link); i++) {
- 
-@@ -2353,8 +2357,11 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 	/* the reloaded firmware has no BSS for this link until mac80211
+ 	 * assigns the channel context again, so nothing may resolve a phy
+ 	 * through it and send BSS commands before that
+@@ -2359,8 +2363,11 @@ mt7996_mac_full_reset(struct mt7996_dev
  	if (i == 10)
  		dev_err(dev->mt76.dev, "chip full reset failed\n");
  
@@ -66,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  
-@@ -3078,6 +3085,21 @@ static int mt7996_dfs_start_radar_detect
+@@ -3084,6 +3091,21 @@ static int mt7996_dfs_start_radar_detect
  	return err;
  }
  
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_dfs_init_radar_detector(struct mt7996_phy *phy)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -3103,7 +3125,7 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3109,7 +3131,7 @@ int mt7996_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
  
@@ -97,7 +97,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (dfs_state == MT_DFS_STATE_CAC)
-@@ -3111,11 +3133,11 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3117,11 +3139,11 @@ int mt7996_dfs_init_radar_detector(struc
  
  	err = mt7996_mcu_rdd_cmd(dev, RDD_CAC_END, rdd_idx, 0);
  	if (err < 0) {
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  
  stop:
-@@ -3124,7 +3146,7 @@ stop:
+@@ -3130,7 +3152,7 @@ stop:
  		return err;
  
  	mt7996_dfs_stop_radar_detector(phy);
@@ -173,7 +173,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* Hw requires to destroy active links tearing down the interface, so
  	 * postpone it removing the interface.
  	 */
-@@ -1149,6 +1179,9 @@ mt7996_channel_switch_beacon(struct ieee
+@@ -1153,6 +1183,9 @@ mt7996_channel_switch_beacon(struct ieee
  		if (link_phy != phy)
  			continue;
  
@@ -183,7 +183,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* Reset beacon when channel switch triggered during CAC to let
  		 * FW correctly perform CSA countdown
  		 */
-@@ -1170,9 +1203,21 @@ mt7996_pre_channel_switch(struct ieee802
+@@ -1174,9 +1207,21 @@ mt7996_pre_channel_switch(struct ieee802
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	struct cfg80211_chan_def *c = &ch_switch->chandef, *rdd2_chandef;
  	struct mt7996_phy *phy = mt7996_band_phy(dev, c->chan->band);
@@ -205,7 +205,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (phy != dev->rdd2_phy)
  		goto out;
  
-@@ -1214,10 +1259,34 @@ mt7996_post_channel_switch(struct ieee80
+@@ -1224,10 +1269,34 @@ mt7996_post_channel_switch(struct ieee80
  out:
  	mutex_unlock(&dev->mt76.mutex);
  
@@ -243,7 +243,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static void
-@@ -3487,6 +3556,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -3497,6 +3566,7 @@ const struct ieee80211_ops mt7996_ops =
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
  	.pre_channel_switch = mt7996_pre_channel_switch,
  	.post_channel_switch = mt7996_post_channel_switch,

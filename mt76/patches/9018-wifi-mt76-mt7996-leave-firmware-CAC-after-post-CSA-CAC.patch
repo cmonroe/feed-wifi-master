@@ -25,7 +25,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -1134,6 +1134,7 @@ int mt76_set_channel(struct mt76_phy *ph
+@@ -1115,6 +1115,7 @@ int mt76_set_channel(struct mt76_phy *ph
  
  	return ret;
  }
@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1222,7 +1222,10 @@ mt7996_post_channel_switch(struct ieee80
+@@ -1211,7 +1211,10 @@ mt7996_post_channel_switch(struct ieee80
  out:
  	mutex_unlock(&dev->mt76.mutex);
  
