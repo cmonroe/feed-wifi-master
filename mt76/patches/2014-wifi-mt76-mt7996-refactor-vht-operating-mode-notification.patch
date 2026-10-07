@@ -45,7 +45,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  						 true);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2567,7 +2567,9 @@ int mt7996_mcu_set_fixed_field(struct mt
+@@ -2575,7 +2575,9 @@ int mt7996_mcu_set_fixed_field(struct mt
  	struct mt7996_sta_link *msta_link;
  	struct sta_rec_ra_fixed_uni *ra;
  	struct sta_phy_uni *phy = data;
@@ -55,7 +55,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct sk_buff *skb;
  	int err = -ENODEV;
  	struct tlv *tlv;
-@@ -2582,6 +2584,11 @@ int mt7996_mcu_set_fixed_field(struct mt
+@@ -2590,6 +2592,11 @@ int mt7996_mcu_set_fixed_field(struct mt
  	if (!msta_link)
  		goto error_unlock;
  
@@ -67,7 +67,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb = __mt76_connac_mcu_alloc_sta_req(&dev->mt76, mlink,
  					      &msta_link->wcid,
  					      MT7996_STA_UPDATE_MAX_SIZE);
-@@ -2603,19 +2610,35 @@ int mt7996_mcu_set_fixed_field(struct mt
+@@ -2611,19 +2618,35 @@ int mt7996_mcu_set_fixed_field(struct mt
  		if (phy)
  			ra->phy = *phy;
  		break;
@@ -112,7 +112,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	default:
  		break;
  	}
-@@ -2761,9 +2784,11 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
+@@ -2769,9 +2792,11 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
  			     struct mt7996_vif_link *link)
  {
  #define INIT_RCPI 180
@@ -124,7 +124,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct cfg80211_chan_def *chandef;
  	struct sta_rec_ra_uni *ra;
  	enum nl80211_band band;
-@@ -2784,10 +2809,13 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
+@@ -2792,10 +2817,13 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
  	ra->auto_rate = true;
  	ra->phy_mode = mt76_connac_get_phy_mode(mphy, vif, band, link_sta);
  	ra->channel = chandef->chan->hw_value;

@@ -19,7 +19,7 @@ the firmware keeps reporting radar on the operating channel.
 Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2972,7 +2972,7 @@ static void mt7996_dfs_stop_radar_detect
+@@ -3048,7 +3048,7 @@ static void mt7996_dfs_stop_radar_detect
  
  static int mt7996_dfs_start_rdd(struct mt7996_dev *dev, int rdd_idx)
  {
@@ -28,7 +28,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  
  	switch (dev->mt76.region) {
  	case NL80211_DFS_ETSI:
-@@ -2987,7 +2987,11 @@ static int mt7996_dfs_start_rdd(struct m
+@@ -3063,7 +3063,11 @@ static int mt7996_dfs_start_rdd(struct m
  		break;
  	}
  

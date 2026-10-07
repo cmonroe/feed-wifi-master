@@ -17,7 +17,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -710,6 +710,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -718,6 +718,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
  	if (sta_num > (skb->len - sizeof(*res)) / elem_size)
  		sta_num = (skb->len - sizeof(*res)) / elem_size;
  
@@ -25,7 +25,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < sta_num; i++) {
  		u8 ac;
  		u16 wlan_idx;
-@@ -756,6 +757,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -764,6 +765,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			break;
  		}
  	}

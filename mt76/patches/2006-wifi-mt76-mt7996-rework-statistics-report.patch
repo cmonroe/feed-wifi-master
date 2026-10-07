@@ -712,7 +712,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	.sta_set_decap_offload = mt7996_sta_set_decap_offload,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -639,42 +639,167 @@ out:
+@@ -647,42 +647,167 @@ out:
  }
  
  static int
@@ -890,7 +890,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  static void
  mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
-@@ -698,11 +823,26 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -706,11 +831,26 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		elem_size = sizeof(res->rate[0]);
  		break;
  	case UNI_ALL_STA_TXRX_ADM_STAT:
@@ -918,7 +918,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	default:
  		return;
  	}
-@@ -713,8 +853,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -721,8 +861,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
  	rcu_read_lock();
  	for (i = 0; i < sta_num; i++) {
  		u8 ac;
@@ -932,7 +932,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -724,21 +869,39 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -732,21 +877,39 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -980,7 +980,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			}
  			break;
  		case UNI_ALL_STA_TXRX_MSDU_COUNT:
-@@ -748,10 +911,59 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -756,10 +919,59 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -1044,7 +1044,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			break;
  		default:
  			break;
-@@ -5658,9 +5870,132 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5668,9 +5880,132 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -1179,7 +1179,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -5671,7 +6006,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -5681,7 +6016,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  

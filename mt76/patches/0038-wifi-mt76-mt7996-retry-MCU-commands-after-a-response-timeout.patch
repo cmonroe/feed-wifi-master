@@ -1,0 +1,122 @@
+From e5ab703d02cf61b6d39369804bb9f9389b4f73ab Mon Sep 17 00:00:00 2001
+From: Peter Chiu <chui-hao.chiu@mediatek.com>
+Date: Thu, 24 Sep 2026 15:25:23 +0800
+Subject: [PATCH] wifi: mt76: mt7996: retry MCU commands after a response timeout
+
+During an L1 SER recovery, the firmware cannot handle MCU
+commands for a short time. On mt7996, one missed response then
+starts a full chip reset. The mt76 core can resend a command only
+if the driver builds the command TXD in a separate prepare step.
+mt7996 built the TXD in the send step, so a resend would add a
+second TXD to the same buffer.
+
+mt7996 now resends a command up to three times before it reports
+the timeout and starts the full chip reset. The count matches the
+MTK SDK. A lost response therefore holds the MCU lock for up to
+four timeouts. The core passes no sequence pointer to the prepare
+step when the caller expects no response. Otherwise every mt7996
+unified command asks the firmware for an ACK, because the prepare
+step sets the ACK flag when it gets a pointer. mt7915 sees no
+change, because its prepare step does not use the pointer for the
+ACK flag.
+
+[chad: the MTK version depends on d731d5c1de7c ("mtk: mt76: add
+debug tools"), which this tree does not carry. Remove the hunks
+for the L1 SER drop check and the MCU packet log, because that
+commit adds both. Set the retry count here, because that commit
+sets it in the MTK tree. Add the core sequence change, which the
+MTK message describes but the MTK diff omits]
+
+Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mcu.c        |    3 ++-
+ mt7996/mcu.c |   32 +++++++++++++++++++++-----------
+ 2 files changed, 23 insertions(+), 12 deletions(-)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -285,35 +285,26 @@ mt7996_mcu_set_timeout(struct mt76_dev *
+ }
+ 
+ static int
+-mt7996_mcu_send_message(struct mt76_dev *mdev, struct sk_buff *skb,
++mt7996_mcu_fill_message(struct mt76_dev *mdev, struct sk_buff *skb,
+ 			int cmd, int *wait_seq)
+ {
+ 	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
+ 	int txd_len, mcu_cmd = FIELD_GET(__MCU_CMD_FIELD_ID, cmd);
+ 	struct mt76_connac2_mcu_uni_txd *uni_txd;
+ 	struct mt76_connac2_mcu_txd *mcu_txd;
+-	enum mt76_mcuq_id qid;
+ 	__le32 *txd;
+ 	u32 val;
+ 	u8 seq;
+ 
+-	mt7996_mcu_set_timeout(mdev, cmd);
+-
+ 	seq = ++dev->mt76.mcu.msg_seq & 0xf;
+ 	if (!seq)
+ 		seq = ++dev->mt76.mcu.msg_seq & 0xf;
+ 
+-	if (cmd == MCU_CMD(FW_SCATTER)) {
+-		qid = MT_MCUQ_FWDL;
++	if (cmd == MCU_CMD(FW_SCATTER))
+ 		goto exit;
+-	}
+ 
+ 	txd_len = cmd & __MCU_CMD_FIELD_UNI ? sizeof(*uni_txd) : sizeof(*mcu_txd);
+ 	txd = (__le32 *)skb_push(skb, txd_len);
+-	if (test_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state) && mt7996_has_wa(dev))
+-		qid = MT_MCUQ_WA;
+-	else
+-		qid = MT_MCUQ_WM;
+ 
+ 	val = FIELD_PREP(MT_TXD0_TX_BYTES, skb->len) |
+ 	      FIELD_PREP(MT_TXD0_PKT_FMT, MT_TX_TYPE_CMD) |
+@@ -376,6 +367,23 @@ exit:
+ 	if (wait_seq)
+ 		*wait_seq = seq;
+ 
++	return 0;
++}
++
++static int
++mt7996_mcu_send_message(struct mt76_dev *mdev, struct sk_buff *skb,
++			int cmd, int *wait_seq)
++{
++	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
++	enum mt76_mcuq_id qid = MT_MCUQ_WM;
++
++	if (cmd == MCU_CMD(FW_SCATTER))
++		qid = MT_MCUQ_FWDL;
++	else if (test_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state) && mt7996_has_wa(dev))
++		qid = MT_MCUQ_WA;
++
++	mt7996_mcu_set_timeout(mdev, cmd);
++
+ 	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
+ }
+ 
+@@ -4003,7 +4011,9 @@ int mt7996_mcu_init_firmware(struct mt79
+ int mt7996_mcu_init(struct mt7996_dev *dev)
+ {
+ 	static const struct mt76_mcu_ops mt7996_mcu_ops = {
++		.max_retry = 3,
+ 		.headroom = sizeof(struct mt76_connac2_mcu_txd), /* reuse */
++		.mcu_skb_prepare_msg = mt7996_mcu_fill_message,
+ 		.mcu_skb_send_msg = mt7996_mcu_send_message,
+ 		.mcu_parse_response = mt7996_mcu_parse_response,
+ 	};
+--- a/mcu.c
++++ b/mcu.c
+@@ -93,7 +93,8 @@ int mt76_mcu_skb_send_and_get_msg(struct
+ 
+ 	if (dev->mcu_ops->mcu_skb_prepare_msg) {
+ 		orig_skb = skb;
+-		ret = dev->mcu_ops->mcu_skb_prepare_msg(dev, skb, cmd, &seq);
++		ret = dev->mcu_ops->mcu_skb_prepare_msg(dev, skb, cmd,
++							wait_resp ? &seq : NULL);
+ 		if (ret < 0)
+ 			goto out;
+ 	}

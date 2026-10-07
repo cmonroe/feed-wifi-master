@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6337,7 +6337,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6347,7 +6347,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  static bool mt7996_is_psd_country(char *country)
  {
@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -6390,7 +6390,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6400,7 +6400,13 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	if (txpower_setting == INT_MIN || txpower_setting > 127)
  		txpower_setting = 127;
@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6405,6 +6411,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6415,6 +6421,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		return 0;
  	}
  
@@ -61,7 +61,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
  	if (!skb) {
-@@ -6418,8 +6427,8 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6428,8 +6437,8 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* FW would compensate for PSD countries
  	 * driver doesn't need to do it
  	 */
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->eht[3], 8);
-@@ -6486,7 +6495,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6496,7 +6505,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* FW would NOT compensate in the case of BF backoff table
  	 * driver needs to compensate for LPI PSD
  	 */
@@ -81,7 +81,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->path.ru[5], 5);
-@@ -6554,6 +6563,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -6564,6 +6573,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.psd_limit = enable ? mt7996_is_psd_country(dev->mt76.alpha2) : 0,
  	};
  

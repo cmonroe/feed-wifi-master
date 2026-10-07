@@ -5720,7 +5720,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6342,3 +6342,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
+@@ -6352,3 +6352,37 @@ int mt7996_mcu_set_pp_en(struct mt7996_p
  	return mt76_mcu_send_msg(&dev->mt76, MCU_WM_UNI_CMD(PP),
  				 &req, sizeof(req), false);
  }
