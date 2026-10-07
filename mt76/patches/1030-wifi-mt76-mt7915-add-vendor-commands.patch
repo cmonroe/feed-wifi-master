@@ -49,7 +49,7 @@ Squash of the following MediaTek commits:
  			return ret;
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4626,6 +4626,84 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4636,6 +4636,84 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  }
  #endif
  

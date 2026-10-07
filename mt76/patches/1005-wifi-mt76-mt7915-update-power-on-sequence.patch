@@ -4,12 +4,19 @@ Subject: [PATCH] wifi: mt76: mt7915: update power on sequence
 
 Update power on sequence to prevent unexpected behavior.
 
+SmartRG folds in the later MediaTek change mtk-openwrt-feeds
+c9c8941b426c ("[openwrt-21][MAC80211][WiFi6][mt76][Update adie patch
+for mt7986]"). It clears one more A-die XO register on MT7986 for the
+MT7976 A-die versions that take the MT7986-specific crystal settings,
+so that the power-on sequence matches the one in the MediaTek SDK.
+
 Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7915/mt7915.h |    2 ++
- mt7915/regs.h   |    2 ++
- mt7915/soc.c    |   45 ++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 48 insertions(+), 1 deletion(-)
+ mt7915/regs.h   |    3 +++
+ mt7915/soc.c    |   56 ++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 3 files changed, 59 insertions(+), 2 deletions(-)
 
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
@@ -40,6 +47,14 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  /* ADIE */
  #define MT_ADIE_CHIP_ID			0x02c
+@@ -946,6 +948,7 @@ enum offs_rev {
+ #define MT_ADIE_XTAL_TRIM1_40M_OSC	0x399
+ #define MT_ADIE_WRI_CK_SEL		0x4ac
+ #define MT_ADIE_RG_STRAP_PIN_IN		0x4fc
++#define MT_ADIE_RG_TOP_XO_08		0x600
+ #define MT_ADIE_XTAL_C1			0x654
+ #define MT_ADIE_XTAL_C2			0x658
+ #define MT_ADIE_RG_XO_01		0x65c
 --- a/mt7915/soc.c
 +++ b/mt7915/soc.c
 @@ -260,6 +260,7 @@ static int mt7986_wmac_consys_lockup(str
@@ -50,7 +65,39 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	return 0;
  }
  
-@@ -844,6 +845,10 @@ static void mt7986_wmac_subsys_setting(s
+@@ -505,6 +506,7 @@ static int mt798x_wmac_adie_patch_7976(s
+ {
+ 	u32 id, version, rg_xo_01, rg_xo_03;
+ 	int ret;
++	bool need_adie_patch = false;
+ 
+ 	ret = mt76_wmac_spi_read(dev, adie, MT_ADIE_CHIP_ID, &id);
+ 	if (ret)
+@@ -524,6 +526,7 @@ static int mt798x_wmac_adie_patch_7976(s
+ 		if (is_mt7981(&dev->mt76)) {
+ 			rg_xo_01 = 0x1959c80f;
+ 		} else if (is_mt7986(&dev->mt76)) {
++			need_adie_patch = true;
+ 			rg_xo_01 = 0x1959f80f;
+ 		} else {
+ 			WARN_ON(1);
+@@ -536,7 +539,14 @@ static int mt798x_wmac_adie_patch_7976(s
+ 	if (ret)
+ 		return ret;
+ 
+-	return mt76_wmac_spi_write(dev, adie, MT_ADIE_RG_XO_03, rg_xo_03);
++	ret = mt76_wmac_spi_write(dev, adie, MT_ADIE_RG_XO_03, rg_xo_03);
++	if (ret)
++		return ret;
++
++	if (!need_adie_patch)
++		return 0;
++
++	return mt76_wmac_spi_write(dev, adie, MT_ADIE_RG_TOP_XO_08, 0);
+ }
+ 
+ static int
+@@ -844,6 +854,10 @@ static void mt7986_wmac_subsys_setting(s
  		 MT_CONN_INFRA_OSC_STB_TIME_MASK, 0x80706);
  
  	/* prevent subsys from power on/of in a short time interval */
@@ -61,7 +108,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	mt76_rmw(dev, MT_TOP_WFSYS_PWR,
  		 MT_TOP_PWR_ACK_MASK | MT_TOP_PWR_KEY_MASK,
  		 MT_TOP_PWR_KEY);
-@@ -1154,12 +1159,14 @@ int mt7986_wmac_enable(struct mt7915_dev
+@@ -1154,12 +1168,14 @@ int mt7986_wmac_enable(struct mt7915_dev
  	if (ret)
  		return ret;
  
@@ -77,7 +124,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	mt7986_wmac_top_wfsys_wakeup(dev, true);
  
-@@ -1178,6 +1185,20 @@ void mt7986_wmac_disable(struct mt7915_d
+@@ -1178,6 +1194,20 @@ void mt7986_wmac_disable(struct mt7915_d
  	mt76_rmw_field(dev, MT_AFE_DIG_EN_02(0), MT_AFE_MCU_BPLL_CFG_MASK, 0x2);
  	mt76_rmw_field(dev, MT_AFE_DIG_EN_02(0), MT_AFE_WPLL_CFG_MASK, 0x2);
  
@@ -98,7 +145,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	/* Reset EMI */
  	mt76_rmw_field(dev, MT_CONN_INFRA_EMI_REQ,
  		       MT_CONN_INFRA_EMI_REQ_MASK, 0x1);
-@@ -1189,6 +1210,28 @@ void mt7986_wmac_disable(struct mt7915_d
+@@ -1189,6 +1219,28 @@ void mt7986_wmac_disable(struct mt7915_d
  		       MT_CONN_INFRA_INFRA_REQ_MASK, 0x0);
  
  	mt7986_wmac_top_wfsys_wakeup(dev, false);

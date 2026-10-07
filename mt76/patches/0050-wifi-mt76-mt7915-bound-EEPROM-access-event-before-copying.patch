@@ -1,0 +1,30 @@
+From e308e7430dcb78a9fe6f0385bc01d60a90d493fd Mon Sep 17 00:00:00 2001
+From: Felix Fietkau <nbd@nbd.name>
+Date: Thu, 2 Jul 2026 15:09:01 +0000
+Subject: [PATCH] wifi: mt76: mt7915: bound EEPROM access event before copying
+
+mt7915_mcu_get_eeprom() copied a 16-byte block out of the firmware
+response skb without checking that the response was long enough to hold
+it. A short or malformed response could read past the end of the skb.
+Reject a response shorter than the response header.
+
+Fixes: 888208d1ccc4 ("wifi: mt76: mt7915: set correct background radar capability")
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+ mt7915/mcu.c |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -2983,6 +2983,11 @@ int mt7915_mcu_get_eeprom(struct mt7915_
+ 		return ret;
+ 
+ 	res = (struct mt7915_mcu_eeprom_info *)skb->data;
++	if (skb->len < sizeof(*res)) {
++		dev_kfree_skb(skb);
++		return -EINVAL;
++	}
++
+ 	if (!buf) {
+ 		u32 addr = le32_to_cpu(res->addr);
+ 

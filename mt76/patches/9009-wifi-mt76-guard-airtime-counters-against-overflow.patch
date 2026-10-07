@@ -163,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
  		default:
  			break;
-@@ -3323,6 +3346,8 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3333,6 +3356,8 @@ int mt7915_mcu_get_chan_mib_info(struct
  	struct sk_buff *skb;
  	static const u32 *offs;
  	int i, ret, len, offs_cc;
@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 cc_tx;
  
  	/* strict order */
-@@ -3373,11 +3398,18 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3383,11 +3408,18 @@ int mt7915_mcu_get_chan_mib_info(struct
  	if (chan_switch)
  		goto out;
  

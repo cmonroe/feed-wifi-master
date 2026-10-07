@@ -236,7 +236,7 @@ Squash of the following MediaTek commits:
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &msta->wcid,
  					      &spe_idx, RATE_PARAM_SPE_UPDATE);
-@@ -3516,6 +3517,22 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3526,6 +3527,22 @@ mt7915_update_txpower(struct mt7915_phy
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -259,7 +259,7 @@ Squash of the following MediaTek commits:
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3546,14 +3563,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3556,14 +3573,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -299,7 +299,7 @@ Squash of the following MediaTek commits:
  	skb_put_data(skb, &la.mcs[0], len[SKU_HT_BW20]);
  	skb_put_data(skb, &la.mcs[1], len[SKU_HT_BW40]);
  
-@@ -3582,8 +3622,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3592,8 +3632,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
@@ -336,7 +336,7 @@ Squash of the following MediaTek commits:
  
  	/* HT20 and HT40 */
  	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
-@@ -3659,6 +3725,12 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3669,6 +3735,12 @@ int mt7915_mcu_get_txpower_sku(struct mt
  			return -EINVAL;
  		}
  		memcpy(txpower, skb->data + 4, len);
@@ -349,7 +349,7 @@ Squash of the following MediaTek commits:
  	}
  
  	dev_kfree_skb(skb);
-@@ -3666,6 +3738,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3676,6 +3748,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	return 0;
  }
  
@@ -385,7 +385,7 @@ Squash of the following MediaTek commits:
  
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -254,8 +254,9 @@ static bool mt76_string_prop_find(struct
+@@ -252,8 +252,9 @@ static bool mt76_string_prop_find(struct
  }
  
  struct device_node *
@@ -396,7 +396,7 @@ Squash of the following MediaTek commits:
  	struct device_node *np = dev->dev->of_node;
  	const char *const region_names[] = {
  		[NL80211_DFS_UNSET] = "ww",
-@@ -493,7 +494,7 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -491,7 +492,7 @@ s8 mt76_get_rate_power_limits(struct mt7
  	if (!IS_ENABLED(CONFIG_OF))
  		return target_power;
  
@@ -536,7 +536,7 @@ Squash of the following MediaTek commits:
  				    mt7915_show_eeprom_mode);
 --- a/mt7915/regs.h
 +++ b/mt7915/regs.h
-@@ -1216,6 +1216,10 @@ enum offs_rev {
+@@ -1217,6 +1217,10 @@ enum offs_rev {
  #define MT_WF_IRPI_NSS(phy, nss)	MT_WF_IRPI(0x6000 + ((phy) << 20) + ((nss) << 16))
  #define MT_WF_IRPI_NSS_MT7916(phy, nss)	MT_WF_IRPI(0x1000 + ((phy) << 20) + ((nss) << 16))
  
@@ -547,7 +547,7 @@ Squash of the following MediaTek commits:
  #define MT_WF_IPI_RESET			0x831a3008
  
  /* PHY */
-@@ -1232,10 +1236,6 @@ enum offs_rev {
+@@ -1233,10 +1237,6 @@ enum offs_rev {
  #define MT_WF_PHY_RXTD12_IRPI_SW_CLR_ONLY	BIT(18)
  #define MT_WF_PHY_RXTD12_IRPI_SW_CLR		BIT(29)
  

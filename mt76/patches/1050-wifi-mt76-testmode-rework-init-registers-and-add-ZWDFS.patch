@@ -236,7 +236,7 @@ Squash of the following MediaTek commits:
  
  #define MT_AGG_ACR0(_band)		MT_WF_AGG(_band, __OFFS(AGG_ACR0))
  #define MT_AGG_ACR_CFEND_RATE		GENMASK(13, 0)
-@@ -1204,6 +1216,8 @@ enum offs_rev {
+@@ -1205,6 +1217,8 @@ enum offs_rev {
  #define MT_WF_IRPI_NSS(phy, nss)	MT_WF_IRPI(0x6000 + ((phy) << 20) + ((nss) << 16))
  #define MT_WF_IRPI_NSS_MT7916(phy, nss)	MT_WF_IRPI(0x1000 + ((phy) << 20) + ((nss) << 16))
  
@@ -1014,7 +1014,7 @@ Squash of the following MediaTek commits:
  		req.band_idx = phy->mt76->band_idx;
  		req.scan_mode = 2;
  		break;
-@@ -4626,6 +4627,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4636,6 +4637,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  }
  #endif
  

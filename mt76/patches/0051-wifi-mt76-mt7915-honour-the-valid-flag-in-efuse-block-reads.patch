@@ -1,0 +1,49 @@
+From 5781c92d13c30ef889ed9c76f591ba54ad6da1b6 Mon Sep 17 00:00:00 2001
+From: Felix Fietkau <nbd@nbd.name>
+Date: Fri, 17 Jul 2026 04:26:04 +0200
+Subject: [PATCH] wifi: mt76: mt7915: honour the valid flag in efuse block
+ reads
+
+The EFUSE_ACCESS response carries a valid flag that was ignored, so
+reading an unwritten efuse block copied garbage into the eeprom data.
+Return -ENODATA for invalid blocks and leave the corresponding eeprom
+range untouched (zero-initialised) when loading the full eeprom from
+efuse.
+
+Fixes: e57b7901469f ("mt76: add mac80211 driver for MT7915 PCIe-based chipsets")
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+ mt7915/eeprom.c |    4 ++--
+ mt7915/mcu.c    |    5 +++++
+ 2 files changed, 7 insertions(+), 2 deletions(-)
+
+--- a/mt7915/eeprom.c
++++ b/mt7915/eeprom.c
+@@ -192,11 +192,11 @@ static int mt7915_eeprom_load(struct mt7
+ 		if (free_block_num >= 29)
+ 			return -EINVAL;
+ 
+-		/* read eeprom data from efuse */
++		/* read eeprom data from efuse, skipping unwritten blocks */
+ 		block_num = DIV_ROUND_UP(eeprom_size, eeprom_blk_size);
+ 		for (i = 0; i < block_num; i++) {
+ 			ret = mt7915_mcu_get_eeprom(dev, i * eeprom_blk_size, NULL);
+-			if (ret < 0)
++			if (ret < 0 && ret != -ENODATA)
+ 				return ret;
+ 		}
+ 	}
+--- a/mt7915/mcu.c
++++ b/mt7915/mcu.c
+@@ -2988,6 +2988,11 @@ int mt7915_mcu_get_eeprom(struct mt7915_
+ 		return -EINVAL;
+ 	}
+ 
++	if (!le32_to_cpu(res->valid)) {
++		dev_kfree_skb(skb);
++		return -ENODATA;
++	}
++
+ 	if (!buf) {
+ 		u32 addr = le32_to_cpu(res->addr);
+ 

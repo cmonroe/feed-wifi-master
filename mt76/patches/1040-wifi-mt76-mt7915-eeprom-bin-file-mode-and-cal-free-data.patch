@@ -5,7 +5,18 @@ Subject: [PATCH] wifi: mt76: mt7915: eeprom bin file mode and cal-free data
 EEPROM handling extensions: load the EEPROM image and pre-cal data
 from a firmware-loader blob named by the bin_file_name device tree
 property, merge per-die cal-free efuse bytes into the image, and
-size the WTBL according to the mt7981 efuse variant.
+size the WTBL according to the mt7981 efuse variant. SmartRG adds
+the MT7981 E3 re-bonding copy from the later MediaTek change
+mtk-openwrt-feeds a91da228619b ("[MAC80211][WiFi6][mt76][Add E3
+re-binding for MT7981 ifem]").
+
+An unwritten efuse block does not stop the probe: the merge skips
+that block, and on MT7915 an unwritten A-die version block skips the
+whole merge. Other read errors on the A-die version block still fail
+the probe. For each skipped block, the image from flash or the
+default bin keeps its own values. The offset tables that the merge
+selects are set again on each call, so a second device does not
+inherit the tables of the first.
 
 Squash of the following MediaTek commits:
 - wifi: mt76: mt7915: implement bin file mode
@@ -14,26 +25,21 @@ Squash of the following MediaTek commits:
   (StanleyYP Wang, 2023-03-30)
 - wifi: mt76: mt7915: add mt7981 efuse variants support
   (Henry Yen, 2023-12-11)
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- eeprom.c             |   25 +++++
- mt76.h               |    4 +
- mt7915/eeprom.c      |  274 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- mt7915/eeprom.h      |    7 ++
- mt7915/mt7915.h      |   10 ++
- mt7915/mtk_debugfs.c |   45 ++++++++++
- testmode.h           |    2
- eeprom.c             |   25 ++++
+ eeprom.c             |   23 +++
  mt76.h               |    4 
- mt7915/eeprom.c      |  287 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ mt7915/eeprom.c      |  300 ++++++++++++++++++++++++++++++++++++++++++++++++++-
  mt7915/eeprom.h      |    7 +
  mt7915/mt7915.h      |   10 +
  mt7915/mtk_debugfs.c |   45 +++++++
  testmode.h           |    2 
- 7 files changed, 375 insertions(+), 5 deletions(-)
+ 7 files changed, 386 insertions(+), 5 deletions(-)
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -172,6 +172,31 @@ static int mt76_get_of_eeprom(struct mt7
+@@ -172,6 +172,29 @@ static int mt76_get_of_eeprom(struct mt7
  	return mt76_get_of_data_from_nvmem(dev, eep, "eeprom", len);
  }
  
@@ -55,8 +61,6 @@ Squash of the following MediaTek commits:
 +		dev->test_mtd.offset = -1;
 +#endif
 +	}
-+
-+	of_node_put(np);
 +
 +	return dev->bin_file_name ? true : false;
 +}
@@ -175,7 +179,7 @@ Squash of the following MediaTek commits:
  		u8 free_block_num;
  		u32 block_num, i;
 @@ -199,11 +246,28 @@ static int mt7915_eeprom_load(struct mt7
- 			if (ret < 0)
+ 			if (ret < 0 && ret != -ENODATA)
  				return ret;
  		}
 +
@@ -217,16 +221,31 @@ Squash of the following MediaTek commits:
  
  	mt7915_eeprom_parse_band_config(phy);
  
-@@ -312,22 +383,232 @@ void mt7915_eeprom_parse_hw_cap(struct m
+@@ -312,22 +383,245 @@ void mt7915_eeprom_parse_hw_cap(struct m
  	dev->chainshift = hweight8(dev->mphy.chainmask);
  }
  
++static void mt7915_eeprom_rebinding(struct mt7915_dev *dev, u16 base)
++{
++#define MT_EE_ADIE1_MT7976C_OFFSET	0x270
++#define MT_EE_ADIE1_E3_OFFSET		0x271
++	u8 *eeprom = dev->mt76.eeprom.data;
++	u8 buf[MT7915_EEPROM_BLOCK_SIZE];
++	u16 offset;
++
++	if (mt7915_mcu_get_eeprom(dev, MT_EE_ADIE1_MT7976C_OFFSET + base, buf))
++		return;
++
++	offset = (MT_EE_ADIE1_MT7976C_OFFSET + base) % MT7915_EEPROM_BLOCK_SIZE;
++	eeprom[MT_EE_ADIE1_MT7976C_OFFSET] = buf[offset];
++	offset = (MT_EE_ADIE1_E3_OFFSET + base) % MT7915_EEPROM_BLOCK_SIZE;
++	eeprom[MT_EE_ADIE1_E3_OFFSET] = buf[offset];
++}
++
 +static int mt7915_apply_cal_free_data(struct mt7915_dev *dev)
 +{
 +#define MT_EE_CAL_FREE_MAX_SIZE		70
 +#define MT_EE_FREQ_OFFSET		0x77
-+#define MT_EE_ADIE1_MT7976C_OFFSET	0x270
-+#define MT_EE_ADIE1_E3_OFFSET		0x271
 +#define MT_EE_END_OFFSET		0xffff
 +#define MT_EE_ADIE1_BASE_7896		0x1000
 +	enum adie_type {
@@ -268,10 +287,10 @@ Squash of the following MediaTek commits:
 +		[ADIE_7976] = {0x33c, 0x33d, 0x33e, 0x33f, 0x340, 0x341, 0x343, 0x345, 0x347,
 +			       0x349, 0x359, 0x35a, 0x35d, 0x35e, 0x36a, 0x36c, 0x36e, -1},
 +	};
-+	static const u16 *ddie_offs;
-+	static const u16 *adie_offs[__MT_MAX_BAND];
-+	static const u16 *eep_offs[__MT_MAX_BAND];
-+	static u16 adie_base[__MT_MAX_BAND] = {0};
++	const u16 *adie_offs[__MT_MAX_BAND] = {};
++	const u16 *eep_offs[__MT_MAX_BAND] = {};
++	u16 adie_base[__MT_MAX_BAND] = {};
++	const u16 *ddie_offs = NULL;
 +	u8 *eeprom = dev->mt76.eeprom.data;
 +	u8 buf[MT7915_EEPROM_BLOCK_SIZE];
 +	int adie_id, band, i, ret;
@@ -280,6 +299,8 @@ Squash of the following MediaTek commits:
 +	case 0x7915:
 +		ddie_offs = ddie_offs_list[DDIE_7915];
 +		ret = mt7915_mcu_get_eeprom(dev, MT_EE_ADIE_FT_VERSION, buf);
++		if (ret == -ENODATA)
++			return 0;
 +		if (ret)
 +			return ret;
 +		adie_id = buf[MT_EE_ADIE_FT_VERSION % MT7915_EEPROM_BLOCK_SIZE] - 1;
@@ -288,11 +309,14 @@ Squash of the following MediaTek commits:
 +		eep_offs[0] = NULL;
 +		break;
 +	case 0x7906:
-+	case 0x7981:
-+		if (is_mt7916(&dev->mt76))
-+			ddie_offs = ddie_offs_list[DDIE_7916];
++		ddie_offs = ddie_offs_list[DDIE_7916];
 +		adie_offs[0] = adie_offs_list[ADIE_7976];
 +		eep_offs[0] = NULL;
++		break;
++	case 0x7981:
++		adie_offs[0] = adie_offs_list[ADIE_7976];
++		eep_offs[0] = NULL;
++		mt7915_eeprom_rebinding(dev, 0);
 +		break;
 +	case 0x7986:
 +		adie_id = mt7915_check_adie(dev, true);
@@ -309,7 +333,7 @@ Squash of the following MediaTek commits:
 +		case MT7976_ONE_ADIE_DBDC:
 +		case MT7976_ONE_ADIE:
 +		case MT7976_DUAL_ADIE: {
-+			u16 base = 0, offset = MT_EE_ADIE1_MT7976C_OFFSET;
++			u16 base = 0;
 +
 +			adie_offs[0] = adie_offs_list[ADIE_7976];
 +			eep_offs[0] = NULL;
@@ -319,14 +343,7 @@ Squash of the following MediaTek commits:
 +				base = MT_EE_ADIE1_BASE_7896;
 +			}
 +
-+			/* E3 re-bonding workaround */
-+			ret = mt7915_mcu_get_eeprom(dev, offset + base, buf);
-+			if (ret)
-+				break;
-+			offset = (offset + base) % MT7915_EEPROM_BLOCK_SIZE;
-+			eeprom[MT_EE_ADIE1_MT7976C_OFFSET] = buf[offset];
-+			offset = (MT_EE_ADIE1_E3_OFFSET + base) % MT7915_EEPROM_BLOCK_SIZE;
-+			eeprom[MT_EE_ADIE1_E3_OFFSET] = buf[offset];
++			mt7915_eeprom_rebinding(dev, base);
 +			break;
 +		}
 +		default:
