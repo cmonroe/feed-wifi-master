@@ -20,20 +20,19 @@ Based-on-work-by: Shayne Chen <shayne.chen@mediatek.com>
 Based-on-work-by: Allen Ye <allen.ye@mediatek.com>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7996/Makefile      |    5 
- mt7996/debugfs.c     |  128 +
+ mt7996/Makefile      |    3 
+ mt7996/debugfs.c     |  128 ++
  mt7996/eeprom.c      |   34 
  mt7996/eeprom.h      |   42 
- mt7996/main.c        |   15 
- mt7996/mcu.c         |   34 
- mt7996/mcu.h         |   25 
- mt7996/mt7996.h      |   19 
- mt7996/mtk_debug.h   | 2286 +++++++++++++++++++++++++++++++++
- mt7996/mtk_debugfs.c | 2791 +++++++++++++++++++++++++++++++++++++++++
- mt7996/mtk_mcu.c     |   62 
- mt7996/mtk_mcu.h     |  111 +
+ mt7996/main.c        |   12 
+ mt7996/mcu.h         |    2 
+ mt7996/mt7996.h      |   18 
+ mt7996/mtk_debug.h   | 2286 +++++++++++++++++++++++++++++++++++++++++
+ mt7996/mtk_debugfs.c | 2791 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mtk_mcu.c     |   62 +
+ mt7996/mtk_mcu.h     |  111 ++
  mt7996/regs.h        |   27 
- 13 files changed, 5555 insertions(+), 24 deletions(-)
+ 12 files changed, 5491 insertions(+), 25 deletions(-)
 
 --- a/mt7996/Makefile
 +++ b/mt7996/Makefile
@@ -5020,7 +5019,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	len += scnprintf(buf + len, size - len,
 +			 "    Theraml Compensation Value: %d\n",
 +			 basic_info->thermal_compensate_value);
-+	np = mt76_find_power_limits_node(phy->mt76);
++	np = mt76_find_power_limits_node(&phy->dev->mt76);
 +	len += scnprintf(buf + len, size - len,
 +			 "    RegDB:  %s\n",
 +			 !np ? "enable" : "disable");

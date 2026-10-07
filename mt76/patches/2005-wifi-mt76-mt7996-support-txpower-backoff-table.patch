@@ -15,7 +15,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -542,6 +542,12 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -541,6 +541,12 @@ s8 mt76_get_rate_power_limits(struct mt7
  				     ARRAY_SIZE(dest->ru), val, len, target_power,
  				     txs_delta, &max_power, n_chains, MT76_SKU_RATE);
  
@@ -30,7 +30,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			       target_power, txs_delta, &max_power, n_chains, MT76_SKU_BACKOFF);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1212,11 +1212,11 @@ struct mt76_power_limits {
+@@ -1211,11 +1211,11 @@ struct mt76_power_limits {
  	s8 eht[16][16];
  
  	struct {
@@ -62,7 +62,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 +
  	phy->sku_limit_en = true;
  	phy->sku_path_en = true;
- 	np = mt76_find_power_limits_node(phy->mt76);
+ 	np = mt76_find_power_limits_node(&dev->mt76);
 @@ -349,11 +353,11 @@ static void __mt7915_init_txpower(struct
  
  		target_power += pwr_delta;

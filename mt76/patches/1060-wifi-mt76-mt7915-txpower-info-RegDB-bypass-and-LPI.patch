@@ -8,10 +8,10 @@ authoritative over the kernel regulatory database, and 6 GHz Low
 Power Indoor support (LPI_CTRL command, PSD country handling,
 beacon/duplicate mode power table selection).
 
-The sku-index node matching in mt76_find_power_limits_node() from
-the LPI commit is not carried: no consumer sends a SKU index that
-selects a different table. The sku_idx field remains as
-vendor-command state only.
+The SKU index of the LPI commit is not carried: it needs a sku-index
+match in the power limits node lookup, which the tree does not have.
+The txpower vendor command ignores the SKU_IDX attribute, which keeps
+its number so that the attribute numbering of hostapd stays the same.
 
 Squash of the following MediaTek commits:
 - wifi: mt76: mt7915: add txpower info dump support
@@ -20,27 +20,12 @@ Squash of the following MediaTek commits:
   (Allen Ye, 2023-08-11)
 - wifi: mt76: mt7915: Add support for lpi and duplicate mode
   (Allen Ye, 2023-12-15)
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- eeprom.c             |    5 -
- mt76.h               |    5 +
+ mt76.h               |    2 
  mt76_connac2_mac.h   |    7 ++
- mt76_connac_mac.c    |    7 +-
- mt76_connac_mcu.h    |    1
- mt7915/debugfs.c     |  135 +++++++++++++++++++++++++++++++++++++++--
- mt7915/init.c        |   15 +++-
- mt7915/mcu.c         |   93 ++++++++++++++++++++++++++--
- mt7915/mcu.h         |    3
- mt7915/mt7915.h      |    1
- mt7915/mtk_debugfs.c |    1
- mt7915/regs.h        |    8 +-
- mt7915/vendor.c      |   75 ++++++++++++++++++++++
- mt7915/vendor.h      |   15 ++++
- mt7921/mcu.c         |    2
- mt7921/regd.c        |    3
- eeprom.c             |    5 +
- mt76.h               |    5 +
- mt76_connac2_mac.h   |    7 ++
- mt76_connac_mac.c    |    7 +-
+ mt76_connac_mac.c    |    6 +-
  mt76_connac_mcu.h    |    1 
  mt7915/debugfs.c     |  135 +++++++++++++++++++++++++++++++++++++++++++++++++--
  mt7915/init.c        |   15 ++++-
@@ -49,11 +34,9 @@ Squash of the following MediaTek commits:
  mt7915/mt7915.h      |    1 
  mt7915/mtk_debugfs.c |    1 
  mt7915/regs.h        |    8 +--
- mt7915/vendor.c      |   75 ++++++++++++++++++++++++++++
+ mt7915/vendor.c      |   58 +++++++++++++++++++++
  mt7915/vendor.h      |   15 +++++
- mt7921/mcu.c         |    2 
- mt7921/regd.c        |    3 -
- 16 files changed, 354 insertions(+), 26 deletions(-)
+ 13 files changed, 330 insertions(+), 19 deletions(-)
 
 --- a/mt7915/debugfs.c
 +++ b/mt7915/debugfs.c
@@ -202,7 +185,7 @@ Squash of the following MediaTek commits:
 +	seq_printf(file, "    Theraml Compensation Value: %d\n",
 +		   basic_info.thermal_compensate_value);
 +
-+	np = mt76_find_power_limits_node(mphy);
++	np = mt76_find_power_limits_node(mphy->dev);
 +	seq_printf(file, "    RegDB:  %s\n", !np ? "enable" : "disable");
 +
 +out:
@@ -383,48 +366,16 @@ Squash of the following MediaTek commits:
  	TX_POWER_INFO_RATE,
  };
  
---- a/eeprom.c
-+++ b/eeprom.c
-@@ -252,8 +252,9 @@ static bool mt76_string_prop_find(struct
- }
- 
- struct device_node *
--mt76_find_power_limits_node(struct mt76_dev *dev)
-+mt76_find_power_limits_node(struct mt76_phy *phy)
- {
-+	struct mt76_dev *dev = phy->dev;
- 	struct device_node *np = dev->dev->of_node;
- 	const char *const region_names[] = {
- 		[NL80211_DFS_UNSET] = "ww",
-@@ -491,7 +492,7 @@ s8 mt76_get_rate_power_limits(struct mt7
- 	if (!IS_ENABLED(CONFIG_OF))
- 		return target_power;
- 
--	np = mt76_find_power_limits_node(dev);
-+	np = mt76_find_power_limits_node(phy);
- 	if (!np)
- 		return target_power;
- 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -932,6 +932,9 @@ struct mt76_phy {
+@@ -932,6 +932,8 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
 +	u8 beacon_dup;
 +	u8 mgmt_pwr_enhance;
-+	u8 sku_idx;
  	u8 antenna_mask;
  	u16 chainmask;
- 
-@@ -2020,7 +2023,7 @@ mt76_mcu_skb_send_msg(struct mt76_dev *d
- void mt76_set_irq_mask(struct mt76_dev *dev, u32 addr, u32 clear, u32 set);
- 
- struct device_node *
--mt76_find_power_limits_node(struct mt76_dev *dev);
-+mt76_find_power_limits_node(struct mt76_phy *phy);
- struct device_node *
- mt76_find_channel_node(struct device_node *np, struct ieee80211_channel *chan);
  
 --- a/mt76_connac2_mac.h
 +++ b/mt76_connac2_mac.h
@@ -482,7 +433,7 @@ Squash of the following MediaTek commits:
  
  	phy->sku_limit_en = true;
  	phy->sku_path_en = true;
-+	np = mt76_find_power_limits_node(phy->mt76);
++	np = mt76_find_power_limits_node(&dev->mt76);
  	for (i = 0; i < sband->n_channels; i++) {
  		struct ieee80211_channel *chan = &sband->channels[i];
  		u32 target_power = 0;
@@ -574,7 +525,7 @@ Squash of the following MediaTek commits:
  static int mt7915_vendor_edcca_ctrl(struct wiphy *wiphy,
  				  struct wireless_dev *wdev,
  				  const void *data,
-@@ -164,6 +171,63 @@ mt7915_vendor_bss_color_ctrl_dump(struct
+@@ -164,6 +171,46 @@ mt7915_vendor_bss_color_ctrl_dump(struct
  	return len;
  }
  
@@ -587,7 +538,6 @@ Squash of the following MediaTek commits:
 +	struct mt7915_phy *phy = mt7915_hw_phy(hw);
 +	struct mt76_phy *mphy = phy->mt76;
 +	struct nlattr *tb[NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL];
-+	struct mt76_power_limits limits;
 +	int err;
 +	u8 val;
 +
@@ -606,22 +556,6 @@ Squash of the following MediaTek commits:
 +		}
 +	}
 +
-+	if (tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX]) {
-+		mphy->sku_idx = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX]);
-+
-+		if (mt76_find_power_limits_node(mphy) == NULL)
-+			mphy->sku_idx = 0;
-+
-+		phy->sku_path_en = true;
-+		mt76_get_rate_power_limits(mphy, mphy->chandef.chan, &limits, 127);
-+		if (!limits.path.ofdm[0])
-+			phy->sku_path_en = false;
-+
-+		err = mt7915_mcu_set_sku_en(phy);
-+		if (err)
-+			return err;
-+	}
-+
 +	if (tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_BCN_DUP]) {
 +		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_BCN_DUP]);
 +		if (mphy->cap.has_6ghz)
@@ -638,7 +572,7 @@ Squash of the following MediaTek commits:
  static const struct wiphy_vendor_command mt7915_vendor_commands[] = {
  	{
  		.info = {
-@@ -187,6 +251,17 @@ static const struct wiphy_vendor_command
+@@ -187,6 +234,17 @@ static const struct wiphy_vendor_command
  		.dumpit = mt7915_vendor_bss_color_ctrl_dump,
  		.policy = bss_color_ctrl_policy,
  		.maxattr = MTK_VENDOR_ATTR_BSS_COLOR_CTRL_MAX,
@@ -685,30 +619,3 @@ Squash of the following MediaTek commits:
 +};
 +
  #endif
---- a/mt7921/mcu.c
-+++ b/mt7921/mcu.c
-@@ -1367,7 +1367,7 @@ int __mt7921_mcu_set_clc(struct mt792x_d
- 
- 	if (dev->phy.chip_cap & MT792x_CHIP_CAP_CLC_EVT_EN)
- 		req.cap |= CLC_CAP_EVT_EN;
--	if (mt76_find_power_limits_node(&dev->mt76))
-+	if (mt76_find_power_limits_node(&dev->mphy))
- 		req.cap |= CLC_CAP_DTS_EN;
- 
- 	buf_len = le32_to_cpu(clc->len) - sizeof(*clc);
---- a/mt7921/regd.c
-+++ b/mt7921/regd.c
-@@ -34,12 +34,11 @@ mt7921_regd_channel_update(struct wiphy
- #define IS_UNII_INVALID(idx, sfreq, efreq) \
- 	(!(dev->phy.clc_chan_conf & BIT(idx)) && (cfreq) >= (sfreq) && (cfreq) <= (efreq))
- 	struct ieee80211_supported_band *sband;
--	struct mt76_dev *mdev = &dev->mt76;
- 	struct device_node *np, *band_np;
- 	struct ieee80211_channel *ch;
- 	int i, cfreq;
- 
--	np = mt76_find_power_limits_node(mdev);
-+	np = mt76_find_power_limits_node(&dev->mphy);
- 
- 	sband = wiphy->bands[NL80211_BAND_5GHZ];
- 	if (!sband)

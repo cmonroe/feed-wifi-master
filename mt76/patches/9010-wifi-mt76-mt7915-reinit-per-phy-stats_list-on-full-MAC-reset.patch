@@ -47,7 +47,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
 
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1332,9 +1332,10 @@ static void
+@@ -1339,9 +1339,10 @@ static void
  mt7915_mac_full_reset(struct mt7915_dev *dev)
  {
  	struct mt76_phy *ext_phy;
@@ -59,7 +59,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  	ext_phy = dev->mt76.phys[MT_BAND1];
  	phy2 = ext_phy ? ext_phy->priv : NULL;
  
-@@ -1355,6 +1356,12 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1362,6 +1363,12 @@ mt7915_mac_full_reset(struct mt7915_dev
  	cancel_delayed_work_sync(&dev->scs_work);
  
  	mutex_lock(&dev->mt76.mutex);
@@ -72,7 +72,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  	for (i = 0; i < 10; i++) {
  		if (!mt7915_mac_restart(dev))
  			break;
-@@ -1373,6 +1380,10 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1380,6 +1387,10 @@ mt7915_mac_full_reset(struct mt7915_dev
  	INIT_LIST_HEAD(&dev->sta_rc_list);
  	INIT_LIST_HEAD(&dev->twt_list);
  
@@ -83,7 +83,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  	i = mt76_wcid_alloc(dev->mt76.wcid_mask, MT7915_WTBL_STA);
  	dev->mt76.global_wcid.idx = i;
  	dev->recovery.hw_full_reset = false;
-@@ -1383,8 +1394,9 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1390,8 +1401,9 @@ mt7915_mac_full_reset(struct mt7915_dev
  	if (ext_phy)
  		ieee80211_wake_queues(ext_phy->hw);
  

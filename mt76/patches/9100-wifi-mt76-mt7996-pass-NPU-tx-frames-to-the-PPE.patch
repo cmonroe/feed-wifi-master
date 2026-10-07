@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1856,6 +1856,8 @@ int mt76_testmode_alloc_skb(struct mt76_
+@@ -1855,6 +1855,8 @@ int mt76_testmode_alloc_skb(struct mt76_
  #ifdef CONFIG_MT76_NPU
  void mt76_npu_check_ppe(struct mt76_dev *dev, struct sk_buff *skb,
  			u32 info);
@@ -107,7 +107,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt76_npu_dma_add_buf(struct mt76_phy *phy, struct mt76_queue *q,
  			 struct sk_buff *skb, struct mt76_queue_buf *buf,
  			 void *txwi_ptr);
-@@ -1879,6 +1881,12 @@ static inline void mt76_npu_check_ppe(st
+@@ -1878,6 +1880,12 @@ static inline void mt76_npu_check_ppe(st
  {
  }
  

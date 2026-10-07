@@ -24,10 +24,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int txpower_cur;
 -	u8 beacon_dup;
 -	u8 mgmt_pwr_enhance;
- 	u8 sku_idx;
  	u8 antenna_mask;
  	u16 chainmask;
-@@ -1081,6 +1079,10 @@ struct mt76_dev {
+ 
+@@ -1080,6 +1078,10 @@ struct mt76_dev {
  		bool beacon_received;
  	} scan;
  
@@ -118,7 +118,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  static int mt7915_vendor_edcca_ctrl(struct wiphy *wiphy,
-@@ -189,14 +190,14 @@ static int mt7915_vendor_txpower_ctrl(st
+@@ -188,20 +189,20 @@ static int mt7915_vendor_txpower_ctrl(st
  	if (err)
  		return err;
  
@@ -137,11 +137,6 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		err = mt7915_mcu_set_lpi(phy, val);
 +		if (err)
 +			return err;
- 	}
- 
- 	if (tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX]) {
-@@ -215,10 +216,10 @@ static int mt7915_vendor_txpower_ctrl(st
- 			return err;
  	}
  
 -	if (tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_BCN_DUP]) {

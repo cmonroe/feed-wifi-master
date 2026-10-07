@@ -11,24 +11,37 @@ limits of the channel width, and Canada joins the list of PSD
 countries.
 
 The driver sends the single SKU tables each time it enables the SKU
-limits: at radio start, after a full reset, for the SKU index vendor
-command and in testmode. The 6 GHz LPI flags move from the device to
-the phy, so a vendor command on one band does not change the other
-bands.
+limits: at radio start, after a full reset, after a change of country
+or DFS region, and in testmode. A failed table upload goes back to the
+caller after both enables are sent, so that the enables still match
+the current settings. After a country change or a full reset it also
+sends the LPI command again when LPI is on: the PSD limit of that
+command follows the country, and the firmware reload drops the LPI
+state, which hostapd sends only at interface setup. Without these
+updates, a running radio keeps the limits of the old country. Each
+band compares the country with the one it applied last, because
+cfg80211 calls the notifier once for each wiphy of the device. The
+updates and the txpower vendor command hold the device mutex, so that
+the radio cannot stop or change its channel during the upload and two
+LPI commands cannot interleave. The 6 GHz LPI flags move from the
+device to the phy, so a vendor command on one band does not change the
+other bands.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  eeprom.c          |   51 ++++++++++++++++++++++++++++++---------------------
  mt76.h            |    9 +++++++--
  mt76_connac_mac.c |    2 +-
- mt7915/init.c     |    6 +++---
- mt7915/mcu.c      |   29 ++++++++++++++++++++++++-----
- mt7915/vendor.c   |    9 +++++++--
- 6 files changed, 72 insertions(+), 34 deletions(-)
+ mt7915/init.c     |   46 +++++++++++++++++++++++++++++++++++++++++++---
+ mt7915/mac.c      |    7 +++++++
+ mt7915/mcu.c      |   39 ++++++++++++++++++++++++++++++---------
+ mt7915/mt7915.h   |    7 +++++++
+ mt7915/vendor.c   |   49 +++++++++++++++++++++++++++++++++++--------------
+ 8 files changed, 160 insertions(+), 50 deletions(-)
 
 --- a/eeprom.c
 +++ b/eeprom.c
-@@ -424,13 +424,16 @@ mt76_apply_array_limit(struct mt76_dev *
+@@ -423,13 +423,16 @@ mt76_apply_array_limit(struct mt76_dev *
  
  static void
  mt76_apply_multi_array_limit(struct mt76_dev *dev, s8 *pwr, size_t pwr_len,
@@ -46,7 +59,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!data)
  		return;
  
-@@ -456,7 +459,7 @@ mt76_apply_multi_array_limit(struct mt76
+@@ -455,7 +458,7 @@ mt76_apply_multi_array_limit(struct mt76
  		    i > connac2_backoff_ru_idx)
  			type = MT76_SKU_BACKOFF_BF_OFFSET;
  
@@ -55,7 +68,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				       target_power, nss_delta, max_power,
  				       n_chains, type);
  		if (--cur > 0)
-@@ -524,6 +527,12 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -523,6 +526,12 @@ s8 mt76_get_rate_power_limits(struct mt7
  
  	txs_delta = mt76_get_txs_delta(np, hweight16(phy->chainmask));
  
@@ -68,7 +81,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	val = mt76_get_of_array_s8(np, "rates-cck", &len, ARRAY_SIZE(dest->cck));
  	mt76_apply_array_limit(dev, dest->cck, ARRAY_SIZE(dest->cck), val,
  			       target_power, txs_delta, &max_power, n_chains, MT76_SKU_RATE);
-@@ -534,26 +543,26 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -533,26 +542,26 @@ s8 mt76_get_rate_power_limits(struct mt7
  
  	val = mt76_get_of_array_s8(np, "rates-mcs", &len, ARRAY_SIZE(dest->mcs[0]) + 1);
  	mt76_apply_multi_array_limit(dev, dest->mcs[0], ARRAY_SIZE(dest->mcs[0]),
@@ -105,7 +118,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			       target_power, txs_delta, &max_power, n_chains, MT76_SKU_BACKOFF);
  
  	val = mt76_get_of_array_s8(np, "paths-ofdm-bf", &len, ARRAY_SIZE(dest->path.ofdm_bf));
-@@ -561,15 +570,15 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -560,15 +569,15 @@ s8 mt76_get_rate_power_limits(struct mt7
  			       target_power, txs_delta, &max_power, n_chains,
  			       MT76_SKU_BACKOFF_BF_OFFSET);
  
@@ -197,30 +210,63 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return mt76_mcu_send_msg(mdev, MCU_EXT_CMD(LPI_CTRL), &req,
  				 sizeof(req), false);
  }
-@@ -3810,7 +3825,11 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3808,9 +3823,13 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+ 	} __packed req = {
+ 		.band_idx = phy->mt76->band_idx,
  	};
- 	int ret;
+-	int ret;
++	int ret, sku_ret;
  
 -	pr_info("%s: enable = %d\n", __func__, enable);
 +	/* needed to re-apply power tables after SER */
-+	ret = mt7915_mcu_set_txpower_sku(phy);
++	sku_ret = mt7915_mcu_set_txpower_sku(phy);
 +
 +	dev_info(dev->mt76.dev, "%s: sku enable = %d, path enable = %d\n", __func__,
 +		dev->dbg.sku_disable ? 0 : phy->sku_limit_en, dev->dbg.sku_disable ? 0 : phy->sku_path_en);
  
  	req.sku_enable = dev->dbg.sku_disable ? 0 : phy->sku_limit_en;
  	req.format_id = TX_POWER_LIMIT_ENABLE;
+@@ -3824,9 +3843,11 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+ 	req.sku_enable = dev->dbg.sku_disable ? 0 : phy->sku_path_en;
+ 	req.format_id = TX_POWER_LIMIT_PATH_ENABLE;
+ 
+-	return mt76_mcu_send_msg(&dev->mt76,
+-				 MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
+-				 sizeof(req), true);
++	ret = mt76_mcu_send_msg(&dev->mt76,
++				MCU_EXT_CMD(TX_POWER_FEATURE_CTRL), &req,
++				sizeof(req), true);
++
++	return ret ? ret : sku_ret;
+ }
+ 
+ int mt7915_mcu_set_ser(struct mt7915_dev *dev, u8 action, u8 set, u8 band)
 --- a/mt7915/vendor.c
 +++ b/mt7915/vendor.c
-@@ -178,6 +178,7 @@ static int mt7915_vendor_txpower_ctrl(st
- 				  int data_len)
+@@ -172,27 +172,20 @@ mt7915_vendor_bss_color_ctrl_dump(struct
+ 	return len;
+ }
+ 
+-static int mt7915_vendor_txpower_ctrl(struct wiphy *wiphy,
+-				  struct wireless_dev *wdev,
+-				  const void *data,
+-				  int data_len)
++static int __mt7915_vendor_txpower_ctrl(struct mt7915_phy *phy,
++					struct nlattr **tb)
  {
- 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
-+	struct mt7915_dev *dev = mt7915_hw_dev(hw);
- 	struct mt7915_phy *phy = mt7915_hw_phy(hw);
+-	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
+-	struct mt7915_phy *phy = mt7915_hw_phy(hw);
++	struct mt7915_dev *dev = phy->dev;
  	struct mt76_phy *mphy = phy->mt76;
- 	struct nlattr *tb[NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL];
-@@ -193,7 +194,9 @@ static int mt7915_vendor_txpower_ctrl(st
+-	struct nlattr *tb[NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL];
+ 	int err;
+ 	u8 val;
+ 
+-	err = nla_parse(tb, MTK_VENDOR_ATTR_TXPOWER_CTRL_MAX, data, data_len,
+-			txpower_ctrl_policy, NULL);
+-	if (err)
+-		return err;
+-
  	if (mphy->cap.has_6ghz &&
  	    tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD]) {
  		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD]);
@@ -231,7 +277,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		err = mt7915_mcu_set_lpi(phy, val);
  		if (err)
-@@ -219,7 +222,9 @@ static int mt7915_vendor_txpower_ctrl(st
+@@ -202,7 +195,9 @@ static int mt7915_vendor_txpower_ctrl(st
  	if (mphy->cap.has_6ghz &&
  	    tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE]) {
  		val = nla_get_u8(tb[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE]);
@@ -242,18 +288,51 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	err = mt7915_mcu_set_txpower_sku(phy);
+@@ -212,6 +207,32 @@ static int mt7915_vendor_txpower_ctrl(st
+ 	return 0;
+ }
+ 
++static int mt7915_vendor_txpower_ctrl(struct wiphy *wiphy,
++				  struct wireless_dev *wdev,
++				  const void *data,
++				  int data_len)
++{
++	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
++	struct mt7915_dev *dev = mt7915_hw_dev(hw);
++	struct mt7915_phy *phy = mt7915_hw_phy(hw);
++	struct nlattr *tb[NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL];
++	int err;
++
++	err = nla_parse(tb, MTK_VENDOR_ATTR_TXPOWER_CTRL_MAX, data, data_len,
++			txpower_ctrl_policy, NULL);
++	if (err)
++		return err;
++
++	/* the full reset and the regulatory notifier read lpi_psd and
++	 * send LPI under this mutex
++	 */
++	mutex_lock(&dev->mt76.mutex);
++	err = __mt7915_vendor_txpower_ctrl(phy, tb);
++	mutex_unlock(&dev->mt76.mutex);
++
++	return err;
++}
++
+ static const struct wiphy_vendor_command mt7915_vendor_commands[] = {
+ 	{
+ 		.info = {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -966,6 +966,8 @@ struct mt76_phy {
+@@ -965,6 +965,8 @@ struct mt76_phy {
+ 	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
- 	u8 sku_idx;
 +	bool lpi_psd;
 +	bool lpi_bcn_enhance;
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1110,8 +1112,6 @@ struct mt76_dev {
+@@ -1109,8 +1111,6 @@ struct mt76_dev {
  		bool beacon_received;
  	} scan;
  
@@ -262,7 +341,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool mgmt_pwr_enhance;
  
  #ifdef CONFIG_NL80211_TESTMODE
-@@ -1235,6 +1235,11 @@ struct mt76_mib_stats {
+@@ -1234,6 +1234,11 @@ struct mt76_mib_stats {
  	u32 ul_hetrig_4mu_cnt;
  };
  
@@ -282,7 +361,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	phy->sku_limit_en = true;
 -	phy->sku_path_en = true;
 +	phy->sku_path_en = false;
- 	np = mt76_find_power_limits_node(phy->mt76);
+ 	np = mt76_find_power_limits_node(&dev->mt76);
  	for (i = 0; i < sband->n_channels; i++) {
  		struct ieee80211_channel *chan = &sband->channels[i];
 @@ -357,8 +357,8 @@ static void __mt7915_init_txpower(struct
@@ -296,6 +375,67 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		target_power += path_delta;
  		target_power = DIV_ROUND_UP(target_power, 2);
+@@ -387,6 +387,32 @@ void mt7915_init_txpower(struct mt7915_p
+ 		__mt7915_init_txpower(phy, &phy->mt76->sband_6g.sband);
+ }
+ 
++void mt7915_update_lpi(struct mt7915_phy *phy)
++{
++	int ret;
++
++	if (!phy->mt76->lpi_psd)
++		return;
++
++	ret = mt7915_mcu_set_lpi(phy, phy->mt76->lpi_psd);
++	if (ret)
++		dev_warn(phy->dev->mt76.dev, "failed to set LPI: %d\n", ret);
++}
++
++static void mt7915_regd_txpower_update(struct mt7915_phy *phy)
++{
++	struct mt7915_dev *dev = phy->dev;
++	int ret;
++
++	/* psd_limit of the LPI command depends on the country */
++	mt7915_update_lpi(phy);
++
++	ret = mt7915_mcu_set_sku_en(phy);
++	if (ret)
++		dev_warn(dev->mt76.dev, "failed to update the SKU limits: %d\n",
++			 ret);
++}
++
+ static void
+ mt7915_regd_notifier(struct wiphy *wiphy,
+ 		     struct regulatory_request *request)
+@@ -395,6 +421,13 @@ mt7915_regd_notifier(struct wiphy *wiphy
+ 	struct mt7915_dev *dev = mt7915_hw_dev(hw);
+ 	struct mt76_phy *mphy = hw->priv;
+ 	struct mt7915_phy *phy = mphy->priv;
++	bool update_txpower;
++
++	update_txpower = memcmp(phy->regd_alpha2, request->alpha2,
++				sizeof(phy->regd_alpha2)) ||
++			 phy->regd_region != request->dfs_region;
++	memcpy(phy->regd_alpha2, request->alpha2, sizeof(phy->regd_alpha2));
++	phy->regd_region = request->dfs_region;
+ 
+ 	memcpy(dev->mt76.alpha2, request->alpha2, sizeof(dev->mt76.alpha2));
+ 	dev->mt76.region = request->dfs_region;
+@@ -404,6 +437,13 @@ mt7915_regd_notifier(struct wiphy *wiphy
+ 
+ 	mt7915_init_txpower(phy);
+ 
++	if (update_txpower) {
++		mutex_lock(&dev->mt76.mutex);
++		if (test_bit(MT76_STATE_RUNNING, &mphy->state))
++			mt7915_regd_txpower_update(phy);
++		mutex_unlock(&dev->mt76.mutex);
++	}
++
+ 	mphy->dfs_state = MT_DFS_STATE_UNKNOWN;
+ 	mt7915_dfs_init_radar_detector(phy);
+ }
 --- a/mt76_connac_mac.c
 +++ b/mt76_connac_mac.c
 @@ -614,7 +614,7 @@ void mt76_connac2_mac_write_txwi(struct
@@ -307,3 +447,52 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			ieee80211_is_mgmt(hdr->frame_control))
  			val |= MT_TX_BW_IDX_80;
  		/* hardware won't add HTC for mgmt/ctrl frame */
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -254,6 +254,12 @@ struct mt7915_phy {
+ 	bool sku_limit_en:1;
+ 	bool sku_path_en:1;
+ 
++	/* cfg80211 calls the regulatory notifier once per wiphy, but the
++	 * device keeps one country, so each phy records what it applied
++	 */
++	char regd_alpha2[3];
++	enum nl80211_dfs_regions regd_region;
++
+ 	u8 stats_work_count;
+ 	struct list_head stats_list;
+ 	spinlock_t stats_lock;
+@@ -541,6 +547,7 @@ int mt7915_dma_reset(struct mt7915_dev *
+ int mt7915_dma_start(struct mt7915_dev *dev, bool reset, bool wed_reset);
+ int mt7915_txbf_init(struct mt7915_dev *dev);
+ void mt7915_init_txpower(struct mt7915_phy *phy);
++void mt7915_update_lpi(struct mt7915_phy *phy);
+ void mt7915_reset(struct mt7915_dev *dev);
+ int mt7915_run(struct ieee80211_hw *hw);
+ int mt7915_mcu_init(struct mt7915_dev *dev);
+--- a/mt7915/mac.c
++++ b/mt7915/mac.c
+@@ -1360,16 +1360,23 @@ mt7915_mac_restart(struct mt7915_dev *de
+ 	run_ext = ext_phy &&
+ 		  test_and_clear_bit(MT76_STATE_RUNNING, &ext_phy->state);
+ 
++	/* the firmware reload drops the LPI state, and hostapd sends it
++	 * only when it sets up the interface
++	 */
+ 	if (run_main) {
+ 		ret = mt7915_run(dev->mphy.hw);
+ 		if (ret)
+ 			goto out;
++
++		mt7915_update_lpi(&dev->phy);
+ 	}
+ 
+ 	if (run_ext) {
+ 		ret = mt7915_run(ext_phy->hw);
+ 		if (ret)
+ 			goto out;
++
++		mt7915_update_lpi(phy2);
+ 	}
+ 
+ out:

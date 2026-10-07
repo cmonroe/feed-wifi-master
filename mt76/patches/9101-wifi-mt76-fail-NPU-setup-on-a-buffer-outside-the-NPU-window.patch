@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	q->entry = devm_kzalloc(dev->dev, size, GFP_KERNEL);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1974,6 +1974,21 @@ static inline int mt76_npu_get_msg(struc
+@@ -1973,6 +1973,21 @@ static inline int mt76_npu_get_msg(struc
  				       gfp);
  }
  

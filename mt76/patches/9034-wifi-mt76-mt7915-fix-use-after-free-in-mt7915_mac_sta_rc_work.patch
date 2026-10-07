@@ -21,7 +21,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1954,6 +1954,11 @@ void mt7915_mac_sta_rc_work(struct work_
+@@ -1961,6 +1961,11 @@ void mt7915_mac_sta_rc_work(struct work_
  	u32 changed;
  	LIST_HEAD(list);
  
@@ -33,7 +33,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	spin_lock_bh(&dev->mt76.sta_poll_lock);
  	list_splice_init(&dev->sta_rc_list, &list);
  
-@@ -1979,6 +1984,8 @@ void mt7915_mac_sta_rc_work(struct work_
+@@ -1986,6 +1991,8 @@ void mt7915_mac_sta_rc_work(struct work_
  	}
  
  	spin_unlock_bh(&dev->mt76.sta_poll_lock);
