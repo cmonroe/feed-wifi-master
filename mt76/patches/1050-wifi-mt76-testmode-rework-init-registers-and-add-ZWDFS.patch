@@ -54,7 +54,7 @@ Squash of the following MediaTek commits:
  			phy->test.rx_stats.fcs_error[q]++;
 --- a/mt76.h
 +++ b/mt76.h
-@@ -803,6 +803,8 @@ struct mt76_testmode_ops {
+@@ -805,6 +805,8 @@ struct mt76_testmode_ops {
  	int (*dump_stats)(struct mt76_phy *phy, struct sk_buff *msg);
  };
  
@@ -63,7 +63,7 @@ Squash of the following MediaTek commits:
  struct mt76_testmode_data {
  	enum mt76_testmode_state state;
  
-@@ -834,6 +836,8 @@ struct mt76_testmode_data {
+@@ -836,6 +838,8 @@ struct mt76_testmode_data {
  
  	u8 addr[3][ETH_ALEN];
  
@@ -72,7 +72,7 @@ Squash of the following MediaTek commits:
  	u32 tx_pending;
  	u32 tx_queued;
  	u16 tx_queued_limit;
-@@ -841,7 +845,17 @@ struct mt76_testmode_data {
+@@ -843,7 +847,17 @@ struct mt76_testmode_data {
  	struct {
  		u64 packets[__MT_RXQ_MAX];
  		u64 fcs_error[__MT_RXQ_MAX];

@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  #define MT76_N_WCIDS 1088
-@@ -766,25 +768,19 @@ struct mt76_mmio {
+@@ -768,25 +770,19 @@ struct mt76_mmio {
  	int npu_type;
  };
  
@@ -68,7 +68,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 flag;
  	u8 enc_flags;
  	u8 encoding:3, bw:4;
-@@ -799,14 +795,13 @@ struct mt76_rx_status {
+@@ -801,14 +797,13 @@ struct mt76_rx_status {
  			u8 gi:2;
  		} eht;
  	};

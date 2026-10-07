@@ -6026,7 +6026,7 @@ Squash of the following MediaTek commits:
  }
 --- a/mt76.h
 +++ b/mt76.h
-@@ -973,6 +973,9 @@ struct mt76_dev {
+@@ -975,6 +975,9 @@ struct mt76_dev {
  	struct device *dma_dev;
  
  	struct mt76_mcu mcu;

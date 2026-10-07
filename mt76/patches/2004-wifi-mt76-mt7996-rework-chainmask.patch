@@ -43,7 +43,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1097,6 +1097,8 @@ struct mt76_dev {
+@@ -1099,6 +1099,8 @@ struct mt76_dev {
  
  	atomic_t bus_hung;
  

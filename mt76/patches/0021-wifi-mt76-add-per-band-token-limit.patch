@@ -1,30 +1,25 @@
 From: Chad Monroe <chad@monroe.io>
 Date: Tue, 18 Nov 2025 14:04:24 -0800
-Subject: [PATCH] wifi: mt76: mt7996: add per-band token limit
+Subject: [PATCH] wifi: mt76: add per-band token limit
 
-Multi-radio devices use a single token pool for all bands. Add
-per-band token limit to prevent one band from interfering with
-another.
+Multi-radio devices share one TX token pool among all bands, so one
+busy band can take every token and stop TX on the other bands.
 
-Add debugfs files to dump current token state and the TXD/SKB
-contents of a selected token for debugging.
-
-Note: mt76_token_consume() gains a phy_idx argument, which touches
-every driver using it (mt7915/mt7921/mt7925/mt7996).
+Each band now has its own token limit. A frame over the limit is
+dropped, instead of a TX block for all bands. On mt7915 with DBDC,
+each of the two bands gets half of the pool. The token records the
+band of the station apart from the band of the TX queue, because the
+pending count of PSD frames must stay on the queue band: an MLO
+station sends odd TIDs on its second link, and a frame of the global
+wcid can use a queue on another band. On mt7996, debugfs shows the
+token state and the TXD and frame of a selected token.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mac80211.c        |    1
- mt76.h            |    8 +++
- mt76_connac_mac.c |    4 +
- mt7915/mac.c      |    3 -
- mt7921/pci_mac.c  |    4 +
- mt7925/pci_mac.c  |    4 +
- mt7996/debugfs.c  |   89 ++++++++++++++++++++++++++++++++++++++++++++
- mt7996/init.c     |    2
  mac80211.c        |    1 
- mt76.h            |    8 ++++
+ mt76.h            |   10 +++++
  mt76_connac_mac.c |    4 ++
+ mt7915/init.c     |    1 
  mt7915/mac.c      |    3 +
  mt7921/pci_mac.c  |    4 +-
  mt7925/pci_mac.c  |    8 ++++
@@ -32,21 +27,23 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7996/init.c     |    2 +
  mt7996/mac.c      |    8 ++++
  mt7996/mt7996.h   |    3 +
- tx.c              |   22 +++++++++++--
- 11 files changed, 148 insertions(+), 8 deletions(-)
+ tx.c              |   18 +++++++++-
+ 12 files changed, 148 insertions(+), 7 deletions(-)
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -461,6 +461,8 @@ struct mt76_txwi_cache {
+@@ -461,6 +461,10 @@ struct mt76_txwi_cache {
  
  	u8 qid;
  	u8 phy_idx;
++	/* station band for the per-band limit; phy_idx is the queue band */
++	u8 token_phy_idx;
 +	u16 wcid;
 +	unsigned long jiffies;
  };
  
  struct mt76_rx_tid {
-@@ -929,6 +931,8 @@ struct mt76_phy {
+@@ -929,6 +933,8 @@ struct mt76_phy {
  		bool al;
  		u8 pin;
  	} leds;
@@ -55,7 +52,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  struct mt76_dev {
-@@ -985,6 +989,7 @@ struct mt76_dev {
+@@ -985,6 +991,7 @@ struct mt76_dev {
  	u16 token_count;
  	u16 token_start;
  	u16 token_size;
@@ -63,7 +60,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spinlock_t rx_token_lock;
  	struct idr rx_token;
-@@ -2072,7 +2077,8 @@ static inline bool mt76_queue_is_npu_txf
+@@ -2072,7 +2079,8 @@ static inline bool mt76_queue_is_npu_txf
  
  struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake);
@@ -89,7 +86,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spin_lock_bh(&dev->token_lock);
  	idr_for_each_entry(&dev->token, txwi, id) {
-+		struct mt76_phy *phy = mt76_dev_phy(dev, txwi->phy_idx);
++		struct mt76_phy *phy = mt76_dev_phy(dev, txwi->token_phy_idx);
 +
  		mt76_connac2_txwi_free(dev, txwi, NULL, NULL);
  		dev->token_count--;
@@ -100,7 +97,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	idr_destroy(&dev->token);
 --- a/tx.c
 +++ b/tx.c
-@@ -948,22 +948,33 @@ void __mt76_set_tx_blocked(struct mt76_d
+@@ -948,12 +948,18 @@ void __mt76_set_tx_blocked(struct mt76_d
  }
  EXPORT_SYMBOL_GPL(__mt76_set_tx_blocked);
  
@@ -121,23 +118,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	token = idr_alloc(&dev->token, *ptxwi, dev->token_start,
  			  dev->token_start + dev->token_size,
  			  GFP_ATOMIC);
- 	if (token >= dev->token_start) {
-+		struct mt76_phy *mphy = mt76_dev_phy(dev, phy_idx);
-+
- 		dev->token_count++;
- 
- 		if ((*ptxwi)->qid == MT_TXQ_PSD) {
--			struct mt76_phy *mphy = mt76_dev_phy(dev, (*ptxwi)->phy_idx);
+@@ -964,6 +970,9 @@ int mt76_token_consume(struct mt76_dev *
+ 			struct mt76_phy *mphy = mt76_dev_phy(dev, (*ptxwi)->phy_idx);
  			atomic_inc(&mphy->mgmt_tx_pending);
  		}
 +
-+		(*ptxwi)->phy_idx = phy_idx;
-+		mphy->tokens++;
-+
++		(*ptxwi)->token_phy_idx = phy_idx;
++		phy->tokens++;
  	}
  
  #ifdef CONFIG_NET_MEDIATEK_SOC_WED
-@@ -975,6 +986,7 @@ int mt76_token_consume(struct mt76_dev *
+@@ -975,6 +984,7 @@ int mt76_token_consume(struct mt76_dev *
  	if (dev->token_count >= dev->token_size - MT76_TOKEN_FREE_THR)
  		__mt76_set_tx_blocked(dev, true);
  
@@ -145,7 +136,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	spin_unlock_bh(&dev->token_lock);
  
  	return token;
-@@ -1003,12 +1015,16 @@ struct mt76_txwi_cache *
+@@ -1003,12 +1013,16 @@ struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake)
  {
  	struct mt76_txwi_cache *txwi;
@@ -155,7 +146,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	txwi = idr_remove(&dev->token, token);
  	if (txwi) {
-+		phy = mt76_dev_phy(dev, txwi->phy_idx);
++		phy = mt76_dev_phy(dev, txwi->token_phy_idx);
  		dev->token_count--;
 +		if (phy->tokens > 0)
 +			phy->tokens--;
@@ -207,7 +198,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spin_lock_bh(&dev->mt76.token_lock);
  	idr_for_each_entry(&dev->mt76.token, txwi, id) {
-+		struct mt76_phy *phy = mt76_dev_phy(&dev->mt76, txwi->phy_idx);
++		struct mt76_phy *phy = mt76_dev_phy(&dev->mt76, txwi->token_phy_idx);
 +
  		mt7925_txwi_free(dev, txwi, NULL, NULL, NULL);
  		dev->mt76.token_count--;
@@ -264,7 +255,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spin_lock_bh(&dev->mt76.token_lock);
  	idr_for_each_entry(&dev->mt76.token, txwi, id) {
-+		struct mt76_phy *phy = mt76_dev_phy(&dev->mt76, txwi->phy_idx);
++		struct mt76_phy *phy = mt76_dev_phy(&dev->mt76, txwi->token_phy_idx);
 +
  		mt7996_txwi_free(dev, txwi, NULL, NULL, NULL);
  		dev->mt76.token_count--;
@@ -290,7 +281,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	spin_lock_bh(&mdev->token_lock);
 +	idr_for_each_entry(&mdev->token, txwi, msdu_id) {
 +		seq_printf(s, "%4d: wcid %4u band %u pending %u ms\n", msdu_id,
-+			   txwi->wcid, txwi->phy_idx,
++			   txwi->wcid, txwi->token_phy_idx,
 +			   jiffies_to_msecs(jiffies - txwi->jiffies));
 +	}
 +	seq_printf(s, "\n");
@@ -382,3 +373,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
  	debugfs_create_file("vow_atf", 0600, dir, dev, &fops_vow_atf);
  
+--- a/mt7915/init.c
++++ b/mt7915/init.c
+@@ -1352,6 +1352,7 @@ int mt7915_register_device(struct mt7915
+ 
+ 	ieee80211_queue_work(mt76_hw(dev), &dev->init_work);
+ 
++	dev->mt76.token_threshold = dev->mt76.token_size / (1 + !!dev->dbdc_support);
+ 	dev->recovery.hw_init_done = true;
+ 
+ 	ret = mt7915_init_debugfs(&dev->phy);

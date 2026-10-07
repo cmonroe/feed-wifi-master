@@ -68,7 +68,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT76_WED_WDS_MIN	256
  #define MT76_WED_WDS_MAX	272
  
-@@ -990,6 +995,10 @@ struct mt76_dev {
+@@ -992,6 +997,10 @@ struct mt76_dev {
  	u16 token_start;
  	u16 token_size;
  	u16 token_threshold;
@@ -79,7 +79,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spinlock_t rx_token_lock;
  	struct idr rx_token;
-@@ -2079,6 +2088,9 @@ struct mt76_txwi_cache *
+@@ -2081,6 +2090,9 @@ struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake);
  int mt76_token_consume(struct mt76_dev *dev, struct mt76_txwi_cache **ptxwi,
  		       u8 phy_idx);
@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "mt76.h"
  
  static int
-@@ -1081,6 +1082,203 @@ mt76_token_release(struct mt76_dev *dev,
+@@ -1079,6 +1080,203 @@ mt76_token_release(struct mt76_dev *dev,
  }
  EXPORT_SYMBOL_GPL(mt76_token_release);
  
@@ -281,7 +281,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	entry.age_ms = jiffies_to_msecs(scan->now - stamp);
 +	entry.id = id;
 +	entry.wcid = wcid;
-+	entry.band = mt76_token_band(dev, READ_ONCE(t->phy_idx));
++	entry.band = mt76_token_band(dev, READ_ONCE(t->token_phy_idx));
 +	entry.slot = wcid < ARRAY_SIZE(dev->wcid) &&
 +		     rcu_access_pointer(dev->wcid[wcid]);
 +

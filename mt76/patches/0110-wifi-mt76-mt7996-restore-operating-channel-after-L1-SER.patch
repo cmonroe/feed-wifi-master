@@ -53,7 +53,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   enum ieee80211_roc_type type)
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1864,6 +1864,7 @@ void mt76_abort_scan(struct mt76_dev *de
+@@ -1866,6 +1866,7 @@ void mt76_abort_scan(struct mt76_dev *de
  void mt76_roc_complete_work(struct work_struct *work);
  void mt76_roc_complete(struct mt76_phy *phy);
  void mt76_abort_roc(struct mt76_phy *phy);
