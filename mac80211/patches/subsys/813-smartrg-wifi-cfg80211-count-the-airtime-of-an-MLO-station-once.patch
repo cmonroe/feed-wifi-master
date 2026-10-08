@@ -1,0 +1,55 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 08:26:40 -0700
+Subject: [PATCH] wifi: cfg80211: count the airtime of an MLO station once
+
+The MLD aggregation adds the TX and RX airtime of each link to the
+station total. mac80211 already fills the station total from the
+airtime that the driver reports for the whole station. An MLO station
+then reports about twice its real airtime. If the driver reports no
+airtime per link, mac80211 copies the station total into each link,
+and the error grows with the number of links.
+
+Add the airtime of the links only if the station level reports none.
+The station dump, the station query and the removal event then count
+the airtime of an MLO station once. The station value takes
+precedence, because it also holds the airtime of links that the
+station removed. The airtime of each link does not change.
+
+Fixes: 2d226d41db4b ("wifi: cfg80211: add statistics for providing overview for MLO station")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/wireless/nl80211.c |   12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -8304,6 +8304,7 @@ static void cfg80211_sta_set_mld_sinfo(s
+ 	int link_id, init = 0;
+ 	u32 link_inactive_time;
+ 	u32 txrate_inactive_time = U32_MAX, rxrate_inactive_time = U32_MAX;
++	u64 sta_filled = sinfo->filled;
+ 
+ 	sinfo->signal = -99;
+ 
+@@ -8443,14 +8444,17 @@ static void cfg80211_sta_set_mld_sinfo(s
+ 			sinfo->filled |= BIT_ULL(NL80211_STA_INFO_RX_BITRATE);
+ 		}
+ 
+-		if (link_sinfo->filled &
+-		    BIT_ULL(NL80211_STA_INFO_TX_DURATION)) {
++		/* The station level counts the airtime of the whole MLD */
++		if (!(sta_filled & BIT_ULL(NL80211_STA_INFO_TX_DURATION)) &&
++		    (link_sinfo->filled &
++		     BIT_ULL(NL80211_STA_INFO_TX_DURATION))) {
+ 			sinfo->tx_duration += link_sinfo->tx_duration;
+ 			sinfo->filled |=
+ 				BIT_ULL(NL80211_STA_INFO_TX_DURATION);
+ 		}
+-		if (link_sinfo->filled &
+-		    BIT_ULL(NL80211_STA_INFO_RX_DURATION)) {
++		if (!(sta_filled & BIT_ULL(NL80211_STA_INFO_RX_DURATION)) &&
++		    (link_sinfo->filled &
++		     BIT_ULL(NL80211_STA_INFO_RX_DURATION))) {
+ 			sinfo->rx_duration += link_sinfo->rx_duration;
+ 			sinfo->filled |=
+ 				BIT_ULL(NL80211_STA_INFO_RX_DURATION);
