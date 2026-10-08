@@ -1,0 +1,50 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 06:32:50 -0700
+Subject: [PATCH] wifi: mt76: mt7996: use RCU link lookups in net_fill_forward_path
+
+mac80211 calls the forward path op under the RCU read lock, without
+the device mutex. The driver reads the vif link of the station with a
+lookup whose lockdep check requires that mutex. If the default link
+of the station is not link 0, lockdep reports suspicious RCU usage.
+The read also lacks the dependency ordering of an RCU read.
+
+Read the vif link with an RCU accessor, as the station link lookup
+already does. Slot 0 of the vif link table holds the embedded vif
+link, so the result for link 0 does not change. Read the default link
+ID once and check its range, because link removal changes it under
+the mutex. Both lookups then use the same link ID.
+
+Fixes: 377aa17d2aed ("wifi: mt76: mt7996: Add NPU offload support to MT7996 driver")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c |   10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -3344,17 +3344,23 @@ mt7996_net_fill_forward_path(struct ieee
+ 			     struct net_device_path_ctx *ctx,
+ 			     struct net_device_path *path)
+ {
++	struct mt7996_vif *mvif = (struct mt7996_vif *)vif->drv_priv;
+ 	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
+ 	struct mt7996_dev *dev = mt7996_hw_dev(hw);
+ 	struct mtk_wed_device *wed = &dev->mt76.mmio.wed;
++	u8 link_id = READ_ONCE(msta->deflink_id);
+ 	struct mt7996_sta_link *msta_link;
+ 	struct mt7996_vif_link *link;
+ 
+-	link = mt7996_vif_link(dev, vif, msta->deflink_id);
++	if (link_id >= IEEE80211_MLD_MAX_NUM_LINKS)
++		return -EIO;
++
++	link = (struct mt7996_vif_link *)
++	       rcu_dereference(mvif->mt76.link[link_id]);
+ 	if (!link)
+ 		return -EIO;
+ 
+-	msta_link = mt7996_sta_link(msta, msta->deflink_id);
++	msta_link = mt7996_sta_link(msta, link_id);
+ 	if (!msta_link)
+ 		return -EIO;
+ 
