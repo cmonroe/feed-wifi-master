@@ -17,18 +17,21 @@ channel context, and after a hardware restart, because the firmware
 loses its table. Drivers without the op see no change, because the
 call then returns success. With the op, an AP_VLAN uses the map of
 its AP, because hostapd sets the map on the AP only and the hardware
-classifies VLAN frames with the table of that BSS.
+classifies VLAN frames with the table of that BSS. If the driver
+rejects a map, mac80211 keeps the previous map and passes it to the
+driver again, because the driver can fail after it programmed some
+links.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  include/net/mac80211.h    |    6 ++++++
- net/mac80211/cfg.c        |    6 +++++-
+ net/mac80211/cfg.c        |   15 +++++++++++++++
  net/mac80211/chan.c       |    3 +++
  net/mac80211/driver-ops.h |   26 ++++++++++++++++++++++++++
  net/mac80211/trace.h      |    6 ++++++
  net/mac80211/util.c       |    2 ++
  net/mac80211/wme.c        |   10 ++++++++++
- 7 files changed, 58 insertions(+), 1 deletion(-)
+ 7 files changed, 68 insertions(+)
 
 --- a/include/net/mac80211.h
 +++ b/include/net/mac80211.h
@@ -54,19 +57,35 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /**
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -5140,7 +5140,11 @@ static int ieee80211_set_qos_map(struct
+@@ -5124,6 +5124,7 @@ static int ieee80211_set_qos_map(struct
+ {
+ 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
+ 	struct mac80211_qos_map *new_qos_map, *old_qos_map;
++	int ret = 0;
+ 
+ 	if (qos_map) {
+ 		new_qos_map = kzalloc_obj(*new_qos_map);
+@@ -5137,6 +5138,20 @@ static int ieee80211_set_qos_map(struct
+ 
+ 	old_qos_map = sdata_dereference(sdata->qos_map, sdata);
+ 	rcu_assign_pointer(sdata->qos_map, new_qos_map);
++
++	/* otherwise the map reaches the driver on chanctx assignment */
++	if (sdata->flags & IEEE80211_SDATA_IN_DRIVER)
++		ret = drv_set_qos_map(sdata->local, sdata);
++
++	if (ret) {
++		/* the driver can fail after it programmed some links */
++		rcu_assign_pointer(sdata->qos_map, old_qos_map);
++		drv_set_qos_map(sdata->local, sdata);
++		if (new_qos_map)
++			kfree_rcu(new_qos_map, rcu_head);
++		return ret;
++	}
++
  	if (old_qos_map)
  		kfree_rcu(old_qos_map, rcu_head);
  
--	return 0;
-+	/* otherwise the map reaches the driver on chanctx assignment */
-+	if (!(sdata->flags & IEEE80211_SDATA_IN_DRIVER))
-+		return 0;
-+
-+	return drv_set_qos_map(sdata->local, sdata);
- }
- 
- static int ieee80211_set_ap_chanwidth(struct wiphy *wiphy,
 --- a/net/mac80211/chan.c
 +++ b/net/mac80211/chan.c
 @@ -1277,6 +1277,9 @@ static int ieee80211_assign_link_chanctx
