@@ -26,7 +26,7 @@ Not fixed upstream.
 
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -2248,50 +2248,56 @@
+@@ -2248,50 +2248,56 @@ static void hostapd_cli_cleanup(void)
  }
  
  

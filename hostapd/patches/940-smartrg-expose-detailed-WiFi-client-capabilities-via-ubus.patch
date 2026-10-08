@@ -24,7 +24,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6193,6 +6193,14 @@ skip_wpa_ies:
+@@ -6190,6 +6190,14 @@ skip_wpa_ies:
  		hostapd_wfa_capab(hapd, sta, elems->wfa_capab,
  				  elems->wfa_capab + elems->wfa_capab_len);
  
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		struct wpa_state_machine *sm = sta->wpa_sm;
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -494,6 +494,8 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -506,6 +506,8 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->t_c_url);
  	wpabuf_free(sta->hs20_deauth_req);
  	os_free(sta->hs20_session_info_url);
@@ -52,8 +52,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	sae_clear_data(sta->sae);
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -355,6 +355,9 @@ struct sta_info {
- 	u8 auth_link_addr[ETH_ALEN];
+@@ -356,6 +356,9 @@ struct sta_info {
+ 	bool link_removal_tx;
  #endif /* CONFIG_IEEE80211BE */
  
 +	struct wpabuf *vendors_ie;
@@ -118,7 +118,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "common/hw_features_common.h"
  #include "hostapd.h"
  #include "neighbor_db.h"
-@@ -25,6 +26,19 @@
+@@ -26,6 +27,19 @@
  #include "airtime_policy.h"
  #include "hw_features.h"
  #include "base64.h"
@@ -138,7 +138,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static struct ubus_context *ctx;
  static struct blob_buf b;
-@@ -169,77 +183,701 @@ hostapd_bss_reload(struct ubus_context *
+@@ -231,71 +245,695 @@ hostapd_bss_reload(struct ubus_context *
  
  
  static void
@@ -865,16 +865,18 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	return *(char *)a - *(char *)b;
  }
  
- static int
--hostapd_bss_get_clients(struct ubus_context *ctx, struct ubus_object *obj,
-+hostapd_bss_get_client_info(struct ubus_context *ctx, struct ubus_object *obj,
- 			struct ubus_request_data *req, const char *method,
--			struct blob_attr *msg)
-+			struct blob_attr *msg, bool caps_only, bool filter_false)
+ static void
+@@ -359,7 +997,8 @@ hostapd_ubus_sta_mld_add(struct hostapd_
+ 
+ /* A non-AP MLD is listed once, with the station of its association link. */
+ static void
+-hostapd_bss_clients_add(struct hostapd_data *hapd)
++hostapd_bss_clients_add(struct hostapd_data *hapd, bool caps_only,
++			bool filter_false)
  {
- 	struct hostapd_data *hapd = container_of(obj, struct hostapd_data, ubus.obj);
  	struct hostap_sta_driver_data sta_driver_data;
-@@ -255,42 +881,78 @@ hostapd_bss_get_clients(struct ubus_cont
+ 	struct sta_info *sta;
+@@ -374,42 +1013,76 @@ hostapd_bss_clients_add(struct hostapd_d
  		{ "authorized", WLAN_STA_AUTHORIZED },
  		{ "preauth", WLAN_STA_PREAUTH },
  		{ "wds", WLAN_STA_WDS },
@@ -888,18 +890,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		{ "mfp", WLAN_STA_MFP },
  	};
  
- 	blob_buf_init(&b, 0);
--	blobmsg_add_u32(&b, "freq", hapd->iface->freq);
-+	if (!caps_only)
-+		blobmsg_add_u32(&b, "freq", hapd->iface->freq);
-+
- 	list = blobmsg_open_table(&b, "clients");
  	for (sta = hapd->sta_list; sta; sta = sta->next) {
 +		struct ieee802_11_elems elems;
 +		struct ieee802_11_elems *pelems = NULL;
 +		const char *highest_standard;
  		void *r;
  		int i;
+ 
+ 		if (hostapd_sta_is_link_sta(hapd, sta))
+ 			continue;
  
 +		if (sta->assoc_ies &&
 +		    ieee802_11_parse_elems(wpabuf_head(sta->assoc_ies),
@@ -957,7 +956,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  		blobmsg_close_array(&b, r);
  
-@@ -301,8 +963,8 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -420,8 +1093,8 @@ hostapd_bss_clients_add(struct hostapd_d
  			blobmsg_add_string_buffer(&b);
  #endif
  
@@ -968,7 +967,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			r = blobmsg_open_table(&b, "bytes");
  			blobmsg_add_u64(&b, "rx", sta_driver_data.rx_bytes);
  			blobmsg_add_u64(&b, "tx", sta_driver_data.tx_bytes);
-@@ -316,14 +978,14 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -435,14 +1108,14 @@ hostapd_bss_clients_add(struct hostapd_d
  			blobmsg_add_u32(&b, "tx", sta_driver_data.tx_packets);
  			blobmsg_close_table(&b, r);
  			r = blobmsg_open_table(&b, "rate");
@@ -982,10 +981,44 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -		hostapd_parse_capab_blobmsg(sta);
 +		sta_capab_add(sta, hapd->iface->freq, filter_false, pelems);
 +		sta_vendors_add(sta);
+ 		hostapd_ubus_sta_mld_add(hapd, sta);
  
  		blobmsg_close_table(&b, c);
- 	}
-@@ -334,6 +996,22 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -450,25 +1123,28 @@ hostapd_bss_clients_add(struct hostapd_d
+ }
+ 
+ static int
+-hostapd_bss_get_clients(struct ubus_context *ctx, struct ubus_object *obj,
++hostapd_bss_get_client_info(struct ubus_context *ctx, struct ubus_object *obj,
+ 			struct ubus_request_data *req, const char *method,
+-			struct blob_attr *msg)
++			struct blob_attr *msg, bool caps_only, bool filter_false)
+ {
+ 	struct hostapd_data *hapd = get_hapd_from_object(obj);
+ 	void *list;
+ 
+ 	blob_buf_init(&b, 0);
+-	blobmsg_add_u32(&b, "freq", hapd->iface->freq);
++	if (!caps_only)
++		blobmsg_add_u32(&b, "freq", hapd->iface->freq);
++
+ 	list = blobmsg_open_table(&b, "clients");
+ #ifdef CONFIG_IEEE80211BE
+ 	if (hostapd_ubus_obj_state(obj)->mld) {
+ 		struct hostapd_data *link_bss;
+ 
+ 		for_each_mld_link(link_bss, hapd)
+-			hostapd_bss_clients_add(link_bss);
++			hostapd_bss_clients_add(link_bss, caps_only,
++						filter_false);
+ 	} else
+ #endif /* CONFIG_IEEE80211BE */
+-		hostapd_bss_clients_add(hapd);
++		hostapd_bss_clients_add(hapd, caps_only, filter_false);
+ 	blobmsg_close_array(&b, list);
+ 	ubus_send_reply(ctx, req, b.head);
+ 
+@@ -476,6 +1152,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -1008,7 +1041,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -1684,6 +2362,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -2185,6 +2877,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),

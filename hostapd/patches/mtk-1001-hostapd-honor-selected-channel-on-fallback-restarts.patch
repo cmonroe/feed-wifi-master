@@ -128,7 +128,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_disable_iface(iface);
  		hostapd_enable_iface(iface);
  
-@@ -1628,14 +1660,11 @@ static int hostapd_dfs_start_channel_swi
+@@ -1706,14 +1738,11 @@ static int hostapd_dfs_start_channel_swi
  		}
  
  		if (channel_type == DFS_ANY_CHANNEL) {
@@ -150,7 +150,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			hostapd_enable_iface(iface);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2325,6 +2325,12 @@ static void hostapd_set_6ghz_sec_chan(st
+@@ -2642,6 +2642,12 @@ static void hostapd_set_6ghz_sec_chan(st
  
  static int setup_interface2(struct hostapd_iface *iface)
  {
@@ -163,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	iface->wait_channel_update = 0;
  	iface->is_no_ir = false;
  
-@@ -2334,11 +2340,10 @@ static int setup_interface2(struct hosta
+@@ -2651,11 +2657,10 @@ static int setup_interface2(struct hosta
  	} else {
  		int ret;
  
@@ -176,7 +176,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		ret = configured_fixed_chan_to_freq(iface);
  		if (ret < 0)
-@@ -5071,6 +5076,7 @@ hostapd_switch_channel_fallback(struct h
+@@ -5450,6 +5455,7 @@ hostapd_switch_channel_fallback(struct h
  	 * argument may actually point to one of these.
  	 * These params will be cleared during interface disable below.
  	 */

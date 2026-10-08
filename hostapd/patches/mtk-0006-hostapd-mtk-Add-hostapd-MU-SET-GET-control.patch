@@ -21,7 +21,7 @@ Subject: [PATCH 013/206] mtk: hostapd: Add hostapd MU SET/GET control
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3998,6 +3998,15 @@ static int hostapd_config_fill(struct ho
+@@ -4000,6 +4000,15 @@ static int hostapd_config_fill(struct ho
  		bss->mbssid_index = atoi(pos);
  	} else if (os_strcmp(buf, "mbssid_max") == 0) {
  		conf->mbssid_max = atoi(pos);
@@ -165,7 +165,7 @@ Subject: [PATCH 013/206] mtk: hostapd: Add hostapd MU SET/GET control
  	/* The third octet of the country string uses an ASCII space character
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1256,6 +1256,7 @@ struct hostapd_config {
+@@ -1257,6 +1257,7 @@ struct hostapd_config {
  	int reg_def_cli_eirp;
  
  	bool require_he;
@@ -175,7 +175,7 @@ Subject: [PATCH 013/206] mtk: hostapd: Add hostapd MU SET/GET control
  	/* VHT enable/disable config from CHAN_SWITCH */
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1457,3 +1457,17 @@ int hostapd_drv_get_edcca(struct hostapd
+@@ -1466,3 +1466,17 @@ int hostapd_drv_get_edcca(struct hostapd
  		return 0;
  	return hapd->driver->get_edcca(hapd->drv_priv, mode, value);
  }
@@ -195,7 +195,7 @@ Subject: [PATCH 013/206] mtk: hostapd: Add hostapd MU SET/GET control
 +}
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -159,6 +159,8 @@ int hostapd_drv_configure_edcca_enable(s
+@@ -160,6 +160,8 @@ int hostapd_drv_configure_edcca_enable(s
  int hostapd_drv_configure_edcca_threshold(struct hostapd_data *hapd,
  					  const int *threshold);
  int hostapd_drv_get_edcca(struct hostapd_data *hapd, const u8 mode, u8 *value);
@@ -206,7 +206,7 @@ Subject: [PATCH 013/206] mtk: hostapd: Add hostapd MU SET/GET control
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2886,6 +2886,8 @@ dfs_offload:
+@@ -3203,6 +3203,8 @@ dfs_offload:
  	if (hostapd_drv_configure_edcca_threshold(hapd,
  						  hapd->iconf->edcca_threshold) < 0)
  		goto fail;
@@ -277,7 +277,7 @@ Subject: [PATCH 013/206] mtk: hostapd: Add hostapd MU SET/GET control
  	 * nan_start - Start NAN operation
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -15490,6 +15490,108 @@ fail:
+@@ -15520,6 +15520,108 @@ fail:
  }
  
  
@@ -386,7 +386,7 @@ Subject: [PATCH 013/206] mtk: hostapd: Add hostapd MU SET/GET control
  #ifdef CONFIG_DPP
  static int nl80211_dpp_listen(void *priv, bool enable)
  {
-@@ -17145,6 +17247,8 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -17175,6 +17277,8 @@ const struct wpa_driver_ops wpa_driver_n
  	.update_connect_params = nl80211_update_connection_params,
  	.send_external_auth_status = nl80211_send_external_auth_status,
  	.set_4addr_mode = nl80211_set_4addr_mode,

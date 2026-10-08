@@ -21,7 +21,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@adtran.com>
 
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -6855,7 +6855,7 @@ static int nl80211_create_iface_once(str
+@@ -6871,7 +6871,7 @@ static int nl80211_create_iface_once(str
  				     enum nl80211_iftype iftype,
  				     const u8 *addr, int wds, u32 radio_mask,
  				     int (*handler)(struct nl_msg *, void *),
@@ -30,7 +30,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@adtran.com>
  {
  	struct nl_msg *msg;
  	int ifidx;
-@@ -6931,7 +6931,12 @@ static int nl80211_create_iface_once(str
+@@ -6947,7 +6947,12 @@ static int nl80211_create_iface_once(str
  	if (ret) {
  	fail:
  		nlmsg_free(msg);
@@ -44,7 +44,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@adtran.com>
  			   ifname, ret, strerror(-ret));
  		return ret;
  	}
-@@ -6998,7 +7003,7 @@ int nl80211_create_iface(struct wpa_driv
+@@ -7014,7 +7019,7 @@ int nl80211_create_iface(struct wpa_driv
  		return nl80211_use_existing_iface(drv, ifname, iftype, addr);
  
  	ret = nl80211_create_iface_once(drv, ifname, iftype, addr, wds, radio_mask,
@@ -53,7 +53,7 @@ Signed-off-by: Koral Ilgun <koral.ilgun@adtran.com>
  
  	/* if error occurred and interface exists already */
  	if (ret < 0 && if_nametoindex(ifname)) {
-@@ -7013,7 +7018,8 @@ int nl80211_create_iface(struct wpa_driv
+@@ -7029,7 +7034,8 @@ int nl80211_create_iface(struct wpa_driv
  
  		/* Try to create the interface again */
  		ret = nl80211_create_iface_once(drv, ifname, iftype, addr,

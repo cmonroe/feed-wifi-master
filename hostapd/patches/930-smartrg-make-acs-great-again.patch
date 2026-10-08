@@ -1,6 +1,6 @@
 --- a/src/ap/acs.c
 +++ b/src/ap/acs.c
-@@ -364,7 +364,8 @@ void acs_cleanup(struct hostapd_iface *i
+@@ -377,7 +377,8 @@ void acs_cleanup(struct hostapd_iface *i
  
  static void acs_fail(struct hostapd_iface *iface)
  {
@@ -10,7 +10,7 @@
  	acs_cleanup(iface);
  	hostapd_disable_iface(iface);
  }
-@@ -391,6 +392,9 @@ acs_survey_interference_factor(struct fr
+@@ -404,6 +405,9 @@ acs_survey_interference_factor(struct fr
  		total -= survey->channel_time_tx;
  	}
  
@@ -20,7 +20,7 @@
  	/* TODO: figure out the best multiplier for noise floor base */
  	factor = pow(10, survey->nf / 5.0L) +
  		(total ? (busy / total) : 0) *
-@@ -868,8 +872,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -881,8 +885,8 @@ acs_find_ideal_chan_mode(struct hostapd_
  		    iface->conf->ieee80211n &&
  		    !acs_usable_bw_chan(chan, ACS_BW40)) {
  			wpa_printf(MSG_WARNING,
@@ -31,7 +31,7 @@
  			continue;
  		}
  
-@@ -878,15 +882,15 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -891,15 +895,15 @@ acs_find_ideal_chan_mode(struct hostapd_
  		     iface->conf->ieee80211be)) {
  			if (bw == 80 && !acs_usable_bw_chan(chan, ACS_BW80)) {
  				wpa_printf(MSG_WARNING,
@@ -51,7 +51,7 @@
  				continue;
  			}
  		}
-@@ -897,8 +901,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -910,8 +914,8 @@ acs_find_ideal_chan_mode(struct hostapd_
  			    !acs_usable_bw320_chan(iface, chan,
  						   &bw320_offset)) {
  				wpa_printf(MSG_WARNING,
@@ -62,7 +62,7 @@
  				continue;
  			}
  		}
-@@ -1047,12 +1051,12 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -1060,12 +1064,12 @@ acs_find_ideal_chan_mode(struct hostapd_
  		if (bias) {
  			factor *= bias->bias;
  			wpa_printf(MSG_WARNING,
@@ -79,7 +79,7 @@
  		}
  
  		if (acs_usable_chan(chan) &&
-@@ -1130,7 +1134,9 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1143,7 +1147,9 @@ acs_find_ideal_chan(struct hostapd_iface
  		}
  	}
  
@@ -90,7 +90,7 @@
  	bw = num_chan_to_bw(n_chans);
  
  bw_selected:
-@@ -1257,15 +1263,18 @@ static void acs_adjust_center_freq(struc
+@@ -1270,15 +1276,18 @@ static void acs_adjust_center_freq(struc
  
  static int acs_study_survey_based(struct hostapd_iface *iface)
  {
@@ -112,7 +112,7 @@
  		return -1;
  	}
  
-@@ -1279,11 +1288,13 @@ static int acs_study_bss_based(struct ho
+@@ -1292,11 +1301,13 @@ static int acs_study_bss_based(struct ho
  	struct wpa_scan_results *scan_res;
  	int j;
  
@@ -128,7 +128,7 @@
  		hostapd_setup_interface_complete(iface, 1);
  		return -1;
  	}
-@@ -1318,7 +1329,8 @@ static int acs_study_options(struct host
+@@ -1331,7 +1342,8 @@ static int acs_study_options(struct host
  	if (acs_study_survey_based(iface) == 0)
  		return 0;
  
@@ -138,7 +138,7 @@
  	if (acs_study_bss_based(iface) == 0)
  		return 0;
  
-@@ -1333,13 +1345,15 @@ static void acs_study(struct hostapd_ifa
+@@ -1346,13 +1358,15 @@ static void acs_study(struct hostapd_ifa
  
  	err = acs_study_options(iface);
  	if (err < 0) {
@@ -156,7 +156,7 @@
  		err = -1;
  		goto fail;
  	}
-@@ -1378,7 +1392,8 @@ fail:
+@@ -1391,7 +1405,8 @@ fail:
  
  	/* This can possibly happen if channel parameters (secondary
  	 * channel, center frequencies) are misconfigured */
@@ -166,33 +166,38 @@
  	acs_fail(iface);
  }
  
-@@ -1390,19 +1405,21 @@ static void acs_scan_complete(struct hos
- 	iface->scan_cb = NULL;
- 	iface->acs_num_retries = 0;
+@@ -1450,7 +1465,8 @@ static void acs_scan_next(void *eloop_da
+ 	struct hostapd_iface *iface = eloop_data;
+ 
+ 	if (acs_request_scan(iface)) {
+-		wpa_printf(MSG_ERROR, "ACS: Failed to request scan");
++		wpa_printf(MSG_ERROR, "ACS(%s): Failed to request scan",
++			   iface->conf->bss[0]->iface);
+ 		acs_scan_failed(iface);
+ 	}
+ }
+@@ -1476,8 +1492,8 @@ static void acs_scan_complete(struct hos
+ 	ifaces[0] = iface;
+ 	n = 1 + acs_mld_partners(iface, &ifaces[1], true);
  
 -	wpa_printf(MSG_WARNING, "ACS: Using survey based algorithm (acs_num_scans=%d)",
 -		   iface->conf->acs_num_scans);
 +	wpa_printf(MSG_WARNING, "ACS(%s): Using survey based algorithm (acs_num_scans=%d)",
 +		   iface->conf->bss[0]->iface, iface->conf->acs_num_scans);
  
- 	err = hostapd_drv_get_survey(iface->bss[0], 0);
+ 	/* Each link keeps its scan_cb until the survey event, which goes to the
+ 	 * link that requested the scan. */
+@@ -1490,7 +1506,8 @@ static void acs_scan_complete(struct hos
+ 	}
+ 
  	if (err) {
 -		wpa_printf(MSG_ERROR, "ACS: Failed to get survey data");
 +		wpa_printf(MSG_ERROR, "ACS(%s): Failed to get survey data",
 +			   iface->conf->bss[0]->iface);
- 		goto fail;
- 	}
- 
- 	if (++iface->acs_num_completed_scans < iface->conf->acs_num_scans) {
- 		err = acs_request_scan(iface);
- 		if (err && err != -EBUSY) {
--			wpa_printf(MSG_ERROR, "ACS: Failed to request scan");
-+			wpa_printf(MSG_ERROR, "ACS(%s): Failed to request scan",
-+				   iface->conf->bss[0]->iface);
- 			goto fail;
- 		}
- 
-@@ -1482,18 +1499,21 @@ static int acs_request_scan(struct hosta
+ 		for (i = 0; i < n; i++)
+ 			acs_scan_failed(ifaces[i]);
+ 		return;
+@@ -1613,18 +1630,21 @@ static int acs_request_scan(struct hosta
  	*freq = 0;
  
  	if (params.freqs == freq) {
@@ -217,7 +222,7 @@
  			   iface->acs_num_retries,
  			   iface->acs_num_completed_scans + 1,
  			   iface->conf->acs_num_scans);
-@@ -1505,14 +1525,16 @@ static int acs_request_scan(struct hosta
+@@ -1636,15 +1656,17 @@ static int acs_request_scan(struct hosta
  		iface->acs_num_retries++;
  		if (iface->acs_num_retries >= ACS_SCAN_RETRY_MAX_COUNT) {
  			wpa_printf(MSG_ERROR,
@@ -228,7 +233,8 @@
  			return -1;
  		}
  
- 		wpa_printf(MSG_INFO,
+ 		wpa_printf(hostapd_mld_partner_scanning(iface->bss[0]) ?
+ 			   MSG_DEBUG : MSG_INFO,
 -			   "Failed to request acs scan ret=%d (%s) - try to scan after %d seconds",
 -			   ret, strerror(-ret), ACS_SCAN_RETRY_INTERVAL);
 +			   "ACS(%s): Failed to request scan ret=%d (%s) - try again after %d seconds",
@@ -237,7 +243,7 @@
  		eloop_cancel_timeout(acs_scan_retry, iface, NULL);
  		eloop_register_timeout(ACS_SCAN_RETRY_INTERVAL, 0,
  				       acs_scan_retry, iface, NULL);
-@@ -1520,7 +1542,8 @@ static int acs_request_scan(struct hosta
+@@ -1652,7 +1674,8 @@ static int acs_request_scan(struct hosta
  	}
  
  	if (ret < 0) {
@@ -247,7 +253,7 @@
  		acs_cleanup(iface);
  		return -1;
  	}
-@@ -1537,7 +1560,8 @@ static void acs_scan_retry(void *eloop_d
+@@ -1680,7 +1703,8 @@ static void acs_scan_retry(void *eloop_d
  
  	if (acs_request_scan(iface)) {
  		wpa_printf(MSG_ERROR,
@@ -257,7 +263,7 @@
  		acs_fail(iface);
  	}
  }
-@@ -1547,10 +1571,12 @@ enum hostapd_chan_status acs_init(struct
+@@ -1690,10 +1714,12 @@ enum hostapd_chan_status acs_init(struct
  {
  	int err;
  

@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  
  static int hostapd_flush_old_stations(struct hostapd_data *hapd, u16 reason);
-@@ -4399,10 +4400,13 @@ const char * hostapd_state_text(enum hos
+@@ -4712,10 +4713,13 @@ const char * hostapd_state_text(enum hos
  
  void hostapd_set_state(struct hostapd_iface *iface, enum hostapd_iface_state s)
  {
@@ -45,7 +45,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -1341,3 +1341,16 @@ void hostapd_ucode_apup_newpeer(struct h
+@@ -1546,3 +1546,16 @@ void hostapd_ucode_apup_newpeer(struct h
  	ucv_put(val);
  }
  #endif // def CONFIG_APUP
@@ -73,8 +73,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  struct hostapd_ucode_bss {
  #ifdef UCODE_SUPPORT
-@@ -45,6 +47,10 @@ struct wpabuf *hostapd_ucode_dpp_gas_req
- 					 const u8 *query, size_t query_len);
+@@ -46,6 +48,10 @@ struct wpabuf *hostapd_ucode_dpp_gas_req
+ 					 unsigned int freq);
  #endif /* CONFIG_DPP */
  
 +void hostapd_ucode_iface_state_cb(struct hostapd_iface *iface,
@@ -84,7 +84,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #else
  
  static inline int hostapd_ucode_init(struct hapd_interfaces *ifaces)
-@@ -77,6 +83,11 @@ static inline void hostapd_ucode_wps_m7_
+@@ -78,6 +84,11 @@ static inline void hostapd_ucode_wps_m7_
  					    int *skip_cred)
  {
  }
@@ -117,8 +117,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function iface_remove(cfg)
  {
  	if (!cfg || !cfg.bss || !cfg.bss[0] || !cfg.bss[0].ifname)
-@@ -1090,7 +1102,7 @@ function iface_config_remove(name, old_c
- 	return iface_remove(old_config);
+@@ -1262,7 +1274,7 @@ function mld_link_bss_remove(phy, name)
+ 	iface_macaddr_prune(phy, config);
  }
  
 -function iface_set_config(name, config)
@@ -126,7 +126,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	let old_config = hostapd.data.config[name];
  
-@@ -1125,8 +1137,20 @@ function iface_set_config(name, config)
+@@ -1298,8 +1310,20 @@ function iface_set_config(name, config)
  	}
  
  	hostapd.printf(`Restart interface for phy ${name}`);
@@ -148,7 +148,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return ret;
  }
  
-@@ -1534,7 +1558,9 @@ let main_obj = {
+@@ -1828,7 +1852,9 @@ let main_obj = {
  
  			if (!req.args.up) {
  				delete hostapd.data.apsta_freq[phy];
@@ -158,7 +158,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				return 0;
  			}
  
-@@ -1586,7 +1612,15 @@ let main_obj = {
+@@ -1880,7 +1906,15 @@ let main_obj = {
  			if (!freq_info)
  				return 0;
  
@@ -175,7 +175,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				return fail();
  
  			return 0;
-@@ -1662,6 +1696,7 @@ let main_obj = {
+@@ -1945,6 +1979,7 @@ let main_obj = {
  			radio: 0,
  			config: "",
  			prev_config: "",
@@ -183,7 +183,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
  		call: function(req) {
  			let phy = req.args.phy;
-@@ -1669,18 +1704,23 @@ let main_obj = {
+@@ -1952,18 +1987,23 @@ let main_obj = {
  			let name = phy_name(phy, radio);
  			let file = req.args.config;
  			let prev_file = req.args.prev_config;
@@ -208,7 +208,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			hostapd.printf(`Set new config for phy ${name}: ${file}`);
  			iface_set_config(name, config);
-@@ -1899,4 +1939,26 @@ return {
+@@ -2237,4 +2277,26 @@ return {
  			return null;
  		return response;
  	},

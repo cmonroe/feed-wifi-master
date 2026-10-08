@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1461,7 +1461,7 @@ static bool parse_ml_probe_req(const str
+@@ -1474,7 +1474,7 @@ static bool parse_ml_probe_req(const str
  
  void handle_probe_req(struct hostapd_data *hapd,
  		      const struct ieee80211_mgmt *mgmt, size_t len,
@@ -29,7 +29,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct ieee802_11_elems elems;
  	const u8 *ie;
-@@ -1475,6 +1475,7 @@ void handle_probe_req(struct hostapd_dat
+@@ -1488,6 +1488,7 @@ void handle_probe_req(struct hostapd_dat
  	struct radius_sta rad_info;
  	struct probe_resp_params params;
  	char *hex = NULL;
@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_IEEE80211BE
  	int mld_id;
  	u16 links;
-@@ -1484,6 +1485,7 @@ void handle_probe_req(struct hostapd_dat
+@@ -1497,6 +1498,7 @@ void handle_probe_req(struct hostapd_dat
  		.mgmt_frame = mgmt,
  		.ssi_signal = ssi_signal,
  		.elems = &elems,
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				ret = 1;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8323,7 +8323,7 @@ int ieee802_11_mgmt(struct hostapd_data
+@@ -8430,7 +8430,7 @@ int ieee802_11_mgmt(struct hostapd_data
  	}
  
  	if (stype == WLAN_FC_STYPE_PROBE_REQ) {
@@ -87,7 +87,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1951,7 +1951,7 @@ int hostapd_ubus_handle_event(struct hos
+@@ -2544,7 +2544,7 @@ int hostapd_ubus_handle_event(struct hos
  		blobmsg_add_macaddr(&b, "target", req->mgmt_frame->da);
  	if (req->ssi_signal)
  		blobmsg_add_u32(&b, "signal", req->ssi_signal);
@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if(req->elems->ht_capabilities)
 --- a/src/ap/ubus.h
 +++ b/src/ap/ubus.h
-@@ -21,6 +21,7 @@ struct hostapd_ubus_request {
+@@ -33,6 +33,7 @@ struct hostapd_ubus_request {
  	const struct ieee802_11_elems *elems;
  	int ssi_signal; /* dBm */
  	const u8 *addr;

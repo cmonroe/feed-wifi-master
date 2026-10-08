@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1532,7 +1532,6 @@ int hostapd_setup_bss(struct hostapd_dat
+@@ -1840,7 +1840,6 @@ int hostapd_setup_bss(struct hostapd_dat
  
  	if (!first) {
  		u8 *addr = hapd->own_addr;
@@ -31,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  #ifdef CONFIG_IEEE80211BE
  		if (hapd->conf->mld_ap)
-@@ -1572,7 +1571,6 @@ int hostapd_setup_bss(struct hostapd_dat
+@@ -1880,7 +1879,6 @@ int hostapd_setup_bss(struct hostapd_dat
  					   hapd->mld_link_id, hapd->conf->iface);
  				goto setup_mld;
  			}
@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -1581,7 +1579,7 @@ int hostapd_setup_bss(struct hostapd_dat
+@@ -1889,7 +1887,7 @@ int hostapd_setup_bss(struct hostapd_dat
  				   conf->iface, addr, hapd,
  				   &hapd->drv_priv, force_ifname, if_addr,
  				   conf->bridge[0] ? conf->bridge : NULL,

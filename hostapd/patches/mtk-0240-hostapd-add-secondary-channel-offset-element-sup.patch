@@ -86,7 +86,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* ERP Information element */
  	pos = hostapd_eid_erp_info(hapd, pos);
  
-@@ -2392,6 +2428,9 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2405,6 +2441,9 @@ int ieee802_11_build_ap_params(struct ho
  		hapd->cs_c_off_beacon = csa_pos - tail - 1;
  	tailpos = csa_pos;
  
