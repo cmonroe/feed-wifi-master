@@ -3,21 +3,47 @@ From: Yi-Chia Hsieh <yi-chia.hsieh@mediatek.com>
 Date: Mon, 13 Mar 2023 05:23:37 +0800
 Subject: [PATCH 017/107] mtk: mac80211: track obss color bitmap
 
-Track OBSS BSS color when receive their beacon.
+mac80211 reported a BSS color collision to user space with only the
+colliding color, so hostapd could pick the color of another neighbor
+BSS. On a wiphy with several radios, the first AP interface checked
+the beacons of all bands, so a collision on another band went unseen.
 
-Adding 2 tracepoint for debug, usage:
-echo 1 > /sys/kernel/debug/tracing/events/mac80211/bss_color_bitmap/enable
-echo 1 > /sys/kernel/debug/tracing/events/mac80211/bss_color_collision/enable
+The software check records the color of each HE beacon in a bitmap of
+the AP link and reports the full bitmap. The bitmap is in the link
+configuration, because the mt76 vendor command for free colors reads
+it. The bitmap has no age, so an AP start and a completed color change
+clear it; stale colors would make hostapd turn BSS coloring off. For
+the same reason, a color in the bitmap does not block a color change.
+The first AP link on the beacon band runs the check with its own flag,
+because the report to cfg80211 must stay once per frame. The reset
+after a color change and the band check come from mtk-openwrt-feeds
+7a38cb57511c,
+0090-mtk-mac80211-refactor-BSS-color-change-collision-det.patch
+("mtk: mac80211: refactor BSS color change & collision detection").
 
+Co-developed-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
+Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- include/net/mac80211.h |  1 +
- net/mac80211/rx.c      |  6 +++++-
- net/mac80211/trace.h   | 20 ++++++++++++++++++++
- 3 files changed, 26 insertions(+), 1 deletion(-)
+ include/net/mac80211.h     |  3 +++
+ net/mac80211/cfg.c         |  3 +++
+ net/mac80211/ieee80211_i.h |  5 ++++-
+ net/mac80211/rx.c          | 21 +++++++++++++++++----
+ 4 files changed, 27 insertions(+), 5 deletions(-)
 
 --- a/include/net/mac80211.h
 +++ b/include/net/mac80211.h
-@@ -855,6 +855,7 @@ struct ieee80211_bss_conf {
+@@ -727,6 +727,8 @@ struct ieee80211_bss_npca_params {
+  *	connected to (STA)
+  * @he_obss_pd: OBSS Packet Detection parameters.
+  * @he_bss_color: BSS coloring settings, if BSS supports HE
++ * @used_color_bitmap: BSS colors of neighbor HE beacons that the software
++ *	collision check saw since the AP start or the last color change
+  * @fils_discovery: FILS discovery configuration
+  * @unsol_bcast_probe_resp_interval: Unsolicited broadcast probe response
+  *	interval.
+@@ -855,6 +857,7 @@ struct ieee80211_bss_conf {
  	} he_oper;
  	struct ieee80211_he_obss_pd he_obss_pd;
  	struct cfg80211_he_bss_color he_bss_color;
@@ -27,14 +53,35 @@ echo 1 > /sys/kernel/debug/tracing/events/mac80211/bss_color_collision/enable
  	struct cfg80211_bitrate_mask beacon_tx_rate;
 --- a/net/mac80211/rx.c
 +++ b/net/mac80211/rx.c
-@@ -3514,9 +3514,13 @@ ieee80211_rx_check_bss_color_collision(s
+@@ -3478,7 +3478,9 @@ static void ieee80211_process_sa_query_r
+ static void
+ ieee80211_rx_check_bss_color_collision(struct ieee80211_rx_data *rx)
+ {
++	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(rx->skb);
+ 	struct ieee80211_mgmt *mgmt = (void *)rx->skb->data;
++	struct ieee80211_supported_band *sband;
+ 	struct ieee80211_bss_conf *bss_conf;
+ 	const struct element *ie;
+ 	size_t baselen;
+@@ -3490,6 +3492,12 @@ ieee80211_rx_check_bss_color_collision(s
+ 	if (ieee80211_hw_check(&rx->local->hw, DETECTS_COLOR_COLLISION))
+ 		return;
+ 
++	sband = ieee80211_get_link_sband(rx->link);
++	if (!sband || sband->band != status->band)
++		return;
++
++	rx->flags |= IEEE80211_RX_BEACON_COLOR_CHECKED;
++
+ 	bss_conf = rx->link->conf;
+ 	if (bss_conf->csa_active || bss_conf->color_change_active ||
+ 	    !bss_conf->he_bss_color.enabled)
+@@ -3514,9 +3522,11 @@ ieee80211_rx_check_bss_color_collision(s
  
  		color = le32_get_bits(he_oper->he_oper_params,
  				      IEEE80211_HE_OPERATION_BSS_COLOR_MASK);
 +
 +		bss_conf->used_color_bitmap |= BIT_ULL(color);
-+
-+		// trace_bss_color_bitmap(color, bss_conf->used_color_bitmap);
  		if (color == bss_conf->he_bss_color.color)
  			ieee80211_obss_color_collision_notify(&rx->sdata->vif,
 -							      BIT_ULL(color),
@@ -42,32 +89,64 @@ echo 1 > /sys/kernel/debug/tracing/events/mac80211/bss_color_collision/enable
  							      bss_conf->link_id);
  	}
  }
---- a/net/mac80211/trace.h
-+++ b/net/mac80211/trace.h
-@@ -3442,6 +3442,26 @@ TRACE_EVENT(drv_nan_peer_sched_changed,
- 	)
- );
+@@ -3556,9 +3566,6 @@ ieee80211_rx_h_mgmt_check(struct ieee802
+ 	    !(rx->flags & IEEE80211_RX_BEACON_REPORTED)) {
+ 		int sig = 0;
  
-+TRACE_EVENT(bss_color_bitmap,
-+	TP_PROTO(u8 color,
-+		u64 color_bitmap),
-+
-+	TP_ARGS(color, color_bitmap),
-+
-+	TP_STRUCT__entry(
-+		__field(u8, color)
-+		__field(u64, color_bitmap)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->color = color;
-+		__entry->color_bitmap = color_bitmap;
-+	),
-+
-+	TP_printk(
-+		"color=%u color_bitmap=0x%llx", __entry->color, __entry->color_bitmap
-+	)
-+);
- #endif /* !__MAC80211_DRIVER_TRACE || TRACE_HEADER_MULTI_READ */
+-		/* sw bss color collision detection */
+-		ieee80211_rx_check_bss_color_collision(rx);
+-
+ 		if (ieee80211_hw_check(&rx->local->hw, SIGNAL_DBM) &&
+ 		    !(status->flag & RX_FLAG_NO_SIGNAL_VAL))
+ 			sig = status->signal;
+@@ -3570,6 +3577,12 @@ ieee80211_rx_h_mgmt_check(struct ieee802
+ 		rx->flags |= IEEE80211_RX_BEACON_REPORTED;
+ 	}
  
- #undef TRACE_INCLUDE_PATH
++	/* sw bss color collision detection */
++	if (rx->sdata->vif.type == NL80211_IFTYPE_AP &&
++	    ieee80211_is_beacon(mgmt->frame_control) &&
++	    !(rx->flags & IEEE80211_RX_BEACON_COLOR_CHECKED))
++		ieee80211_rx_check_bss_color_collision(rx);
++
+ 	return ieee80211_drop_unencrypted_mgmt(rx);
+ }
+ 
+--- a/net/mac80211/cfg.c
++++ b/net/mac80211/cfg.c
+@@ -1842,6 +1842,7 @@ static int ieee80211_start_ap(struct wip
+ 	link_conf->twt_responder = params->twt_responder;
+ 	link_conf->he_obss_pd = params->he_obss_pd;
+ 	link_conf->he_bss_color = params->beacon.he_bss_color;
++	link_conf->used_color_bitmap = 0;
+ 	link_conf->s1g_long_beacon_period = params->s1g_long_beacon_period;
+ 	sdata->vif.cfg.s1g = params->chandef.chan->band == NL80211_BAND_S1GHZ;
+ 
+@@ -5662,6 +5663,8 @@ static int ieee80211_color_change_finali
+ 
+ 	lockdep_assert_wiphy(local->hw.wiphy);
+ 
++	/* The bitmap has no age; each color change starts it again. */
++	link->conf->used_color_bitmap = 0;
+ 	link->conf->color_change_active = false;
+ 
+ 	err = ieee80211_set_after_color_change_beacon(link, &changed);
+--- a/net/mac80211/ieee80211_i.h
++++ b/net/mac80211/ieee80211_i.h
+@@ -213,12 +213,15 @@ enum ieee80211_packet_rx_flags {
+  *
+  * @IEEE80211_RX_BEACON_REPORTED: This frame was already reported
+  *	to cfg80211_report_obss_beacon().
++ * @IEEE80211_RX_BEACON_COLOR_CHECKED: An AP link on the band of this
++ *	beacon already checked it for a BSS color collision.
+  *
+  * These flags are used across handling multiple interfaces
+  * for a single frame.
+  */
+ enum ieee80211_rx_flags {
+-	IEEE80211_RX_BEACON_REPORTED	= BIT(0),
++	IEEE80211_RX_BEACON_REPORTED		= BIT(0),
++	IEEE80211_RX_BEACON_COLOR_CHECKED	= BIT(1),
+ };
+ 
+ struct ieee80211_rx_data {
