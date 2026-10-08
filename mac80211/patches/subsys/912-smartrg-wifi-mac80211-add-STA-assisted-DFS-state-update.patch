@@ -7,28 +7,34 @@ of the STA already did the CAC and runs radar detection there.
 Without help, the extender AP starts its own CAC after each switch
 to a DFS channel.
 
-The STA now marks the channel of its BSS and of a CSA target as
-available. When the STA leaves, the channel becomes usable again,
-unless an AP or the background chain still uses it. The state set
-during a CSA does not expire before the switch completes. For each
-channel that the STA covers, a local radar event keeps the channel
-available, because the root AP detected no radar. Background radar
-events skip that check, because they arrive in atomic context.
+The STA marks the channels of its BSS and of a CSA target available;
+the target keeps that state until the switch completes. When the STA
+leaves, an available 20 MHz channel becomes usable again, unless the
+CSA target, an AP or the background chain covers it. The CSA target
+check comes from mtk-openwrt-feeds 2df62b873dd2,
+0023-mtk-mac80211-add-sta-assisted-DFS-state-update-mecha.patch
+("mtk: mac80211: add sta-assisted DFS state update mechanism"). Each
+BSS channel that changes gets its own event, because hostapd applies
+an event to every channel of its chandef. An AP on the band and radio
+of the channel gets each event, because only the hostapd instance of
+that interface handles it. A local radar event, not a background one
+in atomic context, keeps channels that the STA covers available,
+because the root AP saw no radar.
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- include/net/cfg80211.h       |   26 ++++++++
+ include/net/cfg80211.h       |   26 ++++
  include/uapi/linux/nl80211.h |    6 +
- net/mac80211/chan.c          |   13 ++++
- net/mac80211/mlme.c          |   15 ++++
+ net/mac80211/chan.c          |   13 ++
+ net/mac80211/mlme.c          |   16 ++
  net/wireless/ap.c            |    3 
- net/wireless/chan.c          |  137 ++++++++++++++++++++++++++++++++++++++-----
- net/wireless/core.h          |    3 
- net/wireless/mlme.c          |    5 -
+ net/wireless/chan.c          |  239 ++++++++++++++++++++++++++++++++++++++++---
+ net/wireless/core.h          |    5 
+ net/wireless/mlme.c          |    5 
  net/wireless/nl80211.c       |    3 
- 9 files changed, 194 insertions(+), 17 deletions(-)
+ 9 files changed, 297 insertions(+), 19 deletions(-)
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
@@ -41,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 + * @wdev: the wireless device
 + * @bss_chandef: the current BSS channel definition
 + * @csa_chandef: the CSA channel definition
-+ * @csa_time: the expected CSA countdown complete time
++ * @csa_time: the expected CSA countdown complete time, in jiffies
 + * @associated: whether STA is during association or disassociation process
 + *
 + */
@@ -89,20 +95,21 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /**
 --- a/net/mac80211/mlme.c
 +++ b/net/mac80211/mlme.c
-@@ -3478,6 +3478,12 @@ ieee80211_sta_process_chanswitch(struct
+@@ -3478,6 +3478,13 @@ ieee80211_sta_process_chanswitch(struct
  	csa_time_tu = (max_t(int, csa_ie.count, 1) - 1) * link->conf->beacon_int;
  	link->u.mgd.csa.time = now + us_to_ktime(ieee80211_tu_to_usec(csa_time_tu));
  
 +	cfg80211_sta_update_dfs_state(&sdata->wdev,
 +				      &link->conf->chanreq.oper,
 +				      &link->csa.chanreq.oper,
-+				      link->u.mgd.csa.time,
++				      jiffies +
++				      nsecs_to_jiffies(link->u.mgd.csa.time - now),
 +				      sdata->vif.cfg.assoc);
 +
  	if (ieee80211_vif_link_active(&sdata->vif, link->link_id) &&
  	    local->ops->channel_switch) {
  		/*
-@@ -4709,6 +4715,10 @@ static void ieee80211_set_disassoc(struc
+@@ -4709,6 +4716,10 @@ static void ieee80211_set_disassoc(struc
  		link = sdata_dereference(sdata->link[link_id], sdata);
  		if (!link)
  			continue;
@@ -113,7 +120,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		ieee80211_link_release_channel(link);
  	}
  
-@@ -7340,6 +7350,11 @@ static void ieee80211_rx_mgmt_assoc_resp
+@@ -7340,6 +7351,11 @@ static void ieee80211_rx_mgmt_assoc_resp
  		for (ac = 0; ac < IEEE80211_NUM_ACS; ac++)
  			if (link->tx_conf[ac].uapsd)
  				resp.uapsd_queues |= ieee80211_ac_to_qos_mask[ac];
@@ -167,6 +174,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	cfg80211_set_dfs_state(wiphy, chandef, NL80211_DFS_AVAILABLE);
  }
+@@ -1139,7 +1131,7 @@ EXPORT_SYMBOL(cfg80211_chandef_dfs_usabl
+  * Checks if center frequency of chan falls with in the bandwidth
+  * range of chandef.
+  */
+-bool cfg80211_is_sub_chan(struct cfg80211_chan_def *chandef,
++bool cfg80211_is_sub_chan(const struct cfg80211_chan_def *chandef,
+ 			  struct ieee80211_channel *chan,
+ 			  bool primary_only)
+ {
 @@ -1308,7 +1300,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
  }
  
@@ -186,23 +202,116 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  }
  
-@@ -1916,6 +1909,124 @@ bool cfg80211_any_usable_channels(struct
+@@ -1916,6 +1909,224 @@ bool cfg80211_any_usable_channels(struct
  }
  EXPORT_SYMBOL(cfg80211_any_usable_channels);
  
++static bool cfg80211_sta_radar_same_radio(struct wiphy *wiphy,
++					  struct ieee80211_channel *a,
++					  struct ieee80211_channel *b)
++{
++	if (a->band != b->band)
++		return false;
++
++	return !wiphy->n_radio ||
++	       cfg80211_get_radio_idx_by_chan(wiphy, a) ==
++	       cfg80211_get_radio_idx_by_chan(wiphy, b);
++}
++
++/*
++ * hostapd takes a radar event only from an interface of the instance
++ * that runs the radio of the channel; on a multi-radio wiphy, an AP of
++ * another radio drops it. The radio mask of an idle AP can allow every
++ * radio, so its preset channel takes precedence over the mask.
++ */
++static struct wireless_dev *
++cfg80211_sta_radar_recipient(struct wiphy *wiphy,
++			     struct ieee80211_channel *chan)
++{
++	struct wireless_dev *wdev, *idle = NULL;
++	struct ieee80211_channel *oper;
++	unsigned int link;
++	bool running;
++
++	lockdep_assert_wiphy(wiphy);
++
++	list_for_each_entry(wdev, &wiphy->wdev_list, list) {
++		if (!wdev->netdev ||
++		    (wdev->iftype != NL80211_IFTYPE_AP &&
++		     wdev->iftype != NL80211_IFTYPE_P2P_GO))
++			continue;
++
++		running = false;
++		for_each_valid_link(wdev, link) {
++			oper = wdev->links[link].ap.chandef.chan;
++			if (!oper)
++				continue;
++
++			if (cfg80211_sta_radar_same_radio(wiphy, oper, chan))
++				return wdev;
++
++			running = true;
++		}
++
++		if (running || idle)
++			continue;
++
++		oper = wdev->u.ap.preset_chandef.chan;
++		if (oper && !cfg80211_sta_radar_same_radio(wiphy, oper, chan))
++			continue;
++
++		if (!oper && !cfg80211_wdev_channel_allowed(wdev, chan))
++			continue;
++
++		idle = wdev;
++	}
++
++	return idle;
++}
++
 +static void cfg80211_sta_radar_notify(struct wiphy *wiphy,
 +				      const struct cfg80211_chan_def *chandef,
 +				      enum nl80211_radar_event event)
 +{
 +	struct wireless_dev *wdev;
 +
-+	list_for_each_entry(wdev, &wiphy->wdev_list, list) {
-+		if (cfg80211_chandef_dfs_required(wiphy, chandef, wdev->iftype) > 0) {
-+			nl80211_radar_notify(wiphy_to_rdev(wiphy), chandef,
-+					     event, wdev->netdev, GFP_KERNEL);
-+			return;
-+		}
-+	}
++	if (cfg80211_chandef_dfs_required(wiphy, chandef,
++					  NL80211_IFTYPE_AP) <= 0)
++		return;
++
++	wdev = cfg80211_sta_radar_recipient(wiphy, chandef->chan);
++	if (!wdev)
++		return;
++
++	nl80211_radar_notify(wiphy_to_rdev(wiphy), chandef, event,
++			     wdev->netdev, GFP_KERNEL);
++}
++
++static bool cfg80211_sta_subchan_in_use(struct wiphy *wiphy,
++					const struct cfg80211_chan_def *csa_chandef,
++					struct ieee80211_channel *chan)
++{
++	if (csa_chandef && cfg80211_is_sub_chan(csa_chandef, chan, false))
++		return true;
++
++	return cfg80211_is_wiphy_oper_chan(wiphy, chan) ||
++	       cfg80211_offchan_chain_is_active(wiphy_to_rdev(wiphy), chan);
++}
++
++/*
++ * hostapd applies an event to every 20 MHz channel that its chandef
++ * spans, so a subchannel that keeps its state must not be part of it.
++ */
++static void cfg80211_sta_set_subchan_state(struct wiphy *wiphy,
++					   struct ieee80211_channel *chan,
++					   enum nl80211_dfs_state dfs_state,
++					   enum nl80211_radar_event event)
++{
++	struct cfg80211_chan_def chandef;
++
++	cfg80211_chandef_create(&chandef, chan, NL80211_CHAN_NO_HT);
++	cfg80211_set_dfs_state(wiphy, &chandef, dfs_state);
++	cfg80211_sta_radar_notify(wiphy, &chandef, event);
 +}
 +
 +void cfg80211_sta_update_dfs_state(struct wireless_dev *wdev,
@@ -212,15 +321,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +				   bool associated)
 +{
 +	struct wiphy *wiphy = wdev->wiphy;
-+	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
 +	bool csa_active = !!csa_chandef;
 +	enum nl80211_dfs_state dfs_state = NL80211_DFS_USABLE;
 +	enum nl80211_radar_event event = NL80211_RADAR_STA_CAC_EXPIRED;
++	struct ieee80211_channel *c;
++	bool changed = false;
 +
 +	lockdep_assert_wiphy(wdev->wiphy);
 +
 +	if (!bss_chandef || !bss_chandef->chan ||
-+	    bss_chandef->chan->band != NL80211_BAND_5GHZ)
++	    bss_chandef->chan->band != NL80211_BAND_5GHZ ||
++	    WARN_ON(!cfg80211_chandef_valid(bss_chandef)))
 +		return;
 +
 +	/* assume csa channel is cac completed */
@@ -230,8 +341,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		cfg80211_set_dfs_state(wiphy, csa_chandef, NL80211_DFS_AVAILABLE);
 +		/* avoid the dfs state from expired during csa countdown */
 +		cfg80211_update_last_available(wiphy, csa_chandef, csa_time);
-+		nl80211_radar_notify(rdev, csa_chandef,
-+				     NL80211_RADAR_STA_CAC_SKIPPED, wdev->netdev, GFP_KERNEL);
++		cfg80211_sta_radar_notify(wiphy, csa_chandef,
++					  NL80211_RADAR_STA_CAC_SKIPPED);
 +		netdev_info(wdev->netdev, "Set CSA channel's DFS state to available\n");
 +	}
 +
@@ -243,23 +354,28 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		 */
 +		dfs_state = NL80211_DFS_AVAILABLE;
 +		event = NL80211_RADAR_STA_CAC_SKIPPED;
-+	} else if (!cfg80211_chandef_dfs_usable(wdev->wiphy, bss_chandef) &&
-+		   !cfg80211_chandef_dfs_available(wdev->wiphy, bss_chandef)) {
-+		/* never lift the NOP from the usable-downgrade paths */
-+		return;
 +	}
 +
-+	/* avoid setting the dfs state to usable
-+	 * when other interfaces still operate on this channel
-+	 */
-+	if (dfs_state == NL80211_DFS_USABLE &&
-+	    (cfg80211_is_wiphy_oper_chan(wdev->wiphy, bss_chandef->chan) ||
-+	     cfg80211_offchan_chain_is_active(wiphy_to_rdev(wdev->wiphy),
-+					      bss_chandef->chan)))
-+		return;
++	for_each_subchan(bss_chandef, freq, cf) {
++		c = ieee80211_get_channel_khz(wiphy, freq);
++		if (!c || !(c->flags & IEEE80211_CHAN_RADAR))
++			continue;
 +
-+	cfg80211_set_dfs_state(wdev->wiphy, bss_chandef, dfs_state);
-+	cfg80211_sta_radar_notify(wdev->wiphy, bss_chandef, event);
++		/*
++		 * Only an available channel goes back to usable, so that the
++		 * downgrade never lifts a NOP.
++		 */
++		if (dfs_state == NL80211_DFS_USABLE &&
++		    (c->dfs_state != NL80211_DFS_AVAILABLE ||
++		     cfg80211_sta_subchan_in_use(wiphy, csa_chandef, c)))
++			continue;
++
++		cfg80211_sta_set_subchan_state(wiphy, c, dfs_state, event);
++		changed = true;
++	}
++
++	if (!changed)
++		return;
 +
 +	if (csa_active)
 +		netdev_info(wdev->netdev, "Set origin channel's DFS state to usable\n");
@@ -323,6 +439,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				    const struct cfg80211_chan_def *chandef);
  
  void cfg80211_sched_dfs_chan_update(struct cfg80211_registered_device *rdev);
+@@ -519,7 +522,7 @@ bool cfg80211_any_wiphy_oper_chan(struct
+ 
+ bool cfg80211_beaconing_iface_active(struct wireless_dev *wdev);
+ 
+-bool cfg80211_is_sub_chan(struct cfg80211_chan_def *chandef,
++bool cfg80211_is_sub_chan(const struct cfg80211_chan_def *chandef,
+ 			  struct ieee80211_channel *chan,
+ 			  bool primary_only);
+ bool cfg80211_wdev_on_sub_chan(struct wireless_dev *wdev,
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
 @@ -22389,7 +22389,8 @@ void cfg80211_ch_switch_notify(struct ne

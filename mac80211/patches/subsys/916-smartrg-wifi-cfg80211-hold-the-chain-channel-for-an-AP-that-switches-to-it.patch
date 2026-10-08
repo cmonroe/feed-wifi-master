@@ -7,20 +7,21 @@ the chain channel. The channel then keeps only the two second grace.
 The switch can take almost that long, so the AP can arrive on an
 expired channel and start a CAC.
 
-When an AP starts a CSA onto the channel of a chain that finished its
-CAC, cfg80211 now stops the chain and counts the channels that the AP
-takes over as in use. They stay in use until the AP link that started
-the CSA switches. If that link stops first, they get the usual grace
-from that point.
+If an AP starts a CSA onto the channel of a chain that finished its
+CAC, cfg80211 now stops the chain. cfg80211 also counts the channels
+that the AP takes over as in use. They stay in use, also when a STA of
+the same wiphy leaves them, until the AP link that started the CSA
+switches. If that link stops first, they get the usual grace from that
+point.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- net/wireless/ap.c      |    1 +
- net/wireless/chan.c    |   11 ++++++++++-
- net/wireless/core.h    |    9 +++++++++
- net/wireless/mlme.c    |   48 ++++++++++++++++++++++++++++++++++++++++++++++++
- net/wireless/nl80211.c |   11 +++++------
- 5 files changed, 73 insertions(+), 7 deletions(-)
+ net/wireless/ap.c      |    1 
+ net/wireless/chan.c    |   14 +++++++++++--
+ net/wireless/core.h    |   12 +++++++++++
+ net/wireless/mlme.c    |   52 +++++++++++++++++++++++++++++++++++++++++++++++++
+ net/wireless/nl80211.c |   11 ++++------
+ 5 files changed, 82 insertions(+), 8 deletions(-)
 
 --- a/net/wireless/core.h
 +++ b/net/wireless/core.h
@@ -177,3 +178,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		if (found)
  			return true;
+@@ -2061,7 +2070,8 @@ static bool cfg80211_sta_subchan_in_use(
+ 		return true;
+ 
+ 	return cfg80211_is_wiphy_oper_chan(wiphy, chan) ||
+-	       cfg80211_offchan_chain_is_active(wiphy_to_rdev(wiphy), chan);
++	       cfg80211_offchan_chain_is_active(wiphy_to_rdev(wiphy), chan) ||
++	       cfg80211_background_csa_holds(wiphy_to_rdev(wiphy), chan);
+ }
+ 
+ /*
