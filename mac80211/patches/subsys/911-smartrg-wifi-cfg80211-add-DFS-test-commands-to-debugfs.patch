@@ -6,31 +6,26 @@ DFS tests wait for a 60 s CAC, a 10 min weather radar CAC or a 30 min
 non-occupancy period, and the DFS state of a channel is not visible
 without netlink tools.
 
-Each wiphy now has these debugfs files:
-- dfs_status (read): the DFS state of each radar channel and the
-  remaining CAC or non-occupancy time, for each interface link and
-  for the background chain.
-- dfs_skip_cac (write, root): end a running CAC; bit 0 selects the
-  main chain, bit 1 the background chain.
-- dfs_skip_nop (write, root): end every non-occupancy period.
-- dfs_available_reset (write, root): return every available channel
-  to usable.
+Each wiphy gets a debugfs file that shows the DFS state of each radar
+channel and the remaining CAC or non-occupancy time. Root-only debugfs
+files end a running CAC on the main or background chain, end every
+non-occupancy period, or return available channels to usable. A
+skipped CAC sends one CAC finished event, the same as a CAC that runs
+to its end. The handlers run under the wiphy lock, because they walk
+the interface list, change the DFS state and call the driver. The
+write files bypass regulatory timers and are for tests only.
 
-mac80211 gets a skip_cac operation that finishes its CAC timer, and
-cfg80211 records the start and length of a background CAC. The write
-files bypass regulatory timers and are for tests only.
-
-Based-on-work-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Based-on-patch-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  include/net/cfg80211.h  |    1 
- net/mac80211/cfg.c      |   26 +++
+ net/mac80211/cfg.c      |   26 ++
  net/wireless/core.h     |    3 
- net/wireless/debugfs.c  |  328 +++++++++++++++++++++++++++++++++++++-
+ net/wireless/debugfs.c  |  370 +++++++++++++++++++++++++++++++++++++-
  net/wireless/mlme.c     |    5 
  net/wireless/rdev-ops.h |   13 +
  net/wireless/trace.h    |   14 +
- 7 files changed, 383 insertions(+), 7 deletions(-)
+ 7 files changed, 425 insertions(+), 7 deletions(-)
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
@@ -104,7 +99,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  #define DEBUGFS_READONLY_FILE(name, buflen, fmt, value...)		\
  static ssize_t name## _read(struct file *file, char __user *userbuf,	\
-@@ -118,8 +119,317 @@ static const struct file_operations ht40
+@@ -118,8 +119,359 @@ static const struct file_operations ht40
  	.llseek = default_llseek,
  };
  
@@ -236,14 +231,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	return offset;
 +}
 +
-+static ssize_t dfs_status_read(struct file *file, char __user *user_buf,
-+			       size_t count, loff_t *ppos)
++static ssize_t dfs_status_do_read(struct wiphy *wiphy, struct file *file,
++				  char *buf, size_t bufsize, void *data)
 +{
-+	struct wiphy *wiphy = file->private_data;
-+	struct wireless_dev *wdev;
-+	char *buf;
-+	unsigned int offset = 0, buf_size = PAGE_SIZE, r;
-+	const char * const iftype_str[] = {
++	static const char * const iftype_str[] = {
 +		[NL80211_IFTYPE_UNSPECIFIED] = "unspecified",
 +		[NL80211_IFTYPE_ADHOC] = "adhoc",
 +		[NL80211_IFTYPE_STATION] = "station",
@@ -257,25 +248,42 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		[NL80211_IFTYPE_P2P_DEVICE] = "p2p device",
 +		[NL80211_IFTYPE_OCB] = "ocb",
 +		[NL80211_IFTYPE_NAN] = "nan",
++		[NL80211_IFTYPE_NAN_DATA] = "nan data",
++		[NL80211_IFTYPE_PD] = "pd",
 +	};
++	struct wireless_dev *wdev;
++	unsigned int offset = 0;
 +
-+	buf = kzalloc(buf_size, GFP_KERNEL);
++	list_for_each_entry(wdev, &wiphy->wdev_list, list) {
++		offset += scnprintf(buf + offset, bufsize - offset,
++				    "wdev 0x%x\n"
++				    "interface type %s\n",
++				    wdev->identifier,
++				    wdev->iftype < ARRAY_SIZE(iftype_str) ?
++				    iftype_str[wdev->iftype] : "unknown");
++		offset = dfs_status_read_wdev(wiphy, wdev, buf, bufsize, offset);
++	}
++
++	return offset;
++}
++
++static ssize_t dfs_status_read(struct file *file, char __user *user_buf,
++			       size_t count, loff_t *ppos)
++{
++	struct wiphy *wiphy = file->private_data;
++	size_t bufsize = PAGE_SIZE;
++	char *buf;
++	ssize_t ret;
++
++	buf = kmalloc(bufsize, GFP_KERNEL);
 +	if (!buf)
 +		return -ENOMEM;
 +
-+	list_for_each_entry(wdev, &wiphy->wdev_list, list) {
-+		offset += scnprintf(buf + offset, buf_size - offset,
-+				    "wdev 0x%x\n"
-+				    "interface type %s\n",
-+				    wdev->identifier, iftype_str[wdev->iftype]);
-+		offset = dfs_status_read_wdev(wiphy, wdev, buf, buf_size, offset);
-+	}
-+
-+	r = simple_read_from_buffer(user_buf, count, ppos, buf, offset);
-+
++	ret = wiphy_locked_debugfs_read(wiphy, file, buf, bufsize, user_buf,
++					count, ppos, dfs_status_do_read, NULL);
 +	kfree(buf);
 +
-+	return r;
++	return ret;
 +}
 +
 +static const struct file_operations dfs_status_ops = {
@@ -284,10 +292,42 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	.llseek = default_llseek,
 +};
 +
++#define DEBUGFS_U64_WRITE_FILE(name, set)				\
++static ssize_t name## _do_write(struct wiphy *wiphy, struct file *file,	\
++				char *buf, size_t count, void *data)	\
++{									\
++	u64 val;							\
++	int ret;							\
++									\
++	ret = kstrtou64(buf, 0, &val);					\
++	if (ret)							\
++		return ret;						\
++									\
++	ret = set(wiphy, val);						\
++	return ret ?: count;						\
++}									\
++									\
++static ssize_t name## _write(struct file *file,				\
++			     const char __user *userbuf,		\
++			     size_t count, loff_t *ppos)		\
++{									\
++	struct wiphy *wiphy = file->private_data;			\
++	char buf[24];							\
++									\
++	return wiphy_locked_debugfs_write(wiphy, file, buf, sizeof(buf),	\
++					  userbuf, count,		\
++					  name## _do_write, NULL);	\
++}									\
++									\
++static const struct file_operations name## _ops = {			\
++	.write = name## _write,						\
++	.open = simple_open,						\
++	.llseek = default_llseek,					\
++}
++
 +static int
-+dfs_nop_skip(void *data, u64 val)
++dfs_nop_skip(struct wiphy *wiphy, u64 val)
 +{
-+	struct wiphy *wiphy = data;
 +	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
 +	bool en = !!val;
 +	enum nl80211_band band;
@@ -322,15 +362,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	return 0;
 +}
 +
-+DEFINE_DEBUGFS_ATTRIBUTE(dfs_skip_nop_ops, NULL,
-+			 dfs_nop_skip, "0x%08llx\n");
++DEBUGFS_U64_WRITE_FILE(dfs_skip_nop, dfs_nop_skip);
 +
 +static int
-+dfs_cac_skip(void *data, u64 val)
++dfs_cac_skip(struct wiphy *wiphy, u64 val)
 +{
 +#define CAC_SKIP_MASK			BIT(0)
 +#define CAC_SKIP_BACKGROUND_MASK	BIT(1)
-+	struct wiphy *wiphy = data;
 +	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
 +	struct wireless_dev *wdev;
 +	struct cfg80211_chan_def *c;
@@ -368,8 +406,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +				cac_time = rdev->background_cac_time_ms;
 +				rdev->background_cac_start_time = jiffies -
 +								  msecs_to_jiffies(cac_time + 1);
-+				cancel_delayed_work(&rdev->background_cac_done_wk);
-+				queue_delayed_work(cfg80211_wq, &rdev->background_cac_done_wk, 0);
++				/* else a started run or abort ends the CAC */
++				if (cancel_delayed_work(&rdev->background_cac_done_wk))
++					queue_delayed_work(cfg80211_wq,
++							   &rdev->background_cac_done_wk, 0);
 +			}
 +		}
 +	}
@@ -377,13 +417,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	return 0;
 +}
 +
-+DEFINE_DEBUGFS_ATTRIBUTE(dfs_skip_cac_ops, NULL,
-+			 dfs_cac_skip, "0x%08llx\n");
++DEBUGFS_U64_WRITE_FILE(dfs_skip_cac, dfs_cac_skip);
 +
 +static int
-+dfs_available_reset(void *data, u64 val)
++dfs_available_reset(struct wiphy *wiphy, u64 val)
 +{
-+	struct wiphy *wiphy = data;
 +	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
 +	bool en = !!val;
 +	enum nl80211_band band;
@@ -416,15 +454,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	return 0;
 +}
 +
-+DEFINE_DEBUGFS_ATTRIBUTE(dfs_available_reset_ops, NULL,
-+			 dfs_available_reset, "0x%08llx\n");
++DEBUGFS_U64_WRITE_FILE(dfs_available_reset, dfs_available_reset);
 +
 +#define DEBUGFS_ADD(name, chmod)						\
 +	debugfs_create_file(#name, chmod, phyd, &rdev->wiphy, &name## _ops)
  
  #define DEBUGFS_RADIO_ADD(name, radio_idx)				\
  	debugfs_create_file(#name, 0444, radiod,			\
-@@ -132,11 +442,15 @@ void cfg80211_debugfs_rdev_add(struct cf
+@@ -132,11 +484,15 @@ void cfg80211_debugfs_rdev_add(struct cf
  	struct dentry *radiod;
  	u8 i;
  
