@@ -1,0 +1,206 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 21:53:08 -0700
+Subject: [PATCH] wifi: mac80211: wait for the ADDBA response of a sleeping station
+
+A driver that buffers frames for a station in power save holds the
+ADDBA Request until the station wakes up. The ADDBA response timer
+starts when mac80211 queues the request and expires after one
+second. If the station sleeps for longer, the session fails before
+the station gets the request.
+
+If the driver reports the ACK status of frames, request the TX status
+of the ADDBA Request. Without a response, the session then fails one
+second after that status, ACKed or not, or five seconds after the
+request if no status arrives. For an awake station that does not
+respond, the session thus still fails after about one second. The
+status data carries the TID and the dialog token, because the body of
+a protected request is encrypted. Only the timer callback re-arms the
+timer, because a TX status can arrive while mac80211 stops the
+session. Drivers that do not report the ACK status keep the
+one-second timer.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/mac80211/agg-tx.c      |   41 ++++++++++++++++++++++++++++++++++
+ net/mac80211/ieee80211_i.h |    1 
+ net/mac80211/sta_info.h    |    8 ++++++
+ net/mac80211/status.c      |   42 +++++++++++++++++++++++++++++++++++
+ 4 files changed, 92 insertions(+)
+
+--- a/net/mac80211/agg-tx.c
++++ b/net/mac80211/agg-tx.c
+@@ -98,6 +98,17 @@ static void ieee80211_send_addba_request
+ 	if (sta->sta.deflink.he_cap.has_he)
+ 		ieee80211_add_addbaext(skb, 0, agg_size);
+ 
++	if (ieee80211_hw_check(&local->hw, REPORTS_TX_ACK_STATUS)) {
++		struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
++		/* we have 9 bits: tid 4, low bits of the dialog token 5 */
++		u16 sub_data = tid | (dialog_token & 0x1f) << 4;
++
++		info->flags |= IEEE80211_TX_CTL_REQ_TX_STATUS;
++		info->status_data = IEEE80211_STATUS_TYPE_ADDBA |
++				    u16_encode_bits(sub_data,
++						    IEEE80211_STATUS_SUBDATA_MASK);
++	}
++
+ 	ieee80211_tx_skb_tid(sdata, skb, tid, -1);
+ }
+ 
+@@ -426,6 +437,7 @@ static void sta_addba_resp_timer_expired
+ 	struct tid_ampdu_tx *tid_tx = timer_container_of(tid_tx, t,
+ 							 addba_resp_timer);
+ 	struct sta_info *sta = tid_tx->sta;
++	unsigned long timeout, next;
+ 	u8 tid = tid_tx->tid;
+ 
+ 	/* check if the TID waits for addBA response */
+@@ -436,6 +448,32 @@ static void sta_addba_resp_timer_expired
+ 		return;
+ 	}
+ 
++	/*
++	 * A driver that buffers frames for a sleeping station holds the
++	 * request until the station wakes up, so the response interval
++	 * runs from the TX status of the request. The status handler does
++	 * not arm the timer, so check again each interval until it reports.
++	 */
++	if (ieee80211_hw_check(&sta->local->hw, REPORTS_TX_ACK_STATUS) &&
++	    !test_bit(HT_AGG_STATE_STOPPING, &tid_tx->state)) {
++		if (test_bit_acquire(HT_AGG_STATE_ADDBA_TX_STATUS,
++				     &tid_tx->state)) {
++			timeout = READ_ONCE(tid_tx->addba_status_time) +
++				  ADDBA_RESP_INTERVAL;
++		} else {
++			timeout = tid_tx->addba_req_time +
++				  ADDBA_REQ_ACK_TIMEOUT;
++			next = jiffies + ADDBA_RESP_INTERVAL;
++			if (time_before(next, timeout))
++				timeout = next;
++		}
++
++		if (time_is_after_jiffies(timeout)) {
++			mod_timer(&tid_tx->addba_resp_timer, timeout);
++			return;
++		}
++	}
++
+ 	ht_dbg(sta->sdata, "addBA response timer expired on %pM tid %d\n",
+ 	       sta->sta.addr, tid);
+ 
+@@ -456,6 +494,9 @@ static void ieee80211_send_addba_with_ti
+ 
+ 	lockdep_assert_wiphy(sta->local->hw.wiphy);
+ 
++	if (ieee80211_hw_check(&local->hw, REPORTS_TX_ACK_STATUS))
++		tid_tx->addba_req_time = jiffies;
++
+ 	/* activate the timer for the recipient's addBA response */
+ 	mod_timer(&tid_tx->addba_resp_timer, jiffies + ADDBA_RESP_INTERVAL);
+ 	ht_dbg(sdata, "activated addBA response timer on %pM tid %d\n",
+--- a/net/mac80211/ieee80211_i.h
++++ b/net/mac80211/ieee80211_i.h
+@@ -101,6 +101,7 @@ enum ieee80211_status_data {
+ 	IEEE80211_STATUS_TYPE_NEG_TTLM	= 2,
+ 	IEEE80211_STATUS_TYPE_UHR_OMP	= 3,
+ 	IEEE80211_STATUS_TYPE_4ADDR_NULLFUNC = 4,
++	IEEE80211_STATUS_TYPE_ADDBA	= 5,
+ 	IEEE80211_STATUS_SUBDATA_MASK	= 0x1ff0,
+ };
+ 
+--- a/net/mac80211/sta_info.h
++++ b/net/mac80211/sta_info.h
+@@ -109,6 +109,7 @@ enum ieee80211_sta_info_flags {
+ };
+ 
+ #define ADDBA_RESP_INTERVAL HZ
++#define ADDBA_REQ_ACK_TIMEOUT		(5 * HZ)
+ #define HT_AGG_MAX_RETRIES		15
+ #define HT_AGG_BURST_RETRIES		3
+ #define HT_AGG_RETRIES_PERIOD		(15 * HZ)
+@@ -122,6 +123,7 @@ enum ieee80211_sta_info_flags {
+ #define HT_AGG_STATE_START_CB		6
+ #define HT_AGG_STATE_STOP_CB		7
+ #define HT_AGG_STATE_SENT_ADDBA		8
++#define HT_AGG_STATE_ADDBA_TX_STATUS	9
+ 
+ DECLARE_EWMA(avg_signal, 10, 8)
+ enum ieee80211_agg_stop_reason {
+@@ -165,6 +167,10 @@ struct sta_info;
+  * @tid: TID number
+  * @state: session state (see above)
+  * @last_tx: jiffies of last tx activity
++ * @addba_req_time: jiffies of the addBA request, set only if the driver
++ *	reports the ACK status of frames
++ * @addba_status_time: jiffies of the TX status of the addBA request,
++ *	valid once the state has %HT_AGG_STATE_ADDBA_TX_STATUS
+  * @stop_initiator: initiator of a session stop
+  * @tx_stop: TX DelBA frame when stopping
+  * @buf_size: reorder buffer size at receiver
+@@ -191,6 +197,8 @@ struct tid_ampdu_tx {
+ 	struct sta_info *sta;
+ 	unsigned long state;
+ 	unsigned long last_tx;
++	unsigned long addba_req_time;
++	unsigned long addba_status_time;
+ 	u16 timeout;
+ 	u8 dialog_token;
+ 	u8 stop_initiator;
+--- a/net/mac80211/status.c
++++ b/net/mac80211/status.c
+@@ -770,6 +770,44 @@ ieee80211_handle_4addr_nullfunc_status(s
+ 	WRITE_ONCE(sdata->u.mgd.nullfunc_4addr_acked, true);
+ }
+ 
++static void ieee80211_handle_addba_status(struct ieee80211_sub_if_data *sdata,
++					  struct sk_buff *skb, u16 status_data)
++{
++	u16 sub_data = u16_get_bits(status_data, IEEE80211_STATUS_SUBDATA_MASK);
++	struct ieee80211_hdr *hdr = (void *)skb->data;
++	struct link_sta_info *link_sta;
++	struct tid_ampdu_tx *tid_tx;
++	struct sta_info *sta;
++	u8 tid = sub_data & 0xf;
++	u8 token = sub_data >> 4;
++
++	if (!sdata)
++		return;
++
++	/* the driver may have translated the addresses to a link */
++	sta = sta_info_get_bss(sdata, hdr->addr1);
++	if (!sta) {
++		link_sta = link_sta_info_get_bss(sdata, hdr->addr1);
++		if (!link_sta)
++			return;
++		sta = link_sta->sta;
++	}
++
++	tid_tx = rcu_dereference(sta->ampdu_mlme.tid_tx[tid]);
++	if (!tid_tx || (tid_tx->dialog_token & 0x1f) != token)
++		return;
++
++	if (test_bit(HT_AGG_STATE_RESPONSE_RECEIVED, &tid_tx->state) ||
++	    test_bit(HT_AGG_STATE_WANT_STOP, &tid_tx->state) ||
++	    test_bit(HT_AGG_STATE_STOPPING, &tid_tx->state))
++		return;
++
++	WRITE_ONCE(tid_tx->addba_status_time, jiffies);
++	/* pairs with test_bit_acquire() in sta_addba_resp_timer_expired() */
++	smp_mb__before_atomic();
++	set_bit(HT_AGG_STATE_ADDBA_TX_STATUS, &tid_tx->state);
++}
++
+ static void ieee80211_report_used_skb(struct ieee80211_local *local,
+ 				      struct sk_buff *skb, bool dropped,
+ 				      ktime_t ack_hwtstamp)
+@@ -856,6 +894,10 @@ static void ieee80211_report_used_skb(st
+ 		case IEEE80211_STATUS_TYPE_4ADDR_NULLFUNC:
+ 			ieee80211_handle_4addr_nullfunc_status(sdata, acked);
+ 			break;
++		case IEEE80211_STATUS_TYPE_ADDBA:
++			ieee80211_handle_addba_status(sdata, skb,
++						      info->status_data);
++			break;
+ 		}
+ 		rcu_read_unlock();
+ 	}
