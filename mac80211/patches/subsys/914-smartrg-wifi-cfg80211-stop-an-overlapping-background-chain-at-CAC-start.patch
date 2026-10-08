@@ -7,26 +7,30 @@ chain covers, the background chain has nothing left to prepare there.
 
 cfg80211 now stops the background chain in that case, so that its
 owner can move it to another channel. This covers a chain in CAC and
-a chain that finished its CAC and only monitors the channel.
+a chain that finished its CAC and only monitors the channel. The
+chain stops before cfg80211 marks the CAC on the subchannels, because
+the abort of the chain clears that mark on the subchannels it shares
+with the new CAC.
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- net/wireless/nl80211.c |    5 +++++
- 1 file changed, 5 insertions(+)
+ net/wireless/nl80211.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
 
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -11977,6 +11977,11 @@ static int nl80211_start_radar_detection
+@@ -11975,6 +11975,12 @@ static int nl80211_start_radar_detection
+ 	wdev->links[link_id].cac_started = true;
+ 	wdev->links[link_id].cac_start_time = jiffies;
  	wdev->links[link_id].cac_time_ms = cac_time_ms;
- 	cfg80211_set_cac_state(wiphy, &chandef, true);
- 
++
 +	if (rdev->background_radar_wdev &&
 +	    cfg80211_is_sub_chan(&chandef, rdev->background_radar_chandef.chan, false)) {
 +		cfg80211_stop_background_radar_detection(rdev->background_radar_wdev);
 +	}
 +
- 	return 0;
- }
+ 	cfg80211_set_cac_state(wiphy, &chandef, true);
  
+ 	return 0;

@@ -9,8 +9,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 ---
  include/net/cfg80211.h |    1 +
  net/wireless/chan.c    |   26 ++++++++++++++++++++++++++
- net/wireless/nl80211.c |    3 +++
- 3 files changed, 30 insertions(+)
+ 2 files changed, 27 insertions(+)
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
@@ -64,15 +63,3 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	if (t1 == INT_MAX && t2 == INT_MAX)
---- a/net/wireless/nl80211.c
-+++ b/net/wireless/nl80211.c
-@@ -11953,6 +11953,9 @@ static int nl80211_start_radar_detection
- 	if (WARN_ON(!cac_time_ms))
- 		cac_time_ms = IEEE80211_DFS_MIN_CAC_TIME_MS;
- 
-+	pr_info("%s: region = %u, center freq1 = %u, center freq2 = %u, cac time ms = %u\n",
-+		__func__, dfs_region, chandef.center_freq1, chandef.center_freq2, cac_time_ms);
-+
- 	err = rdev_start_radar_detection(rdev, dev, &chandef, cac_time_ms,
- 					 link_id);
- 	if (err)
