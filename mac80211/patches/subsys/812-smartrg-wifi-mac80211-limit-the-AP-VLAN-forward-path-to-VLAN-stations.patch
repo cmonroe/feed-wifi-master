@@ -1,0 +1,32 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 21:47:04 -0700
+Subject: [PATCH] wifi: mac80211: limit the AP VLAN forward path to VLAN stations
+
+For a 3-address AP VLAN, the forward path looks up the destination
+with sta_info_get_bss(), which also matches a station of another VLAN
+of the same BSS. A hardware offloaded flow that egresses on one VLAN
+can then bind to a station of another VLAN, and the hardware sends
+the frames of that flow to that station. The hardware path then
+crosses the VLAN boundary that the software path enforces.
+
+Look up the station on the VLAN interface only. The software TX path
+does the same since commit 7f93ca31f7fd ("wifi: mac80211: prevent AP
+VLAN tx from other interfaces").
+
+Fixes: d787a3e38f01 ("mac80211: add support for .ndo_fill_forward_path")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/mac80211/iface.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/net/mac80211/iface.c
++++ b/net/mac80211/iface.c
+@@ -1010,7 +1010,7 @@ static int ieee80211_netdev_fill_forward
+ 			goto out;
+ 		if (is_multicast_ether_addr(ctx->daddr))
+ 			goto out;
+-		sta = sta_info_get_bss(sdata, ctx->daddr);
++		sta = sta_info_get(sdata, ctx->daddr);
+ 		break;
+ 	case NL80211_IFTYPE_AP:
+ 		if (is_multicast_ether_addr(ctx->daddr))
