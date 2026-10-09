@@ -1,0 +1,53 @@
+From: Koral Ilgun <koral.ilgun@adtran.com>
+Date: Fri, 09 Oct 2026 12:09:34 -0700
+Subject: [PATCH] wifi: mac80211: keep the radio index of a replaced chanctx
+
+ieee80211_replace_chanctx() gives the replacing context radio index
+-1. After the swap, the radio of the replaced context counts one
+context less. If the wiphy has room for one more channel, the next
+reservation on that radio creates a second context there, beyond
+the channel limit of the radio.
+
+On an mt7996 with three radios and no interface on one of them,
+every second channel switch that a station follows then moves the
+station alone to a new context. The driver retunes the radio while
+the APs on the old context still count down their own switch.
+
+The replacing context now takes the radio of the context that it
+replaces, if the new channel is valid on that radio.
+---
+ net/mac80211/chan.c |   16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+--- a/net/mac80211/chan.c
++++ b/net/mac80211/chan.c
+@@ -1466,6 +1466,7 @@ ieee80211_replace_chanctx(struct ieee802
+ 	struct ieee80211_chanctx *new_ctx, *ctx;
+ 	struct wiphy *wiphy = local->hw.wiphy;
+ 	const struct wiphy_radio *radio;
++	int radio_idx;
+ 
+ 	if (!curr_ctx ||
+ 	    curr_ctx->replace_state == IEEE80211_CHANCTX_WILL_BE_REPLACED ||
+@@ -1515,7 +1516,20 @@ ieee80211_replace_chanctx(struct ieee802
+ 	    ieee80211_chanctx_num_reserved(local, curr_ctx) != 0)
+ 		return ERR_PTR(-EBUSY);
+ 
+-	new_ctx = ieee80211_alloc_chanctx(local, chanreq, mode, -1);
++	/*
++	 * The new context takes the place of curr_ctx on its radio. Without
++	 * a radio index, ieee80211_num_chanctx() counts one context less on
++	 * that radio, and the next reservation can add a context beyond the
++	 * channel limit of the radio.
++	 */
++	radio_idx = curr_ctx->conf.radio_idx;
++	if (radio_idx >= 0) {
++		radio = &wiphy->radio[radio_idx];
++		if (!cfg80211_radio_chandef_valid(radio, &chanreq->oper))
++			radio_idx = -1;
++	}
++
++	new_ctx = ieee80211_alloc_chanctx(local, chanreq, mode, radio_idx);
+ 	if (!new_ctx)
+ 		return ERR_PTR(-ENOMEM);
+ 
