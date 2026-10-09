@@ -1,0 +1,62 @@
+From fcae90b60f0ef098c216f2fb528b63b77360febe Mon Sep 17 00:00:00 2001
+From: Brandon Arrendondo <brandon.arrendondo@bissell.com>
+Date: Tue, 25 Aug 2026 21:25:13 -0400
+Subject: [PATCH] FT: Fix off-by-2 buffer bounds check in wpa_ft_process_rdie()
+
+wpa_ft_process_rdie() bounds-checks the (Re)Association Response frame
+element buffer with:
+
+    if (end - pos < (int) sizeof(*rdie)) {
+            ...
+            return pos;
+    }
+
+which only verifies there is room for sizeof(*rdie) (the 4-byte RDIE
+body). It then writes the 2-byte RIC Data EID/length header *before*
+the RDIE body:
+
+    *pos++ = WLAN_EID_RIC_DATA;
+    *pos++ = sizeof(*rdie);
+    rdie = (struct rsn_rdie *) pos;
+    rdie->id = id;
+    rdie->descr_count = 0;
+    rdie->status_code = host_to_le16(WLAN_STATUS_SUCCESS);
+    pos += sizeof(*rdie);
+
+so the function actually needs 2 + sizeof(*rdie) bytes of room, but
+only checked for sizeof(*rdie). With exactly sizeof(*rdie) bytes
+left in the response buffer, the two header bytes fit but the
+rdie->id/descr_count/status_code writes land 2 bytes past the end of
+the buffer.
+
+This could at least theoretically be reached while building the
+(Re)Association Response frame to a station during an IEEE 802.11r fast
+BSS transition, driven by RIC Data subelements the station included in
+its own (Re)Association Request frame (wpa_sm_write_assoc_resp_ies() ->
+wpa_ft_process_ric() -> wpa_ft_process_rdie()). Due to the extra buffer
+room in (Re)Association Response frame generation, it is not clear
+whether there is any realisitc way of reaching the buffer limit, though.
+
+Include the header bytes in the bounds check to fix this check.
+
+Signed-off-by: Brandon Arrendondo <brandon.arrendondo@bissell.com>
+---
+ src/ap/wpa_auth_ft.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/ap/wpa_auth_ft.c b/src/ap/wpa_auth_ft.c
+index 76b14ddd35cc..172f3db40718 100644
+--- a/src/ap/wpa_auth_ft.c
++++ b/src/ap/wpa_auth_ft.c
+@@ -2416,7 +2416,7 @@ static u8 * wpa_ft_process_rdie(struct wpa_state_machine *sm,
+ 	wpa_hexdump(MSG_MSGDUMP, "FT: Resource descriptor IE(s)",
+ 		    ies, ies_len);
+ 
+-	if (end - pos < (int) sizeof(*rdie)) {
++	if (end - pos < 2 + (int) sizeof(*rdie)) {
+ 		wpa_printf(MSG_ERROR, "FT: Not enough room for response RDIE");
+ 		return pos;
+ 	}
+-- 
+2.47.3
+

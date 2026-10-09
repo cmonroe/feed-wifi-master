@@ -4,9 +4,11 @@ Date: Thu, 22 Sep 2022 16:08:09 +0800
 Subject: [PATCH 037/104] mtk: hostapd: Do not include HE capab IE if
  associated sta's HE capab IE is invalid
 
-The parameter 'sta' passed to send_assoc_resp() might be NULL, so an
-NULL check is necessary before access the 'sta'.
-Only one such check was missed in this function, and this patch fixs it.
+The (Re)Association Response leaves out the HE elements when the
+associated STA has no valid HE Capabilities. A response without a
+STA context keeps them. An MLD STA that re-associates through
+another link gets such a response, and its EHT elements need the
+HE elements.
 
 Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
 ---
@@ -15,13 +17,13 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6928,7 +6928,8 @@ static u16 send_assoc_resp(struct hostap
+@@ -7009,7 +7009,8 @@ static u16 send_assoc_resp(struct hostap
  #endif /* CONFIG_IEEE80211AC */
  
  #ifdef CONFIG_IEEE80211AX
 -	if (hostapd_is_he_enabled(hapd)) {
-+	if (hostapd_is_he_enabled(hapd) && sta &&
-+			sta->flags & WLAN_STA_HE) {
++	if (hostapd_is_he_enabled(hapd) &&
++	    (!sta || (sta->flags & WLAN_STA_HE))) {
  		p = hostapd_eid_he_capab(hapd, p, IEEE80211_MODE_AP);
  		p = hostapd_eid_he_operation(hapd, p);
  		p = hostapd_eid_cca(hapd, p);

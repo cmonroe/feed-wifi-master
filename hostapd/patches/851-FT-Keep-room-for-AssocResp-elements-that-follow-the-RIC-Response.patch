@@ -1,0 +1,208 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 17:56:45 -0700
+Subject: [PATCH] FT: Keep room for AssocResp elements that follow the RIC Response
+
+The (Re)Association Response gives all remaining room to the FT
+elements. The RIC Response in them has one RIC Data element for each
+RIC Data element in the request, so the request can make it fill that
+room. Most elements after the FT elements do not check the room, from
+HT Capabilities to the Multi-Link element. hostapd then writes them
+past the end of the heap buffer. Commit fcae90b60f0e ("FT: Fix
+off-by-2 buffer bounds check in wpa_ft_process_rdie()") corrects only
+the check for one RIC Data element.
+
+The buffer now grows by the maximum length of the elements after the
+FT elements, and this reserve is not part of the room for the FT
+elements. The FT elements get the same room as before, so a response
+that fits today does not change. The RIC Response stops at the first
+RIC Data element that does not fit, with one error message instead of
+one for each remaining element.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/ieee802_11.c     |   87 ++++++++++++++++++++++++++++++++++++--
+ src/ap/ieee802_11.h     |    2 +
+ src/ap/ieee802_11_eht.c |   11 +++++
+ src/ap/wpa_auth_ft.c    |   12 ++++--
+ 4 files changed, 105 insertions(+), 7 deletions(-)
+
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -6774,6 +6774,86 @@ static int add_associated_sta(struct hos
+ }
+ 
+ 
++/*
++ * The RIC Response grows with the request and can fill all the room that
++ * send_assoc_resp() gives to the FT elements. Most writers after the FT
++ * elements do not check the room, so this room is kept away from the FT
++ * elements. The HE and EHT Capabilities writers clear the full struct,
++ * which can be longer than the element.
++ */
++#define ASSOC_RESP_TAIL_FIXED_LEN \
++	(2 + 5 /* Timeout Interval */ + \
++	 2 + sizeof(struct ieee80211_ht_capabilities) + \
++	 2 + sizeof(struct ieee80211_obss_scan_parameters) + \
++	 2 + sizeof(struct ieee80211_ht_operation) + \
++	 2 + sizeof(struct ieee80211_vht_capabilities) + \
++	 2 + sizeof(struct ieee80211_vht_operation) + \
++	 3 + sizeof(struct ieee80211_he_capabilities) + \
++	 3 + sizeof(struct ieee80211_he_operation) + \
++	 sizeof(struct ieee80211_he_6ghz_oper_info) + \
++	 2 + 3 /* BSS Color Change Announcement */ + \
++	 3 + sizeof(struct ieee80211_spatial_reuse) + \
++	 3 + sizeof(struct ieee80211_he_mu_edca_parameter_set) + \
++	 3 + sizeof(struct ieee80211_he_6ghz_band_cap) + \
++	 2 + 3 /* BSS Max Idle Period */ + \
++	 2 + 8 /* RSNXE */ + \
++	 3 + sizeof(struct ieee80211_eht_capabilities) + \
++	 3 + sizeof(struct ieee80211_eht_operation) + \
++	 3 + NONCE_LEN /* Nonce */ + \
++	 2 + 5 + 2 + sizeof(struct ieee80211_vht_capabilities) + \
++	 2 + sizeof(struct ieee80211_vht_operation) /* Vendor VHT */ + \
++	 2 + sizeof(struct wmm_parameter_element) + \
++	 2 + 4 + 5 + 5 + 10 + 5 /* WPS, with the testing attribute */ + \
++	 2 + 4 + 3 + 3 + 4 /* Multi-AP */ + \
++	 2 + 4 + 3 + 1 /* P2P Manageability */ + \
++	 3 + FILS_SESSION_LEN)
++
++static size_t assoc_resp_tail_len(struct hostapd_data *hapd,
++				  struct sta_info *sta)
++{
++	size_t len = ASSOC_RESP_TAIL_FIXED_LEN;
++
++	len += 2 + MAX(EXT_CAPA_MAX_LEN, hapd->iface->extended_capa_len);
++	len += 2 + hapd->conf->qos_map_set_len;
++	len += hostapd_mbo_ie_len(hapd);
++	if (hapd->conf->assocresp_elements)
++		len += wpabuf_len(hapd->conf->assocresp_elements);
++#ifdef CONFIG_FST
++	if (hapd->iface->fst_ies)
++		len += wpabuf_len(hapd->iface->fst_ies);
++#endif /* CONFIG_FST */
++#ifdef CONFIG_TESTING_OPTIONS
++	if (hapd->conf->rsnxe_override_ft)
++		len += wpabuf_len(hapd->conf->rsnxe_override_ft);
++#endif /* CONFIG_TESTING_OPTIONS */
++#ifdef CONFIG_IEEE80211BE
++	len += hostapd_eid_eht_ml_assoc_len(hapd, sta);
++	len += hostapd_eid_eht_ml_tid_to_link_map_len(hapd);
++#endif /* CONFIG_IEEE80211BE */
++	/*
++	 * wpa_write_rsn_ie() writes the RSNE header before it checks the
++	 * room, so the RSNE writers after the FT elements need a reserve too.
++	 */
++#ifdef CONFIG_OWE
++	if ((hapd->conf->wpa_key_mgmt | hapd->conf->rsn_override_key_mgmt |
++	     hapd->conf->rsn_override_key_mgmt_2) & WPA_KEY_MGMT_OWE)
++		len += MAX(2 + 255, MAX_OWN_IE_OVERRIDE);
++	if (sta && sta->owe_ecdh)
++		len += 5 + crypto_ecdh_prime_len(sta->owe_ecdh);
++#endif /* CONFIG_OWE */
++#ifdef CONFIG_ENC_ASSOC
++	if (hapd->conf->assoc_frame_encryption)
++		len += 2 + 255;
++#endif /* CONFIG_ENC_ASSOC */
++#ifdef CONFIG_DPP2
++	if (sta && sta->dpp_pfs)
++		len += wpabuf_len(sta->dpp_pfs->ie);
++#endif /* CONFIG_DPP2 */
++
++	return len;
++}
++
++
+ static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
+ 			   const u8 *addr, u16 status_code, int reassoc,
+ 			   const u8 *ies, size_t ies_len, int rssi,
+@@ -6781,12 +6861,13 @@ static u16 send_assoc_resp(struct hostap
+ {
+ 	int send_len;
+ 	u8 *buf;
+-	size_t buflen;
++	size_t buflen, tail_len;
+ 	struct ieee80211_mgmt *reply;
+ 	u8 *p;
+ 	u16 res = WLAN_STATUS_SUCCESS;
+ 
+-	buflen = sizeof(struct ieee80211_mgmt) + 1024;
++	tail_len = assoc_resp_tail_len(hapd, sta);
++	buflen = sizeof(struct ieee80211_mgmt) + 1024 + tail_len;
+ #ifdef CONFIG_FILS
+ 	if (sta && sta->fils_hlp_resp)
+ 		buflen += wpabuf_len(sta->fils_hlp_resp);
+@@ -6858,7 +6939,7 @@ static u16 send_assoc_resp(struct hostap
+ 		/* IEEE 802.11r: Mobility Domain Information, Fast BSS
+ 		 * Transition Information, RSN, [RIC Response] */
+ 		p = wpa_sm_write_assoc_resp_ies(sta->wpa_sm, p,
+-						buf + buflen - p,
++						buf + buflen - tail_len - p,
+ 						sta->auth_alg, ies, ies_len,
+ 						omit_rsnxe, reassoc,
+ 						sta->vlan_id);
+--- a/src/ap/ieee802_11.h
++++ b/src/ap/ieee802_11.h
+@@ -126,6 +126,8 @@ u8 * hostapd_eid_eht_ml_beacon(struct ho
+ 			       u8 *eid, bool include_mld_id);
+ u8 * hostapd_eid_eht_ml_assoc(struct hostapd_data *hapd, struct sta_info *info,
+ 			      u8 *eid);
++size_t hostapd_eid_eht_ml_assoc_len(struct hostapd_data *hapd,
++				    struct sta_info *info);
+ u8 * hostapd_eid_eht_basic_ml_common(struct hostapd_data *hapd,
+ 				     u8 *eid, struct mld_info *mld_info,
+ 				     bool include_mld_id, bool include_bpcc);
+--- a/src/ap/ieee802_11_eht.c
++++ b/src/ap/ieee802_11_eht.c
+@@ -884,6 +884,17 @@ u8 * hostapd_eid_eht_ml_assoc(struct hos
+ }
+ 
+ 
++size_t hostapd_eid_eht_ml_assoc_len(struct hostapd_data *hapd,
++				    struct sta_info *info)
++{
++	if (!ap_sta_is_mld(hapd, info))
++		return 0;
++
++	return hostapd_eid_eht_basic_ml_len(hapd, info, false, true) +
++		hostapd_eid_eht_reconf_ml_len(hapd);
++}
++
++
+ size_t hostapd_eid_eht_ml_beacon_len(struct hostapd_data *hapd,
+ 				     struct mld_info *info,
+ 				     bool include_mld_id)
+--- a/src/ap/wpa_auth_ft.c
++++ b/src/ap/wpa_auth_ft.c
+@@ -2418,7 +2418,7 @@ static u8 * wpa_ft_process_rdie(struct w
+ 
+ 	if (end - pos < 2 + (int) sizeof(*rdie)) {
+ 		wpa_printf(MSG_ERROR, "FT: Not enough room for response RDIE");
+-		return pos;
++		return NULL;
+ 	}
+ 
+ 	*pos++ = WLAN_EID_RIC_DATA;
+@@ -2490,6 +2490,7 @@ static u8 * wpa_ft_process_ric(struct wp
+ {
+ 	const u8 *rpos, *start;
+ 	const struct rsn_rdie *rdie;
++	u8 *rdie_end;
+ 
+ 	wpa_hexdump(MSG_MSGDUMP, "FT: RIC Request", ric, ric_len);
+ 
+@@ -2508,9 +2509,12 @@ static u8 * wpa_ft_process_ric(struct wp
+ 				break;
+ 			rpos += 2 + rpos[1];
+ 		}
+-		pos = wpa_ft_process_rdie(sm, pos, end, rdie->id,
+-					  rdie->descr_count,
+-					  start, rpos - start);
++		rdie_end = wpa_ft_process_rdie(sm, pos, end, rdie->id,
++					       rdie->descr_count,
++					       start, rpos - start);
++		if (!rdie_end)
++			break;
++		pos = rdie_end;
+ 	}
+ 
+ 	return pos;
