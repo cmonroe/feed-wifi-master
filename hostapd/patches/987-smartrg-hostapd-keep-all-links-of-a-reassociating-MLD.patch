@@ -1,0 +1,128 @@
+From: Piotr Kubik <piotr.kubik@adtran.com>
+Date: Fri, 09 Oct 2026 16:02:58 +0200
+Subject: [PATCH] hostapd: keep all links of a reassociating MLD
+
+A non-AP MLD that reassociates while it is still associated gets only
+its association link. hostapd refuses each other link with an
+unspecified failure, because ieee80211_ml_process_link() finds the
+link station of the old association on that link. With PMF,
+handle_auth() keeps the old entries on purpose, so that an unprotected
+Authentication frame cannot tear down the association.
+
+When the (re)association is accepted on the association link, remove a
+pure link station of the same MLD on the partner link before it is
+processed again. Leave the entry of the old association link: it owns
+the wpa_sm that the stations share. check_assoc_ies() already set the
+new ML info in that wpa_sm, so detach it from the stale station first.
+
+add_associated_sta() then removes and adds the MLD station again for
+the association link, because the station is neither added_unassoc nor
+has an FT or FILS key. hostapd_process_assoc_ml_info() runs before it,
+so that removal also dropped the partner links from the driver: the AP
+kept the association link only, while the station used all links. Add
+the partner link stations again after the MLD station is added.
+
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -6842,6 +6842,31 @@ bool hostapd_is_multiple_link_mld(struct
+ #endif /* CONFIG_IEEE80211BE */
+ 
+ 
++#ifdef CONFIG_IEEE80211BE
++/*
++ * With PMF, handle_auth() keeps the entries of an associated MLD, so a
++ * reassociation still finds the link stations of the old association, and
++ * ieee80211_ml_process_link() refuses a link that has one. The entry of the
++ * old association link owns the shared wpa_sm, so remove pure link stations
++ * only. check_assoc_ies() already set the new ML info in that wpa_sm; detach
++ * it, so that ap_free_sta() does not release the link of the new association.
++ */
++static void hostapd_ml_remove_stale_link_sta(struct hostapd_data *bss,
++					     struct sta_info *sta)
++{
++	struct sta_info *lsta = ap_get_sta(bss, sta->addr);
++
++	if (!lsta || lsta == sta || !hostapd_sta_is_link_sta(bss, lsta))
++		return;
++
++	wpa_printf(MSG_DEBUG, "MLD: Remove stale link STA " MACSTR
++		   " on link %u", MAC2STR(sta->addr), bss->mld_link_id);
++	lsta->wpa_sm = NULL;
++	ap_free_sta(bss, lsta);
++}
++#endif /* CONFIG_IEEE80211BE */
++
++
+ int hostapd_process_assoc_ml_info(struct hostapd_data *hapd,
+ 				  struct sta_info *sta,
+ 				  const u8 *ies, size_t ies_len,
+@@ -6890,6 +6915,7 @@ int hostapd_process_assoc_ml_info(struct
+ 				ieee80211_ml_build_assoc_resp(hapd, link, sta,
+ 							      false);
+ 		} else {
++			hostapd_ml_remove_stale_link_sta(bss, sta);
+ 			if (ieee80211_ml_process_link(
+ 				    bss, sta, link, ies, ies_len,
+ 				    reassoc ? LINK_PARSE_REASSOC :
+@@ -6926,6 +6952,32 @@ static void send_deauth(struct hostapd_d
+ }
+ 
+ 
++static void hostapd_ml_readd_link_sta(struct hostapd_data *hapd,
++				      struct sta_info *sta, int reassoc)
++{
++#ifdef CONFIG_IEEE80211BE
++	struct hostapd_data *bss;
++
++	for_each_mld_link(bss, hapd) {
++		struct sta_info *lsta;
++
++		if (bss == hapd)
++			continue;
++
++		lsta = ap_get_sta(bss, sta->addr);
++		if (!lsta || !hostapd_sta_is_link_sta(bss, lsta))
++			continue;
++
++		if (add_associated_sta(bss, lsta, reassoc))
++			wpa_printf(MSG_INFO,
++				   "MLD: Could not add link %u of " MACSTR
++				   " again", bss->mld_link_id,
++				   MAC2STR(sta->addr));
++	}
++#endif /* CONFIG_IEEE80211BE */
++}
++
++
+ static int add_associated_sta(struct hostapd_data *hapd,
+ 			      struct sta_info *sta, int reassoc)
+ {
+@@ -6935,7 +6987,7 @@ static int add_associated_sta(struct hos
+ 	struct ieee80211_eht_capabilities eht_cap;
+ 	int set = 1;
+ 	const u8 *mld_link_addr = NULL;
+-	bool mld_link_sta = false, epp_sta = false;
++	bool mld_link_sta = false, epp_sta = false, removed = false;
+ 	u16 eml_cap = 0;
+ 
+ #ifdef CONFIG_ENC_ASSOC
+@@ -6998,6 +7050,7 @@ static int add_associated_sta(struct hos
+ 		hostapd_drv_sta_remove(hapd, sta->addr);
+ 		wpa_auth_sm_event(sta->wpa_sm, WPA_DRV_STA_REMOVED);
+ 		set = 0;
++		removed = true;
+ 		/*
+ 		 * The new driver entry has no key until the 4-way handshake or
+ 		 * the FT key installation. Clear the flag without an event,
+@@ -7079,6 +7132,11 @@ static int add_associated_sta(struct hos
+ 
+ 	sta->added_unassoc = 0;
+ 
++	/* The removal above also dropped the partner links that
++	 * hostapd_process_assoc_ml_info() added to the driver before. */
++	if (removed && ap_sta_is_mld(hapd, sta))
++		hostapd_ml_readd_link_sta(hapd, sta, reassoc);
++
+ 	return 0;
+ }
+ 
