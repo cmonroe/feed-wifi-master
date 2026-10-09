@@ -31,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -3759,13 +3759,16 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3833,13 +3833,16 @@ hostapd_ctrl_iface_set_edcca(struct host
  		hapd->iconf->edcca_compensation = (s8) compensation;
  	} else if (os_strcmp(config, "threshold") == 0) {
  		char *thres_value;
@@ -50,7 +50,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		if (bw_idx < EDCCA_BW_20 || bw_idx > EDCCA_BW_160) {
  			wpa_printf(MSG_ERROR,
-@@ -3781,7 +3784,6 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3855,7 +3858,6 @@ hostapd_ctrl_iface_set_edcca(struct host
  			return -1;
  		}
  
@@ -58,7 +58,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* 0x7f means keep the origival value in firmware */
  		os_memset(threshold_arr, 0x7f, sizeof(threshold_arr));
  		threshold_arr[bw_idx] = threshold;
-@@ -3790,7 +3792,7 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3864,7 +3866,7 @@ hostapd_ctrl_iface_set_edcca(struct host
  			return -1;
  	} else {
  		wpa_printf(MSG_ERROR,
@@ -67,7 +67,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return -1;
  	}
  	return os_snprintf(buf, buflen, "OK\n");
-@@ -3805,15 +3807,16 @@ hostapd_ctrl_iface_get_edcca(struct host
+@@ -3879,15 +3881,16 @@ hostapd_ctrl_iface_get_edcca(struct host
  
  	pos = buf;
  	end = buf + buflen;
@@ -86,7 +86,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (!hapd->drv_priv ||
  		    hostapd_drv_get_edcca(hapd, EDCCA_CTRL_GET_THRES, value) != 0)
  			return -1;
-@@ -4977,10 +4980,10 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -5060,10 +5063,10 @@ static int hostapd_ctrl_iface_receive_pr
  #endif /* CONFIG_AFC */
  	} else if (os_strncmp(buf, "SET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_set_edcca(hapd, buf+10, reply,

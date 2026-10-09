@@ -1,0 +1,284 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 18:53:04 -0700
+Subject: [PATCH] hostapd: tell the configured PSK apart from wpa_psk_file entries
+
+The configured PSK and the wpa_psk_file entries share one list, and
+readers of the configured PSK take the list head, a file entry. A BSS
+reload adds the file entries again, gives group to a station entry
+and keeps a PSK derived for an old SSID. RELOAD_WPA_PSK drops a hex
+wpa_psk, and its kick disconnects stations whose key never came from
+the list, such as SAE stations.
+
+GET_CONFIG, DUP_NETWORK wpa_psk and the 4-way handshake offload now
+use the entry with the shared mark, or nothing. Each reload and each
+interface start keeps a hex wpa_psk and reads the file again in place
+of the old file entries. A passphrase PSK is derived again for the
+current SSID, and only the configured PSK and zero-MAC file lines
+have group. Without a file, RELOAD_WPA_PSK still drops WPS per-device
+PSKs held in memory. The kick judges only stations with a PSK AKM and
+a PMK of this AP that does not come from their own sta->psk. It keeps
+the revocation of removed or changed file keys and WPS keys.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ hostapd/ctrl_iface.c |   50 ++++++++++++++++++++++++++++++++++----------
+ src/ap/ap_config.c   |   59 ++++++++++++++++++++++++++++++++++++++-------------
+ src/ap/ap_config.h   |    1 +
+ src/ap/beacon.c      |    8 ++++--
+ src/ap/hostapd.c     |   11 ---------
+ 5 files changed, 89 insertions(+), 40 deletions(-)
+
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -960,6 +960,9 @@ static int hostapd_ctrl_iface_get_config
+ {
+ 	int ret;
+ 	char *pos, *end;
++#ifdef CONFIG_WPS
++	const struct hostapd_wpa_psk *shared_psk;
++#endif /* CONFIG_WPS */
+ 
+ 	pos = buf;
+ 	end = buf + buflen;
+@@ -999,12 +1002,10 @@ static int hostapd_ctrl_iface_get_config
+ 		pos += ret;
+ 	}
+ 
+-	if (hapd->conf->wps_state && hapd->conf->wpa &&
+-	    hapd->conf->ssid.wpa_psk &&
+-	    hapd->conf->ssid.wpa_psk->group) {
++	shared_psk = hostapd_get_shared_psk(&hapd->conf->ssid);
++	if (hapd->conf->wps_state && hapd->conf->wpa && shared_psk) {
+ 		char hex[PMK_LEN * 2 + 1];
+-		wpa_snprintf_hex(hex, sizeof(hex),
+-				 hapd->conf->ssid.wpa_psk->psk, PMK_LEN);
++		wpa_snprintf_hex(hex, sizeof(hex), shared_psk->psk, PMK_LEN);
+ 		ret = os_snprintf(pos, end - pos, "psk=%s\n", hex);
+ 		if (os_snprintf_error(end - pos, ret))
+ 			return pos - buf;
+@@ -1422,6 +1423,21 @@ static int hostapd_ctrl_iface_disable(st
+ }
+ 
+ 
++static bool hostapd_ctrl_iface_sta_psk_match(struct sta_info *sta,
++					     const u8 *pmk)
++{
++	struct hostapd_sta_wpa_psk_short *psk;
++
++	for (psk = sta->psk; psk; psk = psk->next) {
++		if (!psk->is_passphrase &&
++		    os_memcmp(psk->psk, pmk, PMK_LEN) == 0)
++			return true;
++	}
++
++	return false;
++}
++
++
+ static int
+ hostapd_ctrl_iface_kick_mismatch_psk_sta_iter(struct hostapd_data *hapd,
+ 					      struct sta_info *sta, void *ctx)
+@@ -1436,9 +1452,18 @@ hostapd_ctrl_iface_kick_mismatch_psk_sta
+ 
+ 	pmk = wpa_auth_get_pmk(sta->wpa_sm, &pmk_len);
+ 
+-	for (psk = hapd->conf->ssid.wpa_psk; pmk && psk; psk = psk->next) {
+-		pmk_match = PMK_LEN == pmk_len &&
+-			os_memcmp(psk->psk, pmk, pmk_len) == 0;
++	/*
++	 * Only a PSK AKM with a PMK of this AP takes its key from the list.
++	 * SAE, a RADIUS or ucode sta->psk and a PMK-R1 that FT fetched from
++	 * another AP do not, so the list cannot judge them.
++	 */
++	if (!pmk || pmk_len != PMK_LEN ||
++	    !wpa_key_mgmt_wpa_psk_no_sae(wpa_auth_sta_key_mgmt(sta->wpa_sm)) ||
++	    hostapd_ctrl_iface_sta_psk_match(sta, pmk))
++		return 0;
++
++	for (psk = hapd->conf->ssid.wpa_psk; psk; psk = psk->next) {
++		pmk_match = os_memcmp(psk->psk, pmk, PMK_LEN) == 0;
+ 		sta_match = psk->group == 0 &&
+ 			ether_addr_equal(sta->addr, psk->addr);
+ 		bss_match = psk->group == 1;
+@@ -1463,7 +1488,8 @@ static int hostapd_ctrl_iface_reload_wpa
+ 	struct hostapd_bss_config *conf = hapd->conf;
+ 	int err;
+ 
+-	hostapd_config_clear_wpa_psk(&conf->ssid.wpa_psk);
++	/* The parsed wpa_psk exists only in the list; it cannot be read again */
++	hostapd_config_remove_wpa_psk(&conf->ssid.wpa_psk, 0);
+ 
+ 	err = hostapd_setup_wpa_psk(conf);
+ 	if (err < 0) {
+@@ -5677,9 +5703,11 @@ static int hostapd_ctrl_iface_dup_param(
+ 					struct hostapd_data *dst_hapd,
+ 					const char *param)
+ {
++	const struct hostapd_wpa_psk *shared_psk;
+ 	int res;
+ 	char *value;
+ 
++	shared_psk = hostapd_get_shared_psk(&src_hapd->conf->ssid);
+ 	value = os_zalloc(HOSTAPD_CLI_DUP_VALUE_MAX_LEN);
+ 	if (!value) {
+ 		wpa_printf(MSG_ERROR,
+@@ -5716,9 +5744,9 @@ static int hostapd_ctrl_iface_dup_param(
+ 		os_snprintf(value, HOSTAPD_CLI_DUP_VALUE_MAX_LEN, "%s",
+ 			    src_hapd->conf->ssid.wpa_passphrase);
+ 	} else if (os_strcmp(param, "wpa_psk") == 0 &&
+-		   src_hapd->conf->ssid.wpa_psk_set) {
++		   src_hapd->conf->ssid.wpa_psk_set && shared_psk) {
+ 		wpa_snprintf_hex(value, HOSTAPD_CLI_DUP_VALUE_MAX_LEN,
+-			src_hapd->conf->ssid.wpa_psk->psk, PMK_LEN);
++			shared_psk->psk, PMK_LEN);
+ 	} else {
+ 		wpa_printf(MSG_WARNING, "DUP: %s cannot be duplicated", param);
+ 		goto error_return;
+--- a/src/ap/ap_config.c
++++ b/src/ap/ap_config.c
+@@ -477,8 +477,10 @@ static int hostapd_config_read_wpa_psk(c
+ 
+ static int hostapd_derive_psk(struct hostapd_ssid *ssid)
+ {
+-	ssid->wpa_psk = os_zalloc(sizeof(struct hostapd_wpa_psk));
+-	if (ssid->wpa_psk == NULL) {
++	struct hostapd_wpa_psk *psk, **tail;
++
++	psk = os_zalloc(sizeof(*psk));
++	if (!psk) {
+ 		wpa_printf(MSG_ERROR, "Unable to alloc space for PSK");
+ 		return -1;
+ 	}
+@@ -489,13 +491,21 @@ static int hostapd_derive_psk(struct hos
+ 			      os_strlen(ssid->wpa_passphrase));
+ 	if (pbkdf2_sha1(ssid->wpa_passphrase,
+ 			ssid->ssid, ssid->ssid_len,
+-			4096, ssid->wpa_psk->psk, PMK_LEN) != 0) {
++			4096, psk->psk, PMK_LEN) != 0) {
+ 		wpa_printf(MSG_ERROR, "Error in pbkdf2_sha1()");
++		bin_clear_free(psk, sizeof(*psk));
+ 		return -1;
+ 	}
+ 	wpa_hexdump_key(MSG_DEBUG, "PSK (from passphrase)",
+-			ssid->wpa_psk->psk, PMK_LEN);
+-	ssid->wpa_psk->shared = 1;
++			psk->psk, PMK_LEN);
++	psk->group = 1;
++	psk->shared = 1;
++
++	/* Replace the old entry only now, so a failure keeps the BSS keyed */
++	hostapd_config_remove_wpa_psk(&ssid->wpa_psk, 1);
++	for (tail = &ssid->wpa_psk; *tail; tail = &(*tail)->next)
++		;
++	*tail = psk;
+ 	return 0;
+ }
+ 
+@@ -581,17 +591,21 @@ int hostapd_setup_wpa_psk(struct hostapd
+ 	if (hostapd_setup_sae_pt(conf) < 0)
+ 		return -1;
+ 
++	/*
++	 * A BSS reload calls this with the entries of the previous file read
++	 * still in the list; the file holds them all, so read it again.
++	 */
++	if (ssid->wpa_psk_file)
++		hostapd_config_remove_wpa_psk(&ssid->wpa_psk, 0);
++
++	/*
++	 * wpa_passphrase and wpa_psk exclude each other, so the shared entry
++	 * comes from the passphrase; derive it again for the current SSID.
++	 */
+ 	if (ssid->wpa_passphrase != NULL) {
+-		if (ssid->wpa_psk != NULL) {
+-			wpa_printf(MSG_DEBUG, "Using pre-configured WPA PSK "
+-				   "instead of passphrase");
+-		} else {
+-			wpa_printf(MSG_DEBUG, "Deriving WPA PSK based on "
+-				   "passphrase");
+-			if (hostapd_derive_psk(ssid) < 0)
+-				return -1;
+-		}
+-		ssid->wpa_psk->group = 1;
++		wpa_printf(MSG_DEBUG, "Deriving WPA PSK based on passphrase");
++		if (hostapd_derive_psk(ssid) < 0)
++			return -1;
+ 	}
+ 
+ 	return hostapd_config_read_wpa_psk(ssid->wpa_psk_file, &conf->ssid);
+@@ -754,6 +768,21 @@ void hostapd_config_clear_wpa_psk(struct
+ }
+ 
+ 
++void hostapd_config_remove_wpa_psk(struct hostapd_wpa_psk **l, int shared)
++{
++	struct hostapd_wpa_psk *psk;
++
++	while ((psk = *l)) {
++		if (!psk->shared != !shared) {
++			l = &psk->next;
++			continue;
++		}
++		*l = psk->next;
++		bin_clear_free(psk, sizeof(*psk));
++	}
++}
++
++
+ #ifdef CONFIG_IEEE80211R_AP
+ 
+ void hostapd_config_clear_rxkhs(struct hostapd_bss_config *conf)
+--- a/src/ap/beacon.c
++++ b/src/ap/beacon.c
+@@ -2586,9 +2586,11 @@ int ieee802_11_build_ap_params(struct ho
+ 	if (wpa_key_mgmt_wpa_psk_no_sae(hapd->conf->wpa_key_mgmt) &&
+ 	    (hapd->iface->drv_flags2 &
+ 	     WPA_DRIVER_FLAGS2_4WAY_HANDSHAKE_AP_PSK)) {
+-		if (hapd->conf->ssid.wpa_psk && hapd->conf->ssid.wpa_psk_set) {
+-			os_memcpy(params->psk, hapd->conf->ssid.wpa_psk->psk,
+-				  PMK_LEN);
++		const struct hostapd_wpa_psk *shared_psk =
++			hostapd_get_shared_psk(&hapd->conf->ssid);
++
++		if (shared_psk && hapd->conf->ssid.wpa_psk_set) {
++			os_memcpy(params->psk, shared_psk->psk, PMK_LEN);
+ 			params->psk_len = PMK_LEN;
+ 		} else if (hapd->conf->ssid.wpa_passphrase &&
+ 			   pbkdf2_sha1(hapd->conf->ssid.wpa_passphrase,
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -1497,6 +1497,7 @@ void hostapd_config_free_radius_attr(str
+ void hostapd_config_free_eap_user(struct hostapd_eap_user *user);
+ void hostapd_config_free_eap_users(struct hostapd_eap_user *user);
+ void hostapd_config_clear_wpa_psk(struct hostapd_wpa_psk **p);
++void hostapd_config_remove_wpa_psk(struct hostapd_wpa_psk **l, int shared);
+ void hostapd_config_clear_rxkhs(struct hostapd_bss_config *conf);
+ void hostapd_config_free_bss(struct hostapd_bss_config *conf);
+ void hostapd_config_free(struct hostapd_config *conf);
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -128,8 +128,6 @@ void hostapd_reconfig_encryption(struct
+ 
+ static void hostapd_reload_bss(struct hostapd_data *hapd)
+ {
+-	struct hostapd_ssid *ssid;
+-
+ 	if (!hapd->started)
+ 		return;
+ 
+@@ -141,15 +139,6 @@ static void hostapd_reload_bss(struct ho
+ 	radius_client_reconfig(hapd->radius, hapd->conf->radius);
+ #endif /* CONFIG_NO_RADIUS */
+ 
+-	ssid = &hapd->conf->ssid;
+-	if (!ssid->wpa_psk_set && ssid->wpa_psk && !ssid->wpa_psk->next &&
+-	    ssid->wpa_passphrase_set && ssid->wpa_passphrase) {
+-		/*
+-		 * Force PSK to be derived again since SSID or passphrase may
+-		 * have changed.
+-		 */
+-		hostapd_config_clear_wpa_psk(&hapd->conf->ssid.wpa_psk);
+-	}
+ 	if (hostapd_setup_wpa_psk(hapd->conf)) {
+ 		wpa_printf(MSG_ERROR, "Failed to re-configure WPA PSK "
+ 			   "after reloading configuration");

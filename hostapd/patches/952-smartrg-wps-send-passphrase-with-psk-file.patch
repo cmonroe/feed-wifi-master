@@ -8,25 +8,23 @@ key of the BSS instead: wpa_passphrase, or wpa_psk as hex. A wps=1
 entry in wpa_psk_file for the enrollee still comes first.
 
 hostapd prepends the wpa_psk_file entries and the WPS per-device PSKs
-to the PSK list of the BSS, so the head of that list can be the key
-of another station. Mark the entry that comes from wpa_passphrase or
-wpa_psk, and give WPS only that entry. This also applies to the PSK
-that an enrollee without a display receives. With no marked entry,
-WPS sends no shared key and the enrollee gets a per-device PSK. That
-is the case with wpa_psk_file alone. It is also the case with a
-wpa_psk and a wpa_psk_file after RELOAD_WPA_PSK, from the next BSS
-reload on, because RELOAD_WPA_PSK drops the configured wpa_psk.
+to the PSK list of the BSS. The head of that list can therefore be
+the key of another station. Mark the entry that comes from
+wpa_passphrase or wpa_psk, and give WPS only that entry. This also
+applies to the PSK that an enrollee without a display receives. With
+no marked entry, WPS sends no shared key and the enrollee gets a
+per-device PSK. That is the case with wpa_psk_file alone.
 
 Signed-off-by: colinw <colin.whittaker@adtran.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  hostapd/config_file.c |    1 +
- src/ap/ap_config.c    |    1 +
- src/ap/ap_config.h    |    1 +
- src/ap/wps_hostapd.c  |   47 +++++++++++++++++++++++++++++++++--------------
+ src/ap/ap_config.c    |   19 +++++++++++++++++++
+ src/ap/ap_config.h    |    3 +++
+ src/ap/wps_hostapd.c  |   29 +++++++++++++++--------------
  wpa_supplicant/ap.c   |    1 +
- 5 files changed, 37 insertions(+), 14 deletions(-)
+ 5 files changed, 39 insertions(+), 14 deletions(-)
 
 --- a/src/ap/wps_hostapd.c
 +++ b/src/ap/wps_hostapd.c
@@ -38,31 +36,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				os_free(bss->ssid.wpa_passphrase);
  				bss->ssid.wpa_passphrase = NULL;
  			}
-@@ -1091,12 +1092,31 @@ static void hostapd_free_wps(struct wps_
- }
- 
- 
-+/*
-+ * wpa_psk_file and WPS prepend per-station entries to ssid->wpa_psk, so the
-+ * head of the list can be the key of another station.
-+ */
-+static const struct hostapd_wpa_psk *
-+hostapd_wps_shared_psk(const struct hostapd_ssid *ssid)
-+{
-+	const struct hostapd_wpa_psk *psk;
-+
-+	for (psk = ssid->wpa_psk; psk; psk = psk->next) {
-+		if (psk->shared)
-+			return psk;
-+	}
-+
-+	return NULL;
-+}
-+
-+
- int hostapd_init_wps(struct hostapd_data *hapd,
- 		     struct hostapd_bss_config *conf)
- {
+@@ -1097,6 +1098,7 @@ int hostapd_init_wps(struct hostapd_data
  	struct wps_context *wps;
  	struct wps_registrar_config cfg;
  	u8 *multi_ap_netw_key = NULL;
@@ -70,14 +44,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (conf->wps_state == 0) {
  		hostapd_wps_clear_ies(hapd, 0);
-@@ -1235,17 +1255,16 @@ int hostapd_init_wps(struct hostapd_data
+@@ -1235,17 +1237,16 @@ int hostapd_init_wps(struct hostapd_data
  		wps->auth_types |= WPS_AUTH_OPEN;
  	}
  
 -	if (conf->ssid.wpa_psk_file) {
 -		/* Use per-device PSKs */
 -	} else if (conf->ssid.wpa_passphrase) {
-+	shared_psk = hostapd_wps_shared_psk(&conf->ssid);
++	shared_psk = hostapd_get_shared_psk(&conf->ssid);
 +	if (conf->ssid.wpa_passphrase) {
  		wps->network_key = (u8 *) os_strdup(conf->ssid.wpa_passphrase);
  		wps->network_key_len = os_strlen(conf->ssid.wpa_passphrase);
@@ -92,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		wps->network_key_len = 2 * PMK_LEN;
  #ifdef CONFIG_WEP
  	} else if (conf->ssid.wep.keys_set && conf->ssid.wep.key[0]) {
-@@ -1258,8 +1277,8 @@ int hostapd_init_wps(struct hostapd_data
+@@ -1258,8 +1259,8 @@ int hostapd_init_wps(struct hostapd_data
  #endif /* CONFIG_WEP */
  	}
  
@@ -103,7 +77,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		wps->psk_set = 1;
  	}
  
-@@ -1463,6 +1482,7 @@ void hostapd_update_wps(struct hostapd_d
+@@ -1463,6 +1464,7 @@ void hostapd_update_wps(struct hostapd_d
  {
  	struct wps_context *wps = hapd->wps;
  	struct hostapd_bss_config *conf = hapd->conf;
@@ -111,14 +85,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (!wps)
  		return;
-@@ -1483,19 +1503,18 @@ void hostapd_update_wps(struct hostapd_d
+@@ -1483,19 +1485,18 @@ void hostapd_update_wps(struct hostapd_d
  	wps->network_key = NULL;
  	wps->network_key_len = 0;
  	wps->psk_set = 0;
 -	if (conf->ssid.wpa_psk_file) {
 -		/* Use per-device PSKs */
 -	} else if (conf->ssid.wpa_passphrase) {
-+	shared_psk = hostapd_wps_shared_psk(&conf->ssid);
++	shared_psk = hostapd_get_shared_psk(&conf->ssid);
 +	if (conf->ssid.wpa_passphrase) {
  		wps->network_key = (u8 *) os_strdup(conf->ssid.wpa_passphrase);
  		if (!wps->network_key)
@@ -135,7 +109,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		wps->network_key_len = 2 * PMK_LEN;
  #ifdef CONFIG_WEP
  	} else if (conf->ssid.wep.keys_set && conf->ssid.wep.key[0]) {
-@@ -1508,8 +1527,8 @@ void hostapd_update_wps(struct hostapd_d
+@@ -1508,8 +1509,8 @@ void hostapd_update_wps(struct hostapd_d
  #endif /* CONFIG_WEP */
  	}
  
@@ -158,7 +132,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		bss->ssid.wpa_psk_set = 1;
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -495,6 +495,7 @@ static int hostapd_derive_psk(struct hos
+@@ -495,10 +495,29 @@ static int hostapd_derive_psk(struct hos
  	}
  	wpa_hexdump_key(MSG_DEBUG, "PSK (from passphrase)",
  			ssid->wpa_psk->psk, PMK_LEN);
@@ -166,6 +140,28 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  }
  
+ 
++/*
++ * wpa_psk_file and WPS prepend per-station entries to ssid->wpa_psk, so the
++ * head of the list can be the key of another station.
++ */
++const struct hostapd_wpa_psk *
++hostapd_get_shared_psk(const struct hostapd_ssid *ssid)
++{
++	const struct hostapd_wpa_psk *psk;
++
++	for (psk = ssid->wpa_psk; psk; psk = psk->next) {
++		if (psk->shared)
++			return psk;
++	}
++
++	return NULL;
++}
++
++
+ int hostapd_setup_sae_pt(struct hostapd_bss_config *conf)
+ {
+ #ifdef CONFIG_SAE
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
 @@ -164,6 +164,7 @@ struct hostapd_sta_wpa_psk_short {
@@ -176,6 +172,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	char keyid[KEYID_LEN];
  	int wps;
  	u8 psk[PMK_LEN];
+@@ -1503,6 +1504,8 @@ int hostapd_maclist_found(struct mac_acl
+ const u8 * hostapd_get_psk(const struct hostapd_bss_config *conf,
+ 			   const u8 *addr, const u8 *p2p_dev_addr,
+ 			   const u8 *prev_psk, int *vlan_id);
++const struct hostapd_wpa_psk *
++hostapd_get_shared_psk(const struct hostapd_ssid *ssid);
+ int hostapd_setup_wpa_psk(struct hostapd_bss_config *conf);
+ int hostapd_vlan_valid(struct hostapd_vlan *vlan,
+ 		       struct vlan_description *vlan_desc);
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
 @@ -601,6 +601,7 @@ static int wpa_supplicant_conf_ap(struct

@@ -130,7 +130,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_HS20
  static int hostapd_ctrl_iface_hs20_deauth_req(struct hostapd_data *hapd,
  					      const char *cmd)
-@@ -3662,6 +3674,114 @@ free_cmd_buffer:
+@@ -3698,6 +3710,114 @@ free_cmd_buffer:
  #endif /* CONFIG_TESTING_OPTIONS */
  #endif /* CONFIG_IEEE80211BE */
  
@@ -245,7 +245,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  #ifdef CONFIG_NAN_USD
  
-@@ -4720,6 +4840,12 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4756,6 +4876,12 @@ static int hostapd_ctrl_iface_receive_pr
  		if (hostapd_ctrl_afc_send_request(hapd, buf + 16) < 0)
  			reply_len = -1;
  #endif /* CONFIG_AFC */
@@ -270,7 +270,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd_set_and_check_bw320_offset(conf, 0);
  
  	conf->disable_mcs15_rx = true;
-@@ -1067,6 +1070,7 @@ void hostapd_config_free(struct hostapd_
+@@ -1114,6 +1117,7 @@ void hostapd_config_free(struct hostapd_
  #ifdef CONFIG_ACS
  	os_free(conf->acs_chan_bias);
  #endif /* CONFIG_ACS */
@@ -370,7 +370,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3199,6 +3199,13 @@ dfs_offload:
+@@ -3189,6 +3189,13 @@ dfs_offload:
  	}
  #endif /* CONFIG_MESH */
  
