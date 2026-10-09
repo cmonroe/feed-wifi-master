@@ -1,0 +1,26 @@
+From: Piotr Kubik <piotr.kubik@adtran.com>
+Date: Fri, 09 Oct 2026 17:30:30 +0200
+Subject: [PATCH] wifi: mac80211: change the links of an AP_VLAN
+ station through its AP
+
+A 4-address station of an AP MLD moves to an AP_VLAN interface, so its
+sta->sdata is the AP_VLAN. The AP_VLAN is never added to the driver,
+so check_sdata_in_driver() in drv_change_sta_links() warns and returns
+-EIO for every link change of such a station. Adding a link fails, and
+removing a link leaves it in the driver, because
+ieee80211_sta_remove_link() ignores the error.
+
+Map the AP_VLAN to its AP first, as drv_sta_state() does.
+
+Fixes: 469d5d5a3b7a ("wifi: mac80211: synchronize valid links for WDS AP_VLAN interfaces")
+
+--- a/net/mac80211/driver-ops.c
++++ b/net/mac80211/driver-ops.c
+@@ -597,6 +597,7 @@ int drv_change_sta_links(struct ieee8021
+ 	might_sleep();
+ 	lockdep_assert_wiphy(local->hw.wiphy);
+ 
++	sdata = get_bss_sdata(sdata);
+ 	if (!check_sdata_in_driver(sdata))
+ 		return -EIO;
+ 
