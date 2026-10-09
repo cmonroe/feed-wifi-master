@@ -4,24 +4,35 @@ Date: Tue, 15 Apr 2025 11:47:30 +0800
 Subject: [PATCH 207/210] mtk: hostapd: fix get/set edcca vendor command for
  single-wiphy
 
-Fix get/set edcca vendor command with band index to run for single-wiphy
-change.
+With one wiphy for all bands, mt7996 needs the radio index in every
+EDCCA vendor command and rejects a command without it. The AP code
+passes the wiphy radio index of the hardware that the interface uses.
+The driver leaves the attribute out before hostapd selects that
+hardware and when the wiphy reports no radios; mt7915 does not read
+the attribute.
+
+The index comes from the AP code because the driver context is not a
+hostapd interface when wpa_supplicant runs an AP or a mesh network.
+mt7915 sends no 160 MHz threshold, so GET_EDCCA accepts a reply
+without one. hostapd_cli gets the set_edcca and get_edcca commands.
 
 Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 
 ---
- hostapd/ctrl_iface.c         | 22 +++++++++--------
- hostapd/hostapd_cli.c        | 14 +++++++++++
- src/ap/ap_drv_ops.c          | 28 ++++++++++++++++++----
- src/common/mtk_vendor.h      |  1 +
- src/drivers/driver.h         |  8 +++----
- src/drivers/driver_nl80211.c | 46 +++++++++++++++++++++++++++++-------
- 6 files changed, 92 insertions(+), 27 deletions(-)
+ hostapd/ctrl_iface.c         | 19 +++++++++++--------
+ hostapd/hostapd_cli.c        | 14 ++++++++++++++
+ src/ap/ap_drv_ops.c          | 16 ++++++++++++++--
+ src/common/mtk_vendor.h      |  4 +++-
+ src/drivers/driver.h         |  8 ++++----
+ src/drivers/driver_nl80211.c | 22 +++++++++++++++-------
+ 6 files changed, 61 insertions(+), 22 deletions(-)
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -3742,13 +3742,16 @@ hostapd_ctrl_iface_set_edcca(struct host
- 			return -1;
+@@ -3749,13 +3749,16 @@ hostapd_ctrl_iface_set_edcca(struct host
+ 		hapd->iconf->edcca_compensation = (s8) compensation;
  	} else if (os_strcmp(config, "threshold") == 0) {
  		char *thres_value;
 +		int threshold_arr[EDCCA_MAX_BW_NUM];
@@ -39,7 +50,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  		if (bw_idx < EDCCA_BW_20 || bw_idx > EDCCA_BW_160) {
  			wpa_printf(MSG_ERROR,
-@@ -3764,7 +3767,6 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3771,7 +3774,6 @@ hostapd_ctrl_iface_set_edcca(struct host
  			return -1;
  		}
  
@@ -47,7 +58,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		/* 0x7f means keep the origival value in firmware */
  		os_memset(threshold_arr, 0x7f, sizeof(threshold_arr));
  		threshold_arr[bw_idx] = threshold;
-@@ -3773,7 +3775,7 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3780,7 +3782,7 @@ hostapd_ctrl_iface_set_edcca(struct host
  			return -1;
  	} else {
  		wpa_printf(MSG_ERROR,
@@ -56,7 +67,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		return -1;
  	}
  	return os_snprintf(buf, buflen, "OK\n");
-@@ -3788,15 +3790,16 @@ hostapd_ctrl_iface_get_edcca(struct host
+@@ -3795,15 +3797,16 @@ hostapd_ctrl_iface_get_edcca(struct host
  
  	pos = buf;
  	end = buf + buflen;
@@ -72,10 +83,10 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	} else if (os_strcmp(cmd, "threshold") == 0) {
 +		u8 value[EDCCA_MAX_BW_NUM] = {0};
 +
- 		if (hostapd_drv_get_edcca(hapd, EDCCA_CTRL_GET_THRES, value) != 0)
+ 		if (!hapd->drv_priv ||
+ 		    hostapd_drv_get_edcca(hapd, EDCCA_CTRL_GET_THRES, value) != 0)
  			return -1;
- 		return os_snprintf(pos, end - pos,
-@@ -4959,10 +4962,10 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4967,10 +4970,10 @@ static int hostapd_ctrl_iface_receive_pr
  #endif /* CONFIG_AFC */
  	} else if (os_strncmp(buf, "SET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_set_edcca(hapd, buf+10, reply,
@@ -120,55 +131,46 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1443,28 +1443,46 @@ int hostapd_remove_pmkid(struct hostapd_
- 
- int hostapd_drv_configure_edcca_enable(struct hostapd_data *hapd)
- {
-+	s8 link_id = -1;
-+
- 	if (!hapd->driver || !hapd->driver->configure_edcca_enable)
- 		return 0;
--	return hapd->driver->configure_edcca_enable(hapd->drv_priv,
--			hapd->iconf->edcca_enable,
--				hapd->iconf->edcca_compensation);
-+
-+	if (hapd->conf->mld_ap)
-+		link_id = hapd->mld_link_id;
-+
-+	return hapd->driver->configure_edcca_enable(hapd->drv_priv, link_id,
-+						    hapd->iconf->edcca_enable,
-+						    hapd->iconf->edcca_compensation);
+@@ -1458,12 +1458,21 @@ int hostapd_remove_pmkid(struct hostapd_
  }
  
  
- int hostapd_drv_configure_edcca_threshold(struct hostapd_data *hapd,
- 					  const int *threshold)
- {
-+	s8 link_id = -1;
++static s8 hostapd_drv_radio_idx(struct hostapd_data *hapd)
++{
++	if (!hapd->iface->current_hw_info)
++		return -1;
++	return hapd->iface->current_hw_info->hw_idx;
++}
 +
++
+ int hostapd_drv_configure_edcca_enable(struct hostapd_data *hapd,
+ 				       u8 edcca_enable, s8 edcca_compensation)
+ {
+ 	if (!hapd->driver || !hapd->driver->configure_edcca_enable)
+ 		return 0;
+ 	return hapd->driver->configure_edcca_enable(hapd->drv_priv,
++						    hostapd_drv_radio_idx(hapd),
+ 						    edcca_enable,
+ 						    edcca_compensation);
+ }
+@@ -1474,7 +1483,9 @@ int hostapd_drv_configure_edcca_threshol
+ {
  	if (!hapd->driver || !hapd->driver->configure_edcca_threshold)
  		return 0;
 -	return hapd->driver->configure_edcca_threshold(hapd->drv_priv, threshold);
-+
-+	if (hapd->conf->mld_ap)
-+		link_id = hapd->mld_link_id;
-+
-+	return hapd->driver->configure_edcca_threshold(hapd->drv_priv, link_id, threshold);
++	return hapd->driver->configure_edcca_threshold(hapd->drv_priv,
++						       hostapd_drv_radio_idx(hapd),
++						       threshold);
  }
  
  
- int hostapd_drv_get_edcca(struct hostapd_data *hapd, const u8 mode, u8 *value)
+@@ -1482,7 +1493,8 @@ int hostapd_drv_get_edcca(struct hostapd
  {
-+	s8 link_id = -1;
-+
  	if (!hapd->driver || !hapd->driver->get_edcca)
  		return 0;
 -	return hapd->driver->get_edcca(hapd->drv_priv, mode, value);
-+
-+	if (hapd->conf->mld_ap)
-+		link_id = hapd->mld_link_id;
-+
-+	return hapd->driver->get_edcca(hapd->drv_priv, link_id, mode, value);
++	return hapd->driver->get_edcca(hapd->drv_priv,
++				       hostapd_drv_radio_idx(hapd), mode, value);
  }
  
  int hostapd_drv_txpower_ctrl(struct hostapd_data *hapd)
@@ -195,7 +197,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  enum mtk_vendor_attr_csi_ctrl {
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5879,10 +5879,10 @@ struct wpa_driver_ops {
+@@ -5892,10 +5892,10 @@ struct wpa_driver_ops {
  	struct hostapd_multi_hw_info *
  	(*get_multi_hw_info)(void *priv, unsigned int *num_multi_hws);
  
@@ -203,133 +205,83 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 -				  const s8 edcca_compensation);
 -	int (*configure_edcca_threshold)(void *priv, const int *threshold);
 -	int (*get_edcca)(void *priv, const u8 mode, u8 *value);
-+	int (*configure_edcca_enable)(void *priv, s8 link_id, const u8 edcca_enable,
++	int (*configure_edcca_enable)(void *priv, s8 radio_idx, const u8 edcca_enable,
 +				      const s8 edcca_compensation);
-+	int (*configure_edcca_threshold)(void *priv, s8 link_id, const int *threshold);
-+	int (*get_edcca)(void *priv, s8 link_id, const u8 mode, u8 *value);
++	int (*configure_edcca_threshold)(void *priv, s8 radio_idx, const int *threshold);
++	int (*get_edcca)(void *priv, s8 radio_idx, const u8 mode, u8 *value);
  
  	/**
  	* txpower_ctrl - ctrl txpower operation
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -15882,14 +15882,17 @@ static int testing_nl80211_radio_disable
+@@ -15907,7 +15907,7 @@ static int testing_nl80211_radio_disable
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
 -static int nl80211_configure_edcca_enable(void *priv,
-+static int nl80211_configure_edcca_enable(void *priv, s8 link_id,
++static int nl80211_configure_edcca_enable(void *priv, s8 radio_idx,
  					  const u8 edcca_enable,
  					  const s8 edcca_compensation)
  {
- 	struct i802_bss *bss = priv;
- 	struct wpa_driver_nl80211_data *drv = bss->drv;
-+	struct i802_link *link = nl80211_get_link(bss, link_id);
-+	struct hostapd_data *hapd = bss->ctx;
- 	struct nl_msg *msg;
- 	struct nlattr *data;
-+	u8 radio_idx = 0;
- 	int ret;
- 
- 	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -15898,6 +15901,12 @@ static int nl80211_configure_edcca_enabl
- 		return 0;
- 	}
- 
-+	if (link && link->ctx)
-+		hapd = link->ctx;
-+
-+	if (hapd->iface->current_hw_info)
-+		radio_idx = hapd->iface->current_hw_info->hw_idx;
-+
- 	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR)) ||
- 	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
- 	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-@@ -15905,8 +15914,8 @@ static int nl80211_configure_edcca_enabl
+@@ -15930,8 +15930,9 @@ static int nl80211_configure_edcca_enabl
  	    !(data = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA)) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_MODE, EDCCA_CTRL_SET_EN) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL, edcca_enable) ||
 -	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_COMPENSATE,
 -		edcca_compensation)) {
 +	    nla_put_s8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_COMPENSATE, edcca_compensation) ||
-+	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX, radio_idx)) {
++	    (radio_idx > -1 &&
++	     nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX, radio_idx))) {
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -15920,12 +15929,15 @@ static int nl80211_configure_edcca_enabl
- 	return 0;
+@@ -15945,7 +15946,7 @@ static int nl80211_configure_edcca_enabl
+ 	return ret;
  }
  
 -static int nl80211_configure_edcca_threshold(void *priv, const int *threshold)
-+static int nl80211_configure_edcca_threshold(void *priv, s8 link_id, const int *threshold)
++static int nl80211_configure_edcca_threshold(void *priv, s8 radio_idx, const int *threshold)
  {
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-+	struct i802_link *link = nl80211_get_link(bss, link_id);
-+	struct hostapd_data *hapd = bss->ctx;
- 	struct nl_msg *msg;
- 	struct nlattr *data;
-+	u8 radio_idx = 0;
- 	int ret;
- 
- 	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -15940,6 +15952,12 @@ static int nl80211_configure_edcca_thres
- 		return 0;
- 	}
- 
-+	if (link && link->ctx)
-+		hapd = link->ctx;
-+
-+	if (hapd->iface->current_hw_info)
-+		radio_idx = hapd->iface->current_hw_info->hw_idx;
-+
- 	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR)) ||
- 	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
- 	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-@@ -15949,7 +15967,8 @@ static int nl80211_configure_edcca_thres
+@@ -15974,7 +15975,9 @@ static int nl80211_configure_edcca_thres
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL, threshold[0] & 0xff) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL, threshold[1] & 0xff) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL, threshold[2] & 0xff) ||
 -	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL, threshold[3] & 0xff)) {
 +	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL, threshold[3] & 0xff) ||
-+	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX, radio_idx)) {
++	    (radio_idx > -1 &&
++	     nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX, radio_idx))) {
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -16017,12 +16036,15 @@ static int edcca_info_handler(struct nl_
+@@ -16016,6 +16019,9 @@ static int edcca_info_handler(struct nl_
+ 
+ 	for (i = 0; i < EDCCA_MAX_BW_NUM; i++) {
+ 		attr = tb_vendor[MTK_VENDOR_ATTR_EDCCA_DUMP_PRI20_VAL + i];
++		/* mt7915 has no 160 MHz threshold and leaves the attribute out */
++		if (!attr && i == EDCCA_BW_160)
++			break;
+ 		if (!attr || nla_len(attr) < (int) sizeof(u8)) {
+ 			wpa_printf(MSG_ERROR,
+ 				   "nl80211: EDCCA reply without threshold %d",
+@@ -16030,7 +16036,7 @@ static int edcca_info_handler(struct nl_
  }
  
  
 -static int nl80211_get_edcca(void *priv, const u8 mode, u8 *value)
-+static int nl80211_get_edcca(void *priv, s8 link_id, const u8 mode, u8 *value)
++static int nl80211_get_edcca(void *priv, s8 radio_idx, const u8 mode, u8 *value)
  {
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-+	struct i802_link *link = nl80211_get_link(bss, link_id);
-+	struct hostapd_data *hapd = bss->ctx;
- 	struct nl_msg *msg;
- 	struct nlattr *data;
-+	u8 radio_idx = 0;
- 	int ret;
- 
- 	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -16031,12 +16053,19 @@ static int nl80211_get_edcca(void *priv,
- 		return 0;
- 	}
- 
-+	if (link && link->ctx)
-+		hapd = link->ctx;
-+
-+	if (hapd->iface->current_hw_info)
-+		radio_idx = hapd->iface->current_hw_info->hw_idx;
-+
- 	if (!(msg = nl80211_drv_msg(drv, NLM_F_DUMP, NL80211_CMD_VENDOR)) ||
- 	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
+@@ -16050,7 +16056,9 @@ static int nl80211_get_edcca(void *priv,
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
  			MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL) ||
  	    !(data = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA | NLA_F_NESTED)) ||
 -	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_MODE, mode)) {
 +	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_MODE, mode) ||
-+	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX, radio_idx)) {
++	    (radio_idx > -1 &&
++	     nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_RADIO_IDX, radio_idx))) {
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;

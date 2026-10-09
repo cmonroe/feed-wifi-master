@@ -18,7 +18,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5303,6 +5303,10 @@ static int hostapd_config_fill(struct ho
+@@ -5329,6 +5329,10 @@ static int hostapd_config_fill(struct ho
  			return 1;
  		}
  		conf->edcca_compensation = (s8) val;
@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4193,6 +4193,26 @@ static int hostapd_ctrl_afc_send_request
+@@ -4201,6 +4201,26 @@ static int hostapd_ctrl_afc_send_request
  #endif /* CONFIG_AFC */
  
  
@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4838,6 +4858,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4846,6 +4866,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "GET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_get_edcca(hapd, buf+10, reply,
  							  reply_size);
@@ -92,7 +92,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  enum edcca_mode {
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1517,6 +1517,11 @@ hostapd_dfs_background_start_channel_swi
+@@ -1518,6 +1518,11 @@ hostapd_dfs_background_start_channel_swi
  		   __func__, iface->radar_background.cac_started ? "yes" : "no",
  		   hostapd_csa_in_progress(iface) ? "yes" : "no");
  
@@ -104,7 +104,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	/* Check if CSA in progress */
  	if (hostapd_csa_in_progress(iface)) {
  		/* the kernel stopped the chain; move it once the CSA ends */
-@@ -1569,6 +1574,11 @@ static int hostapd_dfs_start_channel_swi
+@@ -1570,6 +1575,11 @@ static int hostapd_dfs_start_channel_swi
  		   __func__, iface->cac_started ? "yes" : "no",
  		   hostapd_csa_in_progress(iface) ? "yes" : "no");
  
