@@ -245,7 +245,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
  
-@@ -726,14 +729,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -730,14 +733,9 @@ int mt7996_set_channel(struct mt76_phy *
  	mt7996_mac_cca_stats_reset(phy);
  
  	mt7996_mac_reset_counters(phy);

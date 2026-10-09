@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -945,6 +945,7 @@ struct mt76_phy {
+@@ -950,6 +950,7 @@ struct mt76_phy {
  	struct cfg80211_chan_def chandef;
  	struct cfg80211_chan_def main_chandef;
  	bool offchannel;
@@ -32,7 +32,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	unsigned long tx_block;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -732,8 +732,10 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -734,8 +734,10 @@ int mt7996_set_channel(struct mt76_phy *
  	struct mt7996_phy *phy = mphy->priv;
  	int ret;
  
@@ -44,7 +44,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->dev->eeprom_mode == EEPROM_MODE_FLASH) {
  		ret = mt7996_mcu_apply_tx_dpd(phy);
-@@ -761,8 +763,13 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -767,8 +769,13 @@ int mt7996_set_channel(struct mt76_phy *
  	if (!mphy->offchannel)
  		mt7996_apply_edcca_limits(phy);
  	phy->noise = 0;

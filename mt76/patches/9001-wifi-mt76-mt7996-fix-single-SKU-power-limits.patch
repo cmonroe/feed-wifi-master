@@ -155,7 +155,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (ret)
  		goto out;
  
-@@ -919,7 +922,7 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -923,7 +926,7 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -164,7 +164,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rate = FR_RATE_IDX_OFDM_6M;
  
  		/* odd index for driver, even index for firmware */
-@@ -1114,9 +1117,10 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1118,9 +1121,10 @@ mt7996_link_info_changed(struct ieee8021
  		mt7996_update_mu_group(hw, link, info);
  
  	if (changed & BSS_CHANGED_TXPOWER &&

@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -3344,17 +3344,23 @@ mt7996_net_fill_forward_path(struct ieee
+@@ -3346,17 +3346,23 @@ mt7996_net_fill_forward_path(struct ieee
  			     struct net_device_path_ctx *ctx,
  			     struct net_device_path *path)
  {
