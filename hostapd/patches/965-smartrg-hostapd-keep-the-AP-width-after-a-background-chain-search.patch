@@ -1,0 +1,47 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 09 Oct 2026 10:03:39 -0700
+Subject: [PATCH] hostapd: keep the AP width after a background chain search
+
+When no channel fits a background chain at the AP width, the search
+narrows the width in the AP configuration and does not restore it.
+The radio keeps its real width, but later beacon updates, channel
+switches and restarts use the narrower width.
+
+The AP configuration now keeps its width after the search. Only the
+CAC on the background chain uses the narrower width that the search
+selected. A radar on the operating channel can still narrow the AP,
+because the AP then moves to the selected channel at that width. A
+failed search also clears the CAC flag of the record, because a set
+flag stops a later channel switch from arming a new chain.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/dfs.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
+
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -1133,6 +1133,9 @@ static void hostapd_dfs_update_backgroun
+ 	struct hostapd_channel_data *channel;
+ 	u8 oper_centr_freq_seg0_idx = 0;
+ 	u8 oper_centr_freq_seg1_idx = 0;
++	/* the search narrows the AP config; the AP keeps its own width */
++	enum oper_chan_width oper_chwidth =
++		hostapd_get_oper_chwidth(iface->conf);
+ 
+ 	/*
+ 	 * Allow selection of DFS channel in ETSI to comply with
+@@ -1161,10 +1164,13 @@ static void hostapd_dfs_update_backgroun
+ 				  sec, hostapd_get_oper_chwidth(iface->conf),
+ 				  oper_centr_freq_seg0_idx,
+ 				  oper_centr_freq_seg1_idx, true)) {
++		hostapd_set_oper_chwidth(iface->conf, oper_chwidth);
+ 		wpa_printf(MSG_ERROR, "DFS failed to start CAC offchannel");
+ 		iface->radar_background.channel = -1;
++		iface->radar_background.cac_started = 0;
+ 		return;
+ 	}
++	hostapd_set_oper_chwidth(iface->conf, oper_chwidth);
+ 
+ 	iface->radar_background.channel = channel->chan;
+ 	iface->radar_background.freq = channel->freq;
