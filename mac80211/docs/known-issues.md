@@ -7,6 +7,47 @@ becomes its record and the entry leaves this file.
 The entries are in order of severity, most severe first. Put a new entry at
 its rank.
 
+## A Late AP Swap Can Abort the Channel Switch of the Station
+
+**Severity:** not known, possibly higher than the other entries. Seen twice
+on 2026-10-09 in the work on SDG-9903, SmartOS 26.9.0.101: on an SDG-8733A
+in a test that started the AP switch late, and on an SDG-8732v with patch 917
+and the hostapd retry in 1 of 8 normal switches.
+
+### What happens
+
+- On a mesh follower, the station and the APs reserve one channel context.
+  The station is ready at its switch time and waits until the APs are ready
+  too (`ieee80211_vif_use_reserved_switch()`).
+- If the AP countdown ends after the switch time of the station, the swap
+  comes late. The uplink then already sends its beacons on the new channel,
+  without a CSA element.
+- `ieee80211_sta_process_chanswitch()` takes such a beacon, while
+  `csa_active` is set and `waiting_bcn` is not, as an aborted switch. It
+  calls `ieee80211_sta_abort_chanswitch()`, which ends in
+  `drv_abort_channel_switch`.
+- The APs and the radio are on the new channel, but the station keeps the old
+  channel in its state, and wpa_supplicant logs no `CTRL-EVENT-CHANNEL-SWITCH`.
+  On the SDG-8733A the state stayed wrong for more than 90 s. On the SDG-8732v
+  the next uplink switch, back to that channel, ended it after 50 s.
+
+### Why an AP countdown ends late
+
+- A retune of the radio during the countdown uploads the AP beacons again and
+  restarts the countdown (`mt7996_set_channel()`,
+  `mt7996_mac_update_beacons()`). The return of a scan and a management frame
+  on the target channel (`drv_remain_on_channel`) did this in the traces of
+  SDG-9903.
+- The late AP on the SDG-8732v had no trace, so its cause is not known.
+
+### What is not known
+
+- What the wrong state does to traffic and to later switches.
+  `mesh-client-besthop.sh` scans the frequency that `wpa_cli status`
+  reports; if that frequency stays old, it scans a channel without its
+  uplink. Not tested.
+- How often it happens in the field.
+
 ## A Second Channel Switch Can Free a Context That a Link Still Uses
 
 **Severity:** low. Since patch 917
