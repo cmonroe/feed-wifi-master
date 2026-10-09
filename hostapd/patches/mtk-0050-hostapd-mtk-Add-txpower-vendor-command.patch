@@ -42,10 +42,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5335,6 +5335,12 @@ static int hostapd_config_fill(struct ho
- 		u8 en = strtol(pos, NULL, 10);
- 
- 		conf->dfs_detect_mode = en;
+@@ -5343,6 +5343,12 @@ static int hostapd_config_fill(struct ho
+ 			return 1;
+ 		}
+ 		conf->dfs_detect_mode = mode;
 +	} else if (os_strcmp(buf, "lpi_psd") == 0) {
 +		u8 en = strtol(pos, NULL, 10);
 +		conf->lpi_psd = !!en;
@@ -80,7 +80,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  enum dfs_mode {
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1458,6 +1458,14 @@ int hostapd_remove_pmkid(struct hostapd_
+@@ -1459,6 +1459,14 @@ int hostapd_remove_pmkid(struct hostapd_
  }
  
  
@@ -95,7 +95,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int hostapd_drv_configure_edcca_enable(struct hostapd_data *hapd,
  				       u8 edcca_enable, s8 edcca_compensation)
  {
-@@ -1484,3 +1492,13 @@ int hostapd_drv_get_edcca(struct hostapd
+@@ -1485,3 +1493,13 @@ int hostapd_drv_get_edcca(struct hostapd
  		return 0;
  	return hapd->driver->get_edcca(hapd->drv_priv, mode, value);
  }

@@ -3,35 +3,51 @@ From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Mon, 20 Feb 2023 14:55:49 +0800
 Subject: [PATCH 10/28] hostapd: mtk: Add DFS detection mode
 
-Add DFS detection mode for testing radar detection rate.
-If DFS detection mode is on, AP will not switch channels when receiving
-a radar signal.
-This detection mode also supports background chain.
+Add DFS detection modes to test the radar detection rate. In a detect
+mode, the chain that saw the radar stays on its channel: mode 1 holds
+the AP channel, mode 2 the background chain, mode 3 both.
+
+The mode applies after hostapd knows which chain saw the radar, so
+the other chain acts on its radar as usual. In mode 2, a radar on the
+AP channel still moves the AP. In mode 1, a radar on the AP channel
+does not move the AP onto the background chain. The configuration
+file and the DFS_DETECT_MODE command refuse a value that is not a
+whole number from 0 to 3, and the previous mode stays.
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- hostapd/config_file.c |  4 ++++
- hostapd/ctrl_iface.c  | 23 +++++++++++++++++++++++
+ hostapd/config_file.c | 12 ++++++++++++
+ hostapd/ctrl_iface.c  | 25 +++++++++++++++++++++++++
  src/ap/ap_config.h    | 13 +++++++++++++
- src/ap/dfs.c          | 10 ++++++++++
- 4 files changed, 50 insertions(+)
+ src/ap/dfs.c          | 19 +++++++++++++++++++
+ 4 files changed, 69 insertions(+)
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5331,6 +5331,10 @@ static int hostapd_config_fill(struct ho
+@@ -5331,6 +5331,18 @@ static int hostapd_config_fill(struct ho
  			return 1;
  		}
  		conf->edcca_compensation = (s8) val;
 +	} else if (os_strcmp(buf, "dfs_detect_mode") == 0) { /*bypass channel switch*/
-+		u8 en = strtol(pos, NULL, 10);
++		char *end;
++		long mode = strtol(pos, &end, 10);
 +
-+		conf->dfs_detect_mode = en;
++		if (end == pos || *end || mode < 0 ||
++		    mode > DFS_DETECT_MODE_MAX) {
++			wpa_printf(MSG_ERROR,
++				   "Line %d: invalid dfs_detect_mode '%s'",
++				   line, pos);
++			return 1;
++		}
++		conf->dfs_detect_mode = mode;
  	} else {
  		wpa_printf(MSG_ERROR,
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4234,6 +4234,26 @@ static int hostapd_ctrl_afc_send_request
+@@ -4234,6 +4234,28 @@ static int hostapd_ctrl_afc_send_request
  #endif /* CONFIG_AFC */
  
  
@@ -39,13 +55,15 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +hostapd_ctrl_iface_set_dfs_detect_mode(struct hostapd_data *hapd, char *value,
 +				       char *buf, size_t buflen)
 +{
-+	u8 dfs_detect_mode;
++	long dfs_detect_mode;
++	char *end;
 +
 +	if (!value)
 +		return -1;
 +
-+	dfs_detect_mode = strtol(value, NULL, 10);
-+	if (dfs_detect_mode > DFS_DETECT_MODE_MAX) {
++	dfs_detect_mode = strtol(value, &end, 10);
++	if (end == value || *end || dfs_detect_mode < 0 ||
++	    dfs_detect_mode > DFS_DETECT_MODE_MAX) {
 +		wpa_printf(MSG_ERROR, "Invalid value for dfs detect mode");
 +		return -1;
 +	}
@@ -58,7 +76,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4879,6 +4899,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4879,6 +4901,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "GET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_get_edcca(hapd, buf+10, reply,
  							  reply_size);
@@ -92,27 +110,36 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  enum edcca_mode {
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1521,6 +1521,11 @@ hostapd_dfs_background_start_channel_swi
- 		   __func__, iface->radar_background.cac_started ? "yes" : "no",
- 		   hostapd_csa_in_progress(iface) ? "yes" : "no");
+@@ -1780,6 +1780,22 @@ static int dfs_follow_radar_detected(str
+ }
  
-+	/* Skip channel switch when background dfs detect mode is on */
-+	if (iface->conf->dfs_detect_mode == DFS_DETECT_MODE_BACKGROUND_ENABLE ||
-+	    iface->conf->dfs_detect_mode == DFS_DETECT_MODE_ALL_ENABLE)
+ 
++/* A detect mode keeps only the chain that saw the radar on its channel */
++static bool dfs_detect_mode_skip(struct hostapd_iface *iface, int freq)
++{
++	switch (iface->conf->dfs_detect_mode) {
++	case DFS_DETECT_MODE_ALL_ENABLE:
++		return true;
++	case DFS_DETECT_MODE_BACKGROUND_ENABLE:
++		return hostapd_dfs_is_background_event(iface, freq);
++	case DFS_DETECT_MODE_AP_ENABLE:
++		return !hostapd_dfs_is_background_event(iface, freq);
++	default:
++		return false;
++	}
++}
++
++
+ int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
+ 			       int ht_enabled, int chan_offset, int chan_width,
+ 			       int cf1, int cf2)
+@@ -1830,6 +1846,9 @@ int hostapd_dfs_radar_detected(struct ho
+ 			return 0;
+ 	}
+ 
++	if (dfs_detect_mode_skip(iface, freq))
 +		return 0;
 +
- 	/* Check if CSA in progress */
- 	if (hostapd_csa_in_progress(iface)) {
- 		/* the kernel stopped the chain; move it once the CSA ends */
-@@ -1573,6 +1578,11 @@ static int hostapd_dfs_start_channel_swi
- 		   __func__, iface->cac_started ? "yes" : "no",
- 		   hostapd_csa_in_progress(iface) ? "yes" : "no");
- 
-+	/* Skip channel switch when dfs detect mode is on */
-+	if (iface->conf->dfs_detect_mode == DFS_DETECT_MODE_AP_ENABLE ||
-+	    iface->conf->dfs_detect_mode == DFS_DETECT_MODE_ALL_ENABLE)
-+		return 0;
-+
- 	/* Check if CSA in progress */
- 	if (hostapd_csa_in_progress(iface))
- 		return 0;
+ 	if (hostapd_dfs_background_start_channel_switch(iface, freq)) {
+ 		/* Radar detected while operating, switch the channel. */
+ 		return hostapd_dfs_start_channel_switch(iface);
