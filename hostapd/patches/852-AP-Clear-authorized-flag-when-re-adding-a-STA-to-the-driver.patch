@@ -1,0 +1,44 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 17:47:01 -0700
+Subject: [PATCH] AP: Clear authorized flag when re-adding a STA to the driver
+
+When an associated STA sends a new (Re)Association Request frame, the
+AP can remove the STA entry from the driver and add it again. The
+removal deletes the pairwise key, but the STA keeps its authorized
+flag, so the new driver entry is authorized and has no key. Until the
+4-way handshake or the FT key installation completes, the driver can
+send unicast data frames to the STA without encryption.
+
+Clear the authorized flag together with the removal. The new driver
+entry is then unauthorized, and the driver sends no unicast data to it
+until the handshake or the FT reassociation sets the flag again. The
+STA stays associated, so no AP-STA-DISCONNECTED event is sent; a
+control interface monitor sees a second AP-STA-CONNECTED event when
+the flag is set again.
+
+The change comes from mtk-openwrt-feeds 2df62b873dd2 ("[openwrt-25]
+[MAC80211][WiFi7][kernel 6.12][Prepare for Filogic 880/850 Alpha
+release]").
+
+Co-developed-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
+Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/ieee802_11.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
+
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -6711,6 +6711,12 @@ static int add_associated_sta(struct hos
+ 		hostapd_drv_sta_remove(hapd, sta->addr);
+ 		wpa_auth_sm_event(sta->wpa_sm, WPA_DRV_STA_REMOVED);
+ 		set = 0;
++		/*
++		 * The new driver entry has no key until the 4-way handshake or
++		 * the FT key installation. Clear the flag without an event,
++		 * because the STA stays associated.
++		 */
++		ap_sta_set_authorized_flag(hapd, sta, 0);
+ 
+ 		 /* Do not allow the FT-over-DS exception to be used more than
+ 		  * once per authentication exchange to guarantee a new TK is
