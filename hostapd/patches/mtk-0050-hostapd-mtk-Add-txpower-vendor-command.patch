@@ -24,7 +24,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5306,6 +5306,14 @@ static int hostapd_config_fill(struct ho
+@@ -5307,6 +5307,14 @@ static int hostapd_config_fill(struct ho
  		u8 en = strtol(pos, NULL, 10);
  
  		conf->dfs_detect_mode = en;
@@ -54,7 +54,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	conf->disable_mcs15_rx = true;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1368,6 +1368,9 @@ struct hostapd_config {
+@@ -1369,6 +1369,9 @@ struct hostapd_config {
  	s8 edcca_compensation;
  	int *edcca_threshold;
  	u8 dfs_detect_mode;

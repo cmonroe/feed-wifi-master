@@ -25,7 +25,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3376,6 +3376,8 @@ static int hostapd_config_fill(struct ho
+@@ -3377,6 +3377,8 @@ static int hostapd_config_fill(struct ho
  		}
  	} else if (os_strcmp(buf, "channel_follow") == 0) {
  		conf->channel_follow = atoi(pos);
@@ -54,7 +54,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  # configured with the channel parameter. channel and op_class together can
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1113,6 +1113,7 @@ struct hostapd_config {
+@@ -1114,6 +1114,7 @@ struct hostapd_config {
  	u8 op_class;
  	u8 channel;
  	int channel_follow;

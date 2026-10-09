@@ -22,7 +22,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5268,6 +5268,40 @@ static int hostapd_config_fill(struct ho
+@@ -5269,6 +5269,40 @@ static int hostapd_config_fill(struct ho
  		os_strlcpy(bss->apup_peer_ifname_prefix,
  		           pos, sizeof(bss->apup_peer_ifname_prefix));
  #endif // def CONFIG_APUP
@@ -216,7 +216,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  	hostapd_set_and_check_bw320_offset(conf, 0);
  
  	conf->disable_mcs15_rx = true;
-@@ -1066,6 +1069,7 @@ void hostapd_config_free(struct hostapd_
+@@ -1067,6 +1070,7 @@ void hostapd_config_free(struct hostapd_
  #ifdef CONFIG_ACS
  	os_free(conf->acs_chan_bias);
  #endif /* CONFIG_ACS */
@@ -226,7 +226,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  #ifdef CONFIG_AFC
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1363,8 +1363,39 @@ struct hostapd_config {
+@@ -1364,8 +1364,39 @@ struct hostapd_config {
  		int min_power;
  	} afc;
  #endif /* CONFIG_AFC */
