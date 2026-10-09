@@ -1,0 +1,201 @@
+From: Koral Ilgun <koral.ilgun@adtran.com>
+Date: Fri, 09 Oct 2026 13:23:12 -0700
+Subject: [PATCH] hostapd: retry the follow CSA that the kernel refuses
+
+When a station on the radio follows a channel switch of its AP,
+apsta_state starts the same switch on the APs of the radio.
+mac80211 refuses an AP switch with -EBUSY while a scan or a
+remain-on-channel runs on the radio. The station has already
+reserved the new channel, so it drops its link at its switch time
+when the APs do not reserve the channel too.
+
+apsta_state now tries the switch again every 50 ms until the
+station switches. Each retry lowers the count by the beacons that
+passed and by the one in progress, so that the APs finish no later
+than the station. When the APs finish late, the first beacon of
+the uplink on the new channel has no CSA element, and mac80211
+aborts the switch of the station.
+
+The switch_channel binding reported the result of the last BSS
+only, and a BSS that already switches refuses a second request. It
+now reports success when every running BSS switches to the
+requested frequency, so that a repeated request completes a switch
+that the kernel refused for some BSSes.
+---
+ openwrt/files/hostapd.uc |  104 +++++++++++++++++++++++++++++++++++++++++------
+ src/ap/ucode.c           |   17 +++++++
+ 2 files changed, 109 insertions(+), 12 deletions(-)
+
+--- a/openwrt/files/hostapd.uc
++++ b/openwrt/files/hostapd.uc
+@@ -395,12 +395,24 @@ function csa_timer_cancel(name)
+ 	}
+ }
+ 
++const APSTA_CSA_RETRY_MS = 50;
++
++function apsta_csa_retry_cancel(phy)
++{
++	let timers = hostapd.data.apsta_csa_timer;
++	if (timers && timers[phy]) {
++		timers[phy].cancel();
++		delete timers[phy];
++	}
++}
++
+ function iface_restart(phydev, config, old_config)
+ {
+ 	let phy = phydev.name;
+ 	let pending = hostapd.data.pending_config[phy];
+ 
+ 	csa_timer_cancel(phy);
++	apsta_csa_retry_cancel(phy);
+ 
+ 	if (pending)
+ 		pending.abort();
+@@ -699,6 +711,81 @@ function iface_csa_check(name)
+ 		iface_restart(phydev, config, config);
+ }
+ 
++function config_beacon_int(config)
++{
++	for (let line in config.radio.data) {
++		let m = match(line, /^beacon_int=([0-9]+)/);
++		if (m)
++			return int(m[1]);
++	}
++
++	return 100;
++}
++
++function monotonic_ms()
++{
++	let now = clock(true);
++
++	return now[0] * 1000 + now[1] / 1000000;
++}
++
++/*
++ * The kernel refuses an AP channel switch while a scan or a remain-on-channel
++ * runs on the radio. The station has already reserved the new channel, and it
++ * drops its link at its own switch time unless the APs reserve the channel
++ * before then. So try again until that time.
++ *
++ * The APs must also finish no later than the station. In a late swap, the
++ * first beacon of the uplink on the new channel carries no CSA element, and
++ * mac80211 then aborts the switch of the station. So each retry lowers the
++ * count by the beacons that passed and by the one in progress.
++ */
++function apsta_csa_retry(phy, config, freq_info)
++{
++	let count = freq_info.csa_count;
++	let freq = hostapd.data.apsta_freq[phy];
++	let beacon_ms = config_beacon_int(config) * 1.024;
++	let start = monotonic_ms();
++	let attempts = 0;
++	let timer;
++
++	if (count < 1 || !freq)
++		return false;
++
++	hostapd.printf(`Channel switch to ${freq} on phy ${phy} refused, retrying`);
++
++	timer = uloop.timer(APSTA_CSA_RETRY_MS, () => {
++		let elapsed = monotonic_ms() - start;
++		let iface = hostapd.interfaces[phy];
++
++		if (elapsed >= count * beacon_ms || !iface ||
++		    hostapd.data.apsta_freq[phy] != freq) {
++			apsta_csa_retry_cancel(phy);
++			if (hostapd.data.apsta_freq[phy] == freq)
++				delete hostapd.data.apsta_freq[phy];
++			hostapd.printf(`Channel switch to ${freq} on phy ${phy} still refused after ${attempts} retries`);
++			return;
++		}
++
++		let left = max(1, count - 1 - int(elapsed / beacon_ms));
++
++		attempts++;
++		freq_info.csa_count = left;
++		if (!iface.switch_channel(freq_info)) {
++			timer.set(APSTA_CSA_RETRY_MS);
++			return;
++		}
++
++		apsta_csa_retry_cancel(phy);
++		hostapd.printf(`Channel switch to ${freq} on phy ${phy} started after ${attempts} retries, count ${left}`);
++	});
++
++	hostapd.data.apsta_csa_timer ??= {};
++	hostapd.data.apsta_csa_timer[phy] = timer;
++
++	return true;
++}
++
+ function iface_channel_switch(name, config)
+ {
+ 	let radio = config.radio;
+@@ -751,17 +838,8 @@ function iface_channel_switch(name, conf
+ 	hostapd.data.csa_timer ??= {};
+ 	csa_timer_cancel(name);
+ 
+-	let beacon_int = 100;
+-	for (let line in config.radio.data) {
+-		let m = match(line, /^beacon_int=([0-9]+)/);
+-		if (m) {
+-			beacon_int = int(m[1]);
+-			break;
+-		}
+-	}
+-
+-	hostapd.data.csa_timer[name] = uloop.timer(freq_info.csa_count * beacon_int + 2000,
+-		() => iface_csa_check(name));
++	let timeout = freq_info.csa_count * config_beacon_int(config) + 2000;
++	hostapd.data.csa_timer[name] = uloop.timer(timeout, () => iface_csa_check(name));
+ 
+ 	return true;
+ }
+@@ -1556,6 +1634,8 @@ let main_obj = {
+ 			if (!iface)
+ 				return 0;
+ 
++			apsta_csa_retry_cancel(phy);
++
+ 			if (!req.args.up) {
+ 				delete hostapd.data.apsta_freq[phy];
+ 				hostapd.data.configuring = phy;
+@@ -1599,7 +1679,7 @@ let main_obj = {
+ 				if (req.args.csa) {
+ 					freq_info.csa_count = req.args.csa_count ?? 10;
+ 					if (!iface.switch_channel(freq_info))
+-						return fail();
++						return apsta_csa_retry(phy, config, freq_info) ? 0 : fail();
+ 					return 0;
+ 				}
+ 			}
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -777,6 +777,23 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+ 	for (i = 0; i < iface->num_bss; i++)
+ 		ret = hostapd_switch_channel(iface->bss[i], &csa);
+ 
++	/*
++	 * A caller repeats a switch that the kernel refused for some BSSes,
++	 * and a BSS that already switches refuses the repeated request. So
++	 * report the state of the running BSSes, not the result of the last
++	 * one.
++	 */
++	for (i = 0; i < iface->num_bss; i++) {
++		struct hostapd_data *hapd = iface->bss[i];
++
++		if (!hapd->started)
++			continue;
++		if (!hapd->csa_in_progress ||
++		    hapd->cs_freq_params.freq != csa.freq_params.freq)
++			return ucv_boolean_new(false);
++		ret = 0;
++	}
++
+ 	return ucv_boolean_new(!ret);
+ }
+ 
