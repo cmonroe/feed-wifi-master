@@ -7,8 +7,12 @@ Add the lpi_psd and lpi_bcn_enhance configuration items and send them
 to the driver with the MediaTek txpower vendor command when the
 interface setup completes. lpi_psd turns on the 6 GHz LPI PSD power
 compensation. lpi_bcn_enhance makes the driver send 6 GHz management
-frames as 80 MHz non-HT duplicates. There is no SKU index item,
-because no mt76 driver reads the SKU index attribute.
+frames as 80 MHz non-HT duplicates. The command carries the wiphy
+radio index of the hardware that the interface uses, because mt7996
+rejects it without one. hostapd leaves the index out before it
+selects that hardware, and when the wiphy reports no radios. There is
+no SKU index item, because no mt76 driver reads the SKU index
+attribute.
 
 mt76 sends the duplicate only on an operating channel of 80 MHz or
 wider, so the Duplicate Beacon bit of the 6 GHz Operation Information
@@ -25,16 +29,16 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  hostapd/config_file.c             |  6 ++++
  src/ap/ap_config.c                |  3 ++
  src/ap/ap_config.h                |  2 ++
- src/ap/ap_drv_ops.c               | 15 +++++++++
+ src/ap/ap_drv_ops.c               | 18 ++++++++++
  src/ap/ap_drv_ops.h               |  1 +
  src/ap/hostapd.c                  |  4 +++
  src/ap/ieee802_11_he.c            |  7 ++++
  src/common/mtk_vendor.h           | 14 ++++++++
  src/drivers/driver.h              | 10 ++++++
- src/drivers/driver_nl80211.c      | 56 +++++++++++++++++++++++++++++++
+ src/drivers/driver_nl80211.c      | 58 +++++++++++++++++++++++++++++++
  src/drivers/driver_nl80211.h      |  1 +
  src/drivers/driver_nl80211_capa.c |  3 ++
- 12 files changed, 122 insertions(+)
+ 12 files changed, 127 insertions(+)
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
@@ -76,24 +80,34 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  enum dfs_mode {
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1484,3 +1484,18 @@ int hostapd_drv_get_edcca(struct hostapd
+@@ -1458,6 +1458,14 @@ int hostapd_remove_pmkid(struct hostapd_
+ }
+ 
+ 
++static s8 hostapd_drv_radio_idx(struct hostapd_data *hapd)
++{
++	if (!hapd->iface->current_hw_info)
++		return -1;
++	return hapd->iface->current_hw_info->hw_idx;
++}
++
++
+ int hostapd_drv_configure_edcca_enable(struct hostapd_data *hapd,
+ 				       u8 edcca_enable, s8 edcca_compensation)
+ {
+@@ -1484,3 +1492,13 @@ int hostapd_drv_get_edcca(struct hostapd
  		return 0;
  	return hapd->driver->get_edcca(hapd->drv_priv, mode, value);
  }
 +
 +int hostapd_drv_txpower_ctrl(struct hostapd_data *hapd)
 +{
-+	s8 link_id = -1;
-+
 +	if (!hapd->driver || !hapd->driver->txpower_ctrl)
 +		return 0;
 +
-+	if (hapd->conf->mld_ap)
-+		link_id = hapd->mld_link_id;
-+
 +	return hapd->driver->txpower_ctrl(hapd->drv_priv, hapd->iconf->lpi_psd,
 +					  hapd->iconf->lpi_bcn_enhance,
-+					  link_id);
++					  hostapd_drv_radio_idx(hapd));
 +}
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
@@ -107,7 +121,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3205,6 +3205,10 @@ dfs_offload:
+@@ -3206,6 +3206,10 @@ dfs_offload:
  					   hapd->iconf->edcca_compensation);
  	hostapd_drv_configure_edcca_threshold(hapd,
  					      hapd->iconf->edcca_threshold);
@@ -154,7 +168,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD,
 +	MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX,
 +	MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE,
-+	MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID,
++	MTK_VENDOR_ATTR_TXPOWER_CTRL_RADIO_IDX,
 +
 +	/* keep last */
 +	NUM_MTK_VENDOR_ATTRS_TXPOWER_CTRL,
@@ -175,10 +189,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	* @priv: Private driver interface data
 +	* @lpi_psd: 1 to enable lpi psd compensate, 0 to disable
 +	* @lpi_bcn_enhance: 1 to enable beacon duplicate enhancement in 6G lpi mode, 0 to disable enhancement
-+	* @link_id: MLD link id. -1 if this is an non-MLD AP
++	* @radio_idx: wiphy radio index, -1 if the wiphy reports no radios
 +	*/
 +	int (*txpower_ctrl)(void *priv, u8 lpi_psd, u8 lpi_bcn_enhance,
-+			    u8 link_id);
++			    s8 radio_idx);
 +
  #ifdef CONFIG_NAN
  	/**
@@ -194,18 +208,18 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD] = { .type = NLA_U8 },
 +	[MTK_VENDOR_ATTR_TXPOWER_CTRL_SKU_IDX] = { .type = NLA_U8 },
 +	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE] = { .type = NLA_U8 },
-+	[MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID] = { .type = NLA_U8 },
++	[MTK_VENDOR_ATTR_TXPOWER_CTRL_RADIO_IDX] = { .type = NLA_U8 },
 +};
 +
  static struct nl_sock * nl_create_handle(struct nl_cb *cb, const char *dbg)
  {
  	struct nl_sock *handle;
-@@ -17031,6 +17039,53 @@ static void nl80211_stop_peer_measuremen
+@@ -17031,6 +17039,55 @@ static void nl80211_stop_peer_measuremen
  #endif /* CONFIG_PR */
  
  
 +static int nl80211_txpower_ctrl(void *priv, u8 lpi_psd, u8 lpi_bcn_enhance,
-+				u8 link_id)
++				s8 radio_idx)
 +{
 +	struct i802_bss *bss = priv;
 +	struct wpa_driver_nl80211_data *drv = bss->drv;
@@ -235,7 +249,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	if (nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_PSD, lpi_psd) ||
 +	    nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LPI_BCN_ENHANCE,
 +		       lpi_bcn_enhance) ||
-+	    nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_LINK_ID, link_id))
++	    (radio_idx > -1 &&
++	     nla_put_u8(msg, MTK_VENDOR_ATTR_TXPOWER_CTRL_RADIO_IDX,
++			radio_idx)))
 +		goto fail;
 +
 +	nla_nest_end(msg, data);
@@ -254,7 +270,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -17209,6 +17264,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -17209,6 +17266,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.configure_edcca_enable = nl80211_configure_edcca_enable,
  	.configure_edcca_threshold = nl80211_configure_edcca_threshold,
  	.get_edcca = nl80211_get_edcca,
