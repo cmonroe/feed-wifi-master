@@ -1,0 +1,54 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 18:52:37 -0700
+Subject: [PATCH] AP: Clear EAPOL portValid when a WPA STA reassociates
+
+When a WPA STA associates again while hostapd keeps its EAPOL state
+machine, portValid keeps the value true from the previous 4-way
+handshake. The authenticator PAE state machine then authorizes the
+port before the new 4-way handshake installs a pairwise key. This
+happens when EAP succeeds, or at once with PMKSA caching. If the AP
+removed the STA from the driver for the new association, the new
+driver entry is authorized and has no key. In an IEEE 802.11be build,
+a new Authentication frame also replaces the WPA state machine, unless
+the STA uses PMF and is authorized. The new machine clears portValid,
+but keyDone stays set, so a reassociation with PMKSA caching enters
+HELD and the AP disconnects the STA.
+
+Clear portValid and keyDone for the new association, because a new
+state machine starts with both flags clear. The PTKINITDONE state of
+the WPA authenticator validates the port again, so the port is
+authorized after the new key is in place. With keyDone clear, the
+PMKSA caching path waits for PTKINITDONE and does not enter HELD. No
+state machine step runs between the clear and the reauthentication
+request or the PMKSA caching state. In AUTHENTICATED state, a step
+with portValid clear and no reauthentication request reports a
+disconnection.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/ieee802_1x.c |   14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+--- a/src/ap/ieee802_1x.c
++++ b/src/ap/ieee802_1x.c
+@@ -1481,6 +1481,20 @@ void ieee802_1x_new_station(struct hosta
+ 	}
+ #endif /* CONFIG_FILS */
+ 
++	if (reassoc && hapd->conf->wpa) {
++		/*
++		 * The port of the new association is valid only after its
++		 * 4-way handshake. No state machine step may run between this
++		 * clear and the reauthentication request or the PMKSA caching
++		 * state below: in AUTHENTICATED state, such a step reports a
++		 * disconnection. Clear keyDone too, because the PMKSA caching
++		 * path does not enter AUTHENTICATING, and an old keyDone with
++		 * portValid false moves it to HELD.
++		 */
++		sta->eapol_sm->portValid = false;
++		sta->eapol_sm->keyDone = false;
++	}
++
+ 	pmksa = wpa_auth_sta_get_pmksa(sta->wpa_sm);
+ 	if (pmksa) {
+ 		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE8021X,
