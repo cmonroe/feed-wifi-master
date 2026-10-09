@@ -80,7 +80,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4125,6 +4125,7 @@ int hostapd_disable_iface(struct hostapd
+@@ -4127,6 +4127,7 @@ int hostapd_disable_iface(struct hostapd
  	for (j = 0; j < hapd_iface->num_bss; j++)
  		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
  #endif /* NEED_AP_MLME */
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* same as hostapd_interface_deinit without deinitializing ctrl-iface */
  	for (j = 0; j < hapd_iface->num_bss; j++) {
-@@ -5359,6 +5360,13 @@ hostapd_switch_channel_fallback(struct h
+@@ -5361,6 +5362,13 @@ hostapd_switch_channel_fallback(struct h
  	iface->conf->ieee80211ax = freq_params->he_enabled;
  	iface->conf->ieee80211be = freq_params->eht_enabled;
  

@@ -150,7 +150,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			hostapd_enable_iface(iface);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2642,6 +2642,12 @@ static void hostapd_set_6ghz_sec_chan(st
+@@ -2644,6 +2644,12 @@ static void hostapd_set_6ghz_sec_chan(st
  
  static int setup_interface2(struct hostapd_iface *iface)
  {
@@ -163,7 +163,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	iface->wait_channel_update = 0;
  	iface->is_no_ir = false;
  
-@@ -2651,11 +2657,10 @@ static int setup_interface2(struct hosta
+@@ -2653,11 +2659,10 @@ static int setup_interface2(struct hosta
  	} else {
  		int ret;
  

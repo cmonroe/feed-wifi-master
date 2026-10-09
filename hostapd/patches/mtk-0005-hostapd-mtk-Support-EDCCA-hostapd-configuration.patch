@@ -314,7 +314,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3197,6 +3197,13 @@ dfs_offload:
+@@ -3199,6 +3199,13 @@ dfs_offload:
  	}
  #endif /* CONFIG_MESH */
  
@@ -385,7 +385,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
  
  #ifndef NETLINK_CAP_ACK
-@@ -15877,6 +15880,174 @@ static int testing_nl80211_radio_disable
+@@ -15871,6 +15874,174 @@ static int testing_nl80211_radio_disable
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -560,7 +560,7 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  
  static struct hostapd_multi_hw_info *
  wpa_driver_get_multi_hw_info(void *priv, unsigned int *num_multi_hws)
-@@ -17021,6 +17192,10 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -17015,6 +17186,10 @@ const struct wpa_driver_ops wpa_driver_n
  	.radio_disable = testing_nl80211_radio_disable,
  #endif /* CONFIG_TESTING_OPTIONS */
  	.get_multi_hw_info = wpa_driver_get_multi_hw_info,

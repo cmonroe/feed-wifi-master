@@ -75,7 +75,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		if (hostapd_drv_get_edcca(hapd, EDCCA_CTRL_GET_THRES, value) != 0)
  			return -1;
  		return os_snprintf(pos, end - pos,
-@@ -5020,10 +5023,10 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4959,10 +4962,10 @@ static int hostapd_ctrl_iface_receive_pr
  #endif /* CONFIG_AFC */
  	} else if (os_strncmp(buf, "SET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_set_edcca(hapd, buf+10, reply,
@@ -85,12 +85,12 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		reply_len = hostapd_ctrl_iface_get_edcca(hapd, buf+10, reply,
 -							  reply_size);
 +							 reply_size);
- 	} else if (os_strncmp(buf, "SET_MU ", 7) == 0) {
- 		reply_len = hostapd_ctrl_iface_set_mu(hapd, buf + 7, reply,
- 							  reply_size);
+ 	} else if (os_strncmp(buf, "DFS_DETECT_MODE ", 16) == 0) {
+ 		reply_len = hostapd_ctrl_iface_set_dfs_detect_mode(hapd, buf + 16,
+ 								   reply, reply_size);
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1735,6 +1735,16 @@ static int hostapd_cli_cmd_afc_send_requ
+@@ -1721,6 +1721,16 @@ static int hostapd_cli_cmd_afc_send_requ
  #endif /* CONFIG_AFC */
  
  
@@ -107,7 +107,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  struct hostapd_cli_cmd {
  	const char *cmd;
  	int (*handler)(struct wpa_ctrl *ctrl, int argc, char *argv[]);
-@@ -1984,6 +1994,10 @@ static const struct hostapd_cli_cmd host
+@@ -1966,6 +1976,10 @@ static const struct hostapd_cli_cmd host
  	{ "afc_send_request", hostapd_cli_cmd_afc_send_request, NULL,
  	  " = Send another AFC request and upadte the timeout"},
  #endif /* CONFIG_AFC */
@@ -171,10 +171,10 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +	return hapd->driver->get_edcca(hapd->drv_priv, link_id, mode, value);
  }
  
- int hostapd_drv_mu_ctrl(struct hostapd_data *hapd)
+ int hostapd_drv_txpower_ctrl(struct hostapd_data *hapd)
 --- a/src/common/mtk_vendor.h
 +++ b/src/common/mtk_vendor.h
-@@ -26,6 +26,7 @@ enum mtk_vendor_attr_edcca_ctrl {
+@@ -24,6 +24,7 @@ enum mtk_vendor_attr_edcca_ctrl {
  	MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL,
  	MTK_VENDOR_ATTR_EDCCA_CTRL_COMPENSATE,
  	MTK_VENDOR_ATTR_EDCCA_CTRL_SEC160_VAL,
@@ -182,7 +182,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	/* keep last */
  	NUM_MTK_VENDOR_ATTRS_EDCCA_CTRL,
-@@ -55,8 +56,9 @@ static struct nla_policy edcca_ctrl_poli
+@@ -66,8 +67,9 @@ static struct nla_policy edcca_ctrl_poli
  	[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC20_VAL] = { .type = NLA_U8 },
  	[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL] = { .type = NLA_U8 },
  	[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL] = { .type = NLA_U8 },
@@ -195,7 +195,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  enum mtk_vendor_attr_csi_ctrl {
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5884,10 +5884,10 @@ struct wpa_driver_ops {
+@@ -5879,10 +5879,10 @@ struct wpa_driver_ops {
  	struct hostapd_multi_hw_info *
  	(*get_multi_hw_info)(void *priv, unsigned int *num_multi_hws);
  
@@ -209,10 +209,10 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 +	int (*get_edcca)(void *priv, s8 link_id, const u8 mode, u8 *value);
  
  	/**
- 	 * mu_ctrl - ctrl on off for UL/DL MURU
+ 	* txpower_ctrl - ctrl txpower operation
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -15990,14 +15990,17 @@ static int testing_nl80211_radio_disable
+@@ -15882,14 +15882,17 @@ static int testing_nl80211_radio_disable
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -231,7 +231,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	int ret;
  
  	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -16006,6 +16009,12 @@ static int nl80211_configure_edcca_enabl
+@@ -15898,6 +15901,12 @@ static int nl80211_configure_edcca_enabl
  		return 0;
  	}
  
@@ -244,7 +244,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR)) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-@@ -16013,8 +16022,8 @@ static int nl80211_configure_edcca_enabl
+@@ -15905,8 +15914,8 @@ static int nl80211_configure_edcca_enabl
  	    !(data = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA)) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_MODE, EDCCA_CTRL_SET_EN) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL, edcca_enable) ||
@@ -255,7 +255,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -16028,12 +16037,15 @@ static int nl80211_configure_edcca_enabl
+@@ -15920,12 +15929,15 @@ static int nl80211_configure_edcca_enabl
  	return 0;
  }
  
@@ -272,7 +272,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	int ret;
  
  	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -16048,6 +16060,12 @@ static int nl80211_configure_edcca_thres
+@@ -15940,6 +15952,12 @@ static int nl80211_configure_edcca_thres
  		return 0;
  	}
  
@@ -285,7 +285,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR)) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_MTK) ||
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-@@ -16057,7 +16075,8 @@ static int nl80211_configure_edcca_thres
+@@ -15949,7 +15967,8 @@ static int nl80211_configure_edcca_thres
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL, threshold[0] & 0xff) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL, threshold[1] & 0xff) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL, threshold[2] & 0xff) ||
@@ -295,7 +295,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -16125,12 +16144,15 @@ static int edcca_info_handler(struct nl_
+@@ -16017,12 +16036,15 @@ static int edcca_info_handler(struct nl_
  }
  
  
@@ -312,7 +312,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	int ret;
  
  	if (!drv->mtk_edcca_vendor_cmd_avail) {
-@@ -16139,12 +16161,19 @@ static int nl80211_get_edcca(void *priv,
+@@ -16031,12 +16053,19 @@ static int nl80211_get_edcca(void *priv,
  		return 0;
  	}
  

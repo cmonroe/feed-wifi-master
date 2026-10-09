@@ -30,7 +30,7 @@ Subject: [PATCH 19/28] hostapd: mtk: Mark DFS channel as available for CSA.
  			iface, bandwidth, settings.freq_params.center_freq1);
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1830,7 +1830,7 @@ static const struct hostapd_cli_cmd host
+@@ -1816,7 +1816,7 @@ static const struct hostapd_cli_cmd host
  	  "<addr> = send QoS Map Configure frame" },
  	{ "chan_switch", hostapd_cli_cmd_chan_switch, NULL,
  	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]\n"
@@ -41,7 +41,7 @@ Subject: [PATCH 19/28] hostapd: mtk: Mark DFS channel as available for CSA.
  	{ "color_change", hostapd_cli_cmd_color_change, NULL,
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1509,6 +1509,8 @@ int hostapd_parse_csa_settings(struct ho
+@@ -1450,6 +1450,8 @@ int hostapd_parse_csa_settings(struct ho
  		return ret;
  	}
  

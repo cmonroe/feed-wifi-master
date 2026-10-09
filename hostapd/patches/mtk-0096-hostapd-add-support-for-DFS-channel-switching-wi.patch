@@ -181,7 +181,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	return (iface->num_bss == num_err) ? ret : 0;
  #else /* NEED_AP_MLME */
  	return -1;
-@@ -4309,9 +4334,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
+@@ -4248,9 +4273,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
  	else
  		return -1;
  
@@ -209,7 +209,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (ieee802_11_build_ap_params(hapd, &params) < 0)
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1511,6 +1511,13 @@ int hostapd_parse_csa_settings(struct ho
+@@ -1452,6 +1452,13 @@ int hostapd_parse_csa_settings(struct ho
  
  	settings->freq_params.radar_background = !!os_strstr(pos, " skip_cac");
  
