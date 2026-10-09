@@ -1,0 +1,77 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 09 Oct 2026 10:06:26 -0700
+Subject: [PATCH] hostapd: follow the driver rewrite of a background chain request
+
+mt7996 with an iFEM front end runs a 160 MHz background chain request
+as one 80 MHz half and reports that half in its CAC events. hostapd
+matches a chain event by the frequency of its record. The CAC-STARTED
+event of the half therefore sets the flag of a main CAC, and the
+CAC-COMPLETED event never matches the chain. A radar on the operating
+channel then finds the chain still in its CAC, and the AP stays.
+
+hostapd now rewrites the whole record to the half when a CAC-STARTED
+event reports it. The later events of the half match the chain, and a
+radar on the operating channel moves the AP onto the half at 80 MHz.
+Only the STARTED event rewrites the record, because the kernel passes
+on the CAC-COMPLETED event of another radio without its source. An
+event on the AP channel keeps the record, because that CAC is the CAC
+of the AP.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/dfs.c |   37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -1904,6 +1904,42 @@ int hostapd_is_dfs_required(struct hosta
+ }
+ 
+ 
++/*
++ * mt7996 with an iFEM runs a 160 MHz background request as one 80 MHz half
++ * and reports the CAC of that half. Only the STARTED event follows the
++ * request; a COMPLETED event can come from another radio. A CAC on the
++ * AP channel is the CAC of the AP, also inside the block of the chain.
++ */
++static void dfs_chain_half_adopt(struct hostapd_iface *iface, int freq,
++				 int chan_width, int cf1)
++{
++	int center = 5000 + iface->radar_background.centr_freq_seg0_idx * 5;
++	u8 chan;
++
++	if (!dfs_use_radar_background(iface) ||
++	    iface->radar_background.channel == -1 ||
++	    !iface->radar_background.cac_started || freq == iface->freq ||
++	    iface->radar_background.chwidth != CONF_OPER_CHWIDTH_160MHZ ||
++	    chan_width != CHAN_WIDTH_80 || abs(cf1 - center) != 40 ||
++	    abs(freq - cf1) >= 40 ||
++	    ieee80211_freq_to_chan(freq, &chan) == NUM_HOSTAPD_MODES)
++		return;
++
++	wpa_printf(MSG_DEBUG,
++		   "DFS: background chain runs the 80 MHz half at %d MHz",
++		   cf1);
++	iface->radar_background.freq = freq;
++	iface->radar_background.channel = chan;
++	/* a wide event carries no offset; calculate_chan_offset() rule */
++	iface->radar_background.secondary_channel =
++		(abs(freq - (cf1 - 30)) / 20) % 2 == 0 ? 1 : -1;
++	iface->radar_background.chwidth =
++		chan_width_to_oper_chwidth(chan_width);
++	iface->radar_background.centr_freq_seg0_idx = (cf1 - 5000) / 5;
++	iface->radar_background.centr_freq_seg1_idx = 0;
++}
++
++
+ int hostapd_dfs_start_cac(struct hostapd_data *hapd, int freq,
+ 			  int ht_enabled, int chan_offset, int chan_width,
+ 			  int cf1, int cf2)
+@@ -1917,6 +1953,7 @@ int hostapd_dfs_start_cac(struct hostapd
+ 		return 0;
+ 	}
+ 
++	dfs_chain_half_adopt(iface, freq, chan_width, cf1);
+ 	if (hostapd_dfs_is_background_event(iface, freq)) {
+ 		iface->radar_background.cac_started = 1;
+ 	} else {
