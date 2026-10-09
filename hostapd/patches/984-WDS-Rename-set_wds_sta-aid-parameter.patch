@@ -1,0 +1,132 @@
+From b319ff48b9b74104aaf32cf5e17b7ed1e11d5cb4 Mon Sep 17 00:00:00 2001
+From: Ramasamy Kaliappan <ramasamy.kaliappan@oss.qualcomm.com>
+Date: Tue, 1 Sep 2026 17:17:30 +0530
+Subject: [PATCH] WDS: Rename set_wds_sta aid parameter
+
+This identifier is only used locally to generate the WDS interface name,
+is not used over the air, and does not really have to be the Association
+ID. Rename the set_wds_sta() identifier parameter to reflect this usage
+instead of describing it as an Association ID.
+
+Signed-off-by: Ramasamy Kaliappan <ramasamy.kaliappan@oss.qualcomm.com>
+Co-developed-by: Aaradhana Sahu <aaradhana.sahu@oss.qualcomm.com>
+Signed-off-by: Aaradhana Sahu <aaradhana.sahu@oss.qualcomm.com>
+[adjusted to the OpenWrt interface name code in hostapd_set_wds_sta()]
+---
+ src/ap/ap_drv_ops.c  |  4 ++--
+ src/ap/ap_drv_ops.h  |  2 +-
+ src/ap/ieee802_11.c  | 15 +++++++++------
+ src/drivers/driver.h |  5 +++--
+ 4 files changed, 15 insertions(+), 11 deletions(-)
+
+--- a/src/ap/ap_drv_ops.c
++++ b/src/ap/ap_drv_ops.c
+@@ -389,7 +389,7 @@ int hostapd_vlan_if_remove(struct hostap
+ 
+ 
+ int hostapd_set_wds_sta(struct hostapd_data *hapd, char *ifname_wds,
+-			const u8 *addr, int aid, int val)
++			const u8 *addr, int ifname_id, int val)
+ {
+ 	const char *bridge = NULL;
+ 	char ifName[IFNAMSIZ + 1];
+@@ -403,13 +403,13 @@ int hostapd_set_wds_sta(struct hostapd_d
+ 	if (hapd->conf->apup && hapd->conf->apup_peer_ifname_prefix[0]) {
+ 		mRet = os_snprintf(
+ 		            ifName, sizeof(ifName), "%s%d",
+-		            hapd->conf->apup_peer_ifname_prefix, aid);
++		            hapd->conf->apup_peer_ifname_prefix, ifname_id);
+ 	}
+ 	else
+ #endif // def CONFIG_APUP
+ 		mRet = os_snprintf(
+ 		            ifName, sizeof(ifName), "%s.sta%d",
+-		            hapd->conf->iface, aid);
++		            hapd->conf->iface, ifname_id);
+ 
+ 	if (mRet >= (int) sizeof(ifName))
+ 		wpa_printf(MSG_WARNING,
+@@ -423,7 +423,7 @@ int hostapd_set_wds_sta(struct hostapd_d
+ 
+ 	if (hapd->conf->wds_bridge[0])
+ 		bridge = hapd->conf->wds_bridge;
+-	return hapd->driver->set_wds_sta(hapd->drv_priv, addr, aid, val,
++	return hapd->driver->set_wds_sta(hapd->drv_priv, addr, ifname_id, val,
+ 					 bridge, ifName);
+ }
+ 
+--- a/src/ap/ap_drv_ops.h
++++ b/src/ap/ap_drv_ops.h
+@@ -39,7 +39,7 @@ int hostapd_vlan_if_remove(struct hostap
+ /** @param val as per nl80211 driver implementation, 1 means add 0 means remove
+  */
+ int hostapd_set_wds_sta(struct hostapd_data *hapd, char *ifname_wds,
+-			const u8 *addr, int aid, int val);
++			const u8 *addr, int ifname_id, int val);
+ int hostapd_sta_add(struct hostapd_data *hapd,
+ 		    const u8 *addr, u16 aid, u16 capability,
+ 		    const u8 *supp_rates, size_t supp_rates_len,
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -9308,12 +9308,13 @@ skip_update:
+ 	     !(sta->flags & WLAN_STA_WPS))) {
+ 		int ret;
+ 		char ifname_wds[IFNAMSIZ + 1];
++		int ifname_id = sta->aid;
+ 
+ 		wpa_printf(MSG_DEBUG, "Reenable 4-address WDS mode for STA "
+-			   MACSTR " (aid %u)",
+-			   MAC2STR(sta->addr), sta->aid);
++			   MACSTR " (ifname_id %u)",
++			   MAC2STR(sta->addr), ifname_id);
+ 		ret = hostapd_set_wds_sta(hapd, ifname_wds, sta->addr,
+-					  sta->aid, 1);
++					  ifname_id, 1);
+ 		if (!ret)
+ 			hostapd_set_wds_encryption(hapd, sta, ifname_wds);
+ 	}
+@@ -9661,6 +9662,8 @@ void ieee802_11_rx_from_unknown(struct h
+ 	if (sta &&
+ 	    ((sta->flags & WLAN_STA_ASSOC) ||
+ 	     ((sta->flags & WLAN_STA_ASSOC_REQ_OK) && wds))) {
++		int ifname_id = sta->aid;
++
+ 		if (!hapd->conf->wds_sta)
+ 			return;
+ 
+@@ -9679,11 +9682,11 @@ void ieee802_11_rx_from_unknown(struct h
+ 			char ifname_wds[IFNAMSIZ + 1];
+ 
+ 			wpa_printf(MSG_DEBUG, "Enable 4-address WDS mode for "
+-				   "STA " MACSTR " (aid %u)",
+-				   MAC2STR(sta->addr), sta->aid);
++				   "STA " MACSTR " (ifname_id %u)",
++				   MAC2STR(sta->addr), ifname_id);
+ 			sta->flags |= WLAN_STA_WDS;
+ 			ret = hostapd_set_wds_sta(hapd, ifname_wds,
+-						  sta->addr, sta->aid, 1);
++						  sta->addr, ifname_id, 1);
+ 			if (!ret)
+ 				hostapd_set_wds_encryption(hapd, sta,
+ 							   ifname_wds);
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -4536,7 +4536,8 @@ struct wpa_driver_ops {
+ 	 * set_wds_sta - Bind a station into a 4-address WDS (AP only)
+ 	 * @priv: Private driver interface data
+ 	 * @addr: MAC address of the associated station
+-	 * @aid: Association ID
++	 * @ifname_id: Interface name identifier - Association ID for non-MLO
++	 *	Used to generate unique WDS interface names (e.g., wlan0.sta%d).
+ 	 * @val: 1 = bind to 4-address WDS; 0 = unbind
+ 	 * @bridge_ifname: Bridge interface to use for the WDS station or %NULL
+ 	 *	to indicate that bridge is not to be used
+@@ -4544,7 +4545,7 @@ struct wpa_driver_ops {
+ 	 *	station or %NULL to indicate name is not returned.
+ 	 * Returns: 0 on success, -1 on failure
+ 	 */
+-	int (*set_wds_sta)(void *priv, const u8 *addr, int aid, int val,
++	int (*set_wds_sta)(void *priv, const u8 *addr, int ifname_id, int val,
+ 			   const char *bridge_ifname, const char *ifname_wds);
+ 
+ 	/**
