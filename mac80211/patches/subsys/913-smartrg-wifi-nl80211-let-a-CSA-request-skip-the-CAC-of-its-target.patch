@@ -10,25 +10,147 @@ A CSA request that carries NL80211_ATTR_RADAR_BACKGROUND now marks its
 target AVAILABLE before the beaconing check, so the switch completes
 without a CAC. The attribute serves as the skip flag because nl80211
 has no other one for this. The flag bypasses the regulatory CAC;
-hostapd sends it only for the skip_cac option.
+hostapd sends it only for the skip_cac option. nl80211 rejects a
+target with a radar channel in its non-occupancy period, because the
+skip must not end that period. If the request fails, each channel that
+still has the state of the skip gets back its previous DFS state. Thus
+no channel stays AVAILABLE without a CAC. A channel that changed in
+the meantime keeps the change, because another wiphy can report a
+radar on it without the lock of this wiphy.
 
-Based-on-work-by: himanshu.goyal <himanshu.goyal@mediatek.com>
+Based-on-patch-by: himanshu.goyal <himanshu.goyal@mediatek.com>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- net/wireless/nl80211.c |    5 +++++
- 1 file changed, 5 insertions(+)
+ net/wireless/chan.c    |   59 +++++++++++++++++++++++++++++++++++++++++++++++++
+ net/wireless/core.h    |   17 ++++++++++++++
+ net/wireless/nl80211.c |   11 +++++++++
+ 3 files changed, 87 insertions(+)
 
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -12198,6 +12198,11 @@ static int nl80211_channel_switch(struct
+@@ -12078,6 +12078,7 @@ static int nl80211_channel_switch(struct
+ 	struct net_device *dev = info->user_ptr[1];
+ 	struct wireless_dev *wdev = dev->ieee80211_ptr;
+ 	struct cfg80211_csa_settings params;
++	struct cfg80211_dfs_saved_state dfs_saved = {};
+ 	struct nlattr **csa_attrs = NULL;
+ 	int err;
+ 	bool need_new_beacon = false;
+@@ -12198,6 +12199,14 @@ static int nl80211_channel_switch(struct
  		goto free;
  
  skip_beacons:
 +	/* Use RADAR_BACKGROUND attribute here for skipping CAC */
 +	if (info->attrs[NL80211_ATTR_RADAR_BACKGROUND]) {
-+		cfg80211_set_dfs_state(&rdev->wiphy, &params.chandef, NL80211_DFS_AVAILABLE);
++		err = cfg80211_dfs_cac_skip(&rdev->wiphy, &params.chandef,
++					    &dfs_saved);
++		if (err)
++			goto free;
 +	}
 +
  	if (!cfg80211_reg_can_beacon_relax(&rdev->wiphy, &params.chandef,
  					   wdev->iftype)) {
  		err = -EINVAL;
+@@ -12236,6 +12245,8 @@ skip_beacons:
+ 	err = rdev_channel_switch(rdev, dev, &params);
+ 
+ free:
++	if (err)
++		cfg80211_dfs_state_restore(&dfs_saved);
+ 	kfree(params.beacon_after.mbssid_ies);
+ 	kfree(params.beacon_csa.mbssid_ies);
+ 	kfree(params.beacon_after.rnr_ies);
+--- a/net/wireless/chan.c
++++ b/net/wireless/chan.c
+@@ -891,6 +891,65 @@ void cfg80211_set_dfs_state(struct wiphy
+ 	}
+ }
+ 
++int cfg80211_dfs_cac_skip(struct wiphy *wiphy,
++			  const struct cfg80211_chan_def *chandef,
++			  struct cfg80211_dfs_saved_state *saved)
++{
++	struct ieee80211_channel *c;
++	unsigned int n = 0;
++
++	if (WARN_ON(!cfg80211_chandef_valid(chandef)))
++		return -EINVAL;
++
++	for_each_subchan(chandef, freq, cf) {
++		c = ieee80211_get_channel_khz(wiphy, freq);
++		if (!c || !(c->flags & IEEE80211_CHAN_RADAR))
++			continue;
++
++		/* a skipped CAC must not end a non-occupancy period */
++		if (c->dfs_state == NL80211_DFS_UNAVAILABLE)
++			return -EINVAL;
++
++		if (WARN_ON(n == ARRAY_SIZE(saved->chans)))
++			return -EINVAL;
++
++		saved->chans[n].chan = c;
++		saved->chans[n].dfs_state = c->dfs_state;
++		saved->chans[n].dfs_state_entered = c->dfs_state_entered;
++		saved->chans[n].dfs_state_last_available =
++			c->dfs_state_last_available;
++		n++;
++	}
++
++	saved->n_chans = n;
++	cfg80211_set_dfs_state(wiphy, chandef, NL80211_DFS_AVAILABLE);
++
++	for (n = 0; n < saved->n_chans; n++)
++		saved->chans[n].skip_entered =
++			saved->chans[n].chan->dfs_state_entered;
++
++	return 0;
++}
++
++void cfg80211_dfs_state_restore(const struct cfg80211_dfs_saved_state *saved)
++{
++	unsigned int i;
++
++	for (i = 0; i < saved->n_chans; i++) {
++		struct ieee80211_channel *c = saved->chans[i].chan;
++
++		/* another wiphy propagates DFS state without our wiphy lock */
++		if (c->dfs_state != NL80211_DFS_AVAILABLE ||
++		    c->dfs_state_entered != saved->chans[i].skip_entered)
++			continue;
++
++		c->dfs_state = saved->chans[i].dfs_state;
++		c->dfs_state_entered = saved->chans[i].dfs_state_entered;
++		c->dfs_state_last_available =
++			saved->chans[i].dfs_state_last_available;
++	}
++}
++
+ void cfg80211_set_cac_state(struct wiphy *wiphy,
+ 			    const struct cfg80211_chan_def *chandef,
+ 			    bool cac_ongoing)
+--- a/net/wireless/core.h
++++ b/net/wireless/core.h
+@@ -492,6 +492,23 @@ void cfg80211_set_dfs_state(struct wiphy
+ void cfg80211_set_dfs_concurrent(struct wiphy *wiphy,
+ 				 const struct cfg80211_chan_def *chandef);
+ 
++struct cfg80211_dfs_saved_state {
++	unsigned int n_chans;
++	/* one entry per 20 MHz of a 320 MHz chandef */
++	struct {
++		struct ieee80211_channel *chan;
++		enum nl80211_dfs_state dfs_state;
++		unsigned long dfs_state_entered;
++		unsigned long dfs_state_last_available;
++		unsigned long skip_entered;
++	} chans[16];
++};
++
++int cfg80211_dfs_cac_skip(struct wiphy *wiphy,
++			  const struct cfg80211_chan_def *chandef,
++			  struct cfg80211_dfs_saved_state *saved);
++void cfg80211_dfs_state_restore(const struct cfg80211_dfs_saved_state *saved);
++
+ void cfg80211_set_cac_state(struct wiphy *wiphy,
+ 			    const struct cfg80211_chan_def *chandef,
+ 			    bool cac_ongoing);

@@ -8,28 +8,36 @@ channel with a CSA.
 
 mac80211 now completes the countdown, runs the CAC on the new channel
 and finalizes the switch when the CAC ends. Beaconing stays off during
-the CAC, so that a later CSA does not reuse a stale CSA beacon. A
-radar during the CAC cancels it, allows a new CSA and tells the driver
-to end a quiet that it applied for the switch. A background chain that
-overlaps the new channel stops when the CAC starts. If a radar hit the
-new channel during the countdown, the AP stops instead, because a CAC
-would end the non-occupancy period early. The channel that the AP
-leaves keeps the two second grace before it expires.
+the CAC, so that a later CSA does not reuse a stale CSA beacon. An end
+of the CAC from cfg80211 also finalizes the switch. mac80211 then acts
+only on the interface that cfg80211 names, because cfg80211 clears the
+CAC state of that interface only. A radar on the new channel during
+the countdown stops the AP, because a CAC would end the non-occupancy
+period early. A radar during the CAC cancels it, allows a new CSA and
+tells the driver to end the quiet period of the switch. A new CSA
+during the CAC cancels only the CAC of its own link, because hostapd
+sends one request per BSS. The new CSA cancels that CAC before the new
+switch, because the driver must end the old switch first. If that CSA
+fails, the link stops, because its channel has no CAC. A switch that
+fails to finalize at once returns the error, so that nl80211 can undo
+a skipped CAC. A background chain that overlaps the new channel stops
+when the CAC starts, and the channel that the AP leaves keeps its two
+second grace.
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- include/net/cfg80211.h     |   51 +++++++++++++++++++++++++++++++++
- net/mac80211/cfg.c         |   68 +++++++++++++++++++++++++++++++++++++++------
- net/mac80211/ieee80211_i.h |    1 
- net/mac80211/mlme.c        |    9 +++++
- net/mac80211/util.c        |   10 +++++-
- net/wireless/chan.c        |   57 ++++++++++++++++++++++++++++++++++++-
- net/wireless/nl80211.c     |    5 +--
- net/wireless/rdev-ops.h    |   18 +++++++++++
- net/wireless/reg.c         |    8 +++--
- 9 files changed, 210 insertions(+), 17 deletions(-)
+ include/net/cfg80211.h     |   51 ++++++++++++++++++
+ net/mac80211/cfg.c         |  122 +++++++++++++++++++++++++++++++++------------
+ net/mac80211/ieee80211_i.h |    3 +
+ net/mac80211/mlme.c        |   14 ++++-
+ net/mac80211/util.c        |   38 +++++++++-----
+ net/wireless/chan.c        |   64 ++++++++++++++++++++++-
+ net/wireless/nl80211.c     |    5 +
+ net/wireless/rdev-ops.h    |   18 ++++++
+ net/wireless/reg.c         |    8 ++
+ 9 files changed, 273 insertions(+), 50 deletions(-)
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
@@ -128,7 +136,33 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	if (!link->u.ap.next_beacon)
  		return;
-@@ -4464,6 +4464,40 @@ static int ieee80211_set_after_csa_beaco
+@@ -4251,18 +4251,15 @@ static void ieee80211_end_cac(struct wip
+ 
+ 	lockdep_assert_wiphy(local->hw.wiphy);
+ 
+-	list_for_each_entry(sdata, &local->interfaces, list) {
+-		link_data = sdata_dereference(sdata->link[link_id], sdata);
+-		if (!link_data)
+-			continue;
++	link_data = sdata_dereference(sdata->link[link_id], sdata);
++	if (!link_data)
++		return;
+ 
+-		wiphy_hrtimer_work_cancel(wiphy,
+-					  &link_data->dfs_cac_timer_work);
++	wiphy_hrtimer_work_cancel(wiphy, &link_data->dfs_cac_timer_work);
+ 
+-		if (sdata->wdev.links[link_id].cac_started) {
+-			ieee80211_link_release_channel(link_data);
+-			sdata->wdev.links[link_id].cac_started = false;
+-		}
++	if (sdata->wdev.links[link_id].cac_started) {
++		ieee80211_link_cac_end(link_data);
++		sdata->wdev.links[link_id].cac_started = false;
+ 	}
+ }
+ 
+@@ -4464,6 +4461,40 @@ static int ieee80211_set_after_csa_beaco
  	return 0;
  }
  
@@ -169,7 +203,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int __ieee80211_csa_finalize(struct ieee80211_link_data *link_data)
  {
  	struct ieee80211_sub_if_data *sdata = link_data->sdata;
-@@ -4497,6 +4531,12 @@ static int __ieee80211_csa_finalize(stru
+@@ -4497,6 +4528,12 @@ static int __ieee80211_csa_finalize(stru
  					&link_data->csa.chanreq.oper))
  		return -EINVAL;
  
@@ -182,7 +216,64 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	link_conf->csa_active = false;
  
  	err = ieee80211_set_after_csa_beacon(link_data, &changed);
-@@ -4726,9 +4766,6 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4520,25 +4557,36 @@ static int __ieee80211_csa_finalize(stru
+ 	return 0;
+ }
+ 
+-static void ieee80211_csa_finalize(struct ieee80211_link_data *link_data)
++static void ieee80211_csa_link_stop(struct ieee80211_link_data *link_data)
+ {
+ 	struct ieee80211_sub_if_data *sdata = link_data->sdata;
+ 	int link_id = -1;
+ 
+-	if (__ieee80211_csa_finalize(link_data)) {
++	if (sdata->vif.type == NL80211_IFTYPE_AP ||
++	    sdata->vif.type == NL80211_IFTYPE_P2P_GO)
++		/*
++		 * link_id is expected only for AP/P2P_GO type
++		 * currently
++		 */
++		link_id = link_data->link_id;
++
++	cfg80211_stop_link(sdata->local->hw.wiphy, &sdata->wdev,
++			   link_id, GFP_KERNEL);
++}
++
++static int ieee80211_csa_finalize(struct ieee80211_link_data *link_data)
++{
++	struct ieee80211_sub_if_data *sdata = link_data->sdata;
++	int err;
++
++	err = __ieee80211_csa_finalize(link_data);
++	if (err) {
+ 		sdata_info(sdata, "failed to finalize CSA on link %d, disconnecting\n",
+ 			   link_data->link_id);
+-		if (sdata->vif.type == NL80211_IFTYPE_AP ||
+-		    sdata->vif.type == NL80211_IFTYPE_P2P_GO)
+-			/*
+-			 * link_id is expected only for AP/P2P_GO type
+-			 * currently
+-			 */
+-			link_id = link_data->link_id;
+-
+-		cfg80211_stop_link(sdata->local->hw.wiphy, &sdata->wdev,
+-				   link_id, GFP_KERNEL);
++		ieee80211_csa_link_stop(link_data);
+ 	}
++
++	return err;
+ }
+ 
+ void ieee80211_csa_finalize_work(struct wiphy *wiphy, struct wiphy_work *work)
+@@ -4719,6 +4767,7 @@ __ieee80211_channel_switch(struct wiphy
+ 	struct ieee80211_link_data *link_data;
+ 	u64 changed = 0;
+ 	u8 link_id = params->link_id;
++	bool cac_cancelled = false;
+ 	int err;
+ 
+ 	lockdep_assert_wiphy(local->hw.wiphy);
+@@ -4726,9 +4775,6 @@ __ieee80211_channel_switch(struct wiphy
  	if (ieee80211_is_scan_ongoing(wiphy, local, &params->chandef))
  		return -EBUSY;
  
@@ -192,50 +283,61 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (WARN_ON(link_id >= IEEE80211_MLD_MAX_NUM_LINKS))
  		return -EINVAL;
  
-@@ -4741,10 +4778,6 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4741,8 +4787,10 @@ __ieee80211_channel_switch(struct wiphy
  	if (chanreq.oper.punctured && !link_conf->eht_support)
  		return -EINVAL;
  
 -	/* don't allow another channel switch if one is already active. */
 -	if (link_conf->csa_active)
--		return -EBUSY;
--
- 	conf = wiphy_dereference(wiphy, link_conf->chanctx_conf);
- 	if (!conf) {
- 		err = -EBUSY;
-@@ -4765,6 +4798,15 @@ __ieee80211_channel_switch(struct wiphy
- 
- 	chanctx = container_of(conf, struct ieee80211_chanctx, conf);
- 
 +	/* don't allow another channel switch if one is already active
 +	 * except the case of post-CSA radar detection.
 +	 */
++	if (link_conf->csa_active && !sdata->wdev.links[link_id].cac_started)
+ 		return -EBUSY;
+ 
+ 	conf = wiphy_dereference(wiphy, link_conf->chanctx_conf);
+@@ -4765,6 +4813,12 @@ __ieee80211_channel_switch(struct wiphy
+ 
+ 	chanctx = container_of(conf, struct ieee80211_chanctx, conf);
+ 
++	/* each BSS on the chanctx sends its own switch request */
 +	if (link_conf->csa_active) {
-+		if (!sdata->wdev.links[link_id].cac_started)
-+			return -EBUSY;
-+		ieee80211_dfs_cac_cancel(local, chanctx);
++		ieee80211_link_cac_cancel(link_data);
++		cac_cancelled = true;
 +	}
 +
  	ch_switch.timestamp = 0;
  	ch_switch.device_timestamp = 0;
  	ch_switch.block_tx = params->block_tx;
-@@ -6007,7 +6049,14 @@ ieee80211_skip_cac(struct wireless_dev *
+@@ -4812,11 +4866,16 @@ __ieee80211_channel_switch(struct wiphy
+ 		ieee80211_link_info_change_notify(sdata, link_data, changed);
+ 		drv_channel_switch_beacon(sdata, &link_data->csa.chanreq.oper);
+ 	} else {
+-		/* if the beacon didn't change, we can finalize immediately */
+-		ieee80211_csa_finalize(link_data);
++		/* if the beacon didn't change, we can finalize immediately.
++		 * A failed finalize stops the link itself.
++		 */
++		return ieee80211_csa_finalize(link_data);
+ 	}
+ 
+ out:
++	/* the link must not stay on a channel whose CAC it cancelled */
++	if (err && cac_cancelled)
++		ieee80211_csa_link_stop(link_data);
+ 	return err;
+ }
+ 
+@@ -6007,7 +6066,7 @@ ieee80211_skip_cac(struct wireless_dev *
  	wiphy_hrtimer_work_cancel(sdata->local->hw.wiphy,
  				  &link->dfs_cac_timer_work);
  	if (wdev->links[link_id].cac_started) {
 -		ieee80211_link_release_channel(link);
-+		if (link->conf->csa_active) {
-+			/* beacon is disabled during CAC period */
-+			link->conf->enable_beacon = true;
-+			wiphy_work_queue(sdata->local->hw.wiphy,
-+					 &link->csa.finalize_work);
-+		} else {
-+			ieee80211_link_release_channel(link);
-+		}
++		ieee80211_link_cac_end(link);
  		cac_time_ms = wdev->links[link_id].cac_time_ms;
  		wdev->links[link_id].cac_start_time = jiffies -
  				       msecs_to_jiffies(cac_time_ms + 1);
-@@ -6100,6 +6149,7 @@ const struct cfg80211_ops mac80211_confi
+@@ -6100,6 +6159,7 @@ const struct cfg80211_ops mac80211_confi
  #endif
  	.get_channel = ieee80211_cfg_get_channel,
  	.start_radar_detection = ieee80211_start_radar_detection,
@@ -253,46 +355,110 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  /* color change handling */
  void ieee80211_color_change_finalize_work(struct wiphy *wiphy,
+@@ -2860,7 +2861,9 @@ bool ieee80211_is_radio_idx_in_scan_req(
+ 					struct cfg80211_scan_request *scan_req,
+ 					int radio_idx);
+ 
++void ieee80211_link_cac_end(struct ieee80211_link_data *link);
+ void ieee80211_dfs_cac_timer_work(struct wiphy *wiphy, struct wiphy_work *work);
++void ieee80211_link_cac_cancel(struct ieee80211_link_data *link);
+ void ieee80211_dfs_cac_cancel(struct ieee80211_local *local,
+ 			      struct ieee80211_chanctx *chanctx);
+ void ieee80211_dfs_radar_detected_work(struct wiphy *wiphy,
 --- a/net/mac80211/mlme.c
 +++ b/net/mac80211/mlme.c
-@@ -3995,7 +3995,14 @@ void ieee80211_dfs_cac_timer_work(struct
+@@ -3984,6 +3984,18 @@ void ieee80211_dynamic_ps_timer(struct t
+ 	wiphy_work_queue(local->hw.wiphy, &local->dynamic_ps_enable_work);
+ }
+ 
++void ieee80211_link_cac_end(struct ieee80211_link_data *link)
++{
++	if (link->conf->csa_active) {
++		/* beacon is disabled during CAC period */
++		link->conf->enable_beacon = true;
++		wiphy_work_queue(link->sdata->local->hw.wiphy,
++				 &link->csa.finalize_work);
++	} else {
++		ieee80211_link_release_channel(link);
++	}
++}
++
+ void ieee80211_dfs_cac_timer_work(struct wiphy *wiphy, struct wiphy_work *work)
+ {
+ 	struct ieee80211_link_data *link =
+@@ -3995,7 +4007,7 @@ void ieee80211_dfs_cac_timer_work(struct
  	lockdep_assert_wiphy(sdata->local->hw.wiphy);
  
  	if (sdata->wdev.links[link->link_id].cac_started) {
 -		ieee80211_link_release_channel(link);
-+		if (link->conf->csa_active) {
-+			/* beacon is disabled during CAC period */
-+			link->conf->enable_beacon = true;
-+			wiphy_work_queue(sdata->local->hw.wiphy,
-+					 &link->csa.finalize_work);
-+		} else {
-+			ieee80211_link_release_channel(link);
-+		}
++		ieee80211_link_cac_end(link);
  		cfg80211_cac_event(sdata->dev, &chandef,
  				   NL80211_RADAR_CAC_FINISHED,
  				   GFP_KERNEL, link->link_id);
 --- a/net/mac80211/util.c
 +++ b/net/mac80211/util.c
-@@ -3693,7 +3693,15 @@ void ieee80211_dfs_cac_cancel(struct iee
+@@ -3659,6 +3659,31 @@ u64 ieee80211_calculate_rx_timestamp(str
+ }
+ EXPORT_SYMBOL_GPL(ieee80211_calculate_rx_timestamp);
+ 
++void ieee80211_link_cac_cancel(struct ieee80211_link_data *link)
++{
++	struct ieee80211_sub_if_data *sdata = link->sdata;
++	struct cfg80211_chan_def chandef;
++
++	wiphy_hrtimer_work_cancel(sdata->local->hw.wiphy,
++				  &link->dfs_cac_timer_work);
++
++	if (!sdata->wdev.links[link->link_id].cac_started)
++		return;
++
++	chandef = link->conf->chanreq.oper;
++	if (link->conf->csa_active) {
++		/* the driver may still quiet the band for it */
++		drv_abort_channel_switch(link);
++		link->conf->csa_active = false;
++		link->conf->enable_beacon = true;
++		ieee80211_free_next_beacon(link);
++	} else {
++		ieee80211_link_release_channel(link);
++	}
++	cfg80211_cac_event(sdata->dev, &chandef, NL80211_RADAR_CAC_ABORTED,
++			   GFP_KERNEL, link->link_id);
++}
++
+ /* Cancel CAC for the interfaces under the specified @local. If @ctx is
+  * also provided, only the interfaces using that ctx will be canceled.
+  */
+@@ -3666,7 +3691,6 @@ void ieee80211_dfs_cac_cancel(struct iee
+ 			      struct ieee80211_chanctx *ctx)
+ {
+ 	struct ieee80211_sub_if_data *sdata;
+-	struct cfg80211_chan_def chandef;
+ 	struct ieee80211_link_data *link;
+ 	struct ieee80211_chanctx_conf *chanctx_conf;
+ 	unsigned int link_id;
+@@ -3686,17 +3710,7 @@ void ieee80211_dfs_cac_cancel(struct iee
+ 			if (ctx && &ctx->conf != chanctx_conf)
  				continue;
  
- 			chandef = link->conf->chanreq.oper;
+-			wiphy_hrtimer_work_cancel(local->hw.wiphy,
+-						  &link->dfs_cac_timer_work);
+-
+-			if (!sdata->wdev.links[link_id].cac_started)
+-				continue;
+-
+-			chandef = link->conf->chanreq.oper;
 -			ieee80211_link_release_channel(link);
-+			if (link->conf->csa_active) {
-+				/* the driver may still quiet the band for it */
-+				drv_abort_channel_switch(link);
-+				link->conf->csa_active = false;
-+				link->conf->enable_beacon = true;
-+				ieee80211_free_next_beacon(link);
-+			} else {
-+				ieee80211_link_release_channel(link);
-+			}
- 			cfg80211_cac_event(sdata->dev, &chandef,
- 					   NL80211_RADAR_CAC_ABORTED,
- 					   GFP_KERNEL, link_id);
+-			cfg80211_cac_event(sdata->dev, &chandef,
+-					   NL80211_RADAR_CAC_ABORTED,
+-					   GFP_KERNEL, link_id);
++			ieee80211_link_cac_cancel(link);
+ 		}
+ 	}
+ }
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -1812,8 +1812,13 @@ static bool _cfg80211_reg_can_beacon(str
+@@ -1871,8 +1871,13 @@ static bool _cfg80211_reg_can_beacon(str
  	check_radar = dfs_required != 0;
  
  	if (dfs_required > 0 &&
@@ -308,7 +474,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		prohibited_flags &= ~IEEE80211_CHAN_NO_IR;
  		check_radar = false;
  	}
-@@ -1851,6 +1856,9 @@ bool cfg80211_reg_check_beaconing(struct
+@@ -1910,6 +1915,9 @@ bool cfg80211_reg_check_beaconing(struct
  							   chandef->chan);
  	}
  
@@ -318,7 +484,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (cfg->reg_power == IEEE80211_REG_VLP_AP)
  		permitting_flags |= IEEE80211_CHAN_ALLOW_6GHZ_VLP_AP;
  
-@@ -1866,6 +1874,61 @@ bool cfg80211_reg_check_beaconing(struct
+@@ -1925,6 +1933,58 @@ bool cfg80211_reg_check_beaconing(struct
  }
  EXPORT_SYMBOL(cfg80211_reg_check_beaconing);
  
@@ -352,9 +518,6 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	if (WARN_ON(!cac_time_ms))
 +		cac_time_ms = IEEE80211_DFS_MIN_CAC_TIME_MS;
 +
-+	pr_info("%s: region = %u, center freq1 = %u, center freq2 = %u, cac time ms = %u\n",
-+		__func__, dfs_region, chandef->center_freq1, chandef->center_freq2, cac_time_ms);
-+
 +	ret = rdev_start_radar_detection_post_csa(rdev, wdev->netdev, link_id,
 +						  chandef, cac_time_ms);
 +	if (ret > 0) {
@@ -382,8 +545,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				 struct cfg80211_chan_def *chandef)
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -12208,8 +12208,9 @@ skip_beacons:
- 		cfg80211_set_dfs_state(&rdev->wiphy, &params.chandef, NL80211_DFS_AVAILABLE);
+@@ -12212,8 +12212,9 @@ skip_beacons:
+ 			goto free;
  	}
  
 -	if (!cfg80211_reg_can_beacon_relax(&rdev->wiphy, &params.chandef,
