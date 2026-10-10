@@ -1,0 +1,346 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sat, 10 Oct 2026 10:51:47 -0700
+Subject: [PATCH] hostapd: arm the background chain when a DFS start skips the CAC
+
+An AP that starts on an available DFS channel skips the CAC, and
+hostapd returns before it arms the background chain. A chain search
+also gives up when one random draw names the AP block or a block
+that the kernel refuses. Until a later DFS event arms a chain,
+no chain keeps a second DFS channel ready for a radar move.
+
+One search now serves every arm of the chain: it draws at random
+among the blocks that need a CAC and lie off the AP. If none fits
+at the AP width, it narrows the width and repeats. The rule holds
+in every DFS region, because the kernel refuses a chain on a block
+that needs no CAC. An AP that starts without a CAC arms the chain,
+unless one is recorded, before the AP beacons, because the kernel
+accepts the request then. After a refused switch onto the chain, the
+restart arms its own chain; a second search runs only during a CSA or
+with no chain.
+
+Limits: a candidate needs every radar channel USABLE, so a block
+that mixes USABLE and AVAILABLE channels gets no chain, although the
+kernel admits it. mt7915 refuses a chain whose control channel has
+no radar flag, so a draw of 36/160 ends the search before a narrower
+radar block. 80+80 is not covered: the start check reads the first
+segment only, and the search keeps one random draw at that width.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/dfs.c |  228 ++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 149 insertions(+), 79 deletions(-)
+
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -27,6 +27,8 @@ dfs_downgrade_bandwidth(struct hostapd_i
+ 			u8 *oper_centr_freq_seg0_idx,
+ 			u8 *oper_centr_freq_seg1_idx,
+ 			enum dfs_channel_type *channel_type);
++static void
++hostapd_dfs_update_background_chain(struct hostapd_iface *iface);
+ 
+ 
+ bool dfs_use_radar_background(struct hostapd_iface *iface)
+@@ -849,33 +851,39 @@ static unsigned int dfs_get_cac_time(str
+ 
+ 
+ /*
+- * dfs_get_valid_channel() returns a chandef of the AP width, so a segment of
+- * it overlaps a segment of the AP when their first channels are less than
+- * one segment width apart.
++ * The chain search narrows the width in conf, so it reads the AP segments
++ * before it narrows.
+  */
+-static bool dfs_chandef_overlaps_ap(struct hostapd_iface *iface,
+-				    struct hostapd_channel_data *chan, u8 cf2)
++static int dfs_ap_segments_get(struct hostapd_iface *iface, int ap[2])
+ {
+ 	struct hostapd_hw_modes *mode = iface->current_mode;
+-	int start_chan_idx, start_chan_idx1, n_chans, n_chans1, width, i, j;
+-	int ap[2] = { 0, 0 }, cand[2] = { chan->freq, 0 };
++	int start_chan_idx, start_chan_idx1, n_chans, n_chans1;
++
++	if (!mode || mode->mode != HOSTAPD_MODE_IEEE80211A)
++		return 0;
+ 
+ 	start_chan_idx = dfs_get_start_chan_idx(iface, &start_chan_idx1);
+ 	if (start_chan_idx < 0)
+-		return true;
++		return 0;
+ 
+ 	n_chans = dfs_get_used_n_chans(iface, &n_chans1);
+-	width = n_chans * 20;
+-
+ 	ap[0] = mode->channels[start_chan_idx].freq;
+-	if (start_chan_idx1 >= 0)
+-		ap[1] = mode->channels[start_chan_idx1].freq;
+-	if (cf2)
+-		cand[1] = 5000 + (cf2 - 6) * 5;
++	ap[1] = start_chan_idx1 >= 0 ? mode->channels[start_chan_idx1].freq : 0;
++
++	return n_chans * 20;
++}
++
++
++/* a segment spans its width from the frequency of its first channel */
++static bool dfs_chandef_overlaps_ap(const int ap[2], int ap_width,
++				    const int cand[2], int cand_width)
++{
++	int i, j;
+ 
+ 	for (i = 0; i < 2; i++) {
+ 		for (j = 0; j < 2; j++) {
+-			if (ap[i] && cand[j] && abs(ap[i] - cand[j]) < width)
++			if (ap[i] && cand[j] && ap[i] < cand[j] + cand_width &&
++			    cand[j] < ap[i] + ap_width)
+ 				return true;
+ 		}
+ 	}
+@@ -885,6 +893,85 @@ static bool dfs_chandef_overlaps_ap(stru
+ 
+ 
+ /*
++ * The kernel refuses a chain on a block without a USABLE radar channel or
++ * with an UNAVAILABLE one. DFS_NO_CAC_YET is stricter: it also leaves out a
++ * block with an AVAILABLE radar channel, so the kernel accepts every block
++ * that it gives.
++ */
++static int dfs_chain_find_channel(struct hostapd_iface *iface,
++				  const int ap[2], int ap_width,
++				  struct hostapd_channel_data **ret_chan,
++				  int idx)
++{
++	struct hostapd_channel_data *chan;
++	int cand[2] = { 0, 0 };
++	int i, n, n_chans, n_chans1, found = 0;
++
++	n_chans = dfs_get_used_n_chans(iface, &n_chans1);
++	n = dfs_find_channel(iface, NULL, 0, 0, DFS_NO_CAC_YET);
++	for (i = 0; i < n; i++) {
++		chan = NULL;
++		dfs_find_channel(iface, &chan, 0, i, DFS_NO_CAC_YET);
++		if (!chan || chan->chan == iface->radar_background.channel)
++			continue;
++
++		cand[0] = chan->freq;
++		if (dfs_chandef_overlaps_ap(ap, ap_width, cand, n_chans * 20))
++			continue;
++
++		if (ret_chan && found == idx) {
++			*ret_chan = chan;
++			return idx;
++		}
++		found++;
++	}
++
++	return found;
++}
++
++
++/*
++ * One random pick among all blocks can name the AP block or a block that
++ * the kernel refuses, and leave the chain idle although another block fits.
++ */
++static struct hostapd_channel_data *
++dfs_chain_channel_get(struct hostapd_iface *iface, const int ap[2],
++		      int ap_width, int *sec, u8 *cf1, u8 *cf2)
++{
++	struct hostapd_channel_data *chan = NULL;
++	int cand[2], n;
++	u32 _rand;
++
++	/* 80+80 keeps the single pick, which also selects the second segment */
++	if (hostapd_get_oper_chwidth(iface->conf) ==
++	    CONF_OPER_CHWIDTH_80P80MHZ) {
++		chan = dfs_get_valid_channel(iface, sec, cf1, cf2,
++					     DFS_NO_CAC_YET);
++		if (!chan || chan->chan == iface->radar_background.channel)
++			return NULL;
++
++		cand[0] = chan->freq;
++		cand[1] = 5000 + (*cf2 - 6) * 5;
++		if (dfs_chandef_overlaps_ap(ap, ap_width, cand, 80))
++			return NULL;
++		return chan;
++	}
++
++	n = dfs_chain_find_channel(iface, ap, ap_width, NULL, 0);
++	if (!n || os_get_random((u8 *) &_rand, sizeof(_rand)) < 0)
++		return NULL;
++
++	dfs_chain_find_channel(iface, ap, ap_width, &chan, _rand % n);
++	*sec = iface->conf->secondary_channel ? 1 : 0;
++	*cf1 = 0;
++	*cf2 = 0;
++	dfs_adjust_center_freq(iface, chan, *sec, -1, cf1, cf2);
++
++	return chan;
++}
++
++
++/*
+  * Main DFS handler
+  * 1 - continue channel/ap setup
+  * 0 - channel/ap setup will be continued after CAC
+@@ -897,7 +984,6 @@ int hostapd_handle_dfs(struct hostapd_if
+ 	int sec = 0, skip_radar = 0;
+ 	u8 cf1 = 0, cf2 = 0;
+ 	bool use_radar_background = dfs_use_radar_background(iface);
+-	enum dfs_channel_type channel_type = DFS_NO_CAC_YET;
+ 
+ 	if (is_6ghz_freq(iface->freq))
+ 		return 1;
+@@ -956,8 +1042,14 @@ int hostapd_handle_dfs(struct hostapd_if
+ 		wpa_printf(MSG_DEBUG,
+ 			   "DFS all channels available, (SKIP CAC): %s",
+ 			   res ? "yes" : "no");
+-		if (res)
++		if (res) {
++			/* the kernel accepts a chain before the AP beacons, as
++			 * for the temporary channel of a CAC start */
++			if (dfs_use_radar_background(iface) &&
++			    iface->radar_background.channel == -1)
++				hostapd_dfs_update_background_chain(iface);
+ 			return 1;
++		}
+ 
+ 		/* Check if any of configured channels is unavailable */
+ 		res = dfs_check_chans_unavailable(iface, start_chan_idx,
+@@ -1046,35 +1138,7 @@ int hostapd_handle_dfs(struct hostapd_if
+ 		iface->radar_background.temp_ch = 1;
+ 		return 1;
+ 	} else if (dfs_use_radar_background(iface)) {
+-		if (iface->dfs_domain == HOSTAPD_DFS_REGION_ETSI)
+-			channel_type = DFS_ANY_CHANNEL;
+-
+-		channel = dfs_get_valid_channel(iface, &sec, &cf1, &cf2, channel_type);
+-
+-		if (!channel || dfs_chandef_overlaps_ap(iface, channel, cf2)) {
+-			wpa_printf(MSG_ERROR, "Background radar could not get valid channel");
+-			iface->radar_background.channel = -1;
+-			return 0;
+-		}
+-
+-		if (hostapd_start_dfs_cac(iface, iface->conf->hw_mode,
+-					  channel->freq, channel->chan,
+-					  iface->conf->ieee80211n,
+-					  iface->conf->ieee80211ac,
+-					  iface->conf->ieee80211ax,
+-					  iface->conf->ieee80211be,
+-					  sec, hostapd_get_oper_chwidth(iface->conf),
+-					  cf1, cf2, true)) {
+-			wpa_printf(MSG_ERROR, "DFS failed to start CAC offchannel");
+-			iface->radar_background.channel = -1;
+-			return 0;
+-		}
+-
+-		iface->radar_background.channel = channel->chan;
+-		iface->radar_background.freq = channel->freq;
+-		iface->radar_background.secondary_channel = sec;
+-		iface->radar_background.centr_freq_seg0_idx = cf1;
+-		iface->radar_background.centr_freq_seg1_idx = cf2;
++		hostapd_dfs_update_background_chain(iface);
+ 	}
+ 
+ 	return 0;
+@@ -1239,53 +1303,56 @@ static int hostapd_dfs_request_channel_s
+ }
+ 
+ 
++/*
++ * Every arm of the chain searches here. A block needs a CAC in every DFS
++ * region, because the kernel refuses a chain on a block without one.
++ */
+ static void hostapd_dfs_update_background_chain(struct hostapd_iface *iface)
+ {
+-	int sec = 0;
+-	enum dfs_channel_type channel_type = DFS_NO_CAC_YET;
+-	struct hostapd_channel_data *channel;
++	int sec = 0, err, ap_width, ap[2] = { 0, 0 };
++	struct hostapd_channel_data *channel = NULL;
+ 	u8 oper_centr_freq_seg0_idx = 0;
+ 	u8 oper_centr_freq_seg1_idx = 0;
+ 	/* the search narrows the AP config; the AP keeps its own width */
+ 	enum oper_chan_width oper_chwidth =
+ 		hostapd_get_oper_chwidth(iface->conf);
++	int chwidth = oper_chwidth;
+ 
+-	/*
+-	 * Allow selection of DFS channel in ETSI to comply with
+-	 * uniform spreading.
+-	 */
+-	if (iface->dfs_domain == HOSTAPD_DFS_REGION_ETSI)
+-		channel_type = DFS_ANY_CHANNEL;
++	ap_width = dfs_ap_segments_get(iface, ap);
++	while (ap_width) {
++		channel = dfs_chain_channel_get(iface, ap, ap_width, &sec,
++						&oper_centr_freq_seg0_idx,
++						&oper_centr_freq_seg1_idx);
++		if (channel || chwidth == CONF_OPER_CHWIDTH_USE_HT)
++			break;
++		hostapd_set_oper_chwidth(iface->conf, --chwidth);
++	}
+ 
+-	channel = dfs_get_valid_channel(iface, &sec, &oper_centr_freq_seg0_idx,
+-					&oper_centr_freq_seg1_idx,
+-					channel_type);
+-	if (!channel ||
+-	    channel->chan == iface->conf->channel ||
+-	    channel->chan == iface->radar_background.channel)
+-		channel = dfs_downgrade_bandwidth(iface, &sec,
+-						  &oper_centr_freq_seg0_idx,
+-						  &oper_centr_freq_seg1_idx,
+-						  &channel_type);
+-	if (!channel ||
+-	    channel->chan == iface->conf->channel ||
+-	    channel->chan == iface->radar_background.channel ||
+-	    hostapd_start_dfs_cac(iface, iface->conf->hw_mode,
+-				  channel->freq, channel->chan,
+-				  iface->conf->ieee80211n,
+-				  iface->conf->ieee80211ac,
+-				  iface->conf->ieee80211ax,
+-				  iface->conf->ieee80211be,
+-				  sec, hostapd_get_oper_chwidth(iface->conf),
+-				  oper_centr_freq_seg0_idx,
+-				  oper_centr_freq_seg1_idx, true)) {
++	if (!channel) {
+ 		hostapd_set_oper_chwidth(iface->conf, oper_chwidth);
+-		wpa_printf(MSG_ERROR, "DFS failed to start CAC offchannel");
++		wpa_printf(MSG_INFO,
++			   "Background radar could not get valid channel");
+ 		iface->radar_background.channel = -1;
+ 		iface->radar_background.cac_started = 0;
+ 		return;
+ 	}
++
++	err = hostapd_start_dfs_cac(iface, iface->conf->hw_mode,
++				    channel->freq, channel->chan,
++				    iface->conf->ieee80211n,
++				    iface->conf->ieee80211ac,
++				    iface->conf->ieee80211ax,
++				    iface->conf->ieee80211be,
++				    sec, hostapd_get_oper_chwidth(iface->conf),
++				    oper_centr_freq_seg0_idx,
++				    oper_centr_freq_seg1_idx, true);
+ 	hostapd_set_oper_chwidth(iface->conf, oper_chwidth);
++	if (err) {
++		wpa_printf(MSG_ERROR, "DFS failed to start CAC offchannel");
++		iface->radar_background.channel = -1;
++		iface->radar_background.cac_started = 0;
++		return;
++	}
+ 
+ 	iface->radar_background.channel = channel->chan;
+ 	iface->radar_background.freq = channel->freq;
+@@ -1431,7 +1498,10 @@ hostapd_dfs_start_channel_switch_backgro
+ 		hostapd_set_oper_centr_freq_seg1_idx(iface->conf, seg1);
+ 	}
+ 
+-	hostapd_dfs_update_background_chain(iface);
++	/* the restart of a refused switch arms its own chain */
++	if (hostapd_csa_in_progress(iface) ||
++	    iface->radar_background.channel == -1)
++		hostapd_dfs_update_background_chain(iface);
+ 
+ 	return 0;
+ }
