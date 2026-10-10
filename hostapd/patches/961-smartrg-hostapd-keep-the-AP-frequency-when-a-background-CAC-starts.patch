@@ -1,0 +1,35 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 8 Oct 2026 13:16:30 -0700
+Subject: [PATCH] hostapd: keep the AP frequency when a background CAC starts
+
+A successful CAC start stores the CAC frequency as the frequency of
+the BSS. A background CAC runs on a separate chain, but it also
+replaced that frequency. Frames that hostapd sends without a
+frequency, for example authentication replies, then used the CAC
+channel. The kernel refused them as off channel until the next beacon
+update stored the operating frequency again.
+
+A background CAC now leaves the stored frequency unchanged. A CAC on
+the operating chain still sets it. The AP starts on that channel, and
+the kernel events of that CAC find the BSS by this frequency. Events
+of the background chain now reach every 5 GHz BSS of the radio, as
+they did before after any beacon update.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/drivers/driver_nl80211.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -11626,7 +11626,9 @@ static int nl80211_start_radar_detection
+ 
+ 	ret = send_and_recv_cmd(drv, msg);
+ 	if (ret == 0) {
+-		nl80211_link_set_freq(bss, freq->link_id, freq->freq);
++		/* a background CAC leaves the AP on its own channel */
++		if (!freq->radar_background)
++			nl80211_link_set_freq(bss, freq->link_id, freq->freq);
+ 		return 0;
+ 	}
+ 
