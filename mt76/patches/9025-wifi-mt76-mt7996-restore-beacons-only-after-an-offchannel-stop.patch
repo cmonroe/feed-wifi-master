@@ -1,0 +1,61 @@
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Tue, 28 Jul 2026 23:33:44 +0800
+Subject: [PATCH] wifi: mt76: mt7996: restore beacons only after an offchannel stop
+
+The driver uploads the beacons again after each channel set on the
+operating channel. A CSA reaches that point when mac80211 moves the
+link to the reserved channel context, before mac80211 ends the CSA
+and installs the beacon for the new channel. The upload then carries
+the CSA countdown, and the firmware starts a second countdown on the
+new channel, which can end the next channel switch too early.
+
+Upload the beacons on the operating channel only when an offchannel
+dwell stopped them. The stop itself is upstream in aa2f13c3be79
+("wifi: mt76: mt7996: disable beacons when going offchannel").
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt76.h        |    1 +
+ mt7996/main.c |   11 +++++++++--
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+--- a/mt76.h
++++ b/mt76.h
+@@ -945,6 +945,7 @@ struct mt76_phy {
+ 	struct cfg80211_chan_def chandef;
+ 	struct cfg80211_chan_def main_chandef;
+ 	bool offchannel;
++	bool offchan_bcn_stopped;
+ 	bool radar_enabled;
+ 	bool no_active_monitor;
+ 	unsigned long tx_block;
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -732,8 +732,10 @@ int mt7996_set_channel(struct mt76_phy *
+ 	struct mt7996_phy *phy = mphy->priv;
+ 	int ret;
+ 
+-	if (mphy->offchannel)
++	if (mphy->offchannel) {
+ 		mt7996_mac_update_beacons(phy);
++		mphy->offchan_bcn_stopped = true;
++	}
+ 
+ 	if (phy->dev->eeprom_mode == EEPROM_MODE_FLASH) {
+ 		ret = mt7996_mcu_apply_tx_dpd(phy);
+@@ -761,8 +763,13 @@ int mt7996_set_channel(struct mt76_phy *
+ 	if (!mphy->offchannel)
+ 		mt7996_apply_edcca_limits(phy);
+ 	phy->noise = 0;
+-	if (!mphy->offchannel)
++	/* a channel switch of a CSA also lands here, and a beacon upload at
++	 * that point would start a second CSA countdown on the new channel
++	 */
++	if (!mphy->offchannel && mphy->offchan_bcn_stopped) {
+ 		mt7996_mac_update_beacons(phy);
++		mphy->offchan_bcn_stopped = false;
++	}
+ 
+ out:
+ 	ieee80211_queue_delayed_work(mphy->hw, &mphy->mac_work,
