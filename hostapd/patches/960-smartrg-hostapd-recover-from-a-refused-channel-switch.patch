@@ -1,0 +1,281 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 8 Oct 2026 07:36:00 -0700
+Subject: [PATCH] hostapd: recover from a refused channel switch
+
+The kernel stops the AP when it refuses a channel switch that
+cancelled the CAC of an earlier switch, and when an immediate switch
+fails to complete. hostapd gets the error first and drops its switch
+state. It then only logs the stop that follows, and the BSS stays
+down.
+
+When the kernel refuses a channel switch, hostapd keeps the target
+channel for five seconds. The time covers a driver that waits for
+its firmware before the kernel reports the stop. If the kernel stops
+that BSS in this time, hostapd restarts the interface on that channel
+one second later, as after a switch that fails in its countdown. The
+delay lets the link-down event cancel the restart, because cfg80211
+reports the stop of a netdev that goes down first. If hostapd
+cannot start the delay, it logs an error and does not restart. An
+error for a netdev that is down or gone starts no wait. A switch
+request that hostapd sends to the driver ends the wait of its BSS. A
+forced restart, or a stop or link-down of any BSS, ends the wait
+and the restart of every BSS of the interface. The restart covers
+the whole interface. The removal of a BSS ends its own wait. While
+a restart is pending on any BSS of the interface, a switch request
+fails. A stop for another cause in the five seconds also restarts
+the interface. A stop clears the beacon state before any restart,
+because the restart sets the new beacon.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/ap_drv_ops.h    |    5 ++
+ src/ap/drv_callbacks.c |   18 +++++--
+ src/ap/hostapd.c       |  122 +++++++++++++++++++++++++++++++++++++++++++++++++
+ src/ap/hostapd.h       |    6 ++
+ src/ap/ubus.c          |    3 +
+ 5 files changed, 150 insertions(+), 4 deletions(-)
+
+--- a/src/ap/ap_drv_ops.h
++++ b/src/ap/ap_drv_ops.h
+@@ -394,6 +394,11 @@ static inline int hostapd_drv_stop_ap(st
+ {
+ 	int link_id = -1, ret;
+ 
++#ifdef NEED_AP_MLME
++	/* a stop that hostapd requests must not restart the BSS */
++	hostapd_cleanup_cs_refused_iface(hapd->iface);
++#endif /* NEED_AP_MLME */
++
+ 	if (!hapd->driver || !hapd->driver->stop_ap || !hapd->drv_priv)
+ 		return 0;
+ #ifdef CONFIG_IEEE80211BE
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -2320,16 +2320,22 @@ static void hostapd_event_iface_unavaila
+ 	wpa_printf(MSG_DEBUG, "Interface %s is unavailable -- stopped",
+ 		   hapd->conf->iface);
+ 
++	/* Clear beacon_set_done so that the RNR and other beacon parameters
++	 * are properly updated. Clear it before a restart below, which sets
++	 * the new beacon. */
++	hapd->beacon_set_done = 0;
++
+ 	if (hapd->csa_in_progress) {
+ 		wpa_printf(MSG_INFO, "CSA failed (%s was stopped)",
+ 			   hapd->conf->iface);
+ 		hostapd_switch_channel_fallback(hapd->iface,
+ 						&hapd->cs_freq_params);
++	} else if (hapd->cs_refused) {
++		wpa_printf(MSG_INFO,
++			   "Channel switch refused (%s was stopped)",
++			   hapd->conf->iface);
++		hostapd_cs_refused_restart_defer(hapd);
+ 	}
+-
+-	/* Clear beacon_set_done so that the RNR and other beacon parameters
+-	 * are properly updated. */
+-	hapd->beacon_set_done = 0;
+ }
+ 
+ 
+@@ -2603,6 +2609,10 @@ static void hostapd_iface_enable(struct
+ 
+ static void hostapd_iface_disable(struct hostapd_data *hapd)
+ {
++#ifdef NEED_AP_MLME
++	/* the stop for a netdev that went down must not restart the BSS */
++	hostapd_cleanup_cs_refused_iface(hapd->iface);
++#endif /* NEED_AP_MLME */
+ 	hostapd_free_stas(hapd);
+ 	wpa_msg(hapd->msg_ctx, MSG_INFO, INTERFACE_DISABLED);
+ 	hapd->disabled = 1;
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -833,6 +833,10 @@ void hostapd_free_hapd_data(struct hosta
+ 	hapd->eht_mld_link_removal_tx = 0;
+ #endif /* CONFIG_IEEE80211BE */
+ 
++#ifdef NEED_AP_MLME
++	hostapd_cleanup_cs_refused(hapd);
++#endif /* NEED_AP_MLME */
++
+ 	os_free(hapd->probereq_cb);
+ 	hapd->probereq_cb = NULL;
+ 	hapd->num_probereq_cb = 0;
+@@ -5210,6 +5214,111 @@ void hostapd_cleanup_cs_params(struct ho
+ }
+ 
+ 
++/* The kernel queues the stop of the BSS before it returns the error of the
++ * refused switch, but it sends the stop event only after the driver stopped
++ * the BSS. mt7915 waits up to 2 s for its firmware in that stop, and eloop
++ * runs an expired timeout before it reads the event. A stop after this time
++ * has a different cause.
++ */
++#define HOSTAPD_CS_REFUSED_TIMEOUT 5
++
++static void hostapd_cs_refused_timeout(void *eloop_ctx, void *timeout_ctx)
++{
++	struct hostapd_data *hapd = eloop_ctx;
++
++	wpa_printf(MSG_DEBUG, "%s: no stop after the refused channel switch",
++		   hapd->conf->iface);
++	hostapd_cleanup_cs_refused(hapd);
++}
++
++
++static void hostapd_cs_refused_restart(void *eloop_ctx, void *timeout_ctx)
++{
++	struct hostapd_data *hapd = eloop_ctx;
++	struct hostapd_freq_params freq_params = hapd->cs_refused_freq_params;
++
++	hostapd_cleanup_cs_refused(hapd);
++	hostapd_switch_channel_fallback(hapd->iface, &freq_params);
++}
++
++
++void hostapd_cleanup_cs_refused(struct hostapd_data *hapd)
++{
++	eloop_cancel_timeout(hostapd_cs_refused_timeout, hapd, NULL);
++	eloop_cancel_timeout(hostapd_cs_refused_restart, hapd, NULL);
++	os_memset(&hapd->cs_refused_freq_params, 0,
++		  sizeof(hapd->cs_refused_freq_params));
++	hapd->cs_refused = false;
++}
++
++
++/* the restart after a refused switch restarts every BSS of the interface */
++void hostapd_cleanup_cs_refused_iface(struct hostapd_iface *iface)
++{
++	size_t i;
++
++	for (i = 0; i < iface->num_bss; i++)
++		hostapd_cleanup_cs_refused(iface->bss[i]);
++}
++
++
++static bool hostapd_cs_refused_restart_pending(struct hostapd_iface *iface)
++{
++	size_t i;
++
++	for (i = 0; i < iface->num_bss; i++) {
++		if (eloop_is_timeout_registered(hostapd_cs_refused_restart,
++						iface->bss[i], NULL))
++			return true;
++	}
++
++	return false;
++}
++
++
++/* cfg80211 sends the stop of a netdev that goes down before the driver
++ * removes the interface, and the link-down event only after it. The driver
++ * sends a few firmware commands in between, so this delay lets the link-down
++ * cancel a restart that would set the netdev up again.
++ */
++#define HOSTAPD_CS_REFUSED_RESTART_DELAY 1
++
++void hostapd_cs_refused_restart_defer(struct hostapd_data *hapd)
++{
++	eloop_cancel_timeout(hostapd_cs_refused_timeout, hapd, NULL);
++	if (!eloop_register_timeout(HOSTAPD_CS_REFUSED_RESTART_DELAY, 0,
++				    hostapd_cs_refused_restart, hapd, NULL))
++		return;
++
++	/* a restart now would set a netdev up that is going down */
++	wpa_printf(MSG_ERROR, "%s: no restart after the refused channel switch",
++		   hapd->conf->iface);
++	hostapd_cleanup_cs_refused(hapd);
++}
++
++
++/* the kernel can stop the BSS after it refused the switch; that stop
++ * restarts the BSS with the parameters of the refused switch
++ */
++static void hostapd_cs_refused_mark(struct hostapd_data *hapd, int err)
++{
++	/* the netdev is down or gone, so a stop that follows has that cause */
++	if (err == -ENETDOWN || err == -ENODEV)
++		return;
++
++	if (eloop_register_timeout(HOSTAPD_CS_REFUSED_TIMEOUT, 0,
++				   hostapd_cs_refused_timeout, hapd, NULL)) {
++		wpa_printf(MSG_ERROR,
++			   "%s: no recovery for the refused channel switch",
++			   hapd->conf->iface);
++		return;
++	}
++
++	hapd->cs_refused_freq_params = hapd->cs_freq_params;
++	hapd->cs_refused = true;
++}
++
++
+ void hostapd_chan_switch_config(struct hostapd_data *hapd,
+ 				struct hostapd_freq_params *freq_params)
+ {
+@@ -5247,10 +5356,22 @@ int hostapd_switch_channel(struct hostap
+ 		return -1;
+ 	}
+ 
++	/* the kernel refuses a switch of the stopped BSS, the restart would
++	 * undo the switch of the other BSSes, and the cleanup below would
++	 * cancel the restart
++	 */
++	if (hostapd_cs_refused_restart_pending(hapd->iface)) {
++		wpa_printf(MSG_INFO,
++			   "%s: restart after a refused channel switch pending",
++			   hapd->conf->iface);
++		return -1;
++	}
++
+ 	ret = hostapd_fill_csa_settings(hapd, settings);
+ 	if (ret)
+ 		return ret;
+ 
++	hostapd_cleanup_cs_refused(hapd);
+ 	ret = hostapd_drv_switch_channel(hapd, settings);
+ 	free_beacon_data(&settings->beacon_csa);
+ 	free_beacon_data(&settings->beacon_after);
+@@ -5259,6 +5380,7 @@ int hostapd_switch_channel(struct hostap
+ #endif /* CONFIG_IEEE80211AX */
+ 
+ 	if (ret) {
++		hostapd_cs_refused_mark(hapd, ret);
+ 		/* if we failed, clean cs parameters */
+ 		hostapd_cleanup_cs_params(hapd);
+ 		return ret;
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -373,6 +373,9 @@ struct hostapd_data {
+ 	int csa_in_progress;
+ 	unsigned int cs_c_off_ecsa_beacon;
+ 	unsigned int cs_c_off_ecsa_proberesp;
++	/* the last channel switch that the driver refused */
++	struct hostapd_freq_params cs_refused_freq_params;
++	bool cs_refused;
+ 
+ #ifdef CONFIG_IEEE80211AX
+ 	bool cca_in_progress;
+@@ -929,6 +932,9 @@ void
+ hostapd_switch_channel_fallback(struct hostapd_iface *iface,
+ 				const struct hostapd_freq_params *freq_params);
+ void hostapd_cleanup_cs_params(struct hostapd_data *hapd);
++void hostapd_cleanup_cs_refused(struct hostapd_data *hapd);
++void hostapd_cleanup_cs_refused_iface(struct hostapd_iface *iface);
++void hostapd_cs_refused_restart_defer(struct hostapd_data *hapd);
+ void hostapd_periodic_iface(struct hostapd_iface *iface);
+ int hostapd_owe_trans_get_info(struct hostapd_data *hapd);
+ void hostapd_owe_update_trans(struct hostapd_iface *iface);;
+--- a/src/ap/ubus.c
++++ b/src/ap/ubus.c
+@@ -1823,6 +1823,9 @@ hostapd_switch_chan(struct ubus_context
+ 				   hapd->iface, NULL))
+ 		return UBUS_STATUS_UNKNOWN_ERROR;
+ 
++	/* the forced restart replaces the restart on the stop of a refused BSS */
++	hostapd_cleanup_cs_refused_iface(hapd->iface);
++
+ 	return 0;
+ #undef SET_CSA_SETTING
+ }
