@@ -1,0 +1,134 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 17:52:45 -0700
+Subject: [PATCH] hostapd: tie the restart of a forced channel switch to its interface
+
+A switch_chan request with force set schedules a restart of the
+interface when the switch fails. The timer holds a pointer to the
+interface and a copy of the frequency parameters that nothing frees.
+A stop or removal of the interface does not cancel the timer, so the
+restart can enable a stopped interface or use a freed one. Each forced
+request also leaks the copy, and a failed allocation crashes hostapd.
+
+The interface now holds the parameters of the pending restart. A stop
+or removal of the interface cancels the restart, and a later forced
+request replaces it. The request fails when hostapd cannot start the
+timer.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/hostapd.c |    4 ++++
+ src/ap/hostapd.h |    1 +
+ src/ap/ubus.c    |   20 +++++++++++++-------
+ src/ap/ubus.h    |   11 +++++++++++
+ 4 files changed, 29 insertions(+), 7 deletions(-)
+
+--- a/src/ap/ubus.c
++++ b/src/ap/ubus.c
+@@ -988,9 +988,14 @@ static const struct blobmsg_policy csa_p
+ static void switch_chan_fallback_cb(void *eloop_data, void *user_ctx)
+ {
+ 	struct hostapd_iface *iface = eloop_data;
+-	struct hostapd_freq_params *freq_params = user_ctx;
++	struct hostapd_freq_params freq_params = iface->ubus.csa_fallback;
+ 
+-	hostapd_switch_channel_fallback(iface, freq_params);
++	hostapd_switch_channel_fallback(iface, &freq_params);
++}
++
++void hostapd_ubus_csa_fallback_cancel(struct hostapd_iface *iface)
++{
++	eloop_cancel_timeout(switch_chan_fallback_cb, iface, NULL);
+ }
+ 
+ #ifdef NEED_AP_MLME
+@@ -1002,7 +1007,6 @@ hostapd_switch_chan(struct ubus_context
+ 	struct blob_attr *tb[__CSA_MAX];
+ 	struct hostapd_data *hapd = get_hapd_from_object(obj);
+ 	struct hostapd_config *iconf = hapd->iface->conf;
+-	struct hostapd_freq_params *freq_params;
+ 	struct hostapd_hw_modes *mode = hapd->iface->current_mode;
+ 	struct csa_settings css = {
+ 		.freq_params = {
+@@ -1098,10 +1102,12 @@ hostapd_switch_chan(struct ubus_context
+ 	if (!ret || !tb[CSA_FORCE] || !blobmsg_get_bool(tb[CSA_FORCE]))
+ 		return ret;
+ 
+-	freq_params = malloc(sizeof(*freq_params));
+-	memcpy(freq_params, &css.freq_params, sizeof(*freq_params));
+-	eloop_register_timeout(0, 1, switch_chan_fallback_cb,
+-			       hapd->iface, freq_params);
++	/* a later forced request replaces a restart that is still pending */
++	hostapd_ubus_csa_fallback_cancel(hapd->iface);
++	hapd->iface->ubus.csa_fallback = css.freq_params;
++	if (eloop_register_timeout(0, 1, switch_chan_fallback_cb,
++				   hapd->iface, NULL))
++		return UBUS_STATUS_UNKNOWN_ERROR;
+ 
+ 	return 0;
+ #undef SET_CSA_SETTING
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -1124,6 +1124,7 @@ static void hostapd_cleanup_iface(struct
+ {
+ 	wpa_printf(MSG_DEBUG, "%s(%p)", __func__, iface);
+ 	hostapd_ucode_free_iface(iface);
++	hostapd_ubus_csa_fallback_cancel(iface);
+ 	hostapd_afc_stop(iface);
+ 	eloop_cancel_timeout(hostapd_interface_setup_failure_handler, iface,
+ 			     NULL);
+@@ -4107,6 +4108,9 @@ int hostapd_disable_iface(struct hostapd
+ 	if (hapd_iface == NULL)
+ 		return -1;
+ 
++	/* a forced restart must not enable an interface that was disabled */
++	hostapd_ubus_csa_fallback_cancel(hapd_iface);
++
+ 	if (hapd_iface->disable_iface_cb)
+ 		return hapd_iface->disable_iface_cb(hapd_iface);
+ 
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -604,6 +604,7 @@ struct hostapd_mld {
+ struct hostapd_iface {
+ 	struct hapd_interfaces *interfaces;
+ 	struct hostapd_ucode_iface ucode;
++	struct hostapd_ubus_iface ubus;
+ 	void *owner;
+ 	char *config_fname;
+ 	struct hostapd_config *conf;
+--- a/src/ap/ubus.h
++++ b/src/ap/ubus.h
+@@ -56,8 +56,14 @@ struct hostapd_ubus_bss {
+ 	uint32_t mgmt_flags;
+ };
+ 
++struct hostapd_ubus_iface {
++	/* the restart that a forced switch_chan request schedules */
++	struct hostapd_freq_params csa_fallback;
++};
++
+ void hostapd_ubus_add_iface(struct hostapd_iface *iface);
+ void hostapd_ubus_free_iface(struct hostapd_iface *iface);
++void hostapd_ubus_csa_fallback_cancel(struct hostapd_iface *iface);
+ void hostapd_ubus_add_bss(struct hostapd_data *hapd);
+ void hostapd_ubus_free_bss(struct hostapd_data *hapd);
+ void hostapd_ubus_add_vlan(struct hostapd_data *hapd, struct hostapd_vlan *vlan);
+@@ -103,6 +109,7 @@ void hostapd_ubus_notify_apup_newpeer(
+ #else
+ 
+ struct hostapd_ubus_bss {};
++struct hostapd_ubus_iface {};
+ 
+ static inline void hostapd_ubus_add_iface(struct hostapd_iface *iface)
+ {
+@@ -112,6 +119,10 @@ static inline void hostapd_ubus_free_ifa
+ {
+ }
+ 
++static inline void hostapd_ubus_csa_fallback_cancel(struct hostapd_iface *iface)
++{
++}
++
+ static inline void hostapd_ubus_add_bss(struct hostapd_data *hapd)
+ {
+ }
