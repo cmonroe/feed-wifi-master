@@ -20,13 +20,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -592,9 +592,24 @@ mt7996_mcu_rx_radar_detected(struct mt79
- 						&dev->rdd2_chandef,
+@@ -576,9 +576,23 @@ mt7996_mcu_rx_radar_detected(struct mt79
  						GFP_ATOMIC);
  	} else {
--		phy->rdd_hw_value = chandef->chan->hw_value;
+ 		struct mt7996_phy *phy = mphy->priv;
 +		struct mt76_chanctx *ctx = READ_ONCE(phy->mt76->chanctx);
-+
+ 
  		phy->rdd_tx_paused = true;
 -		ieee80211_radar_detected(mphy->hw, NULL);
 +
@@ -34,7 +33,6 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		 * wiphy, so a band without a context reports nothing
 +		 */
 +		if (ctx) {
-+			phy->rdd_hw_value = chandef->chan->hw_value;
 +			ieee80211_radar_detected(mphy->hw,
 +						 container_of((void *)ctx,
 +							      struct ieee80211_chanctx_conf,
