@@ -18,9 +18,8 @@ that needs no CAC. An AP that starts without a CAC arms the chain,
 unless one is recorded, before the AP beacons, because the kernel
 accepts the request then. After a refused switch onto the chain, the
 restart arms its own chain; a second search runs only during a CSA or
-with no chain. The nl80211 driver passes on the kernel errno, and a
-request that fails with -EBUSY keeps the record, because the kernel
-keeps its chain.
+with no chain. A request that fails with -EBUSY keeps the record,
+because the kernel keeps its chain.
 
 Limits: a candidate needs every radar channel USABLE, so a block
 that mixes USABLE and AVAILABLE channels gets no chain, although the
@@ -31,9 +30,8 @@ segment only, and the search keeps one random draw at that width.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/ap/dfs.c                 |  234 ++++++++++++++++++++++++++++---------------
- src/drivers/driver_nl80211.c |    2 
- 2 files changed, 156 insertions(+), 80 deletions(-)
+ src/ap/dfs.c |  234 +++++++++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 155 insertions(+), 79 deletions(-)
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
@@ -355,14 +353,3 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	return 0;
  }
---- a/src/drivers/driver_nl80211.c
-+++ b/src/drivers/driver_nl80211.c
-@@ -11686,7 +11686,7 @@ static int nl80211_start_radar_detection
- 
- 	wpa_printf(MSG_DEBUG, "nl80211: Failed to start radar detection: "
- 		   "%d (%s)", ret, strerror(-ret));
--	return -1;
-+	return ret;
- }
- 
- 

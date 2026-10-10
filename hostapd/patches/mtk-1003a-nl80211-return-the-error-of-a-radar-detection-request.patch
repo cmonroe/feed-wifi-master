@@ -1,0 +1,29 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sat, 10 Oct 2026 16:45:22 -0700
+Subject: [PATCH] nl80211: return the error of a radar detection request
+
+The nl80211 driver logs the kernel error of a failed radar detection
+request and returns -1 for every failure. A caller then cannot tell a
+busy kernel from a failed request. For a background radar request,
+the kernel answers -EBUSY while it keeps a chain with a pending CAC,
+and a caller that tracks that chain must keep its state.
+
+Return the kernel error instead. A caller that tests the result for
+nonzero sees no change.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/drivers/driver_nl80211.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -11686,7 +11686,7 @@ static int nl80211_start_radar_detection
+ 
+ 	wpa_printf(MSG_DEBUG, "nl80211: Failed to start radar detection: "
+ 		   "%d (%s)", ret, strerror(-ret));
+-	return -1;
++	return ret;
+ }
+ 
+ 
