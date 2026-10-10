@@ -3,25 +3,33 @@ Date: Tue, 02 Dec 2025 04:52:11 -0800
 Subject: [PATCH] hostapd: defer ACS and DFS in AP+STA mode
 
 When an AP shares a PHY with a STA interface, the AP must use the same
-channel as the STA. Defer both ACS and DFS CAC until the STA connects
-and provides channel information via iface.start().
+channel as the STA. The ucode setup writes channel_defer=1 for every
+AP on a radio with a configured STA, also before wpa_supplicant
+creates the STA interface. ACS and DFS CAC then wait until the STA
+connects and the ucode start call supplies the channel.
 
-ACS deferral prevents selecting a conflicting channel. DFS CAC deferral
-prevents locking the radio for radar detection before the STA can
-connect, which otherwise causes a DFS_FAILED loop when the mesh state
-machine times out and disables wireless.
+The start call clears the option, and a failed start is reported as a
+failure. ACS deferral prevents selecting a conflicting channel. DFS
+CAC deferral prevents locking the radio for radar detection before the
+STA can connect. Without it, the mesh state machine times out and
+disables wireless, and a DFS_FAILED loop follows. The deferral has an
+option of its own, because other users set start_disabled. A
+wpa_supplicant mesh BSS sets it, and the setup of that BSS must
+complete.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- openwrt/files/hostapd.uc |    7 ++++---
- src/ap/dfs.c             |   16 ++++++++++++++++
- src/ap/hw_features.c     |   19 +++++++++++++++++++
- src/ap/ucode.c           |    2 ++
- 4 files changed, 41 insertions(+), 3 deletions(-)
+ hostapd/config_file.c    |    2 +
+ openwrt/files/hostapd.uc |   52 +++++++++++++++++++++++++++++--------
+ src/ap/ap_config.h       |    1 
+ src/ap/dfs.c             |   15 ++++++++++
+ src/ap/hw_features.c     |   15 ++++++++++
+ src/ap/ucode.c           |    1 
+ 6 files changed, 75 insertions(+), 11 deletions(-)
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -144,9 +144,9 @@ function iface_freq_info(iface, config,
+@@ -144,9 +144,18 @@ function iface_freq_info(iface, config,
  	return hostapd.freq_info(freq, sec_offset, width);
  }
  
@@ -29,27 +37,38 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +function iface_add(phy, config, phy_status, start_disabled)
  {
 -	let config_inline = iface_gen_config(config, !!phy_status);
-+	let config_inline = iface_gen_config(config, start_disabled ?? !!phy_status);
++	start_disabled ??= !!phy_status;
++
++	let config_inline = iface_gen_config(config, start_disabled);
++
++	/*
++	 * A STA configured on this radio supplies the channel, also before
++	 * wpa_supplicant creates its interface and phy_status can see it.
++	 */
++	if (start_disabled || config.radio.channel_follow)
++		config_inline += "channel_defer=1\n";
  
  	let bss = config.bss[0];
  	let ret = hostapd.add_iface(`bss_config=${phy}:${config_inline}`);
-@@ -162,6 +162,15 @@ function iface_add(phy, config, phy_stat
+@@ -162,7 +171,16 @@ function iface_add(phy, config, phy_stat
  
  	let freq_info = iface_freq_info(iface, config, phy_status);
  
+-	return iface.start(freq_info) >= 0;
 +	/*
 +	 * A colocated STA exists but reported no usable frequency yet.
-+	 * Leave the AP deferred (start_disabled) instead of starting it
++	 * Leave the AP deferred (channel_defer) instead of starting it
 +	 * on stale channel data; apsta_state delivers the real channel
 +	 * once the STA link has a chandef.
 +	 */
 +	if (!freq_info)
 +		return true;
 +
- 	return iface.start(freq_info) >= 0;
++	return !!iface.start(freq_info);
  }
  
-@@ -302,6 +311,7 @@ function __iface_pending_next(pending, s
+ function bss_macaddr_name(group, bss)
+@@ -302,6 +320,7 @@ function __iface_pending_next(pending, s
  		return "check_phy";
  	case "check_phy":
  		let phy_status = data;
@@ -57,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (phy_status && phy_status.state == "COMPLETED") {
  			if (iface_add(phy, config, phy_status))
  				return "done";
-@@ -315,7 +325,7 @@ function __iface_pending_next(pending, s
+@@ -315,7 +334,7 @@ function __iface_pending_next(pending, s
  		});
  		return "wpas_stopped";
  	case "wpas_stopped":
@@ -66,7 +85,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			hostapd.printf(`hostapd.add_iface failed for phy ${phy} ifname=${bss.ifname}`);
  		pending.call("wpa_supplicant", "phy_set_state", {
  			phy: phydev.phy,
-@@ -1840,24 +1850,35 @@ let main_obj = {
+@@ -1840,24 +1859,35 @@ let main_obj = {
  				return 0;
  			}
  
@@ -111,26 +130,22 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1318,6 +1318,25 @@ hostapd_check_chans(struct hostapd_iface
+@@ -1318,6 +1318,21 @@ hostapd_check_chans(struct hostapd_iface
  	 * which is used to trigger ACS.
  	 */
  
 +	/*
-+	 * If the first BSS has start_disabled=1, defer ACS instead of
-+	 * starting a scan.  The interface will wait for channel info to
-+	 * be provided via hostapd ucode iface.start() call.  This enables
-+	 * AP+STA coexistence where the AP waits for the STA to connect
-+	 * and provide channel information before starting.
++	 * With channel_defer=1 the AP shares the PHY with a STA and gets its
++	 * channel from the ucode iface.start() call, so ACS waits for it.
 +	 *
 +	 * Return HOSTAPD_CHAN_ACS to signal setup should wait, but don't
 +	 * change the interface state (stays in COUNTRY_UPDATE).  This
 +	 * avoids triggering the ACS_FAILED notification when iface.start()
 +	 * later disables and re-enables the interface with a real channel.
 +	 */
-+	if (iface->conf->num_bss > 0 &&
-+	    iface->bss[0]->conf->start_disabled) {
++	if (iface->conf->channel_defer) {
 +		wpa_printf(MSG_INFO,
-+			   "ACS deferred: start_disabled=1, waiting for channel via iface.start()");
++			   "ACS deferred: channel_defer=1, waiting for channel via iface.start()");
 +		return HOSTAPD_CHAN_ACS;
 +	}
 +
@@ -139,26 +154,56 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return HOSTAPD_CHAN_ACS;
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -870,6 +870,22 @@ int hostapd_handle_dfs(struct hostapd_if
+@@ -870,6 +870,21 @@ int hostapd_handle_dfs(struct hostapd_if
  		return 1;
  	}
  
 +	/*
-+	 * If the first BSS has start_disabled=1, defer DFS CAC.
-+	 * Same rationale as ACS deferral in hw_features.c: the AP
-+	 * waits for the STA to connect and provide channel info via
-+	 * iface.start() before starting radar detection.
++	 * With channel_defer=1, defer DFS CAC. Same rationale as ACS
++	 * deferral in hw_features.c: the AP waits for the STA to connect
++	 * and provide channel info via iface.start() before starting
++	 * radar detection.
 +	 *
 +	 * Return 0 to pause setup without changing interface state
 +	 * or starting CAC.
 +	 */
-+	if (iface->conf->num_bss > 0 &&
-+	    iface->bss[0]->conf->start_disabled) {
++	if (iface->conf->channel_defer) {
 +		wpa_printf(MSG_INFO,
-+			   "DFS deferred: start_disabled=1, waiting for channel via iface.start()");
++			   "DFS deferred: channel_defer=1, waiting for channel via iface.start()");
 +		return 0;
 +	}
 +
  	iface->cac_started = 0;
  
  	do {
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
+@@ -3360,6 +3360,8 @@ static int hostapd_config_fill(struct ho
+ 		conf->acs_exclude_dfs = atoi(pos);
+ 	} else if (os_strcmp(buf, "op_class") == 0) {
+ 		conf->op_class = atoi(pos);
++	} else if (os_strcmp(buf, "channel_defer") == 0) {
++		conf->channel_defer = atoi(pos);
+ 	} else if (os_strcmp(buf, "channel") == 0) {
+ 		if (os_strcmp(pos, "acs_survey") == 0) {
+ #ifndef CONFIG_ACS
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -1115,6 +1115,7 @@ struct hostapd_config {
+ 	int enable_edmg;
+ 	u8 edmg_channel;
+ 	u8 acs;
++	int channel_defer;
+ 	struct wpa_freq_range_list acs_ch_list;
+ 	struct wpa_freq_range_list acs_freq_list;
+ 	u8 acs_freq_list_present;
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -821,6 +821,7 @@ out:
+ 
+ 	for (i = 0; i < iface->num_bss; i++)
+ 		iface->bss[i]->conf->start_disabled = 0;
++	iface->conf->channel_defer = 0;
+ 
+ 	if (iface->state != HAPD_IFACE_ENABLED) {
+ 		hostapd_enable_iface(iface);
