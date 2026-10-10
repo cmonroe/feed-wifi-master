@@ -21,7 +21,7 @@ replaces, if the new channel is valid on that radio.
 
 --- a/net/mac80211/chan.c
 +++ b/net/mac80211/chan.c
-@@ -1466,6 +1466,7 @@ ieee80211_replace_chanctx(struct ieee802
+@@ -1467,6 +1467,7 @@ ieee80211_replace_chanctx(struct ieee802
  	struct ieee80211_chanctx *new_ctx, *ctx;
  	struct wiphy *wiphy = local->hw.wiphy;
  	const struct wiphy_radio *radio;
@@ -29,7 +29,7 @@ replaces, if the new channel is valid on that radio.
  
  	if (!curr_ctx ||
  	    curr_ctx->replace_state == IEEE80211_CHANCTX_WILL_BE_REPLACED ||
-@@ -1515,7 +1516,20 @@ ieee80211_replace_chanctx(struct ieee802
+@@ -1516,7 +1517,20 @@ ieee80211_replace_chanctx(struct ieee802
  	    ieee80211_chanctx_num_reserved(local, curr_ctx) != 0)
  		return ERR_PTR(-EBUSY);
  

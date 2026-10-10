@@ -11,7 +11,7 @@ its rank.
 
 **Severity:** not known, possibly higher than the other entries. Seen twice
 on 2026-10-09 in the work on SDG-9903, SmartOS 26.9.0.101: on an SDG-8733A
-in a test that started the AP switch late, and on an SDG-8732v with patch 917
+in a test that started the AP switch late, and on an SDG-8732v with patch 919
 and the hostapd retry in 1 of 8 normal switches.
 
 ### What happens
@@ -50,8 +50,8 @@ and the hostapd retry in 1 of 8 normal switches.
 
 ## A Second Channel Switch Can Free a Context That a Link Still Uses
 
-**Severity:** low. Since patch 917
-(`patches/subsys/917-smartrg-wifi-mac80211-keep-the-radio-index-of-a-replaced-chanctx.patch`),
+**Severity:** low. Since patch 919
+(`patches/subsys/919-smartrg-wifi-mac80211-keep-the-radio-index-of-a-replaced-chanctx.patch`),
 no known sequence on a SmartOS model reaches this state. Found in the
 analysis of SDG-9903, 2026-10-09, from the source and from the kernel log of
 one test. No trace shows the path.
@@ -63,7 +63,7 @@ one test. No trace shows the path.
   reservation can belong to another replacement context.
 - The replacement then looks complete too early. mac80211 can free the old
   context while a link and the driver still use it.
-- On an SDG-8732v without patch 917, a second uplink channel switch during an
+- On an SDG-8732v without patch 919, a second uplink channel switch during an
   open AP channel switch reached this state. The kernel logged WARNs in
   `ieee80211_recalc_chanctx_chantype()` and in
   `ieee80211_link_use_reserved_reassign()` (err -22), then in the driver
@@ -80,7 +80,7 @@ implement multi-vif in-place reservations")` and `Cc: stable`:
 
 On 2026-10-09 the list archive showed no review and no note that either one
 was applied, and backports 7.2 has neither. A local copy of an unreviewed
-patch can differ from the version that lands, and patch 917 removes the only
+patch can differ from the version that lands, and patch 919 removes the only
 known way to reach the state on SmartOS.
 
 ### If it is fixed later
