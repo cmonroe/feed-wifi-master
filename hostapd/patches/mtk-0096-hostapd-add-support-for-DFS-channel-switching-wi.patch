@@ -4,36 +4,41 @@ Date: Wed, 15 Nov 2023 15:06:00 +0800
 Subject: [PATCH 096/149] mtk: hostapd: add support for DFS channel switching
  with csa sent
 
-Add support for DFS channel switch
+Upstream hostapd handles a chan_switch control command to a DFS
+channel with a restart of the interface and a CAC, and every client
+disconnects. This patch announces the switch with a CSA instead, and
+the kernel runs the CAC after the countdown. During that CAC the AP
+stays enabled, but it ignores beacon updates and management frames.
 
-When searching for a DFS channel for a background radar channel switch,
-we should not base the selection on the cap of the original channel.
-Otherwise, the selected channel may become invalid when the bandwidth is changed.
-For example, iface->conf->secondary_channel is set to 0 when operating o BW 20.
-Therefore, if the user tries to switch from BW 20 to BW 80, the pre-selected channel
-for BW 80 will not be checked by dfs_is_chan_allowed in dfs_find_channel.
-
-Allow user setting the CSA count for DFS channel switch when background
-radar is disabled.
-
-Clear all the CS params when the switch to the DFS channel is aborted.
-Otherwise, the csa after beacon might contain the old CSA IE.
-This happens especially when radar is detected during the CAC period of
-the target DFS channel.
+A target in non-occupancy fails the command, and so does a width
+that the HT, VHT and HE flags do not carry. With the background
+chain, the AP waits on an available temporary channel while the chain
+runs the CAC of the target. hostapd drops its record of the chain
+when an accepted CSA overlaps an idle chain, and after a failed chain
+start. A failed chain start fails the command only when the AP waits
+on a temporary channel. During a CAC on the operating channel, the
+command restarts the interface on the requested channel, also on an
+ACS radio. If no BSS accepts the CSA, no chain CAC starts, as in
+mtk-openwrt-feeds 6e4012670571 ("[openwrt-24][MAC80211][WiFi7]
+[kernel 6.6][Prepare for Filogic 880/860/850 20250905 MP4.2
+Release]").
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- hostapd/ctrl_iface.c   | 105 ++++++++++++++---------
- src/ap/beacon.c        |   5 ++
- src/ap/ctrl_iface_ap.c |   5 +-
- src/ap/dfs.c           | 183 +++++++++++++++++++++++++++++++++++------
- src/ap/dfs.h           |  11 ++-
- src/ap/ieee802_11.c    |   5 ++
- 6 files changed, 244 insertions(+), 70 deletions(-)
+ hostapd/ctrl_iface.c   | 154 +++++++++++++++++++++---------
+ src/ap/beacon.c        |   5 +
+ src/ap/ctrl_iface_ap.c |   8 ++
+ src/ap/dfs.c           | 210 ++++++++++++++++++++++++++++++++++++-----
+ src/ap/dfs.h           |  12 ++-
+ src/ap/hostapd.c       |   8 ++
+ src/ap/ieee802_11.c    |   5 +
+ 7 files changed, 331 insertions(+), 71 deletions(-)
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2492,12 +2492,12 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2492,12 +2492,13 @@ static int hostapd_ctrl_iface_chan_switc
  					  char *pos)
  {
  #ifdef NEED_AP_MLME
@@ -43,14 +48,34 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 -	int dfs_range = 0;
 +	int freq, state;
 +	int bandwidth, oper_chwidth;
-+	bool background_radar, bw_changed, cac_required = false;
++	bool background_radar = false, bw_changed, cac_required = false;
++	bool temp_ch, wide;
  	unsigned int i;
 -	int bandwidth;
 -	u8 chan;
  	unsigned int num_err = 0;
  	int err = 0;
  
-@@ -2532,60 +2532,55 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2529,63 +2530,72 @@ static int hostapd_ctrl_iface_chan_switc
+ 		settings.link_id = iface->bss[0]->mld_link_id;
+ #endif /* CONFIG_IEEE80211BE */
+ 
++	/* nl80211 sends 40 MHz only with HT, and a wider channel only with
++	 * VHT, HE or EHT. Otherwise the switch lands on a narrower channel
++	 * than the DFS checks below use.
++	 */
++	wide = settings.freq_params.vht_enabled ||
++		settings.freq_params.he_enabled ||
++		settings.freq_params.eht_enabled;
++	if ((settings.freq_params.bandwidth > 40 && !wide) ||
++	    (settings.freq_params.bandwidth == 40 && !wide &&
++	     !settings.freq_params.ht_enabled)) {
++		wpa_printf(MSG_INFO,
++			   "chanswitch: bandwidth %d needs ht, vht or he",
++			   settings.freq_params.bandwidth);
++		return -1;
++	}
++
  	switch (settings.freq_params.bandwidth) {
  	case 40:
  		bandwidth = CHAN_WIDTH_40;
@@ -81,6 +106,16 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		break;
  	}
  
++	/* The DFS state query, the background chain search and the driver
++	 * must see one chandef. A 6 GHz 40 MHz target without an offset gets
++	 * no centre, and the kernel refuses it.
++	 */
++	if (!settings.freq_params.center_freq1 &&
++	    (settings.freq_params.bandwidth <= 20 ||
++	     settings.freq_params.sec_channel_offset))
++		settings.freq_params.center_freq1 = settings.freq_params.freq +
++			10 * settings.freq_params.sec_channel_offset;
++
  	if (settings.freq_params.center_freq1)
 -		dfs_range += hostapd_is_dfs_overlap(
 -			iface, bandwidth, settings.freq_params.center_freq1);
@@ -103,10 +138,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 -				   settings.freq_params.bandwidth);
 -			return -1;
 -		}
+-
+-		settings.freq_params.channel = chan;
 +		freq = settings.freq_params.freq;
  
--		settings.freq_params.channel = chan;
--
 -		wpa_printf(MSG_DEBUG,
 -			   "DFS/CAC to (channel=%u, freq=%d, sec_channel_offset=%d, bw=%d, center_freq1=%d)",
 -			   settings.freq_params.channel,
@@ -122,6 +157,20 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	bw_changed = oper_chwidth != hostapd_get_oper_chwidth(iface->conf);
 +	state = hostapd_dfs_get_target_state(iface, bandwidth, freq,
 +					     settings.freq_params.center_freq2);
++	if (state == HOSTAPD_CHAN_DFS_UNAVAILABLE) {
++		wpa_printf(MSG_INFO,
++			   "chanswitch: target channel is UNAVAILABLE, so stop switching");
++		return -1;
+ 	}
+ 
+ 	if (iface->cac_started) {
+@@ -2594,6 +2604,23 @@ static int hostapd_ctrl_iface_chan_switc
+ 		return hostapd_force_channel_switch(iface, &settings);
+ 	}
+ 
++	/* an accepted switch replaces a pending move to the chain */
++	temp_ch = iface->radar_background.temp_ch;
++	iface->radar_background.temp_ch = 0;
 +	switch (state) {
 +	case HOSTAPD_CHAN_DFS_USABLE:
 +		cac_required = !settings.freq_params.radar_background;
@@ -132,38 +181,59 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +							  cac_required,
 +							  bw_changed);
 +		break;
-+	case HOSTAPD_CHAN_DFS_UNAVAILABLE:
-+		wpa_printf(MSG_INFO,
-+			   "chanswitch: target channel is UNAVAILABLE, so stop switching");
-+		return -1;
 +	default:
 +		break;
- 	}
++	}
++
+ 	for (i = 0; i < iface->num_bss; i++) {
  
- 	if (iface->cac_started) {
-@@ -2607,6 +2602,36 @@ static int hostapd_ctrl_iface_chan_switc
+ 		/* Save CHAN_SWITCH VHT, HE, and EHT config */
+@@ -2607,8 +2634,13 @@ static int hostapd_ctrl_iface_chan_switc
  		}
  	}
  
+-	if (iface->num_bss == num_err)
++	if (iface->num_bss == num_err) {
++		/* no BSS moved to the temporary channel */
++		iface->radar_background.temp_ch = temp_ch;
+ 		return ret;
++	}
++
++	hostapd_dfs_csa_started(iface, &settings.freq_params);
+ 
+ 	/* The kernel skips the CAC only for a switch that it accepts */
+ 	if (settings.freq_params.radar_background)
+@@ -2620,6 +2652,44 @@ static int hostapd_ctrl_iface_chan_switc
+ 			settings.freq_params.center_freq2,
+ 			HOSTAPD_CHAN_DFS_AVAILABLE);
+ 
 +	if (background_radar) {
 +		u8 seg0 = 0, seg1 = 0;
++		int cac_ret;
 +
 +		ieee80211_freq_to_chan(background_settings.freq_params.center_freq1, &seg0);
 +		ieee80211_freq_to_chan(background_settings.freq_params.center_freq2, &seg1);
-+		ret = hostapd_start_dfs_cac(iface, iface->conf->hw_mode,
-+					    background_settings.freq_params.freq,
-+					    background_settings.freq_params.channel,
-+					    background_settings.freq_params.ht_enabled,
-+					    background_settings.freq_params.vht_enabled,
-+					    background_settings.freq_params.he_enabled,
-+					    background_settings.freq_params.eht_enabled,
-+					    background_settings.freq_params.sec_channel_offset,
-+					    oper_chwidth, seg0, seg1, true);
-+		if (ret) {
++		cac_ret = hostapd_start_dfs_cac(iface, iface->conf->hw_mode,
++						background_settings.freq_params.freq,
++						background_settings.freq_params.channel,
++						background_settings.freq_params.ht_enabled,
++						background_settings.freq_params.vht_enabled,
++						background_settings.freq_params.he_enabled,
++						background_settings.freq_params.eht_enabled,
++						background_settings.freq_params.sec_channel_offset,
++						oper_chwidth, seg0, seg1, true);
++		if (cac_ret) {
 +			wpa_printf(MSG_ERROR, "Background radar start dfs cac failed, %d",
-+				   ret);
++				   cac_ret);
++			/* A driver error drops the chain in the kernel. Without
++			 * the CAC the AP stays on the temporary channel, so the
++			 * requested channel is not reached.
++			 */
++			ret = iface->radar_background.temp_ch ? -1 : 0;
++			iface->radar_background.temp_ch = 0;
 +			iface->radar_background.channel = -1;
-+			return -1;
++			iface->radar_background.cac_started = 0;
++			return ret;
 +		}
 +
 +		/* Cache background radar parameters. */
@@ -175,10 +245,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		iface->radar_background.centr_freq_seg1_idx = seg1;
 +	}
 +
- 	if (iface->num_bss == num_err)
- 		return ret;
- 
-@@ -4291,9 +4316,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
+ 	return 0;
+ #else /* NEED_AP_MLME */
+ 	return -1;
+@@ -4291,9 +4361,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
  	else
  		return -1;
  
@@ -206,23 +276,31 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (ieee802_11_build_ap_params(hapd, &params) < 0)
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1452,6 +1452,13 @@ int hostapd_parse_csa_settings(struct ho
+@@ -1433,6 +1433,7 @@ int hostapd_parse_csa_settings(struct ho
+ 	struct hostapd_hw_modes *target_mode;
+ 	char *end;
+ 	int ret;
++	u8 chan;
+ 
+ 	os_memset(settings, 0, sizeof(*settings));
+ 	settings->cs_count = strtol(pos, &end, 10);
+@@ -1452,6 +1453,13 @@ int hostapd_parse_csa_settings(struct ho
  
  	settings->freq_params.radar_background = !!os_strstr(pos, " skip_cac");
  
-+	ret = ieee80211_freq_to_chan(settings->freq_params.freq,
-+				     (u8 *)&settings->freq_params.channel);
++	ret = ieee80211_freq_to_chan(settings->freq_params.freq, &chan);
 +	if (ret == NUM_HOSTAPD_MODES) {
 +		wpa_printf(MSG_ERROR, "chanswitch: invalid freq provided");
 +		return -1;
 +	}
++	settings->freq_params.channel = chan;
 +
  	target_mode = get_target_hw_mode(iface, settings->freq_params.freq);
  	if (!target_mode) {
  		wpa_printf(MSG_DEBUG,
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -243,14 +243,15 @@ static int is_in_chanlist(struct hostapd
+@@ -244,14 +244,15 @@ static int is_in_chanlist(struct hostapd
   */
  int dfs_find_channel(struct hostapd_iface *iface,
  		     struct hostapd_channel_data **ret_chan,
@@ -241,7 +319,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	wpa_printf(MSG_DEBUG, "DFS new chan checking %d channels", n_chans);
  	for (i = 0; i < mode->num_channels; i++) {
-@@ -264,8 +265,7 @@ int dfs_find_channel(struct hostapd_ifac
+@@ -265,8 +266,7 @@ int dfs_find_channel(struct hostapd_ifac
  		}
  
  		/* Skip HT40/VHT incompatible channels */
@@ -251,7 +329,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		    (!dfs_is_chan_allowed(chan, n_chans) ||
  		     !(chan->allowed_bw & HOSTAPD_CHAN_WIDTH_40P))) {
  			wpa_printf(MSG_DEBUG,
-@@ -558,7 +558,7 @@ dfs_get_valid_channel(struct hostapd_ifa
+@@ -559,7 +559,7 @@ dfs_get_valid_channel(struct hostapd_ifa
  		return NULL;
  
  	/* Get the count first */
@@ -260,7 +338,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	wpa_printf(MSG_DEBUG, "DFS: num_available_chandefs=%d",
  		   num_available_chandefs);
  	if (num_available_chandefs == 0)
-@@ -581,7 +581,7 @@ dfs_get_valid_channel(struct hostapd_ifa
+@@ -582,7 +582,7 @@ dfs_get_valid_channel(struct hostapd_ifa
  	chan_idx = _rand % num_available_chandefs;
  	wpa_printf(MSG_DEBUG, "DFS: Picked random entry from the list: %d/%d",
  		   chan_idx, num_available_chandefs);
@@ -269,7 +347,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (!chan) {
  		wpa_printf(MSG_DEBUG, "DFS: no random channel found");
  		return NULL;
-@@ -611,7 +611,7 @@ dfs_get_valid_channel(struct hostapd_ifa
+@@ -612,7 +612,7 @@ dfs_get_valid_channel(struct hostapd_ifa
  		for (i = 0; i < num_available_chandefs - 1; i++) {
  			/* start from chan_idx + 1, end when chan_idx - 1 */
  			chan_idx2 = (chan_idx + 1 + i) % num_available_chandefs;
@@ -278,7 +356,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			if (chan2 && abs(chan2->chan - chan->chan) > 12) {
  				/* two channels are not adjacent */
  				sec_chan_idx_80p80 = chan2->chan;
-@@ -1421,10 +1421,10 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1469,10 +1469,10 @@ int hostapd_dfs_complete_cac(struct host
  			 * another radio.
  			 */
  			if (iface->state != HAPD_IFACE_ENABLED &&
@@ -292,7 +370,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  			/*
  			 * When background radar is enabled but the CAC completion
-@@ -1438,6 +1438,13 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1486,6 +1486,13 @@ int hostapd_dfs_complete_cac(struct host
  	} else if (hostapd_dfs_is_background_event(iface, freq)) {
  		iface->radar_background.cac_started = 0;
  		hostapd_dfs_update_background_chain(iface);
@@ -306,7 +384,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	iface->radar_detected = false;
-@@ -1483,6 +1490,9 @@ int hostapd_dfs_pre_cac_expired(struct h
+@@ -1531,6 +1538,9 @@ int hostapd_dfs_pre_cac_expired(struct h
  		return 0;
  	}
  
@@ -316,7 +394,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	return 0;
  }
  
-@@ -1916,7 +1926,8 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -2120,7 +2130,8 @@ int hostapd_dfs_start_cac(struct hostapd
  		/* This is called when the driver indicates that an offloaded
  		 * DFS has started CAC. radar_detected might be set for previous
  		 * DFS channel. Clear it for this new CAC process. */
@@ -326,7 +404,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		iface->cac_started = 1;
  
  		/* Clear radar_detected in case it is for the previous
-@@ -1984,14 +1995,15 @@ int hostapd_handle_dfs_offload(struct ho
+@@ -2188,14 +2199,15 @@ int hostapd_handle_dfs_offload(struct ho
  }
  
  
@@ -346,7 +424,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	if (!iface->conf->ieee80211h || !mode ||
  	    mode->mode != HOSTAPD_MODE_IEEE80211A)
-@@ -2024,18 +2036,137 @@ int hostapd_is_dfs_overlap(struct hostap
+@@ -2228,18 +2240,164 @@ int hostapd_is_dfs_overlap(struct hostap
  		if (!(chan->flag & HOSTAPD_CHAN_RADAR))
  			continue;
  
@@ -423,11 +501,44 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
 -	return res;
 +
++/* the test of the kernel: the primary channel of one chandef lies in the
++ * other
++ */
++static bool dfs_csa_overlaps_chain(struct hostapd_iface *iface,
++				   const struct hostapd_freq_params *target)
++{
++	int half = (target->bandwidth > 20 ? target->bandwidth : 20) / 2;
++	int freq = iface->radar_background.freq;
++
++	if (iface->radar_background.channel == -1)
++		return false;
++
++	if (abs(freq - target->center_freq1) < half ||
++	    (target->center_freq2 && abs(freq - target->center_freq2) < half))
++		return true;
++
++	return dfs_background_chandef_contains(iface, target->freq);
++}
++
++
++/* The kernel stops a chain without a running CAC that overlaps the target
++ * of an accepted CSA, and it sends no event for that chain.
++ */
++void hostapd_dfs_csa_started(struct hostapd_iface *iface,
++			     const struct hostapd_freq_params *target)
++{
++	if (iface->radar_background.cac_started ||
++	    !dfs_csa_overlaps_chain(iface, target))
++		return;
++
++	iface->radar_background.channel = -1;
++}
++
++
 +/*
 + * DFS handler for CSA
 + * 1  - update background radar with the filled setting
-+ * 0  - background radar is not enabled / background radar remain at the same channel /
-+ *	disable background radar
++ * 0  - background radar is not enabled / background radar remain at the same channel
 + */
 +int hostapd_dfs_handle_csa(struct hostapd_iface *iface,
 +			   struct csa_settings *settings,
@@ -437,8 +548,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	struct hostapd_channel_data *chan;
 +	struct hostapd_freq_params *freq_params = &settings->freq_params;
 +	int center = settings->freq_params.center_freq1;
-+	int background_center = 5000 + iface->radar_background.centr_freq_seg0_idx * 5;
-+	int n_chans = settings->freq_params.bandwidth / 20;
++	int n_chans = settings->freq_params.bandwidth > 20 ?
++		settings->freq_params.bandwidth / 20 : 1;
 +	bool update_background = false;
 +
 +	if (!dfs_use_radar_background(iface)) {
@@ -448,35 +559,33 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		return 0;
 +	}
 +
++	/* the kernel refuses to retune a chain that runs a CAC */
++	if (iface->radar_background.cac_started)
++		return 0;
++
 +	if (!cac_required) {
-+		if (!bw_changed && center != background_center)
++		if (!bw_changed && !dfs_csa_overlaps_chain(iface, freq_params))
 +			return 0;
 +		/* Update background radar due to bw change or channel overlapping */
 +		update_background = true;
 +	} else {
 +		/*
-+		 * Get available channel for main channel if background radar
-+		 * is ready (no CAC in progress).
-+		 * If no available channel exists or background radar is not ready,
-+		 * then perform the CAC of the target channel on the main channel.
-+		 * Also, select an usable channel for background radar if no
-+		 * available channel exists.
++		 * Get available channel for main channel.
++		 * If no available channel exists, then perform the CAC of the
++		 * target channel on the main channel, and select an usable
++		 * channel for background radar.
 +		 */
-+		if (!iface->radar_background.cac_started) {
++		chan = dfs_get_csa_channel(iface, n_chans, 0, DFS_AVAILABLE);
++		if (chan)
 +			iface->radar_background.temp_ch = 1;
-+			chan = dfs_get_csa_channel(iface, n_chans, 0, DFS_AVAILABLE);
-+			if (!chan)
-+				update_background = true;
-+		} else {
-+			iface->radar_background.temp_ch = 0;
-+			return 0;
-+		}
++		else
++			update_background = true;
 +	}
 +
 +	if (update_background) {
 +		chan = dfs_get_csa_channel(iface, n_chans, center, DFS_NO_CAC_YET);
 +		if (!chan)
-+			goto bkg_disable;
++			return 0;
 +		freq_params = &background_settings->freq_params;
 +		iface->radar_background.temp_ch = 0;
 +	}
@@ -484,19 +593,15 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +	memcpy(background_settings, settings, sizeof(*settings));
 +	freq_params->freq = chan->freq;
 +	freq_params->channel = chan->chan;
-+	freq_params->sec_channel_offset = 1;
++	freq_params->sec_channel_offset = n_chans > 1 ? 1 : 0;
 +	freq_params->center_freq1 = chan->freq + (n_chans - 1) * 10;
 +	freq_params->center_freq2 = 0;
 +
 +	return 1;
-+
-+bkg_disable:
-+	iface->radar_background.channel = -1;
-+	return 0;
  }
 --- a/src/ap/dfs.h
 +++ b/src/ap/dfs.h
-@@ -39,17 +39,22 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -40,17 +40,23 @@ int hostapd_dfs_start_cac(struct hostapd
  			  int ht_enabled, int chan_offset, int chan_width,
  			  int cf1, int cf2);
  int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
@@ -519,7 +624,8 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +			   struct csa_settings *settings,
 +			   struct csa_settings *background_settings,
 +			   bool cac_required, bool bw_changed);
-+
++void hostapd_dfs_csa_started(struct hostapd_iface *iface,
++			     const struct hostapd_freq_params *target);
  
  #endif /* DFS_H */
 --- a/src/ap/ieee802_11.c
@@ -536,3 +642,20 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (stype == WLAN_FC_STYPE_PROBE_REQ) {
  		handle_probe_req(hapd, mgmt, len, fi);
  		return 1;
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -5435,6 +5435,14 @@ int hostapd_force_channel_switch(struct
+ 		return ret;
+ 	}
+ 
++	/* the restart can drop the kernel chain; the next DFS event arms a
++	 * new one. The requested channel replaces a pending move to the
++	 * chain, and an ACS radio must not select another channel.
++	 */
++	iface->radar_background.channel = -1;
++	iface->radar_background.cac_started = 0;
++	iface->radar_background.temp_ch = 0;
++	iface->is_ch_switch_dfs = true;
+ 	ret = hostapd_enable_iface(iface);
+ 	if (ret)
+ 		wpa_printf(MSG_DEBUG, "Failed to enable the interface");

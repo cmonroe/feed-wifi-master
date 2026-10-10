@@ -2,43 +2,21 @@ From: Chad Monroe <chad@monroe.io>
 Date: Fri, 07 Aug 2026 16:14:15 -0700
 Subject: [PATCH] hostapd: honor selected channel on fallback restarts
 
-The CSA fallback and two DFS radar paths install a concrete target
-channel and then restart the interface with disable/enable. On a
-channel=auto radio, setup_interface2() sees conf->acs set, zeroes
-the freq and channel, and re-runs ACS, discarding the selected
-channel. The full ACS scan extends the outage and an ACS failure
-escalates through the interface state callback to a netifd radio
-restart.
+Several paths restart the interface on a concrete target channel
+after a radar or a failed CSA. On a channel=auto radio the restart
+runs ACS again and drops the selected channel. The ACS scan extends
+the outage, and an ACS failure leads to a radio restart by netifd.
 
-Upstream guards this with iface->is_ch_switch_dfs, but the only
-writer was removed by mtk-0096 when the CHAN_SWITCH-during-CAC path
-moved to hostapd_force_channel_switch(), leaving the flag dead. Set
-it again before each concrete-target restart:
-
-  - hostapd_switch_channel_fallback(), covering the CSA failure
-    path (EVENT_INTERFACE_UNAVAILABLE) and the ubus switch_chan
-    force timeout
-  - hostapd_dfs_request_channel_switch(), all-BSS CSA failure
-  - hostapd_dfs_start_channel_switch(), DFS_ANY_CHANNEL selection
-
-The no-channel-available toggle intentionally does not set the flag:
-no target is installed there and ACS remains the recovery path
-instead of pinning the radar channel for the NOP duration.
-
-The flag is a one-shot: setup_interface2() now consumes it at entry
-even when the hw feature query fails, so a stale flag cannot
-suppress ACS on a later unrelated restart. The vendor alternative
-(clearing conf->acs in the fallback, vendor patch 0057) was
-rejected: hostapd_reload_config() copies the runtime acs value over
-every fresh parse, so the radio would permanently stop doing ACS.
-
-The DFS_ANY_CHANNEL site additionally recomputes conf->op_class
-when dfs_downgrade_bandwidth() narrowed the width, mirroring the
-recompute hostapd_dfs_request_channel_switch() already does; a
-stale op_class forces the old width back during setup. Both DFS
-restart sites restore the HT40 capability bit that a prior 20 MHz
-ch_switch event may have cleared, since no ch_switch event fires on
-a restart.
+Each of these restarts now sets the restart flag, so setup keeps the
+selected channel, as upstream does for its DFS restart. The restart
+after a radar with no channel left does not set the flag, because
+ACS is the recovery there. Setup clears the flag at once, so a stale
+flag cannot stop ACS on a later restart. mtk-openwrt-feeds
+d575b5bbfd51 ("[MAC80211][WiFi6][hostapd][Backport hostapd ACS
+patches and some ACS fixes]") clears the ACS setting instead. That
+stops ACS for good, because a reload keeps the runtime value. A radar
+restart also recomputes the operating class for a narrower width,
+and restores the HT40 capability that a 20 MHz switch can clear.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
