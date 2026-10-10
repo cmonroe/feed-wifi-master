@@ -1,0 +1,45 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 10:23:48 -0700
+Subject: [PATCH] wifi: mt76: mt7996: remove only a recorded station BMC
+ STA_REC
+
+The removal of the BMC STA_REC on a zero BSSID does not check the
+interface type. A mesh point always has a zero BSSID, and after a full
+reset mac80211 reports the BSSID and the beacon enable together. The
+driver then adds the mesh BMC STA_REC again and removes it at once, so
+a mesh point loses that entry on every full reset. The removal also
+goes to entries that do not exist.
+
+Remove the entry only when the driver holds a station BSSID for it,
+which only a station records when it adds the entry. A station still
+removes its entry on disconnection, and mesh, AP and IBSS interfaces
+keep theirs across a full reset.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c |   10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1084,15 +1084,15 @@ mt7996_link_info_changed(struct ieee8021
+ 	 * and then peer references bss_info_rfch to set bandwidth cap.
+ 	 */
+ 	if ((changed & BSS_CHANGED_BSSID && !is_zero_ether_addr(info->bssid)) ||
+-	    (changed & BSS_CHANGED_BEACON_ENABLED))
++	    (changed & BSS_CHANGED_BEACON_ENABLED)) {
+ 		mt7996_vif_link_bss_add(phy, vif, info, link,
+ 					!!(changed & BSS_CHANGED_BSSID));
+-	else if (changed & BSS_CHANGED_BSSID)
++	} else if (changed & BSS_CHANGED_BSSID &&
++		   !is_zero_ether_addr(link->bmc_bssid)) {
+ 		eth_zero_addr(link->bmc_bssid);
+-
+-	if (changed & BSS_CHANGED_BSSID && is_zero_ether_addr(info->bssid))
+-		mt7996_mcu_add_sta(dev, info, NULL, link, &link->msta_link,
++		mt7996_mcu_add_sta(dev, info, NULL, link, NULL,
+ 				   CONN_STATE_DISCONNECT, false);
++	}
+ 
+ 	if (changed & BSS_CHANGED_HT || changed & BSS_CHANGED_ERP_CTS_PROT)
+ 		mt7996_mcu_set_protection(phy, link, info->ht_operation_mode,

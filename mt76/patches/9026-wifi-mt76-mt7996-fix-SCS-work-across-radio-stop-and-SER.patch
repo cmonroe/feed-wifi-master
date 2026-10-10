@@ -1,0 +1,103 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 10:23:48 -0700
+Subject: [PATCH] wifi: mt76: mt7996: fix SCS work across radio stop and SER
+
+The SCS work is one work for the whole device, but since d258f4e3e1ca
+("wifi: mt76: mt7996: switch to single multi-radio wiphy") the radio
+stop path runs for one radio at a time. Stopping one radio therefore
+cancels the SCS feed of the radios that still run. The L1 SER path
+leaves the work running, so SCS commands can go out during the DMA
+recovery, and device removal never cancels the work.
+
+The work now stops by itself when no radio runs with SCS enabled, is
+cancelled on removal and for the length of an L1 SER, and resumes
+after the SER. A poll that runs during a reset skips its firmware
+command but stays queued, so the feed resumes after a full reset too.
+Enabling SCS on a radio that does not run no longer queues the work,
+because the radio start queues it.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/init.c |    4 ++++
+ mt7996/mac.c  |    7 +++++++
+ mt7996/main.c |    1 -
+ mt7996/mcu.c  |   12 ++++++++++--
+ 4 files changed, 21 insertions(+), 3 deletions(-)
+
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -1945,6 +1945,10 @@ void mt7996_unregister_device(struct mt7
+ 	cancel_work_sync(&dev->rc_work);
+ 	mt7996_for_each_phy(dev, phy)
+ 		cancel_delayed_work_sync(&phy->mt76->mac_work);
++	/* a debugfs write can queue the work until mac80211 removes
++	 * debugfs, which happens after this point
++	 */
++	disable_delayed_work_sync(&dev->scs_work);
+ 	mt7996_unregister_phy(mt7996_phy3(dev));
+ 	mt7996_unregister_phy(mt7996_phy2(dev));
+ 	mt7996_unregister_thermal(&dev->phy);
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2488,6 +2488,7 @@ void mt7996_mac_reset_work(struct work_s
+ 		set_bit(MT76_RESET, &phy->mt76->state);
+ 		cancel_delayed_work_sync(&phy->mt76->mac_work);
+ 	}
++	cancel_delayed_work_sync(&dev->scs_work);
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+ 
+@@ -2616,6 +2617,12 @@ void mt7996_mac_reset_work(struct work_s
+ 	mt7996_for_each_phy(dev, phy)
+ 		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
+ 					     MT7996_WATCHDOG_TIME);
++
++	mt7996_for_each_phy(dev, phy) {
++		if (test_bit(MT76_STATE_RUNNING, &phy->mt76->state) &&
++		    phy->scs_ctrl.scs_enable)
++			ieee80211_queue_delayed_work(hw, &dev->scs_work, HZ);
++	}
+ 	dev_info(dev->mt76.dev,"==== %s L1 SER recovery completed ====",
+ 		 wiphy_name(dev->mt76.hw->wiphy));
+ }
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -121,7 +121,6 @@ static void mt7996_stop_phy(struct mt799
+ 	dev = phy->dev;
+ 
+ 	cancel_delayed_work_sync(&phy->mt76->mac_work);
+-	cancel_delayed_work_sync(&dev->scs_work);
+ 	wiphy_delayed_work_cancel(phy->mt76->hw->wiphy,
+ 				  &phy->mt76->assoc_chan_work);
+ 
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -6454,10 +6454,17 @@ void mt7996_mcu_scs_sta_poll(struct work
+ 		    !phy->scs_ctrl.scs_enable)
+ 			continue;
+ 
++		/* the MCU takes no commands during recovery, but the work
++		 * stays queued so that the feed resumes after it
++		 */
++		scs_enable_flag = true;
++		if (test_bit(MT76_MCU_RESET, &dev->mphy.state) ||
++		    test_bit(MT76_RESET, &phy->mt76->state))
++			continue;
++
+ 		ieee80211_iterate_stations_atomic(phy->mt76->hw,
+ 						  mt7996_sta_rssi_work, phy);
+ 
+-		scs_enable_flag = true;
+ 		if (mt7996_mcu_set_scs_stats(phy))
+ 			dev_err(dev->mt76.dev, "Failed to send scs mcu cmd\n");
+ 		phy->scs_ctrl.sta_min_rssi = 0;
+@@ -6489,7 +6496,8 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+ 
+ 	phy->scs_ctrl.scs_enable = enable;
+ 
+-	if (enable == SCS_ENABLE)
++	if (enable == SCS_ENABLE &&
++	    test_bit(MT76_STATE_RUNNING, &phy->mt76->state))
+ 		ieee80211_queue_delayed_work(mt76_hw(dev), &dev->scs_work, HZ);
+ 
+ 	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(SCS),

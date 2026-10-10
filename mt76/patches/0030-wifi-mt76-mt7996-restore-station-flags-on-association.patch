@@ -4,11 +4,15 @@ Subject: [PATCH] wifi: mt76: mt7996: restore station flags on association
 
 The DISASSOC event clears wcid.sta and sets wcid.sta_disabled, but the
 ASSOC event restores neither. A station that moves from ASSOC to AUTH
-and back on the same link keeps sta cleared, so wcid_to_sta() returns
-NULL and RX statistics, power save transitions and TX status for it
-are lost until it is removed. mt7915 already sets both flags on ASSOC;
-do the same for mt7996.
+and back on the same link reaches the rate control setup with sta
+cleared. That setup looks the station up through its wcid with no
+NULL check, so the kernel oopses.
 
+Restore both flags at the start of the ASSOC event, before the first
+firmware command, so that a re-association sees the same state as a
+first association. mt7915 also sets both flags on ASSOC.
+
+Fixes: d71108eedab1 ("wifi: mt76: mt7996: Do not set wcid.sta to 1 in mt7996_mac_sta_event()")
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7996/main.c |    2 ++
@@ -16,12 +20,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1497,6 +1497,8 @@ mt7996_mac_sta_links_event(struct mt7996
- 				return err;
+@@ -1484,6 +1484,8 @@ mt7996_mac_sta_links_event(struct mt7996
  
- 			msta_link->wcid.tx_info |= MT_WCID_TX_INFO_SET;
+ 		switch (ev) {
+ 		case MT76_STA_EVENT_ASSOC:
 +			msta_link->wcid.sta = 1;
 +			msta_link->wcid.sta_disabled = 0;
- 			break;
- 		case MT76_STA_EVENT_AUTHORIZE:
  			err = mt7996_mcu_add_sta(dev, link_conf, link_sta,
+ 						 link, msta_link,
+ 						 CONN_STATE_CONNECT, true);
