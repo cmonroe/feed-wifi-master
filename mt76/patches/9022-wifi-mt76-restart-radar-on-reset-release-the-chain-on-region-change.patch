@@ -1,27 +1,32 @@
 From: Chad Monroe <chad@monroe.io>
 Date: Fri, 25 Sep 2026 11:22:55 -0700
-Subject: [PATCH] wifi: mt76: release the background chain on reset and region change
+Subject: [PATCH] wifi: mt76: restart radar on reset, release the chain on region change
 
 cfg80211 keeps a background radar chain on its channel after the CAC,
 and the channel stays available while the chain monitors it. A full
 chip reset reloads the firmware without the background detector, and
-a region change leaves it running with the rules of the old region,
-yet cfg80211 still counts the channel as monitored.
+a region change leaves it running with the old rules. In both cases
+cfg80211 still counts the channel as monitored. The reloaded firmware
+also runs no radar detector on the operating channel. The first
+channel set after the restart finds a cached DFS state that matches
+the channel, and does not start the detector.
 
 Abort the background chain in both cases, so cfg80211 releases the
-channel and tells hostapd to arm the chain again. Stopping the
-detector is now allowed while the region is unset, so the driver and
-cfg80211 agree that the chain is off.
+channel and tells hostapd to arm the chain again. The driver now
+accepts a stop of the detector while the region is unset, so the
+driver and cfg80211 agree that the chain is off. A full reset marks
+the DFS state of each band unknown, so the first channel set after
+the restart starts the radar detector again.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7915/init.c |   12 ++++++++++++
- mt7915/mac.c  |    6 ++++++
+ mt7915/mac.c  |   13 +++++++++++++
  mt7915/main.c |    2 +-
  mt7996/init.c |    9 +++++++++
- mt7996/mac.c  |    6 ++++++
+ mt7996/mac.c  |   12 ++++++++++++
  mt7996/main.c |    2 +-
- 6 files changed, 35 insertions(+), 2 deletions(-)
+ 6 files changed, 48 insertions(+), 2 deletions(-)
 
 --- a/mt7915/init.c
 +++ b/mt7915/init.c
@@ -56,7 +61,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1378,6 +1378,12 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1378,6 +1378,19 @@ mt7915_mac_full_reset(struct mt7915_dev
  	if (phy2)
  		phy2->omac_mask = 0;
  
@@ -65,6 +70,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	 */
 +	if (dev->rdd2_phy)
 +		cfg80211_background_cac_abort(dev->rdd2_phy->mt76->hw->wiphy);
++
++	/* the reloaded firmware runs no radar detector, and the first
++	 * channel set after the restart skips a state that looks current
++	 */
++	phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
++	if (phy2)
++		phy2->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
 +
  	mt76_reset_device(&dev->mt76);
  	bitmap_zero(dev->adm_count_clear, MT76_N_WCIDS);
@@ -104,7 +116,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			mt7996_mcu_rdd_background_enable(phy, NULL);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2371,6 +2371,12 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2371,6 +2371,18 @@ mt7996_mac_full_reset(struct mt7996_dev
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  
@@ -113,6 +125,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	 */
 +	if (dev->rdd2_phy)
 +		cfg80211_background_cac_abort(hw->wiphy);
++
++	/* the reloaded firmware runs no radar detector, and the first
++	 * channel set after the restart skips a state that looks current
++	 */
++	mt7996_for_each_phy(dev, phy)
++		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
 +
  	ieee80211_iterate_stations_atomic(hw, mt7996_mac_reset_sta_iter, dev);
  	mt76_reset_device(&dev->mt76);
