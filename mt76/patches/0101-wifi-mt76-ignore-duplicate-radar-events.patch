@@ -10,7 +10,8 @@ moving to the new channel.
 mac80211 does not guard against a radar event arriving mid-CSA, so
 filter duplicates in the driver: remember the hw value of the
 channel that reported radar per phy and drop further reports for
-that channel until the radar detector is restarted. Apply the same
+that channel until the radar detector is initialised again, which
+happens on every channel set and regulatory change. Apply the same
 guard to mt7915 and mt7996.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>

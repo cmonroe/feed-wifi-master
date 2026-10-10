@@ -23,6 +23,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7996/mac.c     |   28 +++++-
  mt7996/mcu.c     |    1
  mt7996/mt7996.h  |    1
+ mt76.h           |   21 +---
+ mt7996/debugfs.c |  235 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mac.c     |   28 +++++-
+ mt7996/mcu.c     |    1 
+ mt7996/mt7996.h  |    1 
  5 files changed, 270 insertions(+), 16 deletions(-)
 
 --- a/mt76.h
@@ -390,7 +395,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rxd += 24;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5978,6 +5978,7 @@ int mt7996_mcu_get_per_sta_info(struct m
+@@ -5977,6 +5977,7 @@ int mt7996_mcu_get_per_sta_info(struct m
  				msta_link->chain_signal_wf4 = to_rssi(MT_PRXV_RCPI0,
  								      rssi->rcpi_wf4);
  				msta_link->chain_ack_signal[4] = msta_link->chain_signal_wf4;

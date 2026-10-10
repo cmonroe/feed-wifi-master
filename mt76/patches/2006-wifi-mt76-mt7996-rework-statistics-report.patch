@@ -916,8 +916,8 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	default:
  		return;
  	}
-@@ -729,8 +869,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
- 	rcu_read_lock();
+@@ -728,8 +868,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ 
  	for (i = 0; i < sta_num; i++) {
  		u8 ac;
 +		bool v1;
@@ -930,7 +930,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -740,21 +885,39 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -739,21 +884,39 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -978,7 +978,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			}
  			break;
  		case UNI_ALL_STA_TXRX_MSDU_COUNT:
-@@ -764,10 +927,59 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -763,10 +926,59 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -1042,7 +1042,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			break;
  		default:
  			break;
-@@ -5695,9 +5907,132 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5694,9 +5906,132 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -1177,7 +1177,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -5708,7 +6043,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -5707,7 +6042,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  

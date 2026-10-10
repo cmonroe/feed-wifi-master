@@ -9,29 +9,33 @@ VOW_DRR_CTRL_STA_PAUSE with a zero payload, while band level VOW
 configuration is still accepted. Reprogramming the VOW engine on
 band start does not recover it; only a full firmware reload does.
 
-mt7996_mcu_add_sta() treats the mt7996_mcu_sta_init_vow() failure as
-fatal, so once the firmware enters this state no station can
-associate on the band until the unit reboots.
+Since da2c90d2167d ("wifi: mt76: mt7996: send the STA_REC before the
+per-station VoW setup") the rejection no longer blocks association,
+but the driver does not log it, the station keeps no airtime weight,
+and an MLO link that comes back before the station is authorized
+still fails on it. Send no VOW command until the firmware accepts
+per-station commands after a band restart.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7996/mcu.c |    7 +++++++
- 1 file changed, 7 insertions(+)
+ mt7996/mcu.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2778,6 +2778,10 @@ int mt7996_mcu_set_vow_drr_ctrl(struct m
+@@ -2776,6 +2776,11 @@ int mt7996_mcu_set_vow_drr_ctrl(struct m
  		.omac_idx = mvif ? mvif->omac_idx : 0,
  	};
  
-+	/* HW ATF disabled: fw 20260513 rejects per-station VOW commands
-+	 * after band restarts blocking association */
++	/* HW ATF disabled: after band stop/start cycles the firmware
++	 * rejects every per-station VOW command until it is reloaded
++	 */
 +	return 0;
 +
  	switch (id) {
  	case VOW_DRR_CTRL_STA_ALL:
  		val |= FIELD_PREP(VOW_DRR_STA_BSS_GRP_MASK,
-@@ -2870,6 +2874,9 @@ int mt7996_mcu_set_vow_feature_ctrl(stru
+@@ -2868,6 +2873,9 @@ int mt7996_mcu_set_vow_feature_ctrl(stru
  		.bwc_enable_per_grp = cpu_to_le16(0xffff),
  	};
  

@@ -12,13 +12,14 @@ scene detection algorithm in firmware may decide whether current
 environment can SR Tx or not.
 ---
  mt76_connac_mcu.h    |    1
+ mt76_connac_mcu.h    |    1 
  mt7996/main.c        |    6 ++
- mt7996/mcu.c         |    5 ++
- mt7996/mt7996.h      |    7 +++
- mt7996/mtk_debugfs.c |   89 ++++++++++++++++++++++++++++++++++++++++
- mt7996/mtk_mcu.c     |  112 +++++++++++++++++++++++++++++++++++++++++++++++++++
- mt7996/mtk_mcu.h     |   56 +++++++++++++++++++++++++
- 7 files changed, 276 insertions(+)
+ mt7996/mcu.c         |    5 +
+ mt7996/mt7996.h      |    7 ++
+ mt7996/mtk_debugfs.c |   89 ++++++++++++++++++++++++++++++++++
+ mt7996/mtk_mcu.c     |  131 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mtk_mcu.h     |   56 +++++++++++++++++++++
+ 7 files changed, 295 insertions(+)
 
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
@@ -54,7 +55,7 @@ environment can SR Tx or not.
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1221,6 +1221,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -1219,6 +1219,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_PS_SYNC:
  		mt7996_mcu_rx_ps_sync(dev, skb);
  		break;

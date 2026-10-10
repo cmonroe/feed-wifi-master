@@ -29,6 +29,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7996/main.c    |    5 ----
  mt7996/mcu.c     |   52 ++++++++++++++++++++++++++++++-------------
  mt7996/mt7996.h  |    1
+ mt76.h           |   27 +++++++++++++++++++++++++--
+ mt7915/mcu.c     |   54 +++++++++++++++++++++++++++++++++++++++++++-----------
+ mt7915/mt7915.h  |    1 +
+ mt7996/debugfs.c |    8 ++++++--
+ mt7996/main.c    |    5 -----
+ mt7996/mcu.c     |   52 ++++++++++++++++++++++++++++++++++++----------------
+ mt7996/mt7996.h  |    1 +
  7 files changed, 112 insertions(+), 36 deletions(-)
 
 --- a/mt76.h
@@ -258,10 +265,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		dev->mt76.airtime_last_poll = now;
 +	}
 +
- 	rcu_read_lock();
  	for (i = 0; i < sta_num; i++) {
  		u8 ac;
-@@ -875,7 +883,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+ 		bool v1;
+@@ -874,7 +882,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		struct mt76_wcid *wcid;
  		struct mt76_phy *mphy;
  		struct ieee80211_sta *sta;
@@ -270,7 +277,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		    tx_packets, rx_packets;
  
  		switch (le16_to_cpu(res->tag)) {
-@@ -945,13 +953,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -944,13 +952,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
  
  			for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac) {
  				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
@@ -293,7 +300,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			}
  			break;
  		case UNI_ALL_STA_RX_MPDU_COUNT:
-@@ -5316,6 +5328,8 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5315,6 +5327,8 @@ int mt7996_mcu_get_chan_mib_info(struct
  	struct mt7996_dev *dev = phy->dev;
  	struct mt7996_mcu_mib *res;
  	struct sk_buff *skb;
@@ -302,7 +309,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i, ret;
  
  	for (i = 0; i < IDX_NUM; i++) {
-@@ -5337,16 +5351,22 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5336,16 +5350,22 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)

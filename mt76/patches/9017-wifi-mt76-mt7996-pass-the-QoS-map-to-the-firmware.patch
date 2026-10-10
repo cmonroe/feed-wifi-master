@@ -19,10 +19,10 @@ before its first context; mac80211 passes the map again then.
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt76_connac_mcu.h |    1 
- mt7996/main.c     |   30 ++++++++++++++++
- mt7996/mcu.c      |   79 ++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/main.c     |   30 ++++++++++++++++++++
+ mt7996/mcu.c      |   79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7996/mcu.h      |    1 
- mt7996/mt7996.h   |    3 +
+ mt7996/mt7996.h   |    3 ++
  5 files changed, 114 insertions(+)
 
 --- a/mt76_connac_mcu.h
@@ -81,7 +81,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6805,6 +6805,85 @@ int mt7996_mcu_cp_support(struct mt7996_
+@@ -6804,6 +6804,85 @@ int mt7996_mcu_cp_support(struct mt7996_
  				 &cp_mode, sizeof(cp_mode), true);
  }
  
