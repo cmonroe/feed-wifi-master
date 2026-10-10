@@ -1,0 +1,134 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 09 Oct 2026 10:05:08 -0700
+Subject: [PATCH] hostapd: drop the background chain record with its owner
+
+The kernel ends a background chain when the netdev that started it
+goes down. That happens at the disable of a non-MLD AP, at a failed
+enable that deinitializes the driver, and at the removal of that BSS.
+No drv receives the report of that stop, so hostapd keeps the record
+of a chain that no longer runs. The re-arm paths skip an interface
+that holds a record, so the chain stays off.
+
+hostapd now records the BSS that started the chain and drops the
+record at these points. The removal of another BSS keeps the record,
+because the chain belongs to another netdev. An enable onto a target
+that needs a CAC arms a new chain; otherwise the next DFS event that
+finds no record arms it.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/ap_drv_ops.c |    1 +
+ src/ap/dfs.c        |    9 +++++++++
+ src/ap/dfs.h        |    1 +
+ src/ap/hostapd.c    |   14 ++++++++++++++
+ src/ap/hostapd.h    |    2 ++
+ src/ap/ucode.c      |    5 +++++
+ 6 files changed, 32 insertions(+)
+
+--- a/src/ap/ap_drv_ops.c
++++ b/src/ap/ap_drv_ops.c
+@@ -1151,6 +1151,7 @@ int hostapd_start_dfs_cac(struct hostapd
+ 		if (radar_background) {
+ 			iface->radar_background.cac_started = 1;
+ 			iface->radar_background.chwidth = oper_chwidth;
++			iface->radar_background.owner = hapd;
+ 		} else {
+ 			iface->cac_started = 1;
+ 		}
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -1189,6 +1189,15 @@ void hostapd_dfs_csa_finished(struct hos
+ }
+ 
+ 
++void hostapd_dfs_chain_drop(struct hostapd_iface *iface)
++{
++	iface->radar_background.channel = -1;
++	iface->radar_background.cac_started = 0;
++	iface->radar_background.temp_ch = 0;
++	iface->radar_background.owner = NULL;
++}
++
++
+ static bool
+ hostapd_is_freq_in_current_hw_info(struct hostapd_iface *iface, int freq)
+ {
+--- a/src/ap/dfs.h
++++ b/src/ap/dfs.h
+@@ -10,6 +10,7 @@
+ #define DFS_H
+ 
+ int hostapd_handle_dfs(struct hostapd_iface *iface);
++void hostapd_dfs_chain_drop(struct hostapd_iface *iface);
+ 
+ int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
+ 			     int ht_enabled, int chan_offset, int chan_width,
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -4045,6 +4045,10 @@ int hostapd_enable_iface(struct hostapd_
+ 	if (hapd_iface->interfaces == NULL ||
+ 	    hapd_iface->interfaces->driver_init == NULL ||
+ 	    hapd_iface->interfaces->driver_init(hapd_iface)) {
++#ifdef NEED_AP_MLME
++		/* the driver deinit ends every chain of the interface */
++		hostapd_dfs_chain_drop(hapd_iface);
++#endif /* NEED_AP_MLME */
+ 		hostapd_deinit_driver(hapd_iface->bss[0]->driver,
+ 				      hapd_iface->bss[0]->drv_priv,
+ 				      hapd_iface);
+@@ -4052,6 +4056,9 @@ int hostapd_enable_iface(struct hostapd_
+ 	}
+ 
+ 	if (hostapd_setup_interface(hapd_iface)) {
++#ifdef NEED_AP_MLME
++		hostapd_dfs_chain_drop(hapd_iface);
++#endif /* NEED_AP_MLME */
+ 		hostapd_deinit_driver(hapd_iface->bss[0]->driver,
+ 				      hapd_iface->bss[0]->drv_priv,
+ 				      hapd_iface);
+@@ -4127,6 +4134,8 @@ int hostapd_disable_iface(struct hostapd
+ #ifdef NEED_AP_MLME
+ 	for (j = 0; j < hapd_iface->num_bss; j++)
+ 		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
++	/* the netdev goes down and ends the chain; no drv gets that report */
++	hostapd_dfs_chain_drop(hapd_iface);
+ #endif /* NEED_AP_MLME */
+ 	hapd_iface->radar_background.update_after_csa = 0;
+ 
+@@ -4472,6 +4481,11 @@ static int hostapd_remove_bss(struct hos
+ 	if (idx < iface->num_bss) {
+ 		struct hostapd_data *hapd = iface->bss[idx];
+ 
++#ifdef NEED_AP_MLME
++		/* only the netdev that started the chain ends it */
++		if (hapd == iface->radar_background.owner)
++			hostapd_dfs_chain_drop(iface);
++#endif /* NEED_AP_MLME */
+ 		hostapd_bss_deinit(hapd);
+ 		wpa_printf(MSG_DEBUG, "%s: free hapd %p (%s)",
+ 			   __func__, hapd, hapd->conf->iface);
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -691,6 +691,8 @@ struct hostapd_iface {
+ 		int centr_freq_seg1_idx;
+ 		/* The AP width can change later without a chain move */
+ 		int chwidth;
++		/* The kernel ends the chain with the netdev of this BSS */
++		struct hostapd_data *owner;
+ 		/* Main chain is on temporary channel during
+ 		 * CAC detection on radar offchain.
+ 		 */
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -468,6 +468,11 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
+ 		hostapd_free_link_stas(hapd);
+ #endif /* CONFIG_IEEE80211BE */
+ 
++#ifdef NEED_AP_MLME
++	/* only the netdev that started the chain ends it */
++	if (hapd == iface->radar_background.owner)
++		hostapd_dfs_chain_drop(iface);
++#endif /* NEED_AP_MLME */
+ 	hostapd_drv_stop_ap(hapd);
+ 	hostapd_bss_deinit(hapd);
+ #ifdef CONFIG_IEEE80211BE

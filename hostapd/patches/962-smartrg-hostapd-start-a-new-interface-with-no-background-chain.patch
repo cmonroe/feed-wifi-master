@@ -1,0 +1,33 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 8 Oct 2026 09:42:08 -0700
+Subject: [PATCH] hostapd: start a new interface with no background chain
+
+A new interface starts with a zero background chain record. The DFS
+code uses -1 for no chain, so it reads zero as a chain on channel 0.
+An AP that starts without a CAC never arms a chain. A radar on its
+channel then moves the AP to frequency 0. That switch fails,
+disables the AP and makes ACS fail.
+
+A new interface now starts with no background chain. A radar on the
+operating channel then selects a new channel with the normal rules.
+With background radar enabled, the next NOP finish, CAC finish or
+pre-CAC expiry event arms the chain, as after a lost chain. The
+wpa_supplicant AP and mesh modes see no change, because they never
+enable background radar.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/hostapd.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -3535,6 +3535,8 @@ struct hostapd_iface * hostapd_alloc_ifa
+ 		return NULL;
+ 
+ 	dl_list_init(&hapd_iface->sta_seen);
++	/* the DFS code reads channel 0 as a background chain on channel 0 */
++	hapd_iface->radar_background.channel = -1;
+ 
+ 	return hapd_iface;
+ }

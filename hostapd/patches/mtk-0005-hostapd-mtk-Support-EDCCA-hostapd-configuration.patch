@@ -322,7 +322,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  hostapd_get_oper_chwidth(struct hostapd_config *conf)
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1456,3 +1456,31 @@ int hostapd_remove_pmkid(struct hostapd_
+@@ -1457,3 +1457,31 @@ int hostapd_remove_pmkid(struct hostapd_
  
  	return hostapd_drv_remove_pmkid(hapd, &params);
  }
