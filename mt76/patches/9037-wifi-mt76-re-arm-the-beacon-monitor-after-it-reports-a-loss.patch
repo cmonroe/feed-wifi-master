@@ -1,0 +1,69 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 09:40:54 -0700
+Subject: [PATCH] wifi: mt76: re-arm the beacon monitor after it reports a loss
+
+The driver monitors beacons for a station link itself. At each
+periodic check, it compares the time of the last beacon with the loss
+limit. A report does not restart the limit. While beacons stay absent,
+every check after the limit reports the loss again. mac80211 sends a
+connection quality event for each report. It also starts a new probe
+when no earlier probe is in progress.
+
+Restart the limit when a link reports a loss; each link of a
+multi-link station keeps its own limit. A link without beacons then
+reports once per limit, close to the rate of the mac80211 beacon
+timer. While a scan runs on any band, the check neither reports nor
+restarts the limit. mac80211 drops a report during a scan and runs no
+connection timer for this driver. The first check after an on-channel
+scan or a scan of another band thus reports at once if the limit
+passed. A dead AP still fails a later probe and causes a disconnect.
+
+Fixes: d915a31bbd21 ("wifi: mt76: add per-link beacon monitoring for MLO")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mac80211.c |   29 ++++++++++++++++++++---------
+ 1 file changed, 20 insertions(+), 9 deletions(-)
+
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -2391,20 +2391,31 @@ static void mt76_beacon_mon_iter(void *d
+ 		if (mt76_vif_link_phy(mlink) != phy)
+ 			continue;
+ 
+-		if (time_after(jiffies,
+-			       READ_ONCE(mlink->beacon_mon_last) +
+-			       MT76_BEACON_MON_MAX_MISS * mlink->beacon_mon_interval))
+-			ieee80211_beacon_loss(vif);
++		if (!time_after(jiffies,
++				READ_ONCE(mlink->beacon_mon_last) +
++				MT76_BEACON_MON_MAX_MISS * mlink->beacon_mon_interval))
++			continue;
++
++		WRITE_ONCE(mlink->beacon_mon_last, jiffies);
++		ieee80211_beacon_loss(vif);
+ 	}
+ }
+ 
+ void mt76_beacon_mon_check(struct mt76_phy *phy)
+ {
+-	if (phy->offchannel)
+-		return;
++	struct mt76_dev *dev = phy->dev;
+ 
+-	ieee80211_iterate_active_interfaces_atomic(phy->hw,
+-		IEEE80211_IFACE_ITER_RESUME_ALL,
+-		mt76_beacon_mon_iter, phy);
++	/* mac80211 drops a beacon loss report while it scans and does not
++	 * repeat it for this driver, so the check waits and keeps the
++	 * limit. The mutex orders the check after a scan completion, which
++	 * queues the mac80211 work that ends the scan before the work that
++	 * takes the report.
++	 */
++	mutex_lock(&dev->mutex);
++	if (!phy->offchannel && !dev->scan.req)
++		ieee80211_iterate_active_interfaces_atomic(phy->hw,
++			IEEE80211_IFACE_ITER_RESUME_ALL,
++			mt76_beacon_mon_iter, phy);
++	mutex_unlock(&dev->mutex);
+ }
+ EXPORT_SYMBOL_GPL(mt76_beacon_mon_check);

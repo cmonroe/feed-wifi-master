@@ -1,0 +1,31 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 06:32:33 -0700
+Subject: [PATCH] wifi: mt76: raise the beacon loss limit to 40 intervals
+
+The driver monitors beacons for a station link itself. It reports
+beacon loss after 7 missed beacon intervals, about 0.7 s at 100 TU.
+mac80211 does not run its own beacon timer for a driver that monitors
+the connection. Thus the raised mac80211 beacon loss count of this
+build has no effect on a chip that uses the driver monitor.
+
+A station link now reports beacon loss after 40 missed beacon
+intervals, about 4 s at 100 TU. The limit matches the beacon loss
+count that the local mac80211 package sets. A station link then has
+the same tolerance whether mac80211 or the driver monitors beacons.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt76.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/mt76.h
++++ b/mt76.h
+@@ -425,7 +425,7 @@ enum mt76_wcid_flags {
+ };
+ 
+ #define MT76_N_WCIDS 1088
+-#define MT76_BEACON_MON_MAX_MISS	7
++#define MT76_BEACON_MON_MAX_MISS	40
+ 
+ /* stored in ieee80211_tx_info::hw_queue */
+ #define MT_TX_HW_QUEUE_PHY		GENMASK(3, 2)
