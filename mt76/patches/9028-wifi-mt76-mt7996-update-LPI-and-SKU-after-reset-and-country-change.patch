@@ -1,0 +1,95 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 10:47:27 -0700
+Subject: [PATCH] wifi: mt76: mt7996: update LPI and SKU after reset and country change
+
+hostapd sends the 6 GHz LPI setting through the txpower vendor
+command only when it sets up the interface. A full reset reloads the
+firmware, which then runs without the LPI setting. A country change
+leaves the PSD limit flag and the SKU tables of the old country in
+the firmware, because the driver recomputes the limits but uploads
+neither.
+
+Send the LPI command again after the firmware reload for a radio
+with LPI enabled. On a country change, send it again for such a
+radio. For every running radio, also send the SKU and backoff limit
+controls and upload the SKU tables, because the device tree selects
+the power limits by country and region. After a full reset the SKU
+tables follow when mac80211 restores the channel context.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/init.c |   34 ++++++++++++++++++++++++++++++++++
+ mt7996/mac.c  |   12 ++++++++++++
+ 2 files changed, 46 insertions(+)
+
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -499,6 +499,29 @@ void mt7996_apply_edcca_limits(struct mt
+ 			 "failed to set EDCCA threshold: %d\n", ret);
+ }
+ 
++static void mt7996_regd_txpower_update(struct mt7996_phy *phy)
++{
++	struct mt7996_dev *dev = phy->dev;
++	int ret;
++
++	if (phy->mt76->lpi_psd) {
++		ret = mt7996_mcu_set_lpi_psd(phy, phy->mt76->lpi_psd);
++		if (ret)
++			dev_warn(dev->mt76.dev, "failed to set LPI: %d\n", ret);
++	}
++
++	/* the power limits of the new country decide sku_path_en */
++	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
++					   dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
++	if (!ret)
++		ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL,
++						   dev->dbg.sku_disable ? 0 : phy->sku_path_en);
++	if (!ret)
++		ret = mt7996_mcu_set_txpower_sku(phy, mt7996_get_txpower_setting(phy));
++	if (ret)
++		dev_warn(dev->mt76.dev, "failed to update the SKU tables: %d\n", ret);
++}
++
+ static void
+ mt7996_regd_notifier(struct wiphy *wiphy,
+ 		     struct regulatory_request *request)
+@@ -529,6 +552,17 @@ mt7996_regd_notifier(struct wiphy *wiphy
+ 		mutex_unlock(&dev->mt76.mutex);
+ 		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
+ 		mt7996_dfs_init_radar_detector(phy);
++
++		/* psd_limit of the LPI command depends on the country, and the
++		 * device tree selects the power limits by country and region
++		 */
++		if (!changed)
++			continue;
++
++		mutex_lock(&dev->mt76.mutex);
++		if (test_bit(MT76_STATE_RUNNING, &phy->mt76->state))
++			mt7996_regd_txpower_update(phy);
++		mutex_unlock(&dev->mt76.mutex);
+ 	}
+ }
+ 
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2270,6 +2270,18 @@ mt7996_mac_restart(struct mt7996_dev *de
+ 		ret = mt7996_run(phy);
+ 		if (ret)
+ 			goto out;
++
++		/* hostapd sends the LPI setting only when it sets up the
++		 * interface; the SKU tables follow when mac80211 restores
++		 * the channel context
++		 */
++		if (phy->mt76->lpi_psd) {
++			int err = mt7996_mcu_set_lpi_psd(phy, phy->mt76->lpi_psd);
++
++			if (err)
++				dev_warn(dev->mt76.dev, "failed to set LPI: %d\n",
++					 err);
++		}
+ 	}
+ 
+ out:

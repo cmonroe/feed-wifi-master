@@ -1,0 +1,56 @@
+From: Shayne Chen <shayne.chen@mediatek.com>
+Date: Mon, 2 Mar 2026 17:34:38 +0800
+Subject: [PATCH] wifi: mt76: mt7996: use EDCCA ETSI 2023 and FCC on all bands
+
+The driver selects the EDCCA standard of the FCC and ETSI regions only
+on 6 GHz, so 2.4 and 5 GHz run with the default standard in those
+regions. MediaTek deprecates the original ETSI standard and replaces
+it with ETSI 2023.
+
+Select FCC and ETSI 2023 on all bands.
+
+Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mtk_mcu.c |    8 ++------
+ mt7996/mtk_mcu.h |    3 ++-
+ 2 files changed, 4 insertions(+), 7 deletions(-)
+
+--- a/mt7996/mtk_mcu.c
++++ b/mt7996/mtk_mcu.c
+@@ -63,8 +63,6 @@ int mt7996_mcu_muru_dbg_info(struct mt79
+ int mt7996_mcu_edcca_enable(struct mt7996_phy *phy, bool enable)
+ {
+ 	struct mt7996_dev *dev = phy->dev;
+-	struct cfg80211_chan_def *chandef = &phy->mt76->chandef;
+-	enum nl80211_band band = chandef->chan->band;
+ 	struct {
+ 		u8 band_idx;
+ 		u8 _rsv[3];
+@@ -87,12 +85,10 @@ int mt7996_mcu_edcca_enable(struct mt799
+ 		req.std = EDCCA_JAPAN;
+ 		break;
+ 	case NL80211_DFS_FCC:
+-		if (band == NL80211_BAND_6GHZ)
+-			req.std = EDCCA_FCC;
++		req.std = EDCCA_FCC;
+ 		break;
+ 	case NL80211_DFS_ETSI:
+-		if (band == NL80211_BAND_6GHZ)
+-			req.std = EDCCA_ETSI;
++		req.std = EDCCA_ETSI_2023;
+ 		break;
+ 	default:
+ 		break;
+--- a/mt7996/mtk_mcu.h
++++ b/mt7996/mtk_mcu.h
+@@ -26,7 +26,8 @@ enum {
+ 	EDCCA_DEFAULT = 0,
+ 	EDCCA_FCC = 1,
+ 	EDCCA_ETSI = 2,
+-	EDCCA_JAPAN = 3
++	EDCCA_JAPAN = 3,
++	EDCCA_ETSI_2023 = 4,
+ };
+ 
+ #endif

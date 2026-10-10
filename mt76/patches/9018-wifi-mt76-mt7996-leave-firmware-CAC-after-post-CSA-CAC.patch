@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1223,7 +1223,10 @@ mt7996_post_channel_switch(struct ieee80
+@@ -1220,7 +1220,10 @@ mt7996_post_channel_switch(struct ieee80
  out:
  	mutex_unlock(&dev->mt76.mutex);
  

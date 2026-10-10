@@ -246,7 +246,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	     !rxd->seq) &&
  	     !(rxd->eid == MCU_CMD_EXT_CID &&
  	       rxd->ext_eid == MCU_EXT_EVENT_WA_TX_STAT))
-@@ -5032,3 +5087,16 @@ int mt7915_mcu_thermal_debug(struct mt79
+@@ -5033,3 +5088,16 @@ int mt7915_mcu_thermal_debug(struct mt79
  	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD(THERMAL_DEBUG), &req,
  				 sizeof(req), true);
  }

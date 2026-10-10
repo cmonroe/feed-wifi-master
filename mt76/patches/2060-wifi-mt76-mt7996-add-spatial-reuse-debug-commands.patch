@@ -69,7 +69,7 @@ environment can SR Tx or not.
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -507,6 +507,11 @@ struct mt7996_phy {
+@@ -520,6 +520,11 @@ struct mt7996_phy {
  	bool sku_limit_en;
  	bool sku_path_en;
  
@@ -81,7 +81,7 @@ environment can SR Tx or not.
  	u8 pp_mode;
  	u16 punct_bitmap;
  
-@@ -1135,6 +1140,8 @@ enum edcca_bw_id {
+@@ -1142,6 +1147,8 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
@@ -197,7 +197,7 @@ environment can SR Tx or not.
  	return 0;
 --- a/mt7996/mtk_mcu.c
 +++ b/mt7996/mtk_mcu.c
-@@ -146,4 +146,135 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
+@@ -147,4 +147,135 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
  
  	return 0;
  }
@@ -335,8 +335,8 @@ environment can SR Tx or not.
  #endif
 --- a/mt7996/mtk_mcu.h
 +++ b/mt7996/mtk_mcu.h
-@@ -29,6 +29,62 @@ enum {
- 	EDCCA_JAPAN = 3
+@@ -30,6 +30,62 @@ enum {
+ 	EDCCA_ETSI_2023 = 4,
  };
  
 +enum {

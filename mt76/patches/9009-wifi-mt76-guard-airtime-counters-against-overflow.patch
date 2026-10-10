@@ -295,7 +295,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (flag = 0; flag < NUM_MT76_WCID_FLAGS; flag++) {
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2621,11 +2621,15 @@ static void mt7996_link_sta_statistics(s
+@@ -2623,11 +2623,15 @@ static void mt7996_link_sta_statistics(s
  	link_sinfo->fcs_err_count = stats->rx_fcs_err;
  	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_FCS_ERROR_COUNT);
  
@@ -418,7 +418,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT7996_RESET_TIMEOUT		(30 * HZ)
  
  #define MT7996_TX_RING_SIZE		2048
-@@ -496,6 +498,7 @@ struct mt7996_phy {
+@@ -510,6 +512,7 @@ struct mt7996_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -513,11 +513,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -456,6 +456,7 @@ mt7996_init_wiphy_band(struct ieee80211_
- 	phy->slottime = 9;
+@@ -457,6 +457,7 @@ mt7996_init_wiphy_band(struct ieee80211_
  	phy->beacon_rate = -1;
+ 	phy->bss_txpower = INT_MIN;
  	phy->rxfilter = MT_WF_RFCR_DROP_OTHER_UC;
 +	phy->chan_mib_last_poll = jiffies;
+ 	memset(phy->user_edcca_threshold, MT7996_EDCCA_THRESHOLD_KEEP,
+ 	       sizeof(phy->user_edcca_threshold));
  
- 	if (phy->mt76->cap.has_2ghz) {
- 		phy->mt76->sband_2g.sband.ht_cap.cap |=

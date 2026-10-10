@@ -7,15 +7,25 @@ nodes using edcca-threshold-bw{20,40,80,160} properties. Thresholds are
 applied on regulatory domain change and preserve firmware defaults for any
 unspecified bandwidths.
 
+One step applies the device tree limits and the thresholds that
+hostapd sets through the vendor command, after each channel set on the
+operating channel, after a full reset and on a regulatory change. A
+threshold from hostapd takes precedence over the device tree. An EDCCA
+disable from hostapd stays in force, because the device tree step
+would otherwise enable EDCCA again. The step also sends an EDCCA
+enable from hostapd again. The enable carries the EDCCA standard of
+the region, which a full reset or a country change replaces.
+
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- eeprom.c        |   54 ++++++++++++++++++++++++++++++++++++++++++++++
- mt76.h          |    8 ++++++
- mt7996/init.c   |   50 ++++++++++++++++++++++++++++++++++++++++++
- mt7996/mac.c    |    4 ++-
- mt7996/main.c   |    3 ++
- mt7996/mt7996.h |    1
- 6 files changed, 119 insertions(+), 1 deletion(-)
+ eeprom.c        |   54 ++++++++++++++++++++++++++++++++++++++
+ mt76.h          |    8 +++++
+ mt7996/init.c   |   79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mac.c    |    4 ++
+ mt7996/main.c   |   18 +++++-------
+ mt7996/mt7996.h |    3 ++
+ mt7996/vendor.c |   10 ++++++-
+ 7 files changed, 164 insertions(+), 12 deletions(-)
 
 --- a/eeprom.c
 +++ b/eeprom.c
@@ -106,7 +116,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -423,6 +423,55 @@ void mt7996_init_txpower(struct mt7996_p
+@@ -423,6 +423,82 @@ void mt7996_init_txpower(struct mt7996_p
  		__mt7996_init_txpower(phy, &phy->mt76->sband_6g.sband);
  }
  
@@ -114,46 +124,73 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +{
 +	struct mt76_edcca_limits limits;
 +	struct ieee80211_channel *chan;
-+	u8 current_thresh[4];
++	u8 thresh[EDCCA_MAX_BW_NUM];
++	bool user_thresh;
 +	int ret, i;
++
++	lockdep_assert_held(&phy->dev->mt76.mutex);
 +
 +	if (!phy->mt76->chandef.chan) {
 +		dev_info(phy->dev->mt76.dev, "EDCCA: no channel defined\n");
 +		return;
 +	}
 +
++	/* the disable must also hold after a full reset, which reloads the
++	 * firmware with its default EDCCA state
++	 */
++	if (phy->user_edcca_disabled) {
++		ret = mt7996_mcu_edcca_enable(phy, false);
++		if (ret)
++			dev_warn(phy->dev->mt76.dev,
++				 "failed to disable EDCCA: %d\n", ret);
++		return;
++	}
++
 +	chan = phy->mt76->chandef.chan;
 +
 +	ret = mt76_get_edcca_limits(phy->mt76, chan, &limits);
-+	if (ret || !limits.valid_mask)
++	if (ret)
 +		return;
 +
-+	dev_dbg(phy->dev->mt76.dev,
-+		"EDCCA: band=%d valid_mask=0x%x threshold=[%02x,%02x,%02x,%02x]\n",
-+		chan->band, limits.valid_mask,
-+		limits.threshold[0], limits.threshold[1],
-+		limits.threshold[2], limits.threshold[3]);
++	user_thresh = !!memchr_inv(phy->user_edcca_threshold,
++				   MT7996_EDCCA_THRESHOLD_KEEP,
++				   sizeof(phy->user_edcca_threshold));
 +
-+	ret = mt7996_mcu_edcca_enable(phy, true);
-+	if (ret) {
-+		dev_warn(phy->dev->mt76.dev,
-+			 "failed to enable EDCCA: %d\n", ret);
++	if (limits.valid_mask)
++		dev_dbg(phy->dev->mt76.dev,
++			"EDCCA: band=%d valid_mask=0x%x threshold=[%02x,%02x,%02x,%02x]\n",
++			chan->band, limits.valid_mask,
++			limits.threshold[0], limits.threshold[1],
++			limits.threshold[2], limits.threshold[3]);
++
++	/* the enable command carries the EDCCA standard of the region, so
++	 * it must follow a country change and a full reset
++	 */
++	if (limits.valid_mask || phy->user_edcca_enabled) {
++		ret = mt7996_mcu_edcca_enable(phy, true);
++		if (ret) {
++			dev_warn(phy->dev->mt76.dev,
++				 "failed to enable EDCCA: %d\n", ret);
++			return;
++		}
++	}
++
++	if (!limits.valid_mask && !user_thresh)
 +		return;
++
++	/* a threshold that hostapd sets takes precedence over the device
++	 * tree
++	 */
++	for (i = 0; i < EDCCA_MAX_BW_NUM; i++) {
++		if (phy->user_edcca_threshold[i] != MT7996_EDCCA_THRESHOLD_KEEP)
++			thresh[i] = phy->user_edcca_threshold[i];
++		else if (limits.valid_mask & BIT(i))
++			thresh[i] = limits.threshold[i];
++		else
++			thresh[i] = MT7996_EDCCA_THRESHOLD_KEEP;
 +	}
 +
-+	ret = mt7996_mcu_edcca_threshold_ctrl(phy, current_thresh, false);
-+	if (ret) {
-+		dev_warn(phy->dev->mt76.dev,
-+			 "failed to read EDCCA threshold: %d\n", ret);
-+		return;
-+	}
-+
-+	for (i = 0; i < 4; i++) {
-+		if (limits.valid_mask & BIT(i))
-+			current_thresh[i] = limits.threshold[i];
-+	}
-+
-+	ret = mt7996_mcu_edcca_threshold_ctrl(phy, current_thresh, true);
++	ret = mt7996_mcu_edcca_threshold_ctrl(phy, thresh, true);
 +	if (ret)
 +		dev_warn(phy->dev->mt76.dev,
 +			 "failed to set EDCCA threshold: %d\n", ret);
@@ -162,11 +199,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
  mt7996_regd_notifier(struct wiphy *wiphy,
  		     struct regulatory_request *request)
-@@ -439,6 +488,7 @@ mt7996_regd_notifier(struct wiphy *wiphy
+@@ -438,7 +514,10 @@ mt7996_regd_notifier(struct wiphy *wiphy
+ 		if (dev->mt76.region == NL80211_DFS_UNSET)
  			mt7996_mcu_rdd_background_enable(phy, NULL);
  
++		mutex_lock(&dev->mt76.mutex);
  		mt7996_init_txpower(phy);
 +		mt7996_apply_edcca_limits(phy);
++		mutex_unlock(&dev->mt76.mutex);
  		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
  		mt7996_dfs_init_radar_detector(phy);
  	}
@@ -186,19 +226,54 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		goto out;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -727,6 +727,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -67,12 +67,15 @@ int mt7996_run(struct mt7996_phy *phy)
  	if (ret)
- 		goto out;
+ 		return ret;
  
-+	if (!mphy->offchannel && !test_bit(MT76_SCANNING, &mphy->state))
-+		mt7996_apply_edcca_limits(phy);
-+
- 	ret = mt7996_dfs_init_radar_detector(phy);
+-	/* hostapd sends the thresholds only when it sets up the interface,
+-	 * and a full reset restarts the radio without hostapd
++	/* hostapd sends the EDCCA settings only when it sets up the
++	 * interface, and a full reset restarts the radio without hostapd
+ 	 */
+-	if (!dev->recovery.hw_full_reset)
++	if (!dev->recovery.hw_full_reset) {
+ 		memset(phy->user_edcca_threshold, MT7996_EDCCA_THRESHOLD_KEEP,
+ 		       sizeof(phy->user_edcca_threshold));
++		phy->user_edcca_enabled = false;
++		phy->user_edcca_disabled = false;
++	}
+ 
+ 	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
+ 
+@@ -724,14 +727,9 @@ int mt7996_set_channel(struct mt76_phy *
  	mt7996_mac_cca_stats_reset(phy);
  
+ 	mt7996_mac_reset_counters(phy);
+-#ifdef CONFIG_MTK_VENDOR
+ 	/* the firmware replaces the thresholds when it sets a channel */
+-	if (!mphy->offchannel &&
+-	    memchr_inv(phy->user_edcca_threshold, MT7996_EDCCA_THRESHOLD_KEEP,
+-		       sizeof(phy->user_edcca_threshold)))
+-		mt7996_mcu_edcca_threshold_ctrl(phy, phy->user_edcca_threshold,
+-						true);
+-#endif
++	if (!mphy->offchannel)
++		mt7996_apply_edcca_limits(phy);
+ 	phy->noise = 0;
+ 	if (!mphy->offchannel)
+ 		mt7996_mac_update_beacons(phy);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -851,6 +851,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -533,6 +533,8 @@ struct mt7996_phy {
+ 	u16 punct_bitmap;
+ 
+ 	u8 user_edcca_threshold[EDCCA_MAX_BW_NUM];
++	bool user_edcca_enabled;
++	bool user_edcca_disabled;
+ 
+ 	struct mt7996_scs_ctrl scs_ctrl;
+ };
+@@ -867,6 +869,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);
@@ -206,3 +281,22 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_txbf_init(struct mt7996_dev *dev);
  void mt7996_reset(struct mt7996_dev *dev);
  int mt7996_run(struct mt7996_phy *phy);
+--- a/mt7996/vendor.c
++++ b/mt7996/vendor.c
+@@ -113,7 +113,15 @@ static int mt7996_vendor_edcca_ctrl(stru
+ 
+ 		edcca_value[0] = nla_get_u8(tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL]);
+ 
+-		return mt7996_mcu_edcca_enable(phy, !!edcca_value[0]);
++		mutex_lock(&dev->mt76.mutex);
++		err = mt7996_mcu_edcca_enable(phy, !!edcca_value[0]);
++		if (!err) {
++			phy->user_edcca_enabled = !!edcca_value[0];
++			phy->user_edcca_disabled = !edcca_value[0];
++		}
++		mutex_unlock(&dev->mt76.mutex);
++
++		return err;
+ 	case EDCCA_CTRL_SET_THRES:
+ 		if (!tb[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL] ||
+ 		    !tb[MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL] ||

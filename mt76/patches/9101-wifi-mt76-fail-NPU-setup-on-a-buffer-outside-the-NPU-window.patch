@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	q->entry = devm_kzalloc(dev->dev, size, GFP_KERNEL);
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1973,6 +1973,21 @@ static inline int mt76_npu_get_msg(struc
+@@ -1974,6 +1974,21 @@ static inline int mt76_npu_get_msg(struc
  				       gfp);
  }
  
@@ -65,7 +65,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_NL80211_TESTMODE
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1068,7 +1068,7 @@ static int mt7996_wed_rro_init(struct mt
+@@ -1134,7 +1134,7 @@ static int mt7996_wed_rro_init(struct mt
  	u32 val = FIELD_PREP(WED_RRO_ADDR_SIGNATURE_MASK, 0xff);
  	struct mt7996_wed_rro_addr *addr;
  	void *ptr;
@@ -74,7 +74,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (!mt7996_has_hwrro(dev))
  		return 0;
-@@ -1107,10 +1107,17 @@ static int mt7996_wed_rro_init(struct mt
+@@ -1173,10 +1173,17 @@ static int mt7996_wed_rro_init(struct mt
  		}
  
  		if (is_mt7996(&dev->mt76) &&
@@ -93,7 +93,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  #ifdef CONFIG_NET_MEDIATEK_SOC_WED
  		if (mtk_wed_device_active(&dev->mt76.mmio.wed) &&
-@@ -1172,9 +1179,16 @@ static int mt7996_wed_rro_init(struct mt
+@@ -1238,9 +1245,16 @@ static int mt7996_wed_rro_init(struct mt
  		addr++;
  	}
  

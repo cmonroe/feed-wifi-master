@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (dev->rdd2_phy && dev->rdd2_phy != phy) {
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -479,10 +479,19 @@ mt7996_regd_notifier(struct wiphy *wiphy
+@@ -506,10 +506,19 @@ mt7996_regd_notifier(struct wiphy *wiphy
  	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	struct mt7996_phy *phy;
@@ -113,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ieee80211_iterate_active_interfaces_atomic(hw,
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -3274,7 +3274,7 @@ mt7996_set_radar_background(struct ieee8
+@@ -3271,7 +3271,7 @@ mt7996_set_radar_background(struct ieee8
  
  	mutex_lock(&dev->mt76.mutex);
  

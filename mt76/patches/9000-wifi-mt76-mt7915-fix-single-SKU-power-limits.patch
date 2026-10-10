@@ -2,24 +2,29 @@ From: Chad Monroe <chad@monroe.io>
 Date: Tue, 17 Sep 2024 04:43:58 -0700
 Subject: [PATCH] wifi: mt76: mt7915: fix single SKU power limits
 
-* report max power value supported by calibration to mac80211
-  as power tables will limit it as needed. this makes txpower
-  config a cap/max requested value
-* add Canada to the list of PSD limited countries
-* re-apply single SKU limits after SER event
-* store the 6 GHz LPI flags (lpi_psd/lpi_bcn_enhance) in mt76_phy
-  instead of mt76_dev and convert mt7915/connac2 users. prevents
-  a vendor command issued on one band from affecting the others
+The patch "wifi: mt76: mt7996: support txpower backoff table" widens
+the path power limits for mt799x, so the other chips parse the path
+tables with their own smaller sizes again. The path table is on only
+if the device tree has a path entry for a channel. In PSD countries
+the driver, not the firmware, compensates the OFDM limits with the
+limits of the channel width, and Canada joins the list of PSD
+countries.
+
+The driver sends the single SKU tables each time it enables the SKU
+limits: at radio start, after a full reset, for the SKU index vendor
+command and in testmode. The 6 GHz LPI flags move from the device to
+the phy, so a vendor command on one band does not change the other
+bands.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- eeprom.c          |   51 +++++++++++++++++++++++++-------------------
- mt76.h            |    9 ++++++-
- mt76_connac_mac.c |    2 -
- mt7915/init.c     |    6 ++---
- mt7915/mcu.c      |   28 +++++++++++++++++++-----
- mt7915/vendor.c   |    9 ++++++-
- 6 files changed, 71 insertions(+), 34 deletions(-)
+ eeprom.c          |   51 ++++++++++++++++++++++++++++++---------------------
+ mt76.h            |    9 +++++++--
+ mt76_connac_mac.c |    2 +-
+ mt7915/init.c     |    6 +++---
+ mt7915/mcu.c      |   29 ++++++++++++++++++++++++-----
+ mt7915/vendor.c   |    9 +++++++--
+ 6 files changed, 72 insertions(+), 34 deletions(-)
 
 --- a/eeprom.c
 +++ b/eeprom.c
@@ -136,7 +141,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -3564,7 +3564,13 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3564,6 +3564,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	struct mt76_power_limits *la;
  	struct sk_buff *skb;
  
@@ -145,12 +150,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		mt76_tx_power_path_delta(hweight16(mphy->chainmask)));
 +
  	tx_power = mt76_get_power_bound(mphy, hw->conf.power_level);
-+	//tx_power += mt76_tx_power_path_delta(hweight16(mphy->chainmask));
-+
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
- 		if (!la)
-@@ -3577,6 +3583,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3577,6 +3581,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -161,18 +163,21 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(hdr) + MT7915_SKU_RATE_NUM);
  	if (!skb) {
-@@ -3587,8 +3597,8 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3587,8 +3595,11 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la->cck, len[SKU_CCK]);
  
 -	if (phy->mt76->cap.has_6ghz && mphy->dev->lpi_psd &&
 -	    !mt7915_get_psd_country(dev->mt76.alpha2)) {
++	/* In PSD countries the driver compensates, not the firmware: the
++	 * OFDM slot gets the limits of the row for the channel width
++	 */
 +	if (phy->mt76->cap.has_6ghz && mphy->lpi_psd &&
 +	    mt7915_get_psd_country(dev->mt76.alpha2)) {
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->mcs[0], len[SKU_OFDM]);
-@@ -3641,7 +3651,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3641,7 +3652,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la->path.cck, 4);
  
@@ -181,7 +186,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->path.ru[3], 4);
-@@ -3771,6 +3781,10 @@ int mt7915_mcu_set_lpi(struct mt7915_phy
+@@ -3771,6 +3782,10 @@ int mt7915_mcu_set_lpi(struct mt7915_phy
  		.enable = en,
  		.psd_limit = en ? mt7915_get_psd_country(mdev->alpha2) : 0,
  	};
@@ -192,7 +197,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return mt76_mcu_send_msg(mdev, MCU_EXT_CMD(LPI_CTRL), &req,
  				 sizeof(req), false);
  }
-@@ -3810,7 +3824,11 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3810,7 +3825,11 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	};
  	int ret;
  

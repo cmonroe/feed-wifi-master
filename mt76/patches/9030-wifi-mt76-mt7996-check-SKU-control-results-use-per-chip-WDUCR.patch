@@ -1,0 +1,67 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 10:36:46 -0700
+Subject: [PATCH] wifi: mt76: mt7996: check SKU control results, use per-chip WDUCR
+
+The radio start sends the SKU limit control and then the backoff
+limit control, but checks only the result of the second command.
+Upstream 5a9b590919a6 ("wifi: mt76: mt7996: enable the SKU power
+limit table") returns the error of the first command, and the port
+of the debug tools lost that check. Return each error.
+
+The WTBL debugfs readers write the LMAC group to a fixed WDUCR
+address. Since a8def214d736 ("wifi: mt76: mt7996: rework register
+mapping for mt7990"), MT7990 has WDUCR at another offset, so on that
+chip the readers write the group to another register and dump the
+wrong entry for a WLAN index of 128 or more. Use the per-chip
+register.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c        |    5 +++++
+ mt7996/mtk_debugfs.c |    8 ++++----
+ 2 files changed, 9 insertions(+), 4 deletions(-)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -55,12 +55,17 @@ int mt7996_run(struct mt7996_phy *phy)
+ 
+ 	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
+ 						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
++	if (ret)
++		return ret;
+ 
+ 	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL,
+ 						dev->dbg.sku_disable ? 0 : phy->sku_path_en);
+ #else
+ 	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
+ 						phy->sku_limit_en);
++	if (ret)
++		return ret;
++
+ 	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL,
+ 						phy->sku_path_en);
+ #endif
+--- a/mt7996/mtk_debugfs.c
++++ b/mt7996/mtk_debugfs.c
+@@ -875,8 +875,8 @@ mt7996_wtbl_read_raw(struct mt7996_dev *
+ 		return 0xFF;
+ 
+ 	if (type == WTBL_TYPE_LMAC) {
+-		mt76_wr(dev, MT_DBG_WTBLON_TOP_WDUCR_ADDR,
+-			FIELD_PREP(MT_DBG_WTBLON_TOP_WDUCR_GROUP, (idx >> 7)));
++		mt76_wr(dev, MT_WTBLON_TOP_WDUCR,
++			FIELD_PREP(MT_WTBLON_TOP_WDUCR_GROUP, (idx >> 7)));
+ 		src = LWTBL_IDX2BASE(idx, start_dw);
+ 	} else if (type == WTBL_TYPE_UMAC) {
+ 		mt76_wr(dev,  MT_DBG_UWTBL_TOP_WDUCR_ADDR,
+@@ -2256,8 +2256,8 @@ static int mt7996_wtbl_read(struct seq_f
+ 				 LWTBL_LEN_IN_DW, lwtbl);
+ 	seq_printf(s, "Dump WTBL info of WLAN_IDX:%d\n", dev->wlan_idx);
+ 	seq_printf(s, "LMAC WTBL Addr: group:0x%x=0x%x addr: 0x%lx\n",
+-		   MT_DBG_WTBLON_TOP_WDUCR_ADDR,
+-		   mt76_rr(dev, MT_DBG_WTBLON_TOP_WDUCR_ADDR),
++		   MT_WTBLON_TOP_WDUCR,
++		   mt76_rr(dev, MT_WTBLON_TOP_WDUCR),
+ 		   LWTBL_IDX2BASE(dev->wlan_idx, 0));
+ 	for (x = 0; x < LWTBL_LEN_IN_DW; x++) {
+ 		seq_printf(s, "DW%02d: %02x %02x %02x %02x\n",

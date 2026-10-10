@@ -1,0 +1,31 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 10:47:52 -0700
+Subject: [PATCH] wifi: mt76: mt7996: program the beacon rate again after a full reset
+
+The driver caches the rate of the beacon rate table and skips the
+table command when the rate does not change. A full reset reloads the
+firmware, which drops the table, but the cache keeps its value. When
+mac80211 restores the beacons, the driver does not program the table,
+and the beacons use the entry that the reloaded firmware has by
+default. The 6 GHz LPI beacon rate is in the same table.
+
+Clear the cache in the full reset, so that the beacon restore programs
+the table again.
+
+Fixes: af41374a3b8e ("wifi: mt76: connac: add beacon duplicate TX mode support for mt7996")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mac.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2377,6 +2377,8 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 	mt7996_for_each_phy(dev, phy) {
+ 		phy->omac_mask = 0;
+ 		phy->csa_quiet_links = 0;
++		/* the reloaded firmware has no beacon rate table */
++		phy->beacon_rate = -1;
+ 		mt76_phy_tx_unblock(phy->mt76, MT76_TX_BLOCK_CSA);
+ 	}
+ 	dev->mld_idx_mask = 0;
