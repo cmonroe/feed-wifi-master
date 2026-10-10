@@ -11,39 +11,72 @@ beaconing on the 20 MHz scan channel while mac80211 and hostapd still
 believe the configured chandef is active. Add mt76_channel_restore()
 and call it once recovery completes.
 
+The restore also runs when the scan dwelt on the operating channel,
+because radar detection stays stopped after that dwell, and it
+retries once when the firmware rejects the channel.
+
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- channel.c    |   24 ++++++++++++++++++++++++
+ channel.c    |   53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
  mt76.h       |    1 +
  mt7996/mac.c |    6 ++++++
- 3 files changed, 31 insertions(+)
+ 3 files changed, 60 insertions(+)
 
 --- a/channel.c
 +++ b/channel.c
-@@ -380,6 +380,30 @@ void mt76_abort_roc(struct mt76_phy *phy
+@@ -377,6 +377,59 @@ void mt76_abort_roc(struct mt76_phy *phy
  }
  EXPORT_SYMBOL_GPL(mt76_abort_roc);
  
 +/* Scan/ROC completion skips the operating channel restore while
-+ * MT76_MCU_RESET is set (the MCU cannot be messaged during recovery);
-+ * drivers call this after recovery to re-program a phy left parked on
-+ * an off-channel dwell.
++ * MT76_MCU_RESET is set (the MCU cannot be messaged during recovery)
++ * and clears phy->offchannel, so drivers call this after recovery.
++ * A chandef that differs from main_chandef shows a phy left on an
++ * off-channel dwell. A scan dwell on the operating channel leaves the
++ * chandef unchanged but radar detection stopped, which shows as a
++ * dfs_state that no longer matches the phy. Phys without radar
++ * detection keep MT_DFS_STATE_UNKNOWN and need no restore for it.
++ * A scan or ROC that started after the recovery owns the channel, and
++ * its completion re-programs main_chandef.
 + */
 +void mt76_channel_restore(struct mt76_phy *phy)
 +{
++	struct cfg80211_chan_def prev_chandef;
 +	struct mt76_dev *dev = phy->dev;
 +	bool offchannel;
++	int i, ret;
 +
 +	mutex_lock(&dev->mutex);
-+	offchannel = phy->offchannel;
-+	if (phy->main_chandef.chan &&
-+	    !test_bit(MT76_MCU_RESET, &dev->phy.state) &&
-+	    (offchannel ||
-+	     !cfg80211_chandef_identical(&phy->chandef, &phy->main_chandef))) {
-+		__mt76_set_channel(phy, &phy->main_chandef, false);
-+		if (offchannel)
-+			mt76_offchannel_notify(phy, false);
++	if (!phy->main_chandef.chan ||
++	    test_bit(MT76_MCU_RESET, &dev->phy.state) ||
++	    phy->roc_vif || mt76_phy_scanning(phy))
++		goto out;
++
++	offchannel = !cfg80211_chandef_identical(&phy->chandef,
++						 &phy->main_chandef);
++	if (!offchannel &&
++	    (phy->dfs_state == MT_DFS_STATE_UNKNOWN ||
++	     phy->dfs_state == mt76_phy_dfs_state(phy)))
++		goto out;
++
++	for (i = 0; i < 2; i++) {
++		prev_chandef = phy->chandef;
++		ret = __mt76_set_channel(phy, &phy->main_chandef, false);
++		if (!ret)
++			break;
++
++		/* __mt76_set_channel() commits phy->chandef before the MCU
++		 * call; put the old one back so that the phy still shows as
++		 * off its operating channel
++		 */
++		phy->chandef = prev_chandef;
++		dev_err(dev->dev, "band %d: operating channel restore failed: %d\n",
++			phy->band_idx, ret);
 +	}
++
++	if (offchannel && !ret)
++		mt76_offchannel_notify(phy, false);
++out:
 +	mutex_unlock(&dev->mutex);
 +}
 +EXPORT_SYMBOL_GPL(mt76_channel_restore);
@@ -53,7 +86,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   enum ieee80211_roc_type type)
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1866,6 +1866,7 @@ void mt76_abort_scan(struct mt76_dev *de
+@@ -1874,6 +1874,7 @@ void mt76_abort_scan(struct mt76_dev *de
  void mt76_roc_complete_work(struct work_struct *work);
  void mt76_roc_complete(struct mt76_phy *phy);
  void mt76_abort_roc(struct mt76_phy *phy);
@@ -63,7 +96,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt76_put_vif_phy_link(struct mt76_phy *phy, struct ieee80211_vif *vif,
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2745,6 +2745,12 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2746,6 +2746,12 @@ void mt7996_mac_reset_work(struct work_s
  
  	mutex_unlock(&dev->mt76.mutex);
  
