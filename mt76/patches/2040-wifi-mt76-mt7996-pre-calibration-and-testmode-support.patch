@@ -495,7 +495,7 @@ Squash of the following MediaTek commits:
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1343,6 +1343,12 @@ static int mt7996_init_hardware(struct m
+@@ -1344,6 +1344,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  

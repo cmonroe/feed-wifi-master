@@ -1,0 +1,64 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 10:27:28 -0700
+Subject: [PATCH] wifi: mt76: mt7996: report the TX power of each link
+
+The TX power report read the phy of the default link for every link
+ID. Each link of an MLD has its own channel context, so every link
+reported the power of link 0, or, without link 0, the power of the
+last radio in the radio mask of the interface.
+
+Report the power of the phy of the requested link. A link without a
+channel context still reports the power of a radio in the radio mask.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/main.c |   22 +++++++++++++++++-----
+ 1 file changed, 17 insertions(+), 5 deletions(-)
+
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -917,11 +917,18 @@ static int
+ mt7996_get_txpower(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+ 		   unsigned int link_id, int *dbm)
+ {
+-	struct mt7996_vif *mvif = (struct mt7996_vif *)vif->drv_priv;
+-	struct mt7996_phy *phy = mt7996_vif_link_phy(&mvif->deflink);
+ 	struct mt7996_dev *dev = mt7996_hw_dev(hw);
++	struct mt7996_phy *phy = NULL;
++	struct mt7996_vif_link *link;
+ 	struct wireless_dev *wdev;
+ 	int n_chains, delta, i;
++	int ret = 0;
++
++	mutex_lock(&dev->mt76.mutex);
++
++	link = mt7996_vif_link(dev, vif, link_id);
++	if (link)
++		phy = mt7996_vif_link_phy(link);
+ 
+ 	if (!phy) {
+ 		wdev = ieee80211_vif_to_wdev(vif);
+@@ -929,15 +936,20 @@ mt7996_get_txpower(struct ieee80211_hw *
+ 			if (wdev->radio_mask & BIT(i))
+ 				phy = dev->radio_phy[i];
+ 
+-		if (!phy)
+-			return -EINVAL;
++		if (!phy) {
++			ret = -EINVAL;
++			goto out;
++		}
+ 	}
+ 
+ 	n_chains = hweight16(phy->mt76->chainmask);
+ 	delta = mt76_tx_power_path_delta(n_chains);
+ 	*dbm = DIV_ROUND_UP(phy->mt76->txpower_cur + delta, 2);
+ 
+-	return 0;
++out:
++	mutex_unlock(&dev->mt76.mutex);
++
++	return ret;
+ }
+ static u8
+ mt7996_get_rates_table(struct mt7996_phy *phy, struct ieee80211_bss_conf *conf,

@@ -1,0 +1,26 @@
+From: Shayne Chen <shayne.chen@mediatek.com>
+Date: Thu, 22 Jan 2026 23:10:52 +0800
+Subject: [PATCH] wifi: mt76: mt7996: raise the hardware A-MSDU limit to 31
+
+The station record limited hardware A-MSDU aggregation to 8
+subframes, below the hardware limit of 31 subframes for this chip
+family. Use the hardware limit. The A-MSDU length that the peer
+advertises still limits each aggregate.
+
+Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mcu.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -2024,7 +2024,7 @@ mt7996_mcu_sta_amsdu_tlv(struct mt7996_d
+ 
+ 	tlv = mt76_connac_mcu_add_tlv(skb, STA_REC_HW_AMSDU, sizeof(*amsdu));
+ 	amsdu = (struct sta_rec_amsdu *)tlv;
+-	amsdu->max_amsdu_num = 8;
++	amsdu->max_amsdu_num = 31;
+ 	amsdu->amsdu_en = true;
+ 	msta_link->wcid.amsdu = true;
+ 

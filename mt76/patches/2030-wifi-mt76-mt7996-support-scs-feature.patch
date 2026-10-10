@@ -33,7 +33,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TXPOWER = 0x2b,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1792,6 +1792,7 @@ int mt7996_register_device(struct mt7996
+@@ -1793,6 +1793,7 @@ int mt7996_register_device(struct mt7996
  	dev->mt76.phy.priv = &dev->phy;
  	INIT_WORK(&dev->rc_work, mt7996_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7996_mac_work);
@@ -92,7 +92,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6147,6 +6147,122 @@ int mt7996_mcu_set_sniffer_mode(struct m
+@@ -6163,6 +6163,122 @@ int mt7996_mcu_set_sniffer_mode(struct m
  				 sizeof(req), true);
  }
  

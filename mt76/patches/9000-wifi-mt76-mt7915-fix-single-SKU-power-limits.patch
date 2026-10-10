@@ -248,7 +248,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1109,8 +1111,6 @@ struct mt76_dev {
+@@ -1110,8 +1112,6 @@ struct mt76_dev {
  		bool beacon_received;
  	} scan;
  
@@ -257,7 +257,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool mgmt_pwr_enhance;
  
  #ifdef CONFIG_NL80211_TESTMODE
-@@ -1234,6 +1234,11 @@ struct mt76_mib_stats {
+@@ -1235,6 +1235,11 @@ struct mt76_mib_stats {
  	u32 ul_hetrig_4mu_cnt;
  };
  

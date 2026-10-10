@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1945,6 +1945,10 @@ void mt7996_unregister_device(struct mt7
+@@ -1946,6 +1946,10 @@ void mt7996_unregister_device(struct mt7
  	cancel_work_sync(&dev->rc_work);
  	mt7996_for_each_phy(dev, phy)
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6454,10 +6454,17 @@ void mt7996_mcu_scs_sta_poll(struct work
+@@ -6470,10 +6470,17 @@ void mt7996_mcu_scs_sta_poll(struct work
  		    !phy->scs_ctrl.scs_enable)
  			continue;
  
@@ -91,7 +91,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (mt7996_mcu_set_scs_stats(phy))
  			dev_err(dev->mt76.dev, "Failed to send scs mcu cmd\n");
  		phy->scs_ctrl.sta_min_rssi = 0;
-@@ -6489,7 +6496,8 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -6505,7 +6512,8 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  
  	phy->scs_ctrl.scs_enable = enable;
  

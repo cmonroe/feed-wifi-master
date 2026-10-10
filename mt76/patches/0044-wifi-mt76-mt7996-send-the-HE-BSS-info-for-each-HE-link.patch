@@ -1,0 +1,31 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 07 Oct 2026 10:24:44 -0700
+Subject: [PATCH] wifi: mt76: mt7996: send the HE BSS info for each HE link
+
+mac80211 keeps a separate configuration for each link of an MLD and
+sets HE support only there; the default configuration of the
+interface belongs to no link. The BSS info update tested HE support
+in the default configuration, so the firmware got no HE basic
+parameters (PE duration, TXOP RTS threshold, HE MCS and NSS limits)
+for any link of an MLD.
+
+Test the link that is updated. For a non-MLD interface the default
+configuration is the only link, so nothing changes there.
+
+Fixes: 807090b28661 ("wifi: mt76: mt7996: prepare mt7996_mcu_add_dev/bss_info for MLO support")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mcu.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -1379,7 +1379,7 @@ int mt7996_mcu_add_bss_info(struct mt799
+ 		mt7996_mcu_bss_txcmd_tlv(skb, true);
+ 		mt7996_mcu_bss_ifs_timing_tlv(skb, phy);
+ 
+-		if (vif->bss_conf.he_support)
++		if (link_conf->he_support)
+ 			mt7996_mcu_bss_he_tlv(skb, vif, link_conf, phy);
+ 
+ 		/* this tag is necessary no matter if the vif is MLD */

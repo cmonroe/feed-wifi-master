@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1084,15 +1084,15 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1096,15 +1096,15 @@ mt7996_link_info_changed(struct ieee8021
  	 * and then peer references bss_info_rfch to set bandwidth cap.
  	 */
  	if ((changed & BSS_CHANGED_BSSID && !is_zero_ether_addr(info->bssid)) ||

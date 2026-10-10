@@ -81,7 +81,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6803,6 +6803,85 @@ int mt7996_mcu_cp_support(struct mt7996_
+@@ -6819,6 +6819,85 @@ int mt7996_mcu_cp_support(struct mt7996_
  				 &cp_mode, sizeof(cp_mode), true);
  }
  

@@ -66,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	u32 rev;
  
-@@ -1533,6 +1534,28 @@ mt76_ac_to_tid(u8 ac)
+@@ -1534,6 +1535,28 @@ mt76_ac_to_tid(u8 ac)
  	return ac_to_tid[ac];
  }
  
