@@ -12,12 +12,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/usr/share/ucode/wifi/ap.uc
 +++ b/src/usr/share/ucode/wifi/ap.uc
-@@ -133,6 +133,8 @@ function iface_auth_type(config, band) {
+@@ -271,6 +271,8 @@ function iface_auth_type(config, band, e
  	switch(config.auth_type) {
  	case 'none':
  	case 'owe':
 +		/* allow VLAN configuration for open auth mode (OWRT-9051) */
 +		config.vlan_possible = 1;
- 		config.wps_possible = 1;
  		config.wps_state = 1;
  
+ 		append_string_vars(config, [ 'owe_transition_ssid' ]);

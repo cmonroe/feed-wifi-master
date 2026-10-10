@@ -11,7 +11,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/wifi/mac80211.uc
 +++ b/src/lib/wifi/mac80211.uc
-@@ -92,7 +92,6 @@ for (let phy_name, phy in board.wlan) {
+@@ -112,7 +112,6 @@ for (let phy_name, phy in board.wlan) {
  
  		let country, encryption, defaults, num_global_macaddr;
  		if (band_name == '6g') {

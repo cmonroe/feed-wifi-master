@@ -13,7 +13,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/netifd/wireless-device.uc
 +++ b/src/lib/netifd/wireless-device.uc
-@@ -389,11 +389,51 @@ function wdev_has_sta_vif(wdev)
+@@ -403,11 +403,51 @@ function wdev_has_sta_vif(wdev)
  	return false;
  }
  

@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/netifd/wireless.uc
 +++ b/src/lib/netifd/wireless.uc
-@@ -110,6 +110,36 @@ function update_config(new_devices, mlo_
+@@ -167,6 +167,36 @@ function update_config(new_devices, mlo_
  	}
  }
  
@@ -65,7 +65,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function config_init(uci)
  {
  	let config = uci.get_all("wireless");
-@@ -288,6 +318,12 @@ function config_init(uci)
+@@ -347,6 +377,12 @@ function config_init(uci)
  		}
  	}
  
@@ -109,7 +109,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			"default": "chanlist"
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -534,7 +534,7 @@ function generate(config) {
+@@ -532,7 +532,7 @@ function generate(config) {
  	else
  		set_default(config, 'enable_background_radar', false);
  

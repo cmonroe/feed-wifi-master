@@ -22,9 +22,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -16,6 +16,9 @@ const NL80211_EXT_FEATURE_RADAR_BACKGROU
- 
- const WLAN_CIPHER_SUITE_GCMP_256 = 0x000fac09;
+@@ -14,6 +14,9 @@ import * as fs from 'fs';
+ const NL80211_EXT_FEATURE_ENABLE_FTM_RESPONDER = 33;
+ const NL80211_EXT_FEATURE_RADAR_BACKGROUND = 61;
  
 +/* must match psd_country_list in mt76 mt7996_is_psd_country() */
 +const lpi_psd_countries = [ 'US', 'CA', 'KR', 'BR', 'CL', 'MY' ];
@@ -32,7 +32,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  let phy_features = {};
  let phy_capabilities = {};
  
-@@ -536,6 +539,11 @@ function generate(config) {
+@@ -534,6 +537,11 @@ function generate(config) {
  	if (config.acs_exclude_6ghz_non_psc)
  		append('acs_exclude_6ghz_non_psc', 1);
  

@@ -11,7 +11,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/wifi/mac80211.uc
 +++ b/src/lib/wifi/mac80211.uc
-@@ -64,8 +64,12 @@ for (let phy_name, phy in board.wlan) {
+@@ -84,8 +84,12 @@ for (let phy_name, phy in board.wlan) {
  		let width = band.max_width;
  		if (band_name == "2G")
  			width = 20;

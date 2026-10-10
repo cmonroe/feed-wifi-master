@@ -15,7 +15,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/wifi/mac80211.uc
 +++ b/src/lib/wifi/mac80211.uc
-@@ -18,8 +18,16 @@ function radio_exists(path, macaddr, phy
+@@ -38,8 +38,16 @@ function radio_exists(path, macaddr, phy
  	for (let name, s in config) {
  		if (s[".type"] != "wifi-device")
  			continue;

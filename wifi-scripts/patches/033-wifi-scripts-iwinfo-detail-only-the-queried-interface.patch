@@ -33,7 +33,7 @@ Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
 
 --- a/src/usr/bin/iwinfo
 +++ b/src/usr/bin/iwinfo
-@@ -139,6 +139,7 @@
+@@ -139,6 +139,7 @@ if (ARGV[0] == '-j') {
  }
  
  if (!length(ARGV)) {
@@ -41,7 +41,7 @@ Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
  	let info = iwinfo.info();
  	if (pretty)
  		print_info(info);
-@@ -177,6 +178,10 @@
+@@ -177,6 +178,10 @@ if (ARGV[0] == 'nl80211' && ARGV[1] == '
  	return 0;
  }
  
@@ -54,7 +54,7 @@ Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
  	for (let cmd, cb in commands)
 --- a/src/usr/share/ucode/iwinfo.uc
 +++ b/src/usr/share/ucode/iwinfo.uc
-@@ -119,26 +119,43 @@
+@@ -119,26 +119,43 @@ const iftypes = [
  
  export let ifaces = {};
  
@@ -104,7 +104,7 @@ Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
  	}
  
  	for (let radio, data in wireless_status)
-@@ -742,4 +759,3 @@
+@@ -742,4 +759,3 @@ export function scan(dev) {
  	return cells;
  };
  

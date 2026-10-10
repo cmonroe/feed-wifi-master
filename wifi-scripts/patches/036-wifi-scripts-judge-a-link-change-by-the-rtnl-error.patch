@@ -1,0 +1,84 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 16:50:57 -0700
+Subject: [PATCH] wifi-scripts: judge a link change by the rtnl error
+
+rtnl.request() returns null when the kernel acknowledges a request
+that has no reply data, such as RTM_SETLINK. wdev_set_up() and
+netdev_macaddr_set() take that null for a failure. wdev_set_up()
+reports "Could not set the interface flags" after each successful
+change. wpa_supplicant, hostapd (for an AP MLD) and wdev.uc then
+remove the netdev that they have just brought up.
+netdev_macaddr_set() stops after its first request, so a reused
+netdev keeps its old address. The reuse of a netdev takes a rename
+that fails before it is sent for a success.
+
+rtnl keeps an error until a caller reads it, and a success does not
+clear it. The helper therefore reads the error once before the
+request. After the request, rtnl.error() is null for a success. It
+holds the reason for a refusal or a failed send, so it is the
+verdict.
+
+Fixes: e56c5f7b276a ("hostapd: add ucode support, use ucode for the main ubus object")
+Fixes: 9e0fb47cbe8f ("wifi-scripts, hostapd: handle a netdev that does not come up")
+Fixes: eb8cbaeebd35 ("wifi-scripts, hostapd: take wifi MAC addresses from netifd")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/usr/share/hostap/common.uc |   26 +++++++++++++++++---------
+ 1 file changed, 17 insertions(+), 9 deletions(-)
+
+--- a/src/usr/share/hostap/common.uc
++++ b/src/usr/share/hostap/common.uc
+@@ -82,6 +82,17 @@ function wdev_set_radio_mask(name, mask)
+ 	});
+ }
+ 
++// rtnl.request() returns null for a request that the kernel acknowledged
++// without reply data, so rtnl.error() is the verdict. It keeps an error
++// that nobody read, so read it once before the request.
++function setlink(msg)
++{
++	rtnl.error();
++	rtnl.request(rtnl.const.RTM_SETLINK, 0, msg);
++
++	return rtnl.error();
++}
++
+ // a driver without ndo_set_mac_address keeps the old address
+ function netdev_macaddr_set(name, macaddr)
+ {
+@@ -89,9 +100,10 @@ function netdev_macaddr_set(name, macadd
+ 	if (cur && lc(trim(cur)) == lc(macaddr))
+ 		return;
+ 
+-	if (!rtnl.request(rtnl.const.RTM_SETLINK, 0, { dev: name, change: 1, flags: 0 }) ||
+-	    !rtnl.request(rtnl.const.RTM_SETLINK, 0, { dev: name, address: macaddr }))
+-		warn(`Could not set MAC address ${macaddr} on ${name}: ${rtnl.error()}\n`);
++	let err = setlink({ dev: name, change: 1, flags: 0 }) ??
++		  setlink({ dev: name, address: macaddr });
++	if (err)
++		warn(`Could not set MAC address ${macaddr} on ${name}: ${err}\n`);
+ }
+ 
+ function wdev_create(phy, name, data)
+@@ -127,7 +139,7 @@ function wdev_create(phy, name, data)
+ 	let reuse_ifname = find_reusable_wdev(phyidx);
+ 	if (reuse_ifname &&
+ 	    (reuse_ifname == name ||
+-	     rtnl.request(rtnl.const.RTM_SETLINK, 0, { dev: reuse_ifname, ifname: name}) != false)) {
++	     !setlink({ dev: reuse_ifname, ifname: name }))) {
+ 		req.dev = req.ifname;
+ 		delete req.ifname;
+ 		nl80211.request(nl80211.const.NL80211_CMD_SET_INTERFACE, 0, req);
+@@ -177,11 +189,7 @@ function wdev_set_mesh_params(name, data
+ 
+ function wdev_set_up(name, up)
+ {
+-	let ret = rtnl.request(rtnl.const.RTM_SETLINK, 0, { dev: name, change: 1, flags: up ? 1 : 0 });
+-	if (!ret)
+-		return rtnl.error() ?? "Could not set the interface flags";
+-
+-	return null;
++	return setlink({ dev: name, change: 1, flags: up ? 1 : 0 });
+ }
+ 
+ // netifd rejects null fields and fields of a mismatched type

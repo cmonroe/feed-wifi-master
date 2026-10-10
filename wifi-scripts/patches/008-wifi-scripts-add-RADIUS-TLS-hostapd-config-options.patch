@@ -58,7 +58,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
 --- a/src/usr/share/ucode/wifi/ap.uc
 +++ b/src/usr/share/ucode/wifi/ap.uc
-@@ -74,7 +74,11 @@ function iface_setup(config, phy, num_gl
+@@ -194,7 +194,11 @@ function iface_setup(config) {
  function iface_authentication_server(config) {
  	for (let server in config.auth_server_addr) {
  		append('auth_server_addr', server);

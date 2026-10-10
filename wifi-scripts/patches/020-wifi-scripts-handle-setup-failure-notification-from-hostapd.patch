@@ -14,7 +14,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/lib/netifd/wireless-device.uc
 +++ b/src/lib/netifd/wireless-device.uc
-@@ -8,6 +8,8 @@ const NOTIFY_CMD_UP = 0;
+@@ -10,6 +10,8 @@ const NOTIFY_CMD_UP = 0;
  const NOTIFY_CMD_SET_DATA = 1;
  const NOTIFY_CMD_PROCESS_ADD = 2;
  const NOTIFY_CMD_SET_RETRY = 4;
@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  const DEFAULT_RETRY = 3;
  const DEFAULT_SCRIPT_TIMEOUT = 30 * 1000;
-@@ -378,6 +380,15 @@ function wdev_reset(wdev)
+@@ -392,6 +394,15 @@ function wdev_reset(wdev)
  	delete wdev.retry_setup_failed;
  }
  
@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function update(data)
  {
  	if (is_equal(this.data, data))
-@@ -387,6 +398,7 @@ function update(data)
+@@ -401,6 +412,7 @@ function update(data)
  		this.data = data;
  		this.ifindex_cache = {};
  		delete this.retry_setup_failed;
@@ -47,15 +47,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		delete this.delete;
  	}
  
-@@ -471,6 +483,7 @@ function wdev_mark_up(wdev)
+@@ -485,6 +497,7 @@ function wdev_mark_up(wdev)
  	}
  
  	wdev_reset(wdev);
 +	delete wdev.setup_fail_count;
  
+ 	let netdevs = lsdir("/sys/class/net") ?? [];
  	for (let section, data in wdev.handler_data) {
- 		if (data.ifname)
-@@ -547,6 +560,35 @@ function notify(req)
+@@ -565,6 +578,35 @@ function notify(req)
  		else
  			this.retry = DEFAULT_RETRY;
  		return 0;
@@ -93,7 +93,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -619,6 +619,7 @@ export function setup(data) {
+@@ -623,6 +623,7 @@ export function setup(data) {
  	let msg = {
  		phy: data.phy,
  		radio: data.config.radio,
