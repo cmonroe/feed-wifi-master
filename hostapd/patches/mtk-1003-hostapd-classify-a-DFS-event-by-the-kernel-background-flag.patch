@@ -1,0 +1,315 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 09 Oct 2026 17:29:20 -0700
+Subject: [PATCH] hostapd: classify a DFS event by the kernel background flag
+
+hostapd classifies a DFS event as an event of its background chain
+by the primary frequency of its chain record. The record can outlive
+the chain, because the kernel ends an idle chain without an event
+when the AP switches onto its block. A CAC that the AP then runs on
+that primary counts as the chain CAC. Its abort leaves the switch
+state set, and a later radar does not move the AP.
+
+The kernel marks an event with a background flag when its channel
+matches the chain it owns. The flag comes from 68b908b3c83b ("wifi:
+cfg80211: events, report background radar"). hostapd classifies an
+event by that flag alone, because the kernel of this tree sends it.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/dfs.c                       |   43 +++++++++++++++++++------------------
+ src/ap/dfs.h                       |    6 ++---
+ src/ap/drv_callbacks.c             |    8 +++---
+ src/drivers/driver.h               |    2 +
+ src/drivers/driver_nl80211_event.c |    2 +
+ wpa_supplicant/ap.c                |   11 ++++++---
+ 6 files changed, 41 insertions(+), 31 deletions(-)
+
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -1339,11 +1339,11 @@ hostapd_is_freq_in_current_hw_info(struc
+ 
+ 
+ static bool
+-hostapd_dfs_is_background_event(struct hostapd_iface *iface, int freq)
++hostapd_dfs_is_background_event(struct hostapd_iface *iface, bool background)
+ {
+ 	return dfs_use_radar_background(iface) &&
+ 		iface->radar_background.channel != -1 &&
+-		iface->radar_background.freq == freq;
++		background;
+ }
+ 
+ 
+@@ -1439,7 +1439,7 @@ hostapd_dfs_start_channel_switch_backgro
+ 
+ int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
+ 			     int ht_enabled, int chan_offset, int chan_width,
+-			     int cf1, int cf2)
++			     int cf1, int cf2, bool background)
+ {
+ 	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
+ 		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
+@@ -1481,7 +1481,7 @@ int hostapd_dfs_complete_cac(struct host
+ 			 * selected channel and configure the background chain
+ 			 * to a new DFS channel.
+ 			 */
+-			if (hostapd_dfs_is_background_event(iface, freq)) {
++			if (hostapd_dfs_is_background_event(iface, background)) {
+ 				iface->radar_background.cac_started = 0;
+ 				if (!iface->radar_background.temp_ch)
+ 					return 0;
+@@ -1515,7 +1515,7 @@ int hostapd_dfs_complete_cac(struct host
+ 			    iface->radar_background.channel == -1)
+ 				hostapd_dfs_update_background_chain(iface);
+ 		}
+-	} else if (hostapd_dfs_is_background_event(iface, freq)) {
++	} else if (hostapd_dfs_is_background_event(iface, background)) {
+ 		iface->radar_background.cac_started = 0;
+ 		hostapd_dfs_update_background_chain(iface);
+ 	} else if (iface->state == HAPD_IFACE_ENABLED) {
+@@ -1681,7 +1681,7 @@ static int hostapd_dfs_start_channel_swi
+ 
+ static int
+ hostapd_dfs_background_start_channel_switch(struct hostapd_iface *iface,
+-					    int freq)
++					    bool chain)
+ {
+ 	if (!dfs_use_radar_background(iface))
+ 		return -1; /* Background radar chain not supported. */
+@@ -1694,12 +1694,12 @@ hostapd_dfs_background_start_channel_swi
+ 	/* Check if CSA in progress */
+ 	if (hostapd_csa_in_progress(iface)) {
+ 		/* the kernel stopped the chain; move it once the CSA ends */
+-		if (hostapd_dfs_is_background_event(iface, freq))
++		if (chain)
+ 			iface->radar_background.update_after_csa = 1;
+ 		return 0;
+ 	}
+ 
+-	if (hostapd_dfs_is_background_event(iface, freq)) {
++	if (chain) {
+ 		/*
+ 		 * Radar pattern is reported on the background chain.
+ 		 * Just select a new random channel according to the
+@@ -1933,15 +1933,15 @@ static int dfs_follow_radar_detected(str
+ 
+ 
+ /* A detect mode keeps only the chain that saw the radar on its channel */
+-static bool dfs_detect_mode_skip(struct hostapd_iface *iface, int freq)
++static bool dfs_detect_mode_skip(struct hostapd_iface *iface, bool chain)
+ {
+ 	switch (iface->conf->dfs_detect_mode) {
+ 	case DFS_DETECT_MODE_ALL_ENABLE:
+ 		return true;
+ 	case DFS_DETECT_MODE_BACKGROUND_ENABLE:
+-		return hostapd_dfs_is_background_event(iface, freq);
++		return chain;
+ 	case DFS_DETECT_MODE_AP_ENABLE:
+-		return !hostapd_dfs_is_background_event(iface, freq);
++		return !chain;
+ 	default:
+ 		return false;
+ 	}
+@@ -1950,8 +1950,10 @@ static bool dfs_detect_mode_skip(struct
+ 
+ int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
+ 			       int ht_enabled, int chan_offset, int chan_width,
+-			       int cf1, int cf2)
++			       int cf1, int cf2, bool background)
+ {
++	bool chain;
++
+ 	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
+ 		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
+ 			DFS_EVENT_RADAR_DETECTED
+@@ -1991,17 +1993,18 @@ int hostapd_dfs_radar_detected(struct ho
+ 			   cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE))
+ 		return 0;
+ 
+-	if (!hostapd_dfs_is_background_event(iface, freq)) {
++	chain = hostapd_dfs_is_background_event(iface, background);
++	if (!chain) {
+ 		/* Skip if reported radar event not overlapped our channels */
+ 		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
+ 						 cf1, cf2))
+ 			return 0;
+ 	}
+ 
+-	if (dfs_detect_mode_skip(iface, freq))
++	if (dfs_detect_mode_skip(iface, chain))
+ 		return 0;
+ 
+-	if (hostapd_dfs_background_start_channel_switch(iface, freq)) {
++	if (hostapd_dfs_background_start_channel_switch(iface, chain)) {
+ 		/* Radar detected while operating, switch the channel. */
+ 		return hostapd_dfs_start_channel_switch(iface);
+ 	}
+@@ -2141,9 +2144,10 @@ static void dfs_chain_half_adopt(struct
+ 
+ int hostapd_dfs_start_cac(struct hostapd_data *hapd, int freq,
+ 			  int ht_enabled, int chan_offset, int chan_width,
+-			  int cf1, int cf2)
++			  int cf1, int cf2, bool background)
+ {
+ 	struct hostapd_iface *iface = hapd->iface;
++	bool chain;
+ 
+ 	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
+ 		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
+@@ -2153,7 +2157,8 @@ int hostapd_dfs_start_cac(struct hostapd
+ 	}
+ 
+ 	dfs_chain_half_adopt(iface, freq, chan_width, cf1);
+-	if (hostapd_dfs_is_background_event(iface, freq)) {
++	chain = hostapd_dfs_is_background_event(iface, background);
++	if (chain) {
+ 		iface->radar_background.cac_started = 1;
+ 	} else {
+ 		/* This is called when the driver indicates that an offloaded
+@@ -2178,9 +2183,7 @@ int hostapd_dfs_start_cac(struct hostapd
+ 		freq, (freq - 5000) / 5, chan_offset,
+ 		channel_width_to_string(chan_width),
+ 		(cf1 - 5000) / 5, cf2 ? (cf2 - 5000) / 5 : 0,
+-		iface->dfs_cac_ms / 1000,
+-		hostapd_dfs_is_background_event(iface, freq) ?
+-		" (background)" : "");
++		iface->dfs_cac_ms / 1000, chain ? " (background)" : "");
+ 
+ 	os_get_reltime(&iface->dfs_cac_start);
+ 	return 0;
+--- a/src/ap/dfs.h
++++ b/src/ap/dfs.h
+@@ -20,14 +20,14 @@ void hostapd_dfs_chain_drop(struct hosta
+ 
+ int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
+ 			     int ht_enabled, int chan_offset, int chan_width,
+-			     int cf1, int cf2);
++			     int cf1, int cf2, bool background);
+ int hostapd_dfs_pre_cac_expired(struct hostapd_iface *iface, int freq,
+ 				int ht_enabled, int chan_offset, int chan_width,
+ 				int cf1, int cf2);
+ int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
+ 			       int ht_enabled,
+ 			       int chan_offset, int chan_width,
+-			       int cf1, int cf2);
++			       int cf1, int cf2, bool background);
+ int hostapd_dfs_nop_finished(struct hostapd_iface *iface, int freq,
+ 			     int ht_enabled,
+ 			     int chan_offset, int chan_width, int cf1, int cf2);
+@@ -38,7 +38,7 @@ int hostapd_is_dfs_required(struct hosta
+ int hostapd_is_dfs_chan_available(struct hostapd_iface *iface);
+ int hostapd_dfs_start_cac(struct hostapd_data *hapd, int freq,
+ 			  int ht_enabled, int chan_offset, int chan_width,
+-			  int cf1, int cf2);
++			  int cf1, int cf2, bool background);
+ int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
+ int hostapd_dfs_get_target_state(struct hostapd_iface *iface, enum chan_width width,
+ 				 int center_freq, int center_freq2);
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -2344,7 +2344,7 @@ static void hostapd_event_dfs_radar_dete
+ 	wpa_printf(MSG_DEBUG, "DFS radar detected on %d MHz", radar->freq);
+ 	hostapd_dfs_radar_detected(hapd->iface, radar->freq, radar->ht_enabled,
+ 				   radar->chan_offset, radar->chan_width,
+-				   radar->cf1, radar->cf2);
++				   radar->cf1, radar->cf2, radar->background);
+ }
+ 
+ 
+@@ -2364,7 +2364,7 @@ static void hostapd_event_dfs_cac_finish
+ 	wpa_printf(MSG_DEBUG, "DFS CAC finished on %d MHz", radar->freq);
+ 	hostapd_dfs_complete_cac(hapd->iface, 1, radar->freq, radar->ht_enabled,
+ 				 radar->chan_offset, radar->chan_width,
+-				 radar->cf1, radar->cf2);
++				 radar->cf1, radar->cf2, radar->background);
+ }
+ 
+ 
+@@ -2374,7 +2374,7 @@ static void hostapd_event_dfs_cac_aborte
+ 	wpa_printf(MSG_DEBUG, "DFS CAC aborted on %d MHz", radar->freq);
+ 	hostapd_dfs_complete_cac(hapd->iface, 0, radar->freq, radar->ht_enabled,
+ 				 radar->chan_offset, radar->chan_width,
+-				 radar->cf1, radar->cf2);
++				 radar->cf1, radar->cf2, radar->background);
+ 
+ 	/* an aborted post-CSA CAC ends the switch without a switch event */
+ 	if (!hostapd_csa_in_progress(hapd->iface))
+@@ -2398,7 +2398,7 @@ static void hostapd_event_dfs_cac_starte
+ 	wpa_printf(MSG_DEBUG, "DFS offload CAC started on %d MHz", radar->freq);
+ 	hostapd_dfs_start_cac(hapd, radar->freq, radar->ht_enabled,
+ 			      radar->chan_offset, radar->chan_width,
+-			      radar->cf1, radar->cf2);
++			      radar->cf1, radar->cf2, radar->background);
+ }
+ 
+ 
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -7547,6 +7547,7 @@ union wpa_event_data {
+ 	 * struct dfs_event - Data for radar detected events
+ 	 * @freq: Frequency of the channel in MHz
+ 	 * @link_id: If >= 0, Link ID of the MLO link
++	 * @background: The kernel reports the event for its background chain
+ 	 */
+ 	struct dfs_event {
+ 		int freq;
+@@ -7556,6 +7557,7 @@ union wpa_event_data {
+ 		int cf1;
+ 		int cf2;
+ 		int link_id;
++		bool background;
+ 	} dfs_event;
+ 
+ 	/**
+--- a/src/drivers/driver_nl80211_event.c
++++ b/src/drivers/driver_nl80211_event.c
+@@ -2842,6 +2842,8 @@ static void nl80211_radar_event(struct i
+ 		data.dfs_event.cf1 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ1]);
+ 	if (tb[NL80211_ATTR_CENTER_FREQ2])
+ 		data.dfs_event.cf2 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ2]);
++	data.dfs_event.background =
++		nla_get_flag(tb[NL80211_ATTR_RADAR_BACKGROUND]);
+ 
+ 	wpa_printf(MSG_DEBUG,
+ 		   "nl80211: Checking suitable BSS for the DFS event");
+--- a/wpa_supplicant/ap.c
++++ b/wpa_supplicant/ap.c
+@@ -2164,7 +2164,7 @@ void wpas_ap_event_dfs_radar_detected(st
+ 	hostapd_dfs_radar_detected(iface, radar->freq,
+ 				   radar->ht_enabled, radar->chan_offset,
+ 				   radar->chan_width,
+-				   radar->cf1, radar->cf2);
++				   radar->cf1, radar->cf2, radar->background);
+ }
+ 
+ 
+@@ -2180,7 +2180,8 @@ void wpas_ap_event_dfs_cac_started(struc
+ 	wpa_printf(MSG_DEBUG, "DFS CAC started on %d MHz", radar->freq);
+ 	hostapd_dfs_start_cac(iface->bss[0], radar->freq,
+ 			      radar->ht_enabled, radar->chan_offset,
+-			      radar->chan_width, radar->cf1, radar->cf2);
++			      radar->chan_width, radar->cf1, radar->cf2,
++			      radar->background);
+ }
+ 
+ 
+@@ -2196,7 +2197,8 @@ void wpas_ap_event_dfs_cac_finished(stru
+ 	wpa_printf(MSG_DEBUG, "DFS CAC finished on %d MHz", radar->freq);
+ 	hostapd_dfs_complete_cac(iface, 1, radar->freq,
+ 				 radar->ht_enabled, radar->chan_offset,
+-				 radar->chan_width, radar->cf1, radar->cf2);
++				 radar->chan_width, radar->cf1, radar->cf2,
++				 radar->background);
+ }
+ 
+ 
+@@ -2212,7 +2214,8 @@ void wpas_ap_event_dfs_cac_aborted(struc
+ 	wpa_printf(MSG_DEBUG, "DFS CAC aborted on %d MHz", radar->freq);
+ 	hostapd_dfs_complete_cac(iface, 0, radar->freq,
+ 				 radar->ht_enabled, radar->chan_offset,
+-				 radar->chan_width, radar->cf1, radar->cf2);
++				 radar->chan_width, radar->cf1, radar->cf2,
++				 radar->background);
+ }
+ 
+ 
