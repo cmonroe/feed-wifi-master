@@ -1,0 +1,189 @@
+From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date: Tue, 15 Jul 2025 17:27:43 +0800
+Subject: [PATCH] AP: keep a BSS color change and a channel switch apart
+
+mac80211 aborts a running BSS color change when it starts a channel
+switch, but hostapd builds the channel switch beacons with the Color
+Change Announcement. The abort event then cannot update the beacon
+during the switch. hostapd therefore keeps the color change marked as
+running and refuses every later beacon update. A stop of the BSS
+also ends the color change in the kernel, with no event. The kernel
+also ends a channel switch before hostapd handles that end. A color
+change that starts in this gap carries the channel switch elements.
+
+hostapd now ends its color change when it builds the beacons for a
+channel switch. It keeps the color change when it cannot send the
+switch or the driver refuses it. The kernel then continues the color
+change or reports its abort. A stop or disable of the BSS ends the
+color change. A color change that a collision triggers waits while a
+channel switch runs on any BSS of the interface. A color change
+request fails in that time. This ports mtk-openwrt-feeds 7a38cb57511c
+("[openwrt-25][MAC80211][WiFi7][Prepare for Filogic 880/850 MP4.3
+release]").
+
+Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ hostapd/ctrl_iface.c   |   10 +++++
+ src/ap/drv_callbacks.c |    7 +++
+ src/ap/hostapd.c       |   73 ++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 89 insertions(+), 1 deletion(-)
+
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -4123,6 +4123,13 @@ int hostapd_disable_iface(struct hostapd
+ 		   WPA_DRIVER_FLAGS_AP_TEARDOWN_SUPPORT);
+ 
+ #ifdef NEED_AP_MLME
++#ifdef CONFIG_IEEE80211AX
++	/* the kernel ends a color change without an event when it stops the
++	 * BSS
++	 */
++	for (j = 0; j < hapd_iface->num_bss; j++)
++		hostapd_cleanup_cca_params(hapd_iface->bss[j]);
++#endif /* CONFIG_IEEE80211AX */
+ 	for (j = 0; j < hapd_iface->num_bss; j++)
+ 		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
+ #endif /* NEED_AP_MLME */
+@@ -5145,6 +5152,14 @@ static int hostapd_fill_csa_settings(str
+ 	if (ret)
+ 		return ret;
+ 
++#ifdef CONFIG_IEEE80211AX
++	/* The kernel aborts the color change when it starts the channel
++	 * switch, so the CSA beacons must not announce the color change.
++	 */
++	if (hapd->cca_in_progress)
++		hostapd_cleanup_cca_params(hapd);
++#endif /* CONFIG_IEEE80211AX */
++
+ 	ret = hostapd_build_beacon_data(hapd, &settings->beacon_after);
+ 
+ 	/* change back the configuration */
+@@ -5226,9 +5241,46 @@ void hostapd_chan_switch_config(struct h
+ }
+ 
+ 
++/* the color change state that hostapd_cleanup_cca_params() clears */
++struct hostapd_cca_state {
++	bool in_progress;
++	u8 count;
++	u8 color;
++	unsigned int c_off_beacon;
++	unsigned int c_off_proberesp;
++};
++
++
++static void hostapd_cca_state_save(struct hostapd_data *hapd,
++				   struct hostapd_cca_state *cca)
++{
++#ifdef CONFIG_IEEE80211AX
++	cca->in_progress = hapd->cca_in_progress;
++	cca->count = hapd->cca_count;
++	cca->color = hapd->cca_color;
++	cca->c_off_beacon = hapd->cca_c_off_beacon;
++	cca->c_off_proberesp = hapd->cca_c_off_proberesp;
++#endif /* CONFIG_IEEE80211AX */
++}
++
++
++static void hostapd_cca_state_restore(struct hostapd_data *hapd,
++				      const struct hostapd_cca_state *cca)
++{
++#ifdef CONFIG_IEEE80211AX
++	hapd->cca_in_progress = cca->in_progress;
++	hapd->cca_count = cca->count;
++	hapd->cca_color = cca->color;
++	hapd->cca_c_off_beacon = cca->c_off_beacon;
++	hapd->cca_c_off_proberesp = cca->c_off_proberesp;
++#endif /* CONFIG_IEEE80211AX */
++}
++
++
+ int hostapd_switch_channel(struct hostapd_data *hapd,
+ 			   struct csa_settings *settings)
+ {
++	struct hostapd_cca_state cca;
+ 	int ret;
+ 
+ 	if (!(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_AP_CSA)) {
+@@ -5236,9 +5288,12 @@ int hostapd_switch_channel(struct hostap
+ 		return -1;
+ 	}
+ 
++	hostapd_cca_state_save(hapd, &cca);
+ 	ret = hostapd_fill_csa_settings(hapd, settings);
+-	if (ret)
++	if (ret) {
++		hostapd_cca_state_restore(hapd, &cca);
+ 		return ret;
++	}
+ 
+ 	ret = hostapd_drv_switch_channel(hapd, settings);
+ 	free_beacon_data(&settings->beacon_csa);
+@@ -5248,6 +5303,11 @@ int hostapd_switch_channel(struct hostap
+ #endif /* CONFIG_IEEE80211AX */
+ 
+ 	if (ret) {
++		/* The kernel either continues the color change or reports its
++		 * abort after this reply, and both events need the state.
++		 */
++		hostapd_cca_state_restore(hapd, &cca);
++
+ 		/* if we failed, clean cs parameters */
+ 		hostapd_cleanup_cs_params(hapd);
+ 		return ret;
+@@ -5437,6 +5497,17 @@ void hostapd_switch_color_timeout_handle
+ 	u64 avoided;
+ 	int i, r;
+ 
++	/* The kernel ends the channel switch before hostapd handles its end,
++	 * so it can accept a color change whose beacons still announce the
++	 * channel switch.
++	 */
++	if (hostapd_csa_in_progress(hapd->iface)) {
++		eloop_register_timeout(5, 0,
++				       hostapd_switch_color_timeout_handler,
++				       hapd, NULL);
++		return;
++	}
++
+ 	 /* CCA can be triggered once the handler constantly receives
+ 	  * color collision events to for at least
+ 	  * DOT11BSS_COLOR_COLLISION_AP_PERIOD (50 s by default). */
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -2578,6 +2578,16 @@ static int hostapd_ctrl_iface_color_chan
+ 		return -1;
+ 	}
+ 
++	/* The kernel ends a channel switch before hostapd handles its end, so
++	 * it can accept a color change whose beacons still announce the
++	 * channel switch.
++	 */
++	if (hostapd_csa_in_progress(iface)) {
++		wpa_printf(MSG_ERROR,
++			   "color_change: Channel switch is in progress");
++		return -1;
++	}
++
+ 	/* Color value is expected to be [1-63]. If 0 comes, assumption is this
+ 	 * is to disable the color. In this case no need to do CCA, just
+ 	 * changing Beacon frames is sufficient. */
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -2314,6 +2314,13 @@ static void hostapd_event_iface_unavaila
+ 	wpa_printf(MSG_DEBUG, "Interface %s is unavailable -- stopped",
+ 		   hapd->conf->iface);
+ 
++#ifdef CONFIG_IEEE80211AX
++	/* the kernel ends a color change without an event when it stops the
++	 * BSS
++	 */
++	hostapd_cleanup_cca_params(hapd);
++#endif /* CONFIG_IEEE80211AX */
++
+ 	if (hapd->csa_in_progress) {
+ 		wpa_printf(MSG_INFO, "CSA failed (%s was stopped)",
+ 			   hapd->conf->iface);

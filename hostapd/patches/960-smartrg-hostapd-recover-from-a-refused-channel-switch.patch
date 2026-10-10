@@ -51,9 +51,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_IEEE80211BE
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2320,16 +2320,22 @@ static void hostapd_event_iface_unavaila
- 	wpa_printf(MSG_DEBUG, "Interface %s is unavailable -- stopped",
- 		   hapd->conf->iface);
+@@ -2327,16 +2327,22 @@ static void hostapd_event_iface_unavaila
+ 	hostapd_cleanup_cca_params(hapd);
+ #endif /* CONFIG_IEEE80211AX */
  
 +	/* Clear beacon_set_done so that the RNR and other beacon parameters
 +	 * are properly updated. Clear it before a restart below, which sets
@@ -78,7 +78,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2603,6 +2609,10 @@ static void hostapd_iface_enable(struct
+@@ -2610,6 +2616,10 @@ static void hostapd_iface_enable(struct
  
  static void hostapd_iface_disable(struct hostapd_data *hapd)
  {
@@ -102,7 +102,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	os_free(hapd->probereq_cb);
  	hapd->probereq_cb = NULL;
  	hapd->num_probereq_cb = 0;
-@@ -5210,6 +5214,111 @@ void hostapd_cleanup_cs_params(struct ho
+@@ -5225,6 +5229,111 @@ void hostapd_cleanup_cs_params(struct ho
  }
  
  
@@ -214,7 +214,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void hostapd_chan_switch_config(struct hostapd_data *hapd,
  				struct hostapd_freq_params *freq_params)
  {
-@@ -5247,10 +5356,22 @@ int hostapd_switch_channel(struct hostap
+@@ -5299,6 +5408,17 @@ int hostapd_switch_channel(struct hostap
  		return -1;
  	}
  
@@ -229,22 +229,25 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		return -1;
 +	}
 +
+ 	hostapd_cca_state_save(hapd, &cca);
  	ret = hostapd_fill_csa_settings(hapd, settings);
- 	if (ret)
+ 	if (ret) {
+@@ -5306,6 +5426,7 @@ int hostapd_switch_channel(struct hostap
  		return ret;
+ 	}
  
 +	hostapd_cleanup_cs_refused(hapd);
  	ret = hostapd_drv_switch_channel(hapd, settings);
  	free_beacon_data(&settings->beacon_csa);
  	free_beacon_data(&settings->beacon_after);
-@@ -5259,6 +5380,7 @@ int hostapd_switch_channel(struct hostap
- #endif /* CONFIG_IEEE80211AX */
- 
- 	if (ret) {
+@@ -5318,6 +5439,7 @@ int hostapd_switch_channel(struct hostap
+ 		 * abort after this reply, and both events need the state.
+ 		 */
+ 		hostapd_cca_state_restore(hapd, &cca);
 +		hostapd_cs_refused_mark(hapd, ret);
+ 
  		/* if we failed, clean cs parameters */
  		hostapd_cleanup_cs_params(hapd);
- 		return ret;
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -373,6 +373,9 @@ struct hostapd_data {

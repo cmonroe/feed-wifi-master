@@ -248,7 +248,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  #else /* NEED_AP_MLME */
  	return -1;
-@@ -4291,9 +4361,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
+@@ -4301,9 +4371,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
  	else
  		return -1;
  
@@ -644,7 +644,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return 1;
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -5435,6 +5435,14 @@ int hostapd_force_channel_switch(struct
+@@ -5495,6 +5495,14 @@ int hostapd_force_channel_switch(struct
  		return ret;
  	}
  

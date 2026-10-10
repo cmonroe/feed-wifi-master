@@ -207,7 +207,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				 int center_freq, int center_freq2);
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2344,7 +2344,7 @@ static void hostapd_event_dfs_radar_dete
+@@ -2351,7 +2351,7 @@ static void hostapd_event_dfs_radar_dete
  	wpa_printf(MSG_DEBUG, "DFS radar detected on %d MHz", radar->freq);
  	hostapd_dfs_radar_detected(hapd->iface, radar->freq, radar->ht_enabled,
  				   radar->chan_offset, radar->chan_width,
@@ -216,7 +216,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2364,7 +2364,7 @@ static void hostapd_event_dfs_cac_finish
+@@ -2371,7 +2371,7 @@ static void hostapd_event_dfs_cac_finish
  	wpa_printf(MSG_DEBUG, "DFS CAC finished on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(hapd->iface, 1, radar->freq, radar->ht_enabled,
  				 radar->chan_offset, radar->chan_width,
@@ -225,7 +225,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2374,7 +2374,7 @@ static void hostapd_event_dfs_cac_aborte
+@@ -2381,7 +2381,7 @@ static void hostapd_event_dfs_cac_aborte
  	wpa_printf(MSG_DEBUG, "DFS CAC aborted on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(hapd->iface, 0, radar->freq, radar->ht_enabled,
  				 radar->chan_offset, radar->chan_width,
@@ -234,7 +234,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* an aborted post-CSA CAC ends the switch without a switch event */
  	if (!hostapd_csa_in_progress(hapd->iface))
-@@ -2398,7 +2398,7 @@ static void hostapd_event_dfs_cac_starte
+@@ -2405,7 +2405,7 @@ static void hostapd_event_dfs_cac_starte
  	wpa_printf(MSG_DEBUG, "DFS offload CAC started on %d MHz", radar->freq);
  	hostapd_dfs_start_cac(hapd, radar->freq, radar->ht_enabled,
  			      radar->chan_offset, radar->chan_width,
@@ -245,7 +245,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -7547,6 +7547,7 @@ union wpa_event_data {
+@@ -7563,6 +7563,7 @@ union wpa_event_data {
  	 * struct dfs_event - Data for radar detected events
  	 * @freq: Frequency of the channel in MHz
  	 * @link_id: If >= 0, Link ID of the MLO link
@@ -253,7 +253,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	 */
  	struct dfs_event {
  		int freq;
-@@ -7556,6 +7557,7 @@ union wpa_event_data {
+@@ -7572,6 +7573,7 @@ union wpa_event_data {
  		int cf1;
  		int cf2;
  		int link_id;

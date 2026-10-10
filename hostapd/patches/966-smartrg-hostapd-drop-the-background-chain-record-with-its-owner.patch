@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1189,6 +1189,15 @@ void hostapd_dfs_csa_finished(struct hos
+@@ -1195,6 +1195,15 @@ void hostapd_dfs_csa_finished(struct hos
  }
  
  
@@ -86,8 +86,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_deinit_driver(hapd_iface->bss[0]->driver,
  				      hapd_iface->bss[0]->drv_priv,
  				      hapd_iface);
-@@ -4127,6 +4134,8 @@ int hostapd_disable_iface(struct hostapd
- #ifdef NEED_AP_MLME
+@@ -4134,6 +4141,8 @@ int hostapd_disable_iface(struct hostapd
+ #endif /* CONFIG_IEEE80211AX */
  	for (j = 0; j < hapd_iface->num_bss; j++)
  		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
 +	/* the netdev goes down and ends the chain; no drv gets that report */
@@ -95,7 +95,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* NEED_AP_MLME */
  	hapd_iface->radar_background.update_after_csa = 0;
  
-@@ -4472,6 +4481,11 @@ static int hostapd_remove_bss(struct hos
+@@ -4479,6 +4488,11 @@ static int hostapd_remove_bss(struct hos
  	if (idx < iface->num_bss) {
  		struct hostapd_data *hapd = iface->bss[idx];
  
