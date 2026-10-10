@@ -1,0 +1,31 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sat, 10 Oct 2026 17:46:42 -0700
+Subject: [PATCH] hostapd: skip the VLAN notification when the ubus context is gone
+
+The VLAN teardown of a BSS runs after the ubus object of that BSS is
+gone. If the BSS held the last reference, hostapd freed the shared
+ubus context by then. The VLAN removal notification then dereferences
+a null context, and hostapd crashes during a disable or during the
+restart of a DFS fallback.
+
+Skip the notification when no ubus context exists.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/ubus.c |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/src/ap/ubus.c
++++ b/src/ap/ubus.c
+@@ -3186,6 +3186,11 @@ hostapd_ubus_vlan_action(struct hostapd_
+ 	void *c;
+ 	int i;
+ 
++	/* vlan_deinit() runs after hostapd_ubus_free_bss() may have dropped the
++	 * last reference and freed the shared context */
++	if (!ctx)
++		return;
++
+ 	if (!obj->has_subscribers)
+ 		return;
+ 
