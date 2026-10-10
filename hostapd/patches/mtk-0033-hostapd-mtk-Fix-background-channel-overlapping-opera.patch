@@ -4,35 +4,28 @@ Date: Wed, 5 Jul 2023 10:44:15 +0800
 Subject: [PATCH] hostapd: mtk: Fix background channel overlapping operating
  channel issue
 
+A STA can mark the block of the background chain available while the
+AP and the chain both run a CAC. A radar during the CAC of the AP can
+then select that block, and the AP starts there without a CAC. No CAC
+start stops the chain, so hostapd keeps the record, and a later radar
+on the new operating channel matches the chain instead of the AP.
+
+hostapd now drops the record when the AP leaves a radar during its
+CAC for the primary channel of the chain. After the background chain
+search narrows the width, it also refuses the primary channel of the
+AP and of the current chain. Other overlaps stay with the kernel,
+which stops a chain whose primary channel lies in a new CAC block.
+
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/ap/dfs.c | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+ src/ap/dfs.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -824,6 +824,20 @@ static int dfs_are_channels_overlapped(s
- }
- 
- 
-+static void dfs_check_background_overlapped(struct hostapd_iface *iface)
-+{
-+	int width = hostapd_get_oper_chwidth(iface->conf);
-+
-+	if (!dfs_use_radar_background(iface))
-+		return;
-+
-+	if (dfs_are_channels_overlapped(iface, iface->radar_background.freq,
-+					width, iface->radar_background.centr_freq_seg0_idx,
-+					iface->radar_background.centr_freq_seg1_idx))
-+		iface->radar_background.channel = -1;
-+}
-+
-+
- static unsigned int dfs_get_cac_time(struct hostapd_iface *iface,
- 				     int start_chan_idx, int n_chans)
- {
-@@ -1236,6 +1250,8 @@ static void hostapd_dfs_update_backgroun
+@@ -1236,6 +1236,8 @@ static void hostapd_dfs_update_backgroun
  						  &oper_centr_freq_seg1_idx,
  						  &channel_type);
  	if (!channel ||
@@ -41,19 +34,17 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	    hostapd_start_dfs_cac(iface, iface->conf->hw_mode,
  				  channel->freq, channel->chan,
  				  iface->conf->ieee80211n,
-@@ -1612,6 +1628,7 @@ static int hostapd_dfs_start_channel_swi
- 		iface->conf->op_class = op_class;
+@@ -1623,6 +1625,13 @@ static int hostapd_dfs_start_channel_swi
  	}
  	err = 0;
-+	dfs_check_background_overlapped(iface);
  
++	/* A STA can make the chain block available while both CACs run.
++	 * The AP then starts there without a CAC that would stop the chain.
++	 */
++	if (dfs_use_radar_background(iface) &&
++	    channel->chan == iface->radar_background.channel)
++		hostapd_dfs_chain_drop(iface);
++
  	hostapd_setup_interface_complete(iface, err);
  	return err;
-@@ -1747,6 +1764,7 @@ static int hostapd_dfs_start_channel_swi
- 			hostapd_set_oper_centr_freq_seg1_idx(
- 				iface->conf, oper_centr_freq_seg1_idx);
- 
-+			dfs_check_background_overlapped(iface);
- 			hostapd_disable_iface(iface);
- 			hostapd_enable_iface(iface);
- 			return 0;
+ }

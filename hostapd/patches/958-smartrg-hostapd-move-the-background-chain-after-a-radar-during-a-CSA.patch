@@ -11,9 +11,10 @@ armed the chain again.
 hostapd now records the radar and moves the chain when the CSA
 completes, or when a CAC abort ends the CSA. When a failed CSA makes
 hostapd restart the interface, it drops the chain record, so the next
-DFS event arms a new chain. The fallback of a CSA request that the
-driver rejects keeps the record, because it applies the chain channel
-after the restart.
+DFS event arms a new chain. The restart in the fallback of a CSA
+request that the driver rejects also drops the record. A move onto
+the background chain keeps its own copy of the target and arms a new
+chain after the restart.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
