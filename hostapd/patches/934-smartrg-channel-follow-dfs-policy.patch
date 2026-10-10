@@ -2,30 +2,29 @@ From: Chad Monroe <chad@monroe.io>
 Date: Sun, 9 Aug 2026 23:00:00 -0700
 Subject: [PATCH] hostapd: never self-select a channel in channel-follow mode
 
-The colocated STA owns the radio's only channel context. A channel
-that hostapd picks on its own can never start: the CAC or the beacon
-fails against the STA's channel context, setup fails with DFS_FAILED,
-and netifd loops.
+The colocated STA owns the radio's only channel context, so a channel
+that hostapd picks on its own cannot start. The CAC or the beacon
+fails, setup fails with DFS_FAILED, and netifd loops. The
+channel_follow=1 keyword, which the ucode configuration writes for
+such a radio, stops hostapd from relocating. When the followed block
+has unavailable channels, the DFS setup parks the interface in the
+DFS state until the NOP ends or the STA supplies a new channel.
 
-Add a real channel_follow=1 config keyword. Parse it into
-hostapd_config and emit it in iface_gen_config().
-
-In follow mode:
-- hostapd_handle_dfs() parks the iface in the DFS state when the
-  followed block has unavailable channels. It does not relocate.
-  The NOP-finished retry stays armed. The usable-to-CAC path does
-  not change.
-- On a radar event, keep the AP up when the kernel's STA-coverage
-  path kept the channel available (its STA_CAC_SKIPPED event comes
-  before the radar event). If not, disable the AP and wait for the
-  STA to supply the next channel. Never send a CSA to a
-  self-selected chandef.
+On a radar that overlaps the AP chandef, the AP reads the DFS state
+from the driver, because cfg80211 changes it without an event.
+cfg80211 keeps the chandef available when an associated STA covers
+it; the AP then stays, and an AP in its CAC completes the setup.
+Otherwise, also when the driver read fails, hostapd marks the
+channels unavailable and disables the AP. hostapd never disables the
+AP during a channel switch, because the switch follows the STA and a
+disabled AP cannot complete it. A radar outside the AP chandef only
+marks its channels unavailable.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3374,6 +3374,8 @@ static int hostapd_config_fill(struct ho
+@@ -3376,6 +3376,8 @@ static int hostapd_config_fill(struct ho
  			conf->channel = atoi(pos);
  			conf->acs = conf->channel == 0;
  		}
@@ -67,9 +66,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +				 * A channel-following AP must never pick its
 +				 * own channel; a self-selected chandef cannot
 +				 * coexist with the colocated STA's channel
-+				 * context. Park in DFS state so the
-+				 * NOP-finished retry or the next iface.start()
-+				 * re-attempts the followed channel.
++				 * context. Park in DFS state: the end of the
++				 * NOP, or a new channel from iface.start(),
++				 * restarts the setup.
 +				 */
 +				wpa_printf(MSG_INFO,
 +					   "DFS channel_follow: followed channel unavailable, waiting instead of relocating");
@@ -79,35 +78,149 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			if (dfs_set_valid_channel(iface, skip_radar) < 0) {
  				hostapd_set_state(iface, HAPD_IFACE_DFS);
  				return 0;
-@@ -1570,6 +1584,32 @@ int hostapd_dfs_radar_detected(struct ho
- 	if (!iface->conf->ieee80211h)
- 		return 0;
+@@ -1551,6 +1565,128 @@ static int hostapd_dfs_start_channel_swi
+ }
  
-+	if (iface->conf->channel_follow) {
-+		/*
-+		 * A channel-following AP never self-selects a replacement
-+		 * channel. When the STA-coverage path revalidated the channel
-+		 * (the STA_CAC_SKIPPED event precedes this radar event), keep
-+		 * operating; otherwise vacate and wait for the STA to deliver
-+		 * the next channel via iface.start().
-+		 */
-+		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
-+						 cf1, cf2))
-+			return 0;
+ 
++static bool dfs_drv_chans_available(struct hostapd_iface *iface,
++				    struct hostapd_hw_modes *modes,
++				    u16 num_modes, int start_chan_idx,
++				    int n_chans)
++{
++	struct hostapd_hw_modes *mode = iface->current_mode;
++	struct hostapd_channel_data *own, *drv;
++	int i;
 +
-+		if (hostapd_is_dfs_chan_available(iface)) {
-+			wpa_printf(MSG_INFO,
-+				   "DFS channel_follow: STA coverage keeps followed channel available, ignoring radar event");
-+			return 0;
-+		}
++	for (i = 0; i < n_chans; i++) {
++		if (start_chan_idx + i >= mode->num_channels)
++			return false;
 +
++		own = &mode->channels[start_chan_idx + i];
++		if (!(own->flag & HOSTAPD_CHAN_RADAR))
++			continue;
++
++		drv = hw_get_channel_freq(mode->mode, own->freq, NULL, modes,
++					  num_modes);
++		if (!drv || (drv->flag & HOSTAPD_CHAN_DFS_MASK) !=
++		    HOSTAPD_CHAN_DFS_AVAILABLE)
++			return false;
++	}
++
++	return true;
++}
++
++
++/*
++ * cfg80211 marks the radar chandef unavailable without an event, unless an
++ * associated STA covers it, so the own channel list still holds the state
++ * from before the radar. Only the driver knows whether the channel stays.
++ */
++static bool dfs_follow_chan_kept_available(struct hostapd_iface *iface)
++{
++	struct hostapd_data *hapd = iface->bss[0];
++	struct hostapd_hw_modes *modes;
++	int start_chan_idx, start_chan_idx1, n_chans, n_chans1;
++	u16 num_modes, flags;
++	u8 dfs_domain;
++	bool available;
++
++	start_chan_idx = dfs_get_start_chan_idx(iface, &start_chan_idx1);
++	if (start_chan_idx < 0 || hostapd_drv_none(hapd))
++		return false;
++
++	n_chans = dfs_get_used_n_chans(iface, &n_chans1);
++
++	modes = hostapd_get_hw_feature_data(hapd, &num_modes, &flags,
++					    &dfs_domain);
++	if (!modes) {
++		wpa_printf(MSG_INFO,
++			   "DFS channel_follow: could not read the DFS state from the driver");
++		return false;
++	}
++
++	available = dfs_drv_chans_available(iface, modes, num_modes,
++					    start_chan_idx, n_chans) &&
++		(start_chan_idx1 < 0 ||
++		 dfs_drv_chans_available(iface, modes, num_modes,
++					 start_chan_idx1, n_chans1));
++
++	hostapd_free_hw_features(modes, num_modes);
++	return available;
++}
++
++
++static int dfs_follow_radar_detected(struct hostapd_iface *iface, int freq,
++				     int ht_enabled, int chan_offset,
++				     int chan_width, int cf1, int cf2)
++{
++	bool kept;
++
++	if (!dfs_are_channels_overlapped(iface, freq, chan_width, cf1, cf2)) {
 +		set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
 +			      cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE);
++		return 0;
++	}
++
++	kept = dfs_follow_chan_kept_available(iface);
++	if (!kept)
++		set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
++			      cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE);
++
++	/*
++	 * A channel switch in progress follows the STA, and a disabled AP
++	 * cannot complete it.
++	 */
++	if (hostapd_csa_in_progress(iface)) {
++		wpa_printf(MSG_INFO,
++			   "DFS channel_follow: channel switch in progress, ignoring radar event");
++		return 0;
++	}
++
++	if (!kept) {
 +		wpa_printf(MSG_INFO,
 +			   "DFS channel_follow: radar on followed channel, disabling AP until the STA provides a channel");
 +		hostapd_disable_iface(iface);
 +		return 0;
 +	}
++
++	wpa_printf(MSG_INFO,
++		   "DFS channel_follow: STA coverage keeps followed channel available, ignoring radar event");
++	if (iface->state == HAPD_IFACE_ENABLED && !iface->cac_started)
++		return 0;
++
++	/*
++	 * mac80211 aborts a running CAC before it reports the radar, and no
++	 * NOP follows a radar that the STA coverage overruled. Complete the
++	 * setup as at the end of a CAC, or nothing restarts it.
++	 */
++	set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
++		      cf1, cf2, HOSTAPD_CHAN_DFS_AVAILABLE);
++	iface->cac_started = 0;
++	if (iface->state == HAPD_IFACE_DFS &&
++	    hostapd_is_dfs_chan_available(iface))
++		hostapd_setup_interface_complete(iface, 0);
++
++	return 0;
++}
++
++
+ int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
+ 			       int ht_enabled, int chan_offset, int chan_width,
+ 			       int cf1, int cf2)
+@@ -1578,6 +1714,17 @@ int hostapd_dfs_radar_detected(struct ho
+ 	if (!iface->conf->ieee80211h)
+ 		return 0;
+ 
++	/*
++	 * A channel-following AP never selects a channel of its own. It stays
++	 * while the STA coverage keeps the channel available; otherwise it
++	 * vacates and waits for the STA to supply the next channel through
++	 * iface.start().
++	 */
++	if (iface->conf->channel_follow)
++		return dfs_follow_radar_detected(iface, freq, ht_enabled,
++						 chan_offset, chan_width,
++						 cf1, cf2);
 +
  	/* mark radar frequency as invalid */
  	if (!set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,

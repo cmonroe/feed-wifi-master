@@ -8,7 +8,9 @@ A station learns the DFS state of a channel from its AP. The kernel
 reports each change to the local AP interface. hostapd copies the
 state, available or usable, to its channel list and reports it on
 the control interface. If the driver offloads DFS, hostapd only
-reports it.
+reports it. An interface that waits in the DFS state completes its
+setup when the update makes its whole chandef available, because no
+NOP end follows for those channels.
 
 On an AP MLD, the event goes to the link that the driver selects by
 frequency, as other DFS events do. Without that selection, an AP MLD
@@ -18,17 +20,17 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/ap/dfs.c                       | 20 ++++++++++++++++++++
+ src/ap/dfs.c                       | 27 +++++++++++++++++++++++++++
  src/ap/dfs.h                       |  3 +++
  src/ap/drv_callbacks.c             | 30 ++++++++++++++++++++++++++++++
  src/common/wpa_ctrl.h              |  1 +
  src/drivers/driver.h               | 26 ++++++++++++++++++++++++++
  src/drivers/driver_nl80211_event.c | 12 ++++++++++++
- 6 files changed, 92 insertions(+)
+ 6 files changed, 99 insertions(+)
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1753,6 +1753,26 @@ int hostapd_dfs_nop_finished(struct host
+@@ -1902,6 +1902,33 @@ int hostapd_dfs_nop_finished(struct host
  }
  
  
@@ -48,6 +50,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
 +		      cf1, cf2, state);
 +
++	/* a channel that a STA made available has no NOP end, so a parked
++	 * interface never gets that event */
++	if (state == HOSTAPD_CHAN_DFS_AVAILABLE &&
++	    iface->state == HAPD_IFACE_DFS && !iface->cac_started &&
++	    hostapd_is_dfs_chan_available(iface))
++		hostapd_setup_interface_complete(iface, 0);
++
 +	return 0;
 +}
 +
@@ -57,7 +66,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int n_chans, n_chans1, start_chan_idx, start_chan_idx1, res;
 --- a/src/ap/dfs.h
 +++ b/src/ap/dfs.h
-@@ -30,6 +30,9 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -31,6 +31,9 @@ int hostapd_dfs_radar_detected(struct ho
  int hostapd_dfs_nop_finished(struct hostapd_iface *iface, int freq,
  			     int ht_enabled,
  			     int chan_offset, int chan_width, int cf1, int cf2);
@@ -69,7 +78,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int hostapd_dfs_start_cac(struct hostapd_data *hapd, int freq,
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2387,6 +2387,24 @@ static void hostapd_event_incumbt_sig_in
+@@ -2424,6 +2424,24 @@ static void hostapd_event_incumbt_sig_in
  			   "Failed to handle incumbent signal interference");
  }
  
@@ -94,7 +103,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* NEED_AP_MLME */
  
  
-@@ -2896,6 +2914,18 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -2945,6 +2963,18 @@ void hostapd_wpa_event(void *ctx, enum w
  		hapd = switch_link_hapd(hapd, data->dfs_event.link_id);
  		hostapd_event_dfs_nop_finished(hapd, &data->dfs_event);
  		break;
