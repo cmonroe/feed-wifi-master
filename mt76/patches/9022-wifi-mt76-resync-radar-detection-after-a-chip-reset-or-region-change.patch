@@ -1,6 +1,6 @@
 From: Chad Monroe <chad@monroe.io>
 Date: Fri, 25 Sep 2026 11:22:55 -0700
-Subject: [PATCH] wifi: mt76: restart radar on reset, release the chain on region change
+Subject: [PATCH] wifi: mt76: resync radar detection after a chip reset or region change
 
 cfg80211 keeps a background radar chain on its channel after the CAC,
 and the channel stays available while the chain monitors it. A full
