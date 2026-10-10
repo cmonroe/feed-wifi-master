@@ -3,21 +3,34 @@ From: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date: Mon, 20 Feb 2023 14:56:55 +0800
 Subject: [PATCH 11/28] hostapd: mtk: Add DFS offchan channel switch
 
-Add DFS background chain channel switch command for testing purpose.
-This feature is implemented via hostapd_cli command.
-Command format:
+The SET_OFFCHAN_CTRL control command moves the DFS background chain
+to a DFS channel that the user selects, and starts a background CAC
+there. The command is for tests:
 hostapd_cli -i <interface> raw SET_OFFCHAN_CTRL chan=<dfs_channel>
 
+The command fails on an interface that is not enabled, or when the
+driver or the configuration has no background radar. Otherwise
+hostapd takes the events of the chain for events of the operating
+channel. mtk-openwrt-feeds 34ae03f434bc ("[MAC80211][WiFi6][hostapd]
+[Add support for background radar offchain control]") has the same
+check. The command also fails while the chain runs a CAC, because the
+kernel refuses a new channel then. On a driver error the kernel drops
+the chain, so hostapd drops its record after any failed start.
+Without VHT or HE the chain has no centre index, and hostapd records
+zero.
+
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- hostapd/ctrl_iface.c | 72 ++++++++++++++++++++++++++++++++++++++++++++
- src/ap/dfs.c         | 25 ++++++---------
- src/ap/dfs.h         | 15 +++++++++
- 3 files changed, 96 insertions(+), 16 deletions(-)
+ hostapd/ctrl_iface.c | 81 ++++++++++++++++++++++++++++++++++++++++++++
+ src/ap/dfs.c         | 27 ++++++---------
+ src/ap/dfs.h         | 16 +++++++++
+ 3 files changed, 107 insertions(+), 17 deletions(-)
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4221,6 +4221,76 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
+@@ -4231,6 +4231,85 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
  }
  
  
@@ -27,13 +40,20 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +{
 +	struct hostapd_iface *iface = hapd->iface;
 +	char *pos, *param;
-+	enum hostapd_hw_mode hw_mode;
 +	bool chan_found = false;
-+	int i, num_available_chandefs, channel, chan_width, sec = 0;
++	int i, num_available_chandefs, channel, sec = 0;
 +	int sec_chan_idx_80p80 = -1;
-+	u8 oper_centr_freq_seg0_idx, oper_centr_freq_seg1_idx;
++	u8 oper_centr_freq_seg0_idx = 0, oper_centr_freq_seg1_idx = 0;
 +	struct hostapd_channel_data *chan;
 +	enum dfs_channel_type type = DFS_NO_CAC_YET;
++
++	if (!iface->current_mode || iface->state != HAPD_IFACE_ENABLED ||
++	    !dfs_use_radar_background(iface))
++		return -1;
++
++	/* the kernel refuses a retune while the chain runs a CAC */
++	if (iface->radar_background.cac_started)
++		return -1;
 +
 +	param = os_strchr(cmd, ' ');
 +	if (!param)
@@ -77,7 +97,9 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +				  oper_centr_freq_seg0_idx,
 +				  oper_centr_freq_seg1_idx, true)) {
 +		wpa_printf(MSG_ERROR, "DFS failed to start CAC offchannel");
++		/* a driver error drops the chain in the kernel */
 +		iface->radar_background.channel = -1;
++		iface->radar_background.cac_started = 0;
 +		return -1;
 +	}
 +
@@ -94,7 +116,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4869,6 +4939,8 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4879,6 +4958,8 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "DFS_DETECT_MODE ", 16) == 0) {
  		reply_len = hostapd_ctrl_iface_set_dfs_detect_mode(hapd, buf + 16,
  								   reply, reply_size);
@@ -119,6 +141,15 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static struct hostapd_channel_data *
  dfs_downgrade_bandwidth(struct hostapd_iface *iface, int *secondary_channel,
  			u8 *oper_centr_freq_seg0_idx,
+@@ -36,7 +29,7 @@ dfs_downgrade_bandwidth(struct hostapd_i
+ 			enum dfs_channel_type *channel_type);
+ 
+ 
+-static bool dfs_use_radar_background(struct hostapd_iface *iface)
++bool dfs_use_radar_background(struct hostapd_iface *iface)
+ {
+ 	return (iface->drv_flags2 & WPA_DRIVER_FLAGS2_RADAR_BACKGROUND) &&
+ 		iface->conf->enable_background_radar;
 @@ -241,9 +234,9 @@ static int is_in_chanlist(struct hostapd
   *  - hapd->vht/he_oper_centr_freq_seg0_idx
   *  - hapd->vht/he_oper_centr_freq_seg1_idx
@@ -166,10 +197,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  int hostapd_handle_dfs(struct hostapd_iface *iface);
  
  int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
-@@ -32,5 +38,14 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -32,5 +38,15 @@ int hostapd_dfs_start_cac(struct hostapd
  int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
  int hostapd_is_dfs_overlap(struct hostapd_iface *iface, enum chan_width width,
  			   int center_freq);
++bool dfs_use_radar_background(struct hostapd_iface *iface);
 +int dfs_find_channel(struct hostapd_iface *iface,
 +		     struct hostapd_channel_data **ret_chan,
 +		     int idx, enum dfs_channel_type type);

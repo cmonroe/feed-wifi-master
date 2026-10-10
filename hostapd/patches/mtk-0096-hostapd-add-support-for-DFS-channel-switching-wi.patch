@@ -33,7 +33,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2474,12 +2474,12 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2492,12 +2492,12 @@ static int hostapd_ctrl_iface_chan_switc
  					  char *pos)
  {
  #ifdef NEED_AP_MLME
@@ -50,7 +50,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	unsigned int num_err = 0;
  	int err = 0;
  
-@@ -2509,21 +2509,28 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2532,60 +2532,55 @@ static int hostapd_ctrl_iface_chan_switc
  	switch (settings.freq_params.bandwidth) {
  	case 40:
  		bandwidth = CHAN_WIDTH_40;
@@ -81,9 +81,6 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		break;
  	}
  
-@@ -2538,41 +2545,29 @@ static int hostapd_ctrl_iface_chan_switc
- 	}
- 
  	if (settings.freq_params.center_freq1)
 -		dfs_range += hostapd_is_dfs_overlap(
 -			iface, bandwidth, settings.freq_params.center_freq1);
@@ -96,7 +93,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 -		dfs_range += hostapd_is_dfs_overlap(
 -			iface, bandwidth, settings.freq_params.center_freq2);
 -
--	if (dfs_range) {
+-	if (dfs_range && !settings.freq_params.radar_background) {
 -		ret = ieee80211_freq_to_chan(settings.freq_params.freq, &chan);
 -		if (ret == NUM_HOSTAPD_MODES) {
 -			wpa_printf(MSG_ERROR,
@@ -127,7 +124,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +					     settings.freq_params.center_freq2);
 +	switch (state) {
 +	case HOSTAPD_CHAN_DFS_USABLE:
-+		cac_required = true;
++		cac_required = !settings.freq_params.radar_background;
 +		/* fallthrough */
 +	case HOSTAPD_CHAN_DFS_AVAILABLE:
 +		background_radar = hostapd_dfs_handle_csa(iface, &settings,
@@ -144,7 +141,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	if (iface->cac_started) {
-@@ -2594,6 +2589,36 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2607,6 +2602,36 @@ static int hostapd_ctrl_iface_chan_switc
  		}
  	}
  
@@ -178,10 +175,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +		iface->radar_background.centr_freq_seg1_idx = seg1;
 +	}
 +
- 	return (iface->num_bss == num_err) ? ret : 0;
- #else /* NEED_AP_MLME */
- 	return -1;
-@@ -4256,9 +4281,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
+ 	if (iface->num_bss == num_err)
+ 		return ret;
+ 
+@@ -4291,9 +4316,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
  	else
  		return -1;
  
@@ -195,7 +192,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			break;
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2803,6 +2803,11 @@ static int __ieee802_11_set_beacon(struc
+@@ -2805,6 +2805,11 @@ static int __ieee802_11_set_beacon(struc
  	}
  #endif /* CONFIG_IEEE80211AX */
  
@@ -225,7 +222,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		wpa_printf(MSG_DEBUG,
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -244,14 +244,15 @@ static int is_in_chanlist(struct hostapd
+@@ -243,14 +243,15 @@ static int is_in_chanlist(struct hostapd
   */
  int dfs_find_channel(struct hostapd_iface *iface,
  		     struct hostapd_channel_data **ret_chan,
@@ -244,7 +241,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	wpa_printf(MSG_DEBUG, "DFS new chan checking %d channels", n_chans);
  	for (i = 0; i < mode->num_channels; i++) {
-@@ -265,8 +266,7 @@ int dfs_find_channel(struct hostapd_ifac
+@@ -264,8 +265,7 @@ int dfs_find_channel(struct hostapd_ifac
  		}
  
  		/* Skip HT40/VHT incompatible channels */
@@ -254,7 +251,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		    (!dfs_is_chan_allowed(chan, n_chans) ||
  		     !(chan->allowed_bw & HOSTAPD_CHAN_WIDTH_40P))) {
  			wpa_printf(MSG_DEBUG,
-@@ -559,7 +559,7 @@ dfs_get_valid_channel(struct hostapd_ifa
+@@ -558,7 +558,7 @@ dfs_get_valid_channel(struct hostapd_ifa
  		return NULL;
  
  	/* Get the count first */
@@ -263,7 +260,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	wpa_printf(MSG_DEBUG, "DFS: num_available_chandefs=%d",
  		   num_available_chandefs);
  	if (num_available_chandefs == 0)
-@@ -582,7 +582,7 @@ dfs_get_valid_channel(struct hostapd_ifa
+@@ -581,7 +581,7 @@ dfs_get_valid_channel(struct hostapd_ifa
  	chan_idx = _rand % num_available_chandefs;
  	wpa_printf(MSG_DEBUG, "DFS: Picked random entry from the list: %d/%d",
  		   chan_idx, num_available_chandefs);
@@ -272,7 +269,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (!chan) {
  		wpa_printf(MSG_DEBUG, "DFS: no random channel found");
  		return NULL;
-@@ -612,7 +612,7 @@ dfs_get_valid_channel(struct hostapd_ifa
+@@ -611,7 +611,7 @@ dfs_get_valid_channel(struct hostapd_ifa
  		for (i = 0; i < num_available_chandefs - 1; i++) {
  			/* start from chan_idx + 1, end when chan_idx - 1 */
  			chan_idx2 = (chan_idx + 1 + i) % num_available_chandefs;
@@ -281,7 +278,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			if (chan2 && abs(chan2->chan - chan->chan) > 12) {
  				/* two channels are not adjacent */
  				sec_chan_idx_80p80 = chan2->chan;
-@@ -1455,10 +1455,10 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1421,10 +1421,10 @@ int hostapd_dfs_complete_cac(struct host
  			 * another radio.
  			 */
  			if (iface->state != HAPD_IFACE_ENABLED &&
@@ -295,7 +292,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  			/*
  			 * When background radar is enabled but the CAC completion
-@@ -1472,6 +1472,13 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1438,6 +1438,13 @@ int hostapd_dfs_complete_cac(struct host
  	} else if (hostapd_dfs_is_background_event(iface, freq)) {
  		iface->radar_background.cac_started = 0;
  		hostapd_dfs_update_background_chain(iface);
@@ -309,7 +306,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	}
  
  	iface->radar_detected = false;
-@@ -1517,6 +1524,9 @@ int hostapd_dfs_pre_cac_expired(struct h
+@@ -1483,6 +1490,9 @@ int hostapd_dfs_pre_cac_expired(struct h
  		return 0;
  	}
  
@@ -319,7 +316,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	return 0;
  }
  
-@@ -2051,7 +2061,8 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -1916,7 +1926,8 @@ int hostapd_dfs_start_cac(struct hostapd
  		/* This is called when the driver indicates that an offloaded
  		 * DFS has started CAC. radar_detected might be set for previous
  		 * DFS channel. Clear it for this new CAC process. */
@@ -329,7 +326,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		iface->cac_started = 1;
  
  		/* Clear radar_detected in case it is for the previous
-@@ -2119,14 +2130,15 @@ int hostapd_handle_dfs_offload(struct ho
+@@ -1984,14 +1995,15 @@ int hostapd_handle_dfs_offload(struct ho
  }
  
  
@@ -349,7 +346,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	if (!iface->conf->ieee80211h || !mode ||
  	    mode->mode != HOSTAPD_MODE_IEEE80211A)
-@@ -2159,18 +2171,137 @@ int hostapd_is_dfs_overlap(struct hostap
+@@ -2024,18 +2036,137 @@ int hostapd_is_dfs_overlap(struct hostap
  		if (!(chan->flag & HOSTAPD_CHAN_RADAR))
  			continue;
  
@@ -499,7 +496,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  }
 --- a/src/ap/dfs.h
 +++ b/src/ap/dfs.h
-@@ -39,16 +39,21 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -39,17 +39,22 @@ int hostapd_dfs_start_cac(struct hostapd
  			  int ht_enabled, int chan_offset, int chan_width,
  			  int cf1, int cf2);
  int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
@@ -507,6 +504,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 -			   int center_freq);
 +int hostapd_dfs_get_target_state(struct hostapd_iface *iface, enum chan_width width,
 +				 int center_freq, int center_freq2);
+ bool dfs_use_radar_background(struct hostapd_iface *iface);
  int dfs_find_channel(struct hostapd_iface *iface,
  		     struct hostapd_channel_data **ret_chan,
 -		     int idx, enum dfs_channel_type type);
