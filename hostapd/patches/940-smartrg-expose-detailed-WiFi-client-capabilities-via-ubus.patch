@@ -2,25 +2,38 @@ From: Gaylon Buckelew <gaylon.buckelew@adtran.com>
 Date: Fri, 29 Sep 2023 00:00:00 +0000
 Subject: [PATCH] hostapd: expose detailed WiFi client capabilities via ubus
 
-Extend the ubus interface to report comprehensive client capabilities
-including HT, VHT, HE, and EHT parameters. Adds get_client_caps method
-for capabilities-only queries and vendor IE collection.
+Management tools need the capabilities that a client advertises in
+its Association Request, not only the flags that hostapd keeps. The
+ubus client report decodes the HT, VHT, HE and EHT capabilities of
+each client, its supported rates and its vendor elements. The
+get_client_caps method gives this report without the driver
+counters.
+
+The EHT-MCS maps and the PPE Thresholds field carry no length. Their
+size depends on the band and on the HE channel widths, by the rules
+that hostapd uses to check the element. The report applies the same
+rules in every band, so a 6 GHz client shows its 160 MHz map and the
+PPE thresholds come from the correct offset. The report also decodes
+elements that hostapd did not accept, for example on a BSS without
+EHT. It leaves out each field that the element does not hold. The
+supported rates are sorted by rate, without the basic rate flag.
 
 Co-developed-by: Vitali Klotschko <vitali.klotschko@adtran.com>
 Signed-off-by: Vitali Klotschko <vitali.klotschko@adtran.com>
 Co-developed-by: Matthew Cather <matthew.cather@adtran.com>
 Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
 Signed-off-by: Gaylon Buckelew <gaylon.buckelew@adtran.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/ap/ieee802_11.c            |    4 
- src/ap/ieee802_11_eht.c        |    3 
- src/ap/sta_info.c              |    1 
- src/ap/sta_info.h              |    2 
- src/ap/ubus.c                  |  714 +++++++++++++++++++++++++++++--
+ src/ap/ieee802_11.c            |    8
+ src/ap/ieee802_11_eht.c        |    3
+ src/ap/sta_info.c              |    2
+ src/ap/sta_info.h              |    3
+ src/ap/ubus.c                  |  800 +++++++++++++++++++++++++++++--
  src/common/ieee802_11_common.c |   27 +
- src/common/ieee802_11_common.h |    1 
- 7 files changed, 710 insertions(+), 42 deletions(-)
+ src/common/ieee802_11_common.h |    1
+ 7 files changed, 799 insertions(+), 45 deletions(-)
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
@@ -138,7 +151,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static struct ubus_context *ctx;
  static struct blob_buf b;
-@@ -231,71 +245,695 @@ hostapd_bss_reload(struct ubus_context *
+@@ -231,71 +245,721 @@ hostapd_bss_reload(struct ubus_context *
  
  
  static void
@@ -224,7 +237,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		{ "max_ampdu_length_exponent", VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX, VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX_SHIFT },
 +		{ "extended_nss_bw", VHT_CAP_EXTENDED_NSS_BW_SUPPORT_MASK, VHT_CAP_EXTENDED_NSS_BW_SHIFT },
 +	};
-+
+ 
+-	supported_mcs = blobmsg_open_table(&b, "mcs_map");
 +	uint32_t cap_info = vhtc->vht_capabilities_info;
 +	void *mcs_table, *map;
 +
@@ -239,8 +253,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		uint16_t val = (cap_info & values[i].mask) >> values[i].shift;
 +		blobmsg_add_u32(&b, values[i].name, val);
 +	}
- 
--	supported_mcs = blobmsg_open_table(&b, "mcs_map");
++
 +	mcs_table = blobmsg_open_table(&b, "mcs_map");
  
 -	/* RX map */
@@ -284,8 +297,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 -	void *r, *v;
 +	void *table = table_name ? blobmsg_open_table(&b, table_name) : NULL;
- 
--	v = blobmsg_open_table(&b, "capabilities");
++
 +	for (int i = 0; i < capas_len; i++) {
 +		if (capas[i].bitcount > 1) {
 +			uint32_t val = bitfield_value_get(data, capas[i].bitstart, capas[i].bitcount);
@@ -296,7 +308,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		uint8_t byte_idx = capas[i].bitstart / 8;
 +		uint8_t bit_mask = 1 << (capas[i].bitstart % 8);
 +		uint8_t bit_val = !!(data[byte_idx] & bit_mask);
-+
+ 
+-	v = blobmsg_open_table(&b, "capabilities");
 +		if (filter_false && !bit_val)
 +			continue;
 +
@@ -479,13 +492,30 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +			&htc->asel_capabilities, filter_false);
 +}
 +
++/* NULL for a map that does not fit; a NULL pos leaves out every later map */
++static u8 *
++eht_mcs_map_add(const char *name, u8 *pos, const u8 *end, size_t len)
++{
++	char str[2 + 2 * EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY + 1];
++
++	if (!pos || (size_t) (end - pos) < len)
++		return NULL;
++
++	os_strlcpy(str, "0x", sizeof(str));
++	wpa_snprintf_hex(str + 2, sizeof(str) - 2, pos, len);
++	blobmsg_add_string(&b, name, str);
++
++	return pos + len;
++}
++
 +static void
-+eht_capab_add(struct ieee80211_eht_capabilities *ehtc,
++eht_capab_add(struct ieee80211_eht_capabilities *ehtc, size_t eht_len,
 +	      struct ieee80211_he_capabilities *hec, int freq, bool filter_false)
 +{
++	const u8 *end = (const u8 *) ehtc + eht_len;
 +	void *mcs_table;
 +	u8 *ptr;
-+	char str[2 + EHT_PPE_THRESH_CAPAB_LEN + 1];
++	char str[2 + 2 * EHT_PPE_THRESH_CAPAB_LEN + 1];
 +
 +	static const struct bitfield_descriptor mac_capas[] = {
 +		{ "epcs_priority_access", 0, 1 },
@@ -554,7 +584,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		// { "reserved", 69, 3 }
 +	};
 +
-+	u8 *he_phy = hec->he_phy_capab_info;
++	u8 chwidth = hec->he_phy_capab_info[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX];
++	bool band_6g = freq >= 5895;
++	bool band_5g_6g = IS_5GHZ(freq) || band_6g;
++	bool only_20mhz;
 +	u16 ppet_size;
 +
 +	capab_table_add("mac_capabilities", mac_capas, ARRAY_SIZE(mac_capas),
@@ -562,60 +595,51 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	capab_table_add("phy_capabilities", phy_capas, ARRAY_SIZE(phy_capas),
 +			(uint8_t *)&ehtc->phy_cap, filter_false);
 +
++	if (band_5g_6g)
++		only_20mhz = !(chwidth &
++			       (HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G |
++				HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G |
++				HE_PHYCAP_CHANNEL_WIDTH_SET_80PLUS80MHZ_IN_5G));
++	else
++		only_20mhz = !(chwidth & HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_IN_2G);
++
 +	ptr = ehtc->optional;
-+	strcpy(str, "0x");
 +	mcs_table = blobmsg_open_table(&b, "supported_mcs_set");
 +
-+	bool band_5g = IS_5GHZ(freq);
-+	bool band_6g = freq >= 5895;
-+
-+	if (band_6g) {
-+		wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
-+		blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
-+		ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
-+	} else if (band_5g) {
-+		if (bitfield_value_get(he_phy, 2, 3) == 0) {
-+			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
-+			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
-+			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY;
-+		} else {
-+			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
-+			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
-+			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
-+			if (bitfield_value_get(he_phy, 3, 2)) {
-+				wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
-+				blobmsg_add_string(&b, "eht-mcs_map_160mhz", str);
-+				ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
-+			}
-+		}
++	if (only_20mhz) {
++		ptr = eht_mcs_map_add("eht-mcs_map_20mhz", ptr, end,
++				      EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
 +	} else {
-+		if (bitfield_value_get(he_phy, 1, 1)) {
-+			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
-+			blobmsg_add_string(&b, "eht-mcs_map_<80mhz", str);
-+			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
-+		} else {
-+			wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
-+			blobmsg_add_string(&b, "eht-mcs_map_20mhz", str);
-+			ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY;
-+		}
-+	}
-+
-+	if (band_6g && bitfield_value_get(ehtc->phy_cap, 1, 1)) {
-+		wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
-+		blobmsg_add_string(&b, "eht-mcs_map_320mhz", str);
-+		ptr += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
++		ptr = eht_mcs_map_add("eht-mcs_map_<80mhz", ptr, end,
++				      EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
++		if (band_5g_6g &&
++		    (chwidth & (HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G |
++				HE_PHYCAP_CHANNEL_WIDTH_SET_80PLUS80MHZ_IN_5G)))
++			ptr = eht_mcs_map_add("eht-mcs_map_160mhz", ptr, end,
++					      EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
++		if (band_6g &&
++		    (ehtc->phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &
++		     EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK))
++			ptr = eht_mcs_map_add("eht-mcs_map_320mhz", ptr, end,
++					      EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
 +	}
 +	blobmsg_close_table(&b, mcs_table);
 +
-+	ppet_size = smartrg_eht_ppet_size(*(u16 *)ptr, ehtc->phy_cap);
-+	if (ppet_size) {
-+		wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, ppet_size);
-+		blobmsg_add_string(&b, "eht_ppe_thresholds", str);
-+	}
++	if (!ptr || end - ptr < 2)
++		return;
++
++	ppet_size = smartrg_eht_ppet_size(WPA_GET_LE16(ptr), ehtc->phy_cap);
++	if (!ppet_size || end - ptr < ppet_size)
++		return;
++
++	os_strlcpy(str, "0x", sizeof(str));
++	wpa_snprintf_hex(str + 2, sizeof(str) - 2, ptr, ppet_size);
++	blobmsg_add_string(&b, "eht_ppe_thresholds", str);
 +}
 +
 +static void
-+he_capab_add(struct ieee80211_he_capabilities *hec, bool filter_false)
++he_capab_add(struct ieee80211_he_capabilities *hec, size_t he_len,
++	     bool filter_false)
 +{
 +	void *mcs_table, *map;
 +
@@ -732,6 +756,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	capab_table_add("phy_capabilities", phy_capas, ARRAY_SIZE(phy_capas),
 +			(uint8_t *)&hec->he_phy_capab_info, filter_false);
 +
++	if (he_len < offsetof(struct ieee80211_he_capabilities, optional))
++		return;
++
 +	mcs_table = blobmsg_open_table(&b, "mcs_map");
 +
 +	map = blobmsg_open_table(&b, "rx");
@@ -768,7 +795,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +
 +	if (sta->he_capab) {
 +		table = blobmsg_open_table(&b, "he");
-+		he_capab_add(sta->he_capab, filter_false);
++		he_capab_add(sta->he_capab, sta->he_capab_len, filter_false);
 +		blobmsg_close_table(&b, table);
 +	} else if (elems && elems->he_capabilities &&
 +		   elems->he_capabilities_len >= IEEE80211_HE_CAPAB_MIN_LEN &&
@@ -778,7 +805,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		os_memset(&he_tmp, 0, sizeof(he_tmp));
 +		os_memcpy(&he_tmp, elems->he_capabilities, elems->he_capabilities_len);
 +		table = blobmsg_open_table(&b, "he");
-+		he_capab_add(&he_tmp, filter_false);
++		he_capab_add(&he_tmp, elems->he_capabilities_len, filter_false);
 +		blobmsg_close_table(&b, table);
 +	}
 +
@@ -793,20 +820,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	}
 +
 +	if (sta->eht_capab) {
-+		struct ieee80211_eht_capabilities eht_sta;
-+		size_t eht_len = sta->eht_capab_len;
-+
-+		/* sta->eht_capab is only eht_capab_len bytes, as little as
-+		 * IEEE80211_EHT_CAPAB_MIN_LEN; eht_capab_add() walks the fixed
-+		 * struct layout, so bounce through a zero-padded copy */
-+		if (eht_len > sizeof(eht_sta))
-+			eht_len = sizeof(eht_sta);
-+
-+		os_memset(&eht_sta, 0, sizeof(eht_sta));
-+		os_memcpy(&eht_sta, sta->eht_capab, eht_len);
-+
 +		table = blobmsg_open_table(&b, "eht");
-+		eht_capab_add(&eht_sta, sta->he_capab, freq, filter_false);
++		eht_capab_add(sta->eht_capab, sta->eht_capab_len, sta->he_capab,
++			      freq, filter_false);
 +		blobmsg_close_table(&b, table);
 +	} else if (elems && elems->eht_capabilities && elems->he_capabilities &&
 +		   elems->he_capabilities_len >= IEEE80211_HE_CAPAB_MIN_LEN &&
@@ -821,7 +837,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		os_memset(&eht_tmp, 0, sizeof(eht_tmp));
 +		os_memcpy(&eht_tmp, elems->eht_capabilities, elems->eht_capabilities_len);
 +		table = blobmsg_open_table(&b, "eht");
-+		eht_capab_add(&eht_tmp, &he_tmp, freq, filter_false);
++		eht_capab_add(&eht_tmp, elems->eht_capabilities_len, &he_tmp,
++			      freq, filter_false);
 +		blobmsg_close_table(&b, table);
 +	}
 +
@@ -860,13 +877,35 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +}
  
 -	blobmsg_close_table(&b, v);
-+static int compare_char(const void *a, const void *b)
++static int rate_compare(const void *a, const void *b)
 +{
-+	return *(char *)a - *(char *)b;
++	return *(const u8 *)a - *(const u8 *)b;
++}
++
++static void
++supported_rates_add(const u8 *supp_rates, int len)
++{
++	void *r = blobmsg_open_array(&b, "supported_rates");
++	u8 *rates;
++	int i;
++
++	rates = len > 0 ? os_malloc(len) : NULL;
++	if (!rates)
++		goto out;
++
++	for (i = 0; i < len; i++)
++		rates[i] = supp_rates[i] & 0x7f;
++	qsort(rates, len, sizeof(*rates), rate_compare);
++	for (i = 0; i < len; i++)
++		blobmsg_add_u32(&b, "", rates[i] >> 1);
++	os_free(rates);
++
++out:
++	blobmsg_close_array(&b, r);
  }
  
  static void
-@@ -359,7 +997,8 @@ hostapd_ubus_sta_mld_add(struct hostapd_
+@@ -359,7 +1023,8 @@ hostapd_ubus_sta_mld_add(struct hostapd_
  
  /* A non-AP MLD is listed once, with the station of its association link. */
  static void
@@ -876,7 +915,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct hostap_sta_driver_data sta_driver_data;
  	struct sta_info *sta;
-@@ -374,42 +1013,76 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -374,42 +1039,67 @@ hostapd_bss_clients_add(struct hostapd_d
  		{ "authorized", WLAN_STA_AUTHORIZED },
  		{ "preauth", WLAN_STA_PREAUTH },
  		{ "wds", WLAN_STA_WDS },
@@ -929,17 +968,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		blobmsg_add_u8(&b, "mbo", !!(sta->cell_capa));
  #endif
  
-+		r = blobmsg_open_array(&b, "supported_rates");
-+		if (sta->supported_rates && sta->supported_rates_len > 0) {
-+			uint16_t rates_len = sta->supported_rates_len;
-+			uint8_t *rate_array = malloc(rates_len);
-+			memcpy(rate_array, sta->supported_rates, rates_len);
-+			qsort(rate_array, rates_len, sizeof(char), compare_char);
-+			for (i = 0; i < rates_len; i++)
-+				blobmsg_add_u32(&b, "", (rate_array[i] & 0x7f) >> 1);
-+			free(rate_array);
-+		}
-+		blobmsg_close_array(&b, r);
++		supported_rates_add(sta->supported_rates,
++				    sta->supported_rates_len);
 +
  		r = blobmsg_open_array(&b, "rrm");
  		for (i = 0; i < ARRAY_SIZE(sta->rrm_enabled_capa); i++)
@@ -956,7 +986,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  		blobmsg_close_array(&b, r);
  
-@@ -420,8 +1093,8 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -420,8 +1110,8 @@ hostapd_bss_clients_add(struct hostapd_d
  			blobmsg_add_string_buffer(&b);
  #endif
  
@@ -967,7 +997,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			r = blobmsg_open_table(&b, "bytes");
  			blobmsg_add_u64(&b, "rx", sta_driver_data.rx_bytes);
  			blobmsg_add_u64(&b, "tx", sta_driver_data.tx_bytes);
-@@ -435,14 +1108,14 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -435,14 +1125,14 @@ hostapd_bss_clients_add(struct hostapd_d
  			blobmsg_add_u32(&b, "tx", sta_driver_data.tx_packets);
  			blobmsg_close_table(&b, r);
  			r = blobmsg_open_table(&b, "rate");
@@ -984,7 +1014,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_ubus_sta_mld_add(hapd, sta);
  
  		blobmsg_close_table(&b, c);
-@@ -450,25 +1123,28 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -450,25 +1140,28 @@ hostapd_bss_clients_add(struct hostapd_d
  }
  
  static int
@@ -1018,7 +1048,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	blobmsg_close_array(&b, list);
  	ubus_send_reply(ctx, req, b.head);
  
-@@ -476,6 +1152,22 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -476,6 +1169,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -1041,7 +1071,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -2185,6 +2877,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -2185,6 +2894,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),

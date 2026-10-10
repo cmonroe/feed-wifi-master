@@ -2,21 +2,25 @@ From: Chad Monroe <chad@monroe.io>
 Date: Tue, 25 Nov 2025 10:22:00 -0800
 Subject: [PATCH] hostapd: add interface state change callback for setup failure
 
-Notify netifd when interface transitions to DISABLED from ACS, DFS, or
-HT_SCAN states. Allows netifd to retry setup in case of a transient failure.
+An interface that goes to DISABLED from the ACS, DFS or HT_SCAN
+state does not come up, and netifd does not see it. hostapd reports
+such a transition to netifd as a setup failure, so that netifd can
+set the radio up again after a transient failure.
 
-Suppress failure notification when the transition is caused by an
-intentional AP-STA coordination stop (apsta_state down). Without this
-guard, STA disconnect on a DFS channel triggers DFS_FAILED, causing
-netifd to teardown and restart the radio in a loop.
+hostapd does not report a transition that it causes itself while it
+applies a configuration or follows an AP-STA stop or start. Without
+that, a station that leaves a DFS channel makes netifd restart the
+radio in a loop. A configuration that fails or throws makes
+config_set reply with an error, not with the process ID. netifd then
+treats it as a failed setup.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- openwrt/files/hostapd.uc |   59 +++++++++++++++++++++++++++++++++++--
- src/ap/hostapd.c         |    6 +++
- src/ap/ucode.c           |   13 ++++++++
- src/ap/ucode.h           |   11 ++++++
- 4 files changed, 85 insertions(+), 4 deletions(-)
+ openwrt/files/hostapd.uc |   76 ++++++++++++++++++++++++++++++++++---
+ src/ap/hostapd.c         |    6 ++
+ src/ap/ucode.c           |   13 ++++++
+ src/ap/ucode.h           |   11 +++++
+ 4 files changed, 99 insertions(+), 7 deletions(-)
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
@@ -117,6 +121,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function iface_remove(cfg)
  {
  	if (!cfg || !cfg.bss || !cfg.bss[0] || !cfg.bss[0].ifname)
+@@ -458,7 +470,7 @@ function iface_restart(phydev, config, o
+ 				delete cur.bssid;
+ 		if (pending)
+ 			iface_supplicant_start(phydev);
+-		return;
++		return false;
+ 	}
+ 	iface_macaddr_sync(phydev, config);
+ 
 @@ -1262,7 +1274,7 @@ function mld_link_bss_remove(phy, name)
  	iface_macaddr_prune(phy, config);
  }
@@ -183,7 +196,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
  		call: function(req) {
  			let phy = req.args.phy;
-@@ -1952,18 +1987,23 @@ let main_obj = {
+@@ -1952,21 +1987,28 @@ let main_obj = {
  			let name = phy_name(phy, radio);
  			let file = req.args.config;
  			let prev_file = req.args.prev_config;
@@ -207,8 +220,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +				config.device = device;
  
  			hostapd.printf(`Set new config for phy ${name}: ${file}`);
- 			iface_set_config(name, config);
-@@ -2237,4 +2277,26 @@ return {
+-			iface_set_config(name, config);
++			let ret = iface_set_config(name, config);
++			if (ret === false || ret === libubus.STATUS_UNKNOWN_ERROR)
++				return libubus.STATUS_UNKNOWN_ERROR;
+ 
+ 			if (hostapd.data.auth_obj)
+ 				hostapd.data.auth_obj.notify("reload", { phy, radio });
+@@ -2237,4 +2279,26 @@ return {
  			return null;
  		return response;
  	},
