@@ -95,7 +95,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int
  hostapd_dfs_start_channel_switch_background(struct hostapd_iface *iface)
  {
-@@ -1343,6 +1391,21 @@ int hostapd_dfs_pre_cac_expired(struct h
+@@ -1347,6 +1395,21 @@ int hostapd_dfs_pre_cac_expired(struct h
  	set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
  		      cf1, cf2, HOSTAPD_CHAN_DFS_USABLE);
  
@@ -119,7 +119,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -685,6 +685,8 @@ struct hostapd_iface {
+@@ -686,6 +686,8 @@ struct hostapd_iface {
  		int freq;
  		int centr_freq_seg0_idx;
  		int centr_freq_seg1_idx;

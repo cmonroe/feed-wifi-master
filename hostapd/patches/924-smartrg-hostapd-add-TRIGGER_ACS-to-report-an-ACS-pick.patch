@@ -1,0 +1,715 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Thu, 09 Dec 2021 16:21:34 -0800
+Subject: [PATCH] hostapd: add TRIGGER_ACS to report an ACS pick
+
+An operator needs the channel that ACS picks for a running AP,
+without a move of the AP. TRIGGER_ACS (hostapd_cli trigger_acs) runs
+ACS on an enabled interface and reports the pick, and the operator
+then moves the AP with a channel switch. The CLI and the system log
+read the result of every ACS run.
+
+Each successful ACS run writes its pick to /tmp/hapd_acs_<phy>, and
+the ACS log lines use MSG_WARNING with the phy name. During a manual
+run the AP stays in state ENABLED, and ACS writes its pick into the
+configuration in one step at the end. The run saves the channel state
+just before that step and restores it right after, so changes from
+other events persist. TRIGGER_ACS is refused during a channel switch
+or a CAC, with ACS offload, and while a run is active. Control
+interface, ubus and ucode switch requests are refused during a run; a
+radar switch, a stop or a disable ends it. A busy scan and missing
+scan results fail an ACS run only once, because a second failure
+report would disable the AP.
+
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ hostapd/ctrl_iface.c   |   19 ++++
+ hostapd/hostapd_cli.c  |    8 +
+ hostapd/main.c         |    1 
+ src/ap/acs.c           |   68 +++++++++++----
+ src/ap/dfs.c           |    9 +
+ src/ap/drv_callbacks.c |    6 -
+ src/ap/hostapd.c       |    2 
+ src/ap/hostapd.h       |   38 ++++++++
+ src/ap/hw_features.c   |  166 +++++++++++++++++++++++++++++++++++++++
+ src/ap/hw_features.h   |   21 ++++
+ src/ap/ubus.c          |    5 +
+ src/ap/ucode.c         |    8 +
+ 12 files changed, 329 insertions(+), 22 deletions(-)
+
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -65,6 +65,7 @@
+ #include "ap/rrm.h"
+ #include "ap/dpp_hostapd.h"
+ #include "ap/dfs.h"
++#include "ap/hw_features.h"
+ #include "ap/nan_usd_ap.h"
+ #include "wps/wps_defs.h"
+ #include "wps/wps.h"
+@@ -1393,6 +1394,16 @@ static int hostapd_ctrl_iface_reload_bss
+ }
+ 
+ 
++static int hostapd_ctrl_iface_trigger_acs(struct hostapd_iface *iface)
++{
++	if (hostapd_manual_acs_start(iface) < 0) {
++		wpa_printf(MSG_ERROR, "Triggering of ACS failed");
++		return -1;
++	}
++	return 0;
++}
++
++
+ static int hostapd_ctrl_iface_disable(struct hostapd_iface *iface)
+ {
+ 	if (hostapd_disable_iface(iface) < 0) {
+@@ -2456,6 +2467,11 @@ static int hostapd_ctrl_iface_chan_switc
+ 	if (ret)
+ 		return ret;
+ 
++	if (iface->manual_acs_triggered) {
++		wpa_printf(MSG_INFO, "chanswitch: manual ACS in progress");
++		return -1;
++	}
++
+ 	settings.link_id = -1;
+ #ifdef CONFIG_IEEE80211BE
+ 	/* Reject if EHT is disabled in channel switch settings but the
+@@ -4279,6 +4295,9 @@ static int hostapd_ctrl_iface_receive_pr
+ 	} else if (os_strcmp(buf, "RELOAD") == 0) {
+ 		if (hostapd_ctrl_iface_reload(hapd->iface))
+ 			reply_len = -1;
++	} else if (os_strcmp(buf, "TRIGGER_ACS") == 0) {
++		if (hostapd_ctrl_iface_trigger_acs(hapd->iface))
++			reply_len = -1;
+ 	} else if (os_strcmp(buf, "DISABLE") == 0) {
+ 		if (hostapd_ctrl_iface_disable(hapd->iface))
+ 			reply_len = -1;
+--- a/hostapd/hostapd_cli.c
++++ b/hostapd/hostapd_cli.c
+@@ -1263,6 +1263,12 @@ static int hostapd_cli_cmd_reload_config
+ 	return wpa_ctrl_command(ctrl, "RELOAD_CONFIG");
+ }
+ 
++static int hostapd_cli_cmd_trigger_acs(struct wpa_ctrl *ctrl, int argc,
++				      char *argv[])
++{
++	return wpa_ctrl_command(ctrl, "TRIGGER_ACS");
++}
++
+ 
+ static int hostapd_cli_cmd_disable(struct wpa_ctrl *ctrl, int argc,
+ 				   char *argv[])
+@@ -1940,6 +1946,8 @@ static const struct hostapd_cli_cmd host
+ 	  "<addr> = send a link measurement report request to a station"},
+ 	{ "reload_wpa_psk", hostapd_cli_cmd_reload_wpa_psk, NULL,
+ 	  "= reload wpa_psk_file only" },
++	{ "trigger_acs", hostapd_cli_cmd_trigger_acs, NULL,
++	  "= trigger automatic channel selection" },
+ #ifdef CONFIG_IEEE80211R_AP
+ 	{ "reload_rxkhs", hostapd_cli_cmd_reload_rxkhs, NULL,
+ 	  "= reload R0KHs and R1KHs" },
+--- a/hostapd/main.c
++++ b/hostapd/main.c
+@@ -438,6 +438,7 @@ hostapd_interface_init(struct hapd_inter
+ 	}
+ 
+ 	iface->interfaces = interfaces;
++	iface->manual_acs_triggered = false;
+ 
+ 	for (k = 0; k < debug; k++) {
+ 		if (iface->bss[0]->conf->logger_stdout_level > 0)
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -779,6 +779,44 @@ struct hostapd_iface {
+ 	int (*enable_iface_cb)(struct hostapd_iface *iface);
+ 	int (*disable_iface_cb)(struct hostapd_iface *iface);
+ 
++	/*
++	 * TRIGGER_ACS only reports a channel; the operator moves the AP with
++	 * CHAN_SWITCH. ACS writes its pick into the running configuration in
++	 * one step at the end of the run, so the run keeps the channel state
++	 * here for that step and puts it back before it returns.
++	 */
++	bool manual_acs_triggered;
++	struct hostapd_manual_acs_saved {
++		bool valid;
++		struct hostapd_hw_modes *current_mode;
++		int freq;
++		bool is_no_ir;
++		enum hostapd_hw_mode hw_mode;
++		u8 channel;
++		u8 acs;
++		u8 edmg_channel;
++		int secondary_channel;
++		u8 ht40_plus_minus_allowed;
++		int ieee80211n;
++		int ieee80211ac;
++		int ieee80211ax;
++		int ieee80211be;
++		enum oper_chan_width vht_oper_chwidth;
++		u8 vht_oper_centr_freq_seg0_idx;
++		u8 vht_oper_centr_freq_seg1_idx;
++#ifdef CONFIG_IEEE80211AX
++		enum oper_chan_width he_oper_chwidth;
++		u8 he_oper_centr_freq_seg0_idx;
++		u8 he_oper_centr_freq_seg1_idx;
++#endif /* CONFIG_IEEE80211AX */
++#ifdef CONFIG_IEEE80211BE
++		enum oper_chan_width eht_oper_chwidth;
++		u8 eht_oper_centr_freq_seg0_idx;
++		u8 eht_bw320_offset;
++		u16 punct_bitmap;
++#endif /* CONFIG_IEEE80211BE */
++	} manual_acs_saved;
++
+ 	/* Configured freq of interface is NO_IR */
+ 	bool is_no_ir;
+ 
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -1353,10 +1353,175 @@ static void hostapd_notify_bad_chans(str
+ }
+ 
+ 
++void hostapd_manual_acs_save(struct hostapd_iface *iface)
++{
++	struct hostapd_config *conf = iface->conf;
++	struct hostapd_manual_acs_saved *saved = &iface->manual_acs_saved;
++
++	if (!iface->manual_acs_triggered)
++		return;
++
++	saved->valid = true;
++	saved->current_mode = iface->current_mode;
++	saved->freq = iface->freq;
++	saved->is_no_ir = iface->is_no_ir;
++	saved->hw_mode = conf->hw_mode;
++	saved->channel = conf->channel;
++	saved->acs = conf->acs;
++	saved->edmg_channel = conf->edmg_channel;
++	saved->secondary_channel = conf->secondary_channel;
++	saved->ht40_plus_minus_allowed = conf->ht40_plus_minus_allowed;
++	saved->ieee80211n = conf->ieee80211n;
++	saved->ieee80211ac = conf->ieee80211ac;
++	saved->ieee80211ax = conf->ieee80211ax;
++	saved->ieee80211be = conf->ieee80211be;
++	saved->vht_oper_chwidth = conf->vht_oper_chwidth;
++	saved->vht_oper_centr_freq_seg0_idx = conf->vht_oper_centr_freq_seg0_idx;
++	saved->vht_oper_centr_freq_seg1_idx = conf->vht_oper_centr_freq_seg1_idx;
++#ifdef CONFIG_IEEE80211AX
++	saved->he_oper_chwidth = conf->he_oper_chwidth;
++	saved->he_oper_centr_freq_seg0_idx = conf->he_oper_centr_freq_seg0_idx;
++	saved->he_oper_centr_freq_seg1_idx = conf->he_oper_centr_freq_seg1_idx;
++#endif /* CONFIG_IEEE80211AX */
++#ifdef CONFIG_IEEE80211BE
++	saved->eht_oper_chwidth = conf->eht_oper_chwidth;
++	saved->eht_oper_centr_freq_seg0_idx = conf->eht_oper_centr_freq_seg0_idx;
++	saved->eht_bw320_offset = conf->eht_bw320_offset;
++	saved->punct_bitmap = conf->punct_bitmap;
++#endif /* CONFIG_IEEE80211BE */
++}
++
++
++void hostapd_manual_acs_restore(struct hostapd_iface *iface)
++{
++	struct hostapd_config *conf = iface->conf;
++	struct hostapd_manual_acs_saved *saved = &iface->manual_acs_saved;
++
++	if (!saved->valid)
++		return;
++
++	saved->valid = false;
++	iface->current_mode = saved->current_mode;
++	iface->freq = saved->freq;
++	iface->is_no_ir = saved->is_no_ir;
++	conf->hw_mode = saved->hw_mode;
++	conf->channel = saved->channel;
++	conf->acs = saved->acs;
++	conf->edmg_channel = saved->edmg_channel;
++	conf->secondary_channel = saved->secondary_channel;
++	conf->ht40_plus_minus_allowed = saved->ht40_plus_minus_allowed;
++	conf->ieee80211n = saved->ieee80211n;
++	conf->ieee80211ac = saved->ieee80211ac;
++	conf->ieee80211ax = saved->ieee80211ax;
++	conf->ieee80211be = saved->ieee80211be;
++	conf->vht_oper_chwidth = saved->vht_oper_chwidth;
++	conf->vht_oper_centr_freq_seg0_idx = saved->vht_oper_centr_freq_seg0_idx;
++	conf->vht_oper_centr_freq_seg1_idx = saved->vht_oper_centr_freq_seg1_idx;
++#ifdef CONFIG_IEEE80211AX
++	conf->he_oper_chwidth = saved->he_oper_chwidth;
++	conf->he_oper_centr_freq_seg0_idx = saved->he_oper_centr_freq_seg0_idx;
++	conf->he_oper_centr_freq_seg1_idx = saved->he_oper_centr_freq_seg1_idx;
++#endif /* CONFIG_IEEE80211AX */
++#ifdef CONFIG_IEEE80211BE
++	conf->eht_oper_chwidth = saved->eht_oper_chwidth;
++	conf->eht_oper_centr_freq_seg0_idx = saved->eht_oper_centr_freq_seg0_idx;
++	conf->eht_bw320_offset = saved->eht_bw320_offset;
++	conf->punct_bitmap = saved->punct_bitmap;
++#endif /* CONFIG_IEEE80211BE */
++}
++
++
++void hostapd_manual_acs_end(struct hostapd_iface *iface)
++{
++	if (!iface->manual_acs_triggered)
++		return;
++
++	iface->manual_acs_triggered = false;
++	/* a later scan result must not complete the run as a setup ACS */
++	acs_cleanup(iface);
++}
++
++
++static const char * hostapd_manual_acs_refusal(struct hostapd_iface *iface)
++{
++	if (iface->state != HAPD_IFACE_ENABLED)
++		return "the interface is not enabled";
++	if (iface->manual_acs_triggered)
++		return "a manual run is in progress";
++	if (iface->drv_flags & WPA_DRIVER_FLAGS_ACS_OFFLOAD)
++		return "the driver offloads ACS";
++	if (hostapd_csa_in_progress(iface))
++		return "a channel switch is in progress";
++	/* mac80211 also refuses a scan during a CAC */
++	if (iface->cac_started || iface->radar_background.cac_started)
++		return "a CAC is in progress";
++	return NULL;
++}
++
++
++int hostapd_manual_acs_start(struct hostapd_iface *iface)
++{
++	const char *reason = hostapd_manual_acs_refusal(iface);
++
++	if (reason) {
++		wpa_printf(MSG_INFO, "ACS(%s): TRIGGER_ACS refused: %s",
++			   iface->conf->bss[0]->iface, reason);
++		return -1;
++	}
++
++	iface->manual_acs_triggered = true;
++	if (acs_init(iface) == HOSTAPD_CHAN_ACS)
++		return 0;
++
++	hostapd_manual_acs_end(iface);
++	return -1;
++}
++
++
++static void hostapd_acs_result_write(struct hostapd_iface *iface)
++{
++	char filename[32];
++	FILE *f;
++
++	os_snprintf(filename, sizeof(filename), "/tmp/hapd_acs_%s", iface->phy);
++	f = fopen(filename, "w");
++	if (!f) {
++		wpa_printf(MSG_ERROR, "Unable to open %s for writing", filename);
++		return;
++	}
++
++	fprintf(f, "phy=%s\n", iface->phy);
++	fprintf(f, "config_fname=%s\n", iface->config_fname);
++	fprintf(f, "freq=%d\n", iface->freq);
++	fprintf(f, "channel=%d\n", iface->conf->channel);
++	fclose(f);
++}
++
++
++static int hostapd_manual_acs_completed(struct hostapd_iface *iface, int err)
++{
++	if (!err && hostapd_check_chans(iface) == HOSTAPD_CHAN_VALID) {
++		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
++			ACS_EVENT_COMPLETED "freq=%d channel=%d",
++			iface->freq, iface->conf->channel);
++		hostapd_acs_result_write(iface);
++	} else {
++		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, ACS_EVENT_FAILED);
++	}
++
++	hostapd_manual_acs_restore(iface);
++	hostapd_manual_acs_end(iface);
++	return 0;
++}
++
++
+ int hostapd_acs_completed(struct hostapd_iface *iface, int err)
+ {
+ 	int ret = -1;
+ 
++	if (iface->manual_acs_triggered)
++		return hostapd_manual_acs_completed(iface, err);
++
+ 	if (err)
+ 		goto out;
+ 
+@@ -1366,6 +1531,7 @@ int hostapd_acs_completed(struct hostapd
+ 		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
+ 			ACS_EVENT_COMPLETED "freq=%d channel=%d",
+ 			iface->freq, iface->conf->channel);
++		hostapd_acs_result_write(iface);
+ 		break;
+ 	case HOSTAPD_CHAN_ACS:
+ 		wpa_printf(MSG_ERROR, "ACS error - reported complete, but no result available");
+--- a/src/ap/acs.c
++++ b/src/ap/acs.c
+@@ -378,6 +378,11 @@ static void acs_fail(struct hostapd_ifac
+ {
+ 	wpa_printf(MSG_ERROR, "ACS: Failed to start");
+ 	acs_cleanup(iface);
++	/* TRIGGER_ACS runs beside a live AP, which stays up */
++	if (iface->manual_acs_triggered) {
++		hostapd_acs_completed(iface, 1);
++		return;
++	}
+ 	hostapd_disable_iface(iface);
+ }
+ 
+@@ -879,7 +884,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		    mode->mode == HOSTAPD_MODE_IEEE80211A &&
+ 		    iface->conf->ieee80211n &&
+ 		    !acs_usable_bw_chan(chan, ACS_BW40)) {
+-			wpa_printf(MSG_DEBUG,
++			wpa_printf(MSG_WARNING,
+ 				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
+ 				   chan->chan);
+ 			continue;
+@@ -889,14 +894,14 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		    (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
+ 		     iface->conf->ieee80211be)) {
+ 			if (bw == 80 && !acs_usable_bw_chan(chan, ACS_BW80)) {
+-				wpa_printf(MSG_DEBUG,
++				wpa_printf(MSG_WARNING,
+ 					   "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
+ 					   chan->chan);
+ 				continue;
+ 			}
+ 
+ 			if (bw == 160 && !acs_usable_bw_chan(chan, ACS_BW160)) {
+-				wpa_printf(MSG_DEBUG,
++				wpa_printf(MSG_WARNING,
+ 					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
+ 					   chan->chan);
+ 				continue;
+@@ -908,7 +913,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 			if (bw == 320 &&
+ 			    !acs_usable_bw320_chan(iface, chan,
+ 						   &bw320_offset)) {
+-				wpa_printf(MSG_DEBUG,
++				wpa_printf(MSG_WARNING,
+ 					   "ACS: Channel %d: not allowed as primary channel for 320 MHz bandwidth",
+ 					   chan->chan);
+ 				continue;
+@@ -926,7 +931,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 
+ 			if (!chan_bw_allowed(chan2, bw, secondary_channel != -1,
+ 					     j == 0)) {
+-				wpa_printf(MSG_DEBUG,
++				wpa_printf(MSG_WARNING,
+ 					   "ACS: Channel %d: BW %u is not supported",
+ 					   chan2->chan, bw);
+ 				break;
+@@ -969,7 +974,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		}
+ 
+ 		if (j != n_chans) {
+-			wpa_printf(MSG_DEBUG, "ACS: Channel %d: not enough bandwidth",
++			wpa_printf(MSG_WARNING, "ACS: Channel %d: not enough bandwidth",
+ 				   chan->chan);
+ 			continue;
+ 		}
+@@ -1058,11 +1063,11 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 
+ 		if (bias) {
+ 			factor *= bias->bias;
+-			wpa_printf(MSG_DEBUG,
++			wpa_printf(MSG_WARNING,
+ 				   "ACS:  * channel %d: total interference = %Lg (%f bias)",
+ 				   chan->chan, factor, bias->bias);
+ 		} else {
+-			wpa_printf(MSG_DEBUG,
++			wpa_printf(MSG_WARNING,
+ 				   "ACS:  * channel %d: total interference = %Lg",
+ 				   chan->chan, factor);
+ 		}
+@@ -1142,13 +1147,14 @@ acs_find_ideal_chan(struct hostapd_iface
+ 		}
+ 	}
+ 
++	wpa_printf(MSG_WARNING, "ACS(%s) n_chans=%d 80211n=%d 80211ac=%d 80211xx=%d secondary_channel=%d", iface->phy, n_chans, iface->conf->ieee80211n, iface->conf->ieee80211ac, iface->conf->ieee80211ax, iface->conf->secondary_channel);
+ 	bw = num_chan_to_bw(n_chans);
+ 
+ bw_selected:
+ 	/* TODO: VHT/HE80+80. Update acs_adjust_center_freq() too. */
+ 
+-	wpa_printf(MSG_DEBUG,
+-		   "ACS: Survey analysis for selected bandwidth %d MHz", bw);
++	wpa_printf(MSG_WARNING,
++		   "ACS(%s): Survey analysis for selected bandwidth %d MHz", iface->phy, bw);
+ 
+ 	for (i = 0; i < iface->num_hw_features; i++) {
+ 		mode = &iface->hw_features[i];
+@@ -1159,8 +1165,8 @@ bw_selected:
+ 	}
+ 
+ 	if (ideal_chan) {
+-		wpa_printf(MSG_DEBUG, "ACS: Ideal channel is %d (%d MHz) with total interference factor of %Lg",
+-			   ideal_chan->chan, ideal_chan->freq, ideal_factor);
++		wpa_printf(MSG_WARNING, "ACS(%s): Ideal channel is %d (%d MHz) with total interference factor of %Lg",
++			   iface->phy, ideal_chan->chan, ideal_chan->freq, ideal_factor);
+ 
+ #ifdef CONFIG_IEEE80211BE
+ 		if (iface->conf->punct_acs_threshold)
+@@ -1200,6 +1206,16 @@ static void acs_adjust_secondary(struct
+ 
+ static void acs_adjust_center_freq(struct hostapd_iface *iface)
+ {
++#ifdef CONFIG_IEEE80211AX
++	wpa_printf(MSG_WARNING, "ACS(%s): channel %u, secondary_channel %d, vht_center %u, he_center %u",
++		iface->phy, iface->conf->channel, iface->conf->secondary_channel,
++		iface->conf->vht_oper_centr_freq_seg0_idx, iface->conf->he_oper_centr_freq_seg0_idx);
++#else
++	wpa_printf(MSG_WARNING, "ACS(%s): channel %u, secondary_channel %d, vht_center %u",
++		iface->phy, iface->conf->channel, iface->conf->secondary_channel,
++		iface->conf->vht_oper_centr_freq_seg0_idx);
++#endif
++
+ 	int center;
+ 
+ 	wpa_printf(MSG_DEBUG, "ACS: Adjusting center frequency");
+@@ -1279,7 +1295,6 @@ static int acs_study_bss_based(struct ho
+ 	scan_res = hostapd_driver_get_scan_results(iface->bss[0]);
+ 	if (!scan_res) {
+ 		wpa_printf(MSG_INFO, "ACS: Scan request failed");
+-		hostapd_setup_interface_complete(iface, 1);
+ 		return -1;
+ 	}
+ 
+@@ -1326,6 +1341,10 @@ static void acs_study(struct hostapd_ifa
+ 	struct hostapd_channel_data *ideal_chan;
+ 	int err;
+ 
++	/* ACS writes its pick into the running configuration from here on.
++	 * A manual run puts it back before it returns to the event loop. */
++	hostapd_manual_acs_save(iface);
++
+ 	err = acs_study_options(iface);
+ 	if (err < 0) {
+ 		wpa_printf(MSG_ERROR, "ACS: All study options have failed");
+@@ -1351,6 +1370,11 @@ static void acs_study(struct hostapd_ifa
+ 		acs_adjust_center_freq(iface);
+ 	}
+ 
++	/* An HT40 pick of a manual run then passes with the secondary
++	 * channel on either side; the restore puts the value back. */
++	if (iface->manual_acs_triggered)
++		iface->conf->ht40_plus_minus_allowed = 1;
++
+ 	err = hostapd_select_hw_mode(iface);
+ 	if (err) {
+ 		wpa_printf(MSG_ERROR,
+@@ -1394,7 +1418,7 @@ static size_t acs_mld_partners(struct ho
+ 		struct hostapd_iface *h = interfaces->iface[i];
+ 
+ 		if (!h || h == iface || !h->num_bss ||
+-		    h->state != HAPD_IFACE_ACS ||
++		    (h->state != HAPD_IFACE_ACS && !h->manual_acs_triggered) ||
+ 		    !hostapd_is_ml_partner(iface->bss[0], h->bss[0]))
+ 			continue;
+ 
+@@ -1416,7 +1440,9 @@ static size_t acs_mld_partners(struct ho
+ 
+ static void acs_scan_failed(struct hostapd_iface *iface)
+ {
+-	hostapd_acs_completed(iface, 1);
++	/* acs_fail() reports the end of a manual run */
++	if (!iface->manual_acs_triggered)
++		hostapd_acs_completed(iface, 1);
+ 	acs_fail(iface);
+ }
+ 
+@@ -1458,7 +1484,7 @@ static void acs_scan_complete(struct hos
+ 	ifaces[0] = iface;
+ 	n = 1 + acs_mld_partners(iface, &ifaces[1], true);
+ 
+-	wpa_printf(MSG_DEBUG, "ACS: Using survey based algorithm (acs_num_scans=%d)",
++	wpa_printf(MSG_WARNING, "ACS: Using survey based algorithm (acs_num_scans=%d)",
+ 		   iface->conf->acs_num_scans);
+ 
+ 	/* Each link keeps its scan_cb until the survey event, which goes to the
+@@ -1601,11 +1627,11 @@ static int acs_request_scan(struct hosta
+ 	}
+ 
+ 	if (!iface->acs_num_retries)
+-		wpa_printf(MSG_DEBUG, "ACS: Scanning %d / %d",
++		wpa_printf(MSG_WARNING, "ACS: Scanning %d / %d",
+ 			   iface->acs_num_completed_scans + 1,
+ 			   iface->conf->acs_num_scans);
+ 	else
+-		wpa_printf(MSG_DEBUG,
++		wpa_printf(MSG_WARNING,
+ 			   "ACS: Re-try scanning attempt %d (%d / %d)",
+ 			   iface->acs_num_retries,
+ 			   iface->acs_num_completed_scans + 1,
+@@ -1619,7 +1645,7 @@ static int acs_request_scan(struct hosta
+ 		if (iface->acs_num_retries >= ACS_SCAN_RETRY_MAX_COUNT) {
+ 			wpa_printf(MSG_ERROR,
+ 				   "ACS: Failed to request initial scan (all re-attempts failed)");
+-			acs_fail(iface);
++			acs_cleanup(iface);
+ 			return -1;
+ 		}
+ 
+@@ -1696,7 +1722,9 @@ enum hostapd_chan_status acs_init(struct
+ 	if (acs_request_scan(iface) < 0)
+ 		return HOSTAPD_CHAN_INVALID;
+ 
+-	hostapd_set_state(iface, HAPD_IFACE_ACS);
++	/* the AP of a manual run stays up and in state ENABLED */
++	if (!iface->manual_acs_triggered)
++		hostapd_set_state(iface, HAPD_IFACE_ACS);
+ 	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, ACS_EVENT_STARTED);
+ 
+ 	return HOSTAPD_CHAN_ACS;
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -18,6 +18,7 @@
+ #include "beacon.h"
+ #include "ap_drv_ops.h"
+ #include "drivers/driver.h"
++#include "hw_features.h"
+ #include "dfs.h"
+ #include "crypto/crypto.h"
+ 
+@@ -1181,6 +1182,10 @@ hostapd_dfs_start_channel_switch_backgro
+ {
+ 	u8 current_vht_oper_chwidth = hostapd_get_oper_chwidth(iface->conf);
+ 
++	/* A radar always moves the AP, and a switch does not overlap a
++	 * manual ACS run. */
++	hostapd_manual_acs_end(iface);
++
+ 	iface->conf->channel = iface->radar_background.channel;
+ 	iface->freq = iface->radar_background.freq;
+ 	iface->conf->secondary_channel =
+@@ -1465,6 +1470,10 @@ static int hostapd_dfs_start_channel_swi
+ 	if (hostapd_csa_in_progress(iface))
+ 		return 0;
+ 
++	/* A radar always moves the AP, and a switch does not overlap a
++	 * manual ACS run. */
++	hostapd_manual_acs_end(iface);
++
+ 	/* Check if active CAC */
+ 	if (iface->cac_started)
+ 		return hostapd_dfs_start_channel_switch_cac(iface);
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -1096,6 +1096,8 @@ void hostapd_cleanup_iface_partial(struc
+ #ifdef NEED_AP_MLME
+ 	hostapd_stop_setup_timers(iface);
+ #endif /* NEED_AP_MLME */
++	/* the next setup ACS must not report its pick as a manual run */
++	hostapd_manual_acs_end(iface);
+ 	if (iface->current_mode)
+ 		acs_cleanup(iface);
+ 	hostapd_free_hw_features(iface->hw_features, iface->num_hw_features);
+--- a/src/ap/hw_features.h
++++ b/src/ap/hw_features.h
+@@ -33,6 +33,10 @@ int hostapd_determine_mode(struct hostap
+ void hostapd_free_multi_hw_info(struct hostapd_multi_hw_info *multi_hw_info);
+ int hostapd_set_current_hw_info(struct hostapd_iface *iface, int oper_freq);
+ int hostapd_is_usable_chans(struct hostapd_iface *iface);
++int hostapd_manual_acs_start(struct hostapd_iface *iface);
++void hostapd_manual_acs_end(struct hostapd_iface *iface);
++void hostapd_manual_acs_save(struct hostapd_iface *iface);
++void hostapd_manual_acs_restore(struct hostapd_iface *iface);
+ #else /* NEED_AP_MLME */
+ static inline void
+ hostapd_free_hw_features(struct hostapd_hw_modes *hw_features,
+@@ -121,6 +125,23 @@ static inline int hostapd_is_usable_chan
+ {
+ 	return 1;
+ }
++
++static inline int hostapd_manual_acs_start(struct hostapd_iface *iface)
++{
++	return -1;
++}
++
++static inline void hostapd_manual_acs_save(struct hostapd_iface *iface)
++{
++}
++
++static inline void hostapd_manual_acs_restore(struct hostapd_iface *iface)
++{
++}
++
++static inline void hostapd_manual_acs_end(struct hostapd_iface *iface)
++{
++}
+ #endif /* NEED_AP_MLME */
+ 
+ #endif /* HW_FEATURES_H */
+--- a/src/ap/ubus.c
++++ b/src/ap/ubus.c
+@@ -1026,6 +1026,11 @@ hostapd_switch_chan(struct ubus_context
+ 	if (!tb[CSA_FREQ])
+ 		return UBUS_STATUS_INVALID_ARGUMENT;
+ 
++	if (hapd->iface->manual_acs_triggered) {
++		wpa_printf(MSG_INFO, "switch_chan: manual ACS in progress");
++		return UBUS_STATUS_NOT_SUPPORTED;
++	}
++
+ 	switch (iconf->vht_oper_chwidth) {
+ 	case CHANWIDTH_USE_HT:
+ 		if (iconf->secondary_channel)
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -740,6 +740,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
+ 		hapd->beacon_set_done = 0;
+ 	}
+ 
++	/* TRIGGER_ACS reports a channel for a running AP only */
++	hostapd_manual_acs_end(iface);
++
+ 	return NULL;
+ }
+ 
+@@ -860,6 +863,11 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+ 	if (!iface || ucv_type(info) != UC_OBJECT)
+ 		return NULL;
+ 
++	if (iface->manual_acs_triggered) {
++		wpa_printf(MSG_INFO, "%s: manual ACS in progress", __func__);
++		return ucv_boolean_new(false);
++	}
++
+ 	conf = iface->conf;
+ 	if ((intval = ucv_int64_get(ucv_object_get(info, "csa_count", NULL))) && !errno)
+ 		csa.cs_count = intval;
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -2303,8 +2303,8 @@ static void hostapd_event_get_survey_mld
+ 		struct hostapd_iface *h = interfaces->iface[i];
+ 
+ 		if (!h || h == hapd->iface || !h->num_bss ||
+-		    h->state != HAPD_IFACE_ACS || !h->scan_cb ||
+-		    !hostapd_is_ml_partner(hapd, h->bss[0]))
++		    (h->state != HAPD_IFACE_ACS && !h->manual_acs_triggered) ||
++		    !h->scan_cb || !hostapd_is_ml_partner(hapd, h->bss[0]))
+ 			continue;
+ 
+ 		hostapd_event_get_survey(h, survey_results);
+@@ -2608,6 +2608,8 @@ static void hostapd_iface_disable(struct
+ 	hostapd_free_stas(hapd);
+ 	wpa_msg(hapd->msg_ctx, MSG_INFO, INTERFACE_DISABLED);
+ 	hapd->disabled = 1;
++	/* TRIGGER_ACS reports a channel for a running AP only */
++	hostapd_manual_acs_end(hapd->iface);
+ }
+ 
+ 

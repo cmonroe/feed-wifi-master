@@ -18,7 +18,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5329,6 +5329,10 @@ static int hostapd_config_fill(struct ho
+@@ -5331,6 +5331,10 @@ static int hostapd_config_fill(struct ho
  			return 1;
  		}
  		conf->edcca_compensation = (s8) val;
@@ -31,7 +31,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4237,6 +4237,26 @@ static int hostapd_ctrl_afc_send_request
+@@ -4234,6 +4234,26 @@ static int hostapd_ctrl_afc_send_request
  #endif /* CONFIG_AFC */
  
  
@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4882,6 +4902,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4879,6 +4899,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "GET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_get_edcca(hapd, buf+10, reply,
  							  reply_size);
@@ -70,7 +70,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		reply_len = 16;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1368,6 +1368,19 @@ struct hostapd_config {
+@@ -1367,6 +1367,19 @@ struct hostapd_config {
  	u8 edcca_enable;
  	s8 edcca_compensation;
  	int *edcca_threshold;
@@ -92,7 +92,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  enum edcca_mode {
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1518,6 +1518,11 @@ hostapd_dfs_background_start_channel_swi
+@@ -1521,6 +1521,11 @@ hostapd_dfs_background_start_channel_swi
  		   __func__, iface->radar_background.cac_started ? "yes" : "no",
  		   hostapd_csa_in_progress(iface) ? "yes" : "no");
  
@@ -104,7 +104,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	/* Check if CSA in progress */
  	if (hostapd_csa_in_progress(iface)) {
  		/* the kernel stopped the chain; move it once the CSA ends */
-@@ -1570,6 +1575,11 @@ static int hostapd_dfs_start_channel_swi
+@@ -1573,6 +1578,11 @@ static int hostapd_dfs_start_channel_swi
  		   __func__, iface->cac_started ? "yes" : "no",
  		   hostapd_csa_in_progress(iface) ? "yes" : "no");
  

@@ -73,7 +73,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int hostapd_config_bss(struct hostapd_config *conf, const char *ifname)
  {
  	struct hostapd_bss_config **all, *bss;
-@@ -5269,6 +5300,35 @@ static int hostapd_config_fill(struct ho
+@@ -5271,6 +5302,35 @@ static int hostapd_config_fill(struct ho
  		os_strlcpy(bss->apup_peer_ifname_prefix,
  		           pos, sizeof(bss->apup_peer_ifname_prefix));
  #endif // def CONFIG_APUP
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -600,6 +600,18 @@ static int hostapd_ctrl_iface_wps_get_st
+@@ -599,6 +599,18 @@ static int hostapd_ctrl_iface_wps_get_st
  #endif /* CONFIG_WPS */
  
  
@@ -130,7 +130,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_HS20
  static int hostapd_ctrl_iface_hs20_deauth_req(struct hostapd_data *hapd,
  					      const char *cmd)
-@@ -3698,6 +3710,114 @@ free_cmd_buffer:
+@@ -3695,6 +3707,114 @@ free_cmd_buffer:
  #endif /* CONFIG_TESTING_OPTIONS */
  #endif /* CONFIG_IEEE80211BE */
  
@@ -245,7 +245,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  #ifdef CONFIG_NAN_USD
  
-@@ -4756,6 +4876,12 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4753,6 +4873,12 @@ static int hostapd_ctrl_iface_receive_pr
  		if (hostapd_ctrl_afc_send_request(hapd, buf + 16) < 0)
  			reply_len = -1;
  #endif /* CONFIG_AFC */
@@ -280,7 +280,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_AFC
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1364,8 +1364,39 @@ struct hostapd_config {
+@@ -1363,8 +1363,39 @@ struct hostapd_config {
  		int min_power;
  	} afc;
  #endif /* CONFIG_AFC */
@@ -370,7 +370,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3189,6 +3189,13 @@ dfs_offload:
+@@ -3191,6 +3191,13 @@ dfs_offload:
  	}
  #endif /* CONFIG_MESH */
  

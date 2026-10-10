@@ -2,30 +2,35 @@ From: Chad Monroe <chad@monroe.io>
 Date: Thu, 27 Aug 2026 17:54:40 -0700
 Subject: [PATCH] hostapd: add channel_fallback_acs for an unusable fixed channel
 
-A fixed channel that the current regulatory domain does not offer makes
-hostapd_check_chans() return HOSTAPD_CHAN_INVALID and the interface fails
-to start. A unit whose country changes at run time keeps its configured
-channel, so a channel pinned under one domain can be unusable under the
-next.
+A fixed channel that the current regulatory domain does not offer
+makes the interface fail to start. A unit whose country changes at run
+time keeps its configured channel, so a channel pinned under one
+domain can be unusable under the next.
 
-Add channel_fallback_acs. When set, a configured channel that ACS could not
-have chosen falls back to ACS instead: the channel is not available in the
-regulatory domain, it is outside chanlist, or it is a DFS channel while
-acs_exclude_dfs=1. The reason is logged. channel_follow=1 is exempt because
-the STA owns the channel there.
+Add channel_fallback_acs. When it is set, a configured channel falls
+back to ACS if it fails a constraint that ACS enforces on its own
+candidates:
+- the channel is not in the regulatory domain, or the configured
+  width does not fit around it;
+- the channel is indoor-only and the country string is outdoor;
+- the channel is outside chanlist or freqlist, or below min_tx_power;
+- the channel is a DFS channel and acs_exclude_dfs=1.
+The reason is logged. A channel that ACS picked never falls back, in
+any ACS run, because the fallback would start ACS again from inside
+the ACS completion. channel_follow=1 is exempt because the STA owns
+the channel there.
 
-Fixes: ISSUE-33106
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- hostapd/config_file.c |    2 +
- hostapd/hostapd.conf  |    9 +++++
+ hostapd/config_file.c |    2 
+ hostapd/hostapd.conf  |    9 ++++
  src/ap/ap_config.h    |    1 
- src/ap/hw_features.c  |   81 ++++++++++++++++++++++++++++++++++++++++++++++----
- 4 files changed, 88 insertions(+), 5 deletions(-)
+ src/ap/hw_features.c  |   90 +++++++++++++++++++++++++++++++++++++---
+ 4 files changed, 97 insertions(+), 5 deletions(-)
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3377,6 +3377,8 @@ static int hostapd_config_fill(struct ho
+@@ -3379,6 +3379,8 @@ static int hostapd_config_fill(struct ho
  		}
  	} else if (os_strcmp(buf, "channel_follow") == 0) {
  		conf->channel_follow = atoi(pos);
@@ -64,7 +69,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 acs;
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1296,21 +1296,96 @@ int hostapd_determine_mode(struct hostap
+@@ -1296,21 +1296,101 @@ int hostapd_determine_mode(struct hostap
  }
  
  
@@ -82,9 +87,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +
 +	/* Only an operator-fixed channel falls back. hostapd_check_chans()
 +	 * also runs from acs_study() and hostapd_acs_completed() to validate
-+	 * the channel ACS itself picked (conf->acs is set there), and a
-+	 * fallback would re-enter acs_init() from inside ACS completion. */
-+	if (conf->acs || !conf->channel_fallback_acs || conf->channel_follow)
++	 * the channel ACS itself picked, and a fallback would re-enter
++	 * acs_init() from inside ACS completion. The NO_IR restart runs ACS
++	 * with conf->acs clear but in state ACS, TRIGGER_ACS runs it with
++	 * conf->acs clear in state ENABLED, and an offloaded ACS sets
++	 * conf->acs before it reports its pick. */
++	if (conf->acs || iface->state == HAPD_IFACE_ACS ||
++	    iface->manual_acs_triggered ||
++	    !conf->channel_fallback_acs || conf->channel_follow)
 +		return NULL;
 +
 +	/* A NO_IR channel (usable < 0) keeps the existing wait for a channel

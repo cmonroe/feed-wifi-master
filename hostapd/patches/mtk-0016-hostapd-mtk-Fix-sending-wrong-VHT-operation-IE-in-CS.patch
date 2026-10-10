@@ -11,11 +11,15 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1262,6 +1262,14 @@ static int
+@@ -1262,11 +1262,19 @@ static int
  hostapd_dfs_start_channel_switch_background(struct hostapd_iface *iface)
  {
  	u8 current_vht_oper_chwidth = hostapd_get_oper_chwidth(iface->conf);
 +	int ret;
+ 
+ 	/* A radar always moves the AP, and a switch does not overlap a
+ 	 * manual ACS run. */
+ 	hostapd_manual_acs_end(iface);
 +
 +	ret = hostapd_dfs_request_channel_switch(iface, iface->radar_background.channel,
 +						 iface->radar_background.freq,
@@ -23,10 +27,11 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 +						 current_vht_oper_chwidth,
 +						 iface->radar_background.centr_freq_seg0_idx,
 +						 iface->radar_background.centr_freq_seg1_idx);
- 
+
  	iface->conf->channel = iface->radar_background.channel;
  	iface->freq = iface->radar_background.freq;
-@@ -1274,11 +1282,7 @@ hostapd_dfs_start_channel_switch_backgro
+ 	iface->conf->secondary_channel =
+@@ -1278,11 +1286,7 @@ hostapd_dfs_start_channel_switch_backgro
  
  	hostapd_dfs_update_background_chain(iface);
  

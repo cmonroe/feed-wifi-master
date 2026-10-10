@@ -31,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -3833,13 +3833,16 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3830,13 +3830,16 @@ hostapd_ctrl_iface_set_edcca(struct host
  		hapd->iconf->edcca_compensation = (s8) compensation;
  	} else if (os_strcmp(config, "threshold") == 0) {
  		char *thres_value;
@@ -50,7 +50,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		if (bw_idx < EDCCA_BW_20 || bw_idx > EDCCA_BW_160) {
  			wpa_printf(MSG_ERROR,
-@@ -3855,7 +3858,6 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3852,7 +3855,6 @@ hostapd_ctrl_iface_set_edcca(struct host
  			return -1;
  		}
  
@@ -58,7 +58,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* 0x7f means keep the origival value in firmware */
  		os_memset(threshold_arr, 0x7f, sizeof(threshold_arr));
  		threshold_arr[bw_idx] = threshold;
-@@ -3864,7 +3866,7 @@ hostapd_ctrl_iface_set_edcca(struct host
+@@ -3861,7 +3863,7 @@ hostapd_ctrl_iface_set_edcca(struct host
  			return -1;
  	} else {
  		wpa_printf(MSG_ERROR,
@@ -67,7 +67,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return -1;
  	}
  	return os_snprintf(buf, buflen, "OK\n");
-@@ -3879,15 +3881,16 @@ hostapd_ctrl_iface_get_edcca(struct host
+@@ -3876,15 +3878,16 @@ hostapd_ctrl_iface_get_edcca(struct host
  
  	pos = buf;
  	end = buf + buflen;
@@ -86,7 +86,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (!hapd->drv_priv ||
  		    hostapd_drv_get_edcca(hapd, EDCCA_CTRL_GET_THRES, value) != 0)
  			return -1;
-@@ -5060,10 +5063,10 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -5057,10 +5060,10 @@ static int hostapd_ctrl_iface_receive_pr
  #endif /* CONFIG_AFC */
  	} else if (os_strncmp(buf, "SET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_set_edcca(hapd, buf+10, reply,
@@ -183,7 +183,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  enum mtk_vendor_attr_csi_ctrl {
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5892,10 +5892,10 @@ struct wpa_driver_ops {
+@@ -5908,10 +5908,10 @@ struct wpa_driver_ops {
  	struct hostapd_multi_hw_info *
  	(*get_multi_hw_info)(void *priv, unsigned int *num_multi_hws);
  
@@ -200,7 +200,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	* txpower_ctrl - ctrl txpower operation
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -15907,7 +15907,7 @@ static int testing_nl80211_radio_disable
+@@ -15948,7 +15948,7 @@ static int testing_nl80211_radio_disable
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -209,7 +209,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  					  const u8 edcca_enable,
  					  const s8 edcca_compensation)
  {
-@@ -15930,8 +15930,9 @@ static int nl80211_configure_edcca_enabl
+@@ -15971,8 +15971,9 @@ static int nl80211_configure_edcca_enabl
  	    !(data = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA)) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_MODE, EDCCA_CTRL_SET_EN) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL, edcca_enable) ||
@@ -221,7 +221,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -15945,7 +15946,7 @@ static int nl80211_configure_edcca_enabl
+@@ -15986,7 +15987,7 @@ static int nl80211_configure_edcca_enabl
  	return ret;
  }
  
@@ -230,7 +230,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-@@ -15974,7 +15975,9 @@ static int nl80211_configure_edcca_thres
+@@ -16015,7 +16016,9 @@ static int nl80211_configure_edcca_thres
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL, threshold[0] & 0xff) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC40_VAL, threshold[1] & 0xff) ||
  	    nla_put_u8(msg, MTK_VENDOR_ATTR_EDCCA_CTRL_SEC80_VAL, threshold[2] & 0xff) ||
@@ -241,7 +241,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		wpa_printf (MSG_ERROR, "Prepare nl80211 msg fail");
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -16016,6 +16019,9 @@ static int edcca_info_handler(struct nl_
+@@ -16057,6 +16060,9 @@ static int edcca_info_handler(struct nl_
  
  	for (i = 0; i < EDCCA_MAX_BW_NUM; i++) {
  		attr = tb_vendor[MTK_VENDOR_ATTR_EDCCA_DUMP_PRI20_VAL + i];
@@ -251,7 +251,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (!attr || nla_len(attr) < (int) sizeof(u8)) {
  			wpa_printf(MSG_ERROR,
  				   "nl80211: EDCCA reply without threshold %d",
-@@ -16030,7 +16036,7 @@ static int edcca_info_handler(struct nl_
+@@ -16071,7 +16077,7 @@ static int edcca_info_handler(struct nl_
  }
  
  
@@ -260,7 +260,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-@@ -16050,7 +16056,9 @@ static int nl80211_get_edcca(void *priv,
+@@ -16091,7 +16097,9 @@ static int nl80211_get_edcca(void *priv,
  	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
  			MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL) ||
  	    !(data = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA | NLA_F_NESTED)) ||

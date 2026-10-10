@@ -1,6 +1,23 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Thu, 04 Jul 2024 14:05:36 -0700
+Subject: [PATCH] hostapd: log the ACS interference of a channel once
+
+The ACS search can evaluate the same primary channel twice in a row.
+On 6 GHz without HT, two 40 MHz segments, or two 320 MHz
+channelizations, can promote the same primary channel. Its
+interference line then repeats in the log at MSG_WARNING. Print the
+line once per channel. The channel bias still applies to each
+evaluation, because each one has its own segment factor.
+
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/acs.c |   23 +++++++++++++++--------
+ 1 file changed, 15 insertions(+), 8 deletions(-)
+
 --- a/src/ap/acs.c
 +++ b/src/ap/acs.c
-@@ -865,6 +865,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -869,6 +869,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  	int bw320_offset = 0, ideal_bw320_offset = 0;
  	unsigned int k;
  	int secondary_channel = 1, freq_offset;
@@ -8,12 +25,13 @@
  #ifdef CONFIG_IEEE80211BE
  	int index_primary = 0;
  #endif /* CONFIG_IEEE80211BE */
-@@ -1061,15 +1062,19 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -1065,15 +1066,21 @@ acs_find_ideal_chan_mode(struct hostapd_
  			bias = &tmp_bias;
  		}
  
 -		if (bias) {
--			factor *= bias->bias;
++		if (bias)
+ 			factor *= bias->bias;
 -			wpa_printf(MSG_WARNING,
 -				   "ACS:  * channel %d (%d): total interference = %Lg (%f bias)",
 -				   chan->chan, chan->freq, factor, bias->bias);
@@ -21,10 +39,10 @@
 -			wpa_printf(MSG_WARNING,
 -				   "ACS:  * channel %d (%d): total interference = %Lg",
 -				   chan->chan, chan->freq, factor);
++
 +		/* Avoid displaying interference info more than once for the same channel */
 +		if (chan->chan != last_chan) {
 +			if (bias) {
-+				factor *= bias->bias;
 +				wpa_printf(MSG_WARNING,
 +					   "ACS:  * channel %d (%d): total interference = %Lg (%f bias)",
 +					   chan->chan, chan->freq, factor, bias->bias);

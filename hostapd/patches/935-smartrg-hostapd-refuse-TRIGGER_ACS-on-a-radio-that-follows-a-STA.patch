@@ -1,0 +1,25 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 08 Oct 2026 19:58:28 -0700
+Subject: [PATCH] hostapd: refuse TRIGGER_ACS on a radio that follows a STA
+
+A radio with channel_follow=1 takes its channel from a STA on the same
+PHY. The operator cannot apply the channel that TRIGGER_ACS reports
+there, and a channel change from the STA would overlap the run. Refuse
+TRIGGER_ACS on such a radio.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/hw_features.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -1463,6 +1463,8 @@ static const char * hostapd_manual_acs_r
+ 		return "the interface is not enabled";
+ 	if (iface->manual_acs_triggered)
+ 		return "a manual run is in progress";
++	if (iface->conf->channel_follow)
++		return "the AP follows the channel of a STA";
+ 	if (iface->drv_flags & WPA_DRIVER_FLAGS_ACS_OFFLOAD)
+ 		return "the driver offloads ACS";
+ 	if (hostapd_csa_in_progress(iface))
