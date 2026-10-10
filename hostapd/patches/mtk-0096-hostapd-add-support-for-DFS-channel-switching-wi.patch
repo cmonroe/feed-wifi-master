@@ -15,10 +15,11 @@ that the HT, VHT and HE flags do not carry. With the background
 chain, the AP waits on an available temporary channel while the chain
 runs the CAC of the target. hostapd drops its record of the chain
 when an accepted CSA overlaps an idle chain, and after a failed chain
-start. A failed chain start fails the command only when the AP waits
-on a temporary channel. During a CAC on the operating channel, the
-command restarts the interface on the requested channel, also on an
-ACS radio. If no BSS accepts the CSA, no chain CAC starts, as in
+start other than -EBUSY. A failed chain start fails the command only
+when the AP waits on a temporary channel. During a CAC on the
+operating channel, the command restarts the interface on the
+requested channel, also on an ACS radio. If no BSS accepts the CSA,
+no chain CAC starts, as in
 mtk-openwrt-feeds 6e4012670571 ("[openwrt-24][MAC80211][WiFi7]
 [kernel 6.6][Prepare for Filogic 880/860/850 20250905 MP4.2
 Release]").
@@ -27,14 +28,14 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- hostapd/ctrl_iface.c   | 154 +++++++++++++++++++++---------
+ hostapd/ctrl_iface.c   | 162 ++++++++++++++++++++++---------
  src/ap/beacon.c        |   5 +
  src/ap/ctrl_iface_ap.c |   8 ++
  src/ap/dfs.c           | 210 ++++++++++++++++++++++++++++++++++++-----
  src/ap/dfs.h           |  12 ++-
  src/ap/hostapd.c       |   8 ++
  src/ap/ieee802_11.c    |   5 +
- 7 files changed, 331 insertions(+), 71 deletions(-)
+ 7 files changed, 339 insertions(+), 71 deletions(-)
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
@@ -203,7 +204,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* The kernel skips the CAC only for a switch that it accepts */
  	if (settings.freq_params.radar_background)
-@@ -2620,6 +2652,44 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2620,6 +2652,52 @@ static int hostapd_ctrl_iface_chan_switc
  			settings.freq_params.center_freq2,
  			HOSTAPD_CHAN_DFS_AVAILABLE);
  
@@ -222,17 +223,25 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +						background_settings.freq_params.eht_enabled,
 +						background_settings.freq_params.sec_channel_offset,
 +						oper_chwidth, seg0, seg1, true);
-+		if (cac_ret) {
++		/* on -EBUSY the kernel keeps the chain that it holds; any
++		 * other error drops it
++		 */
++		if (cac_ret == -EBUSY) {
++			wpa_printf(MSG_INFO,
++				   "DFS: the chain CAC is still pending, the record stays");
++		} else if (cac_ret) {
 +			wpa_printf(MSG_ERROR, "Background radar start dfs cac failed, %d",
 +				   cac_ret);
-+			/* A driver error drops the chain in the kernel. Without
-+			 * the CAC the AP stays on the temporary channel, so the
-+			 * requested channel is not reached.
-+			 */
-+			ret = iface->radar_background.temp_ch ? -1 : 0;
-+			iface->radar_background.temp_ch = 0;
 +			iface->radar_background.channel = -1;
 +			iface->radar_background.cac_started = 0;
++		}
++
++		/* Without the CAC the AP stays on the temporary channel, so the
++		 * requested channel is not reached.
++		 */
++		if (cac_ret) {
++			ret = iface->radar_background.temp_ch ? -1 : 0;
++			iface->radar_background.temp_ch = 0;
 +			return ret;
 +		}
 +
@@ -248,7 +257,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  #else /* NEED_AP_MLME */
  	return -1;
-@@ -4301,9 +4371,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
+@@ -4301,9 +4379,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
  	else
  		return -1;
  
