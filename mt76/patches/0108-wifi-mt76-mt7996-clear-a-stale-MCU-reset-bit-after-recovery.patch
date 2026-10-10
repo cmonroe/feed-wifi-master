@@ -1,0 +1,43 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 27 Jan 2026 10:22:04 -0800
+Subject: [PATCH] wifi: mt76: mt7996: clear a stale MCU reset bit after recovery
+
+When the firmware reports a DMA stop, the driver sets the MCU reset
+bit and queues the reset work. If the recovery state is back to
+normal when the work runs, the work returns early and the bit stays
+set. Every later MCU command that waits for a response then fails at
+once, and every scan and remain on channel is refused, until a full
+reset.
+
+Clear the MCU reset bit and the reset bit of each band when the
+reset work finds the recovery state normal.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mac.c |   14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2583,8 +2583,20 @@ void mt7996_mac_reset_work(struct work_s
+ 		return;
+ 	}
+ 
+-	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
++	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA)) {
++		u32 state = READ_ONCE(dev->recovery.state);
++
++		if (test_bit(MT76_MCU_RESET, &dev->mphy.state) &&
++		    (state & MT_MCU_CMD_NORMAL_STATE)) {
++			clear_bit(MT76_MCU_RESET, &dev->mphy.state);
++			mt7996_for_each_phy(dev, phy)
++				clear_bit(MT76_RESET, &phy->mt76->state);
++			dev_info(dev->mt76.dev,
++				 "%s cleared stale MCU reset bit after recovery state normal (0x%08x)\n",
++				 wiphy_name(dev->mt76.hw->wiphy), state);
++		}
+ 		return;
++	}
+ 
+ 	dev_info(dev->mt76.dev,"==== %s L1 SER recovery start ====",
+ 		 wiphy_name(hw->wiphy));

@@ -81,7 +81,7 @@ environment can SR Tx or not.
  	u8 pp_mode;
  	u16 punct_bitmap;
  
-@@ -1142,6 +1147,8 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
+@@ -1154,6 +1159,8 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);

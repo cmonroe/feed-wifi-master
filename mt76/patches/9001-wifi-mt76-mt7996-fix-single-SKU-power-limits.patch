@@ -146,7 +146,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
  
-@@ -713,7 +716,7 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -715,7 +718,7 @@ int mt7996_set_channel(struct mt76_phy *
  	if (ret)
  		goto out;
  
@@ -155,7 +155,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (ret)
  		goto out;
  
-@@ -917,7 +920,7 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -919,7 +922,7 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -164,7 +164,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rate = FR_RATE_IDX_OFDM_6M;
  
  		/* odd index for driver, even index for firmware */
-@@ -1112,9 +1115,10 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1114,9 +1117,10 @@ mt7996_link_info_changed(struct ieee8021
  		mt7996_update_mu_group(hw, link, info);
  
  	if (changed & BSS_CHANGED_TXPOWER &&
@@ -394,7 +394,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
-@@ -955,6 +956,7 @@ int mt7996_mcu_get_temperature(struct mt
+@@ -967,6 +968,7 @@ int mt7996_mcu_get_temperature(struct mt
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);
  int mt7996_mcu_set_thermal_info_query(struct mt7996_phy *phy);

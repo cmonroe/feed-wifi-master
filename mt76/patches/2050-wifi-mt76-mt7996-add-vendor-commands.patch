@@ -23,6 +23,7 @@ Squash of the following MediaTek commits:
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7996/Makefile  |    3
+ mt7996/Makefile  |    3 
  mt7996/init.c    |   10 +
  mt7996/main.c    |   15 ++
  mt7996/mcu.h     |    2 
@@ -420,7 +421,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->mt76->cap.has_2ghz) {
  		phy->mt76->sband_2g.sband.ht_cap.cap |=
-@@ -802,6 +804,10 @@ static int mt7996_register_phy(struct mt
+@@ -803,6 +805,10 @@ static int mt7996_register_phy(struct mt
  			goto error;
  	}
  
@@ -431,7 +432,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt76_register_phy(mphy, true, mt76_rates,
  				ARRAY_SIZE(mt76_rates));
  	if (ret)
-@@ -1828,6 +1834,10 @@ int mt7996_register_device(struct mt7996
+@@ -1829,6 +1835,10 @@ int mt7996_register_device(struct mt7996
  
  	mt7996_dma_rro_start(dev);
  
@@ -473,7 +474,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct mt7996_scs_ctrl scs_ctrl;
  };
  
-@@ -1026,6 +1041,15 @@ static inline bool mt7996_has_ext_eeprom
+@@ -1038,6 +1053,15 @@ static inline bool mt7996_has_ext_eeprom
  	return !is_mt7996(&dev->mt76);
  }
  
@@ -489,7 +490,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt7996_mac_init(struct mt7996_dev *dev);
  u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
  bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
-@@ -1108,6 +1132,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1120,6 +1144,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
@@ -653,7 +654,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
  
  	ieee80211_queue_delayed_work(dev->mphy.hw, &phy->mt76->mac_work,
-@@ -708,6 +715,14 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -710,6 +717,14 @@ int mt7996_set_channel(struct mt76_phy *
  	mt7996_mac_cca_stats_reset(phy);
  
  	mt7996_mac_reset_counters(phy);

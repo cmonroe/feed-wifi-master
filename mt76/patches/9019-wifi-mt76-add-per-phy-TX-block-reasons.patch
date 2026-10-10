@@ -15,9 +15,9 @@ the block go out without waiting for new traffic.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt76.h |    8 ++++++
- tx.c   |   67 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
- 2 files changed, 72 insertions(+), 3 deletions(-)
+ mt76.h |    8 ++++++++
+ tx.c   |   65 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 70 insertions(+), 3 deletions(-)
 
 --- a/mt76.h
 +++ b/mt76.h
@@ -33,7 +33,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT76_RNR_SCAN_MAX_BSSIDS       16
  struct mt76_scan_rnr_param {
  	u8 bssid[MT76_RNR_SCAN_MAX_BSSIDS][ETH_ALEN];
-@@ -942,6 +947,7 @@ struct mt76_phy {
+@@ -947,6 +952,7 @@ struct mt76_phy {
  	bool offchannel;
  	bool radar_enabled;
  	bool no_active_monitor;
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct delayed_work roc_work;
  	struct ieee80211_vif *roc_vif;
-@@ -1722,6 +1728,8 @@ void mt76_tx_check_agg_ssn(struct ieee80
+@@ -1736,6 +1742,8 @@ void mt76_tx_check_agg_ssn(struct ieee80
  void mt76_txq_schedule(struct mt76_phy *phy, enum mt76_txq_id qid);
  void mt76_txq_schedule_all(struct mt76_phy *phy);
  void mt76_txq_schedule_pending(struct mt76_phy *phy);

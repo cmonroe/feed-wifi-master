@@ -26,7 +26,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2899,9 +2899,13 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2900,9 +2900,13 @@ void mt7996_mac_sta_rc_work(struct work_
  
  		spin_unlock_bh(&dev->mt76.sta_poll_lock);
  

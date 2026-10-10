@@ -24,7 +24,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -369,10 +369,6 @@ int mt7996_vif_link_add(struct mt76_phy
+@@ -371,10 +371,6 @@ int mt7996_vif_link_add(struct mt76_phy
  	mt7996_mac_wtbl_update(dev, idx,
  			       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
  
@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (phy->mt76->chandef.chan->band != NL80211_BAND_2GHZ)
  		mlink->basic_rates_idx = MT7996_BASIC_RATES_TBL + 4;
  	else
-@@ -2596,6 +2592,34 @@ static void mt7996_sta_set_4addr(struct
+@@ -2598,6 +2594,34 @@ static void mt7996_sta_set_4addr(struct
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -70,7 +70,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void mt7996_sta_set_decap_offload(struct ieee80211_hw *hw,
  					 struct ieee80211_vif *vif,
  					 struct ieee80211_sta *sta,
-@@ -3132,6 +3156,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -3134,6 +3158,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,
  	.sta_set_4addr = mt7996_sta_set_4addr,

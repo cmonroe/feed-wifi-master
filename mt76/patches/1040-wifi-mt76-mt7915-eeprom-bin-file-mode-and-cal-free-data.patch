@@ -71,7 +71,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1079,6 +1079,9 @@ struct mt76_dev {
+@@ -1081,6 +1081,9 @@ struct mt76_dev {
  
  	atomic_t bus_hung;
  
@@ -81,7 +81,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
  };
-@@ -1386,6 +1389,7 @@ int mt76_eeprom_override(struct mt76_phy
+@@ -1388,6 +1391,7 @@ int mt76_eeprom_override(struct mt76_phy
  int mt76_get_of_data_from_mtd(struct mt76_dev *dev, void *eep, int offset, int len);
  int mt76_get_of_data_from_nvmem(struct mt76_dev *dev, void *eep,
  				const char *cell_name, int len);

@@ -17,7 +17,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -913,11 +913,18 @@ static int
+@@ -915,11 +915,18 @@ static int
  mt7996_get_txpower(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  		   unsigned int link_id, int *dbm)
  {
@@ -38,7 +38,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (!phy) {
  		wdev = ieee80211_vif_to_wdev(vif);
-@@ -925,15 +932,20 @@ mt7996_get_txpower(struct ieee80211_hw *
+@@ -927,15 +934,20 @@ mt7996_get_txpower(struct ieee80211_hw *
  			if (wdev->radio_mask & BIT(i))
  				phy = dev->radio_phy[i];
  

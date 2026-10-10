@@ -368,7 +368,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -932,6 +932,8 @@ struct mt76_phy {
+@@ -940,6 +940,8 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;

@@ -92,7 +92,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1256,6 +1256,11 @@ struct mt76_power_limits {
+@@ -1265,6 +1265,11 @@ struct mt76_power_limits {
  	} path;
  };
  
@@ -104,7 +104,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -2147,6 +2152,9 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -2161,6 +2166,9 @@ s8 mt76_get_rate_power_limits(struct mt7
  			      struct ieee80211_channel *chan,
  			      struct mt76_power_limits *dest,
  			      s8 target_power);
@@ -245,7 +245,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
  
-@@ -724,14 +727,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -726,14 +729,9 @@ int mt7996_set_channel(struct mt76_phy *
  	mt7996_mac_cca_stats_reset(phy);
  
  	mt7996_mac_reset_counters(phy);
@@ -273,7 +273,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct mt7996_scs_ctrl scs_ctrl;
  };
-@@ -867,6 +869,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -879,6 +881,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);

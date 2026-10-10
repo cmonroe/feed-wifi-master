@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2377,6 +2377,8 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2378,6 +2378,8 @@ mt7996_mac_full_reset(struct mt7996_dev
  	mt7996_for_each_phy(dev, phy) {
  		phy->omac_mask = 0;
  		phy->csa_quiet_links = 0;

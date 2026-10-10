@@ -323,7 +323,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		.info = {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -965,6 +965,8 @@ struct mt76_phy {
+@@ -980,6 +980,8 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -332,8 +332,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1109,8 +1111,6 @@ struct mt76_dev {
- 		bool beacon_received;
+@@ -1118,8 +1120,6 @@ struct mt76_dev {
+ 		bool aborted;
  	} scan;
  
 -	bool lpi_psd;
@@ -341,7 +341,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool mgmt_pwr_enhance;
  
  #ifdef CONFIG_NL80211_TESTMODE
-@@ -1234,6 +1234,11 @@ struct mt76_mib_stats {
+@@ -1243,6 +1243,11 @@ struct mt76_mib_stats {
  	u32 ul_hetrig_4mu_cnt;
  };
  

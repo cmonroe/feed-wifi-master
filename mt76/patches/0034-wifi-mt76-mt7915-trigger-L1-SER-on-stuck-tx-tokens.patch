@@ -43,7 +43,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	debugfs_create_blob("eeprom", 0400, dir, &dev->eeprom);
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -757,6 +757,10 @@ mt76_alloc_device(struct device *pdev, u
+@@ -758,6 +758,10 @@ mt76_alloc_device(struct device *pdev, u
  	INIT_LIST_HEAD(&dev->rxwi_cache);
  	dev->token_size = dev->drv->token_size;
  	dev->token_threshold = dev->token_size;
@@ -51,9 +51,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	dev->token_ser = true;
 +	dev->token_check_next = jiffies;
 +	dev->token_event_next = jiffies;
- 	INIT_DELAYED_WORK(&dev->scan_work, mt76_scan_work);
  	spin_lock_init(&dev->scan_lock);
  
+ 	for (i = 0; i < ARRAY_SIZE(dev->q_rx); i++)
 --- a/mt76.h
 +++ b/mt76.h
 @@ -34,6 +34,11 @@
@@ -68,7 +68,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT76_WED_WDS_MIN	256
  #define MT76_WED_WDS_MAX	272
  
-@@ -992,6 +997,10 @@ struct mt76_dev {
+@@ -999,6 +1004,10 @@ struct mt76_dev {
  	u16 token_start;
  	u16 token_size;
  	u16 token_threshold;
@@ -79,7 +79,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spinlock_t rx_token_lock;
  	struct idr rx_token;
-@@ -2081,6 +2090,9 @@ struct mt76_txwi_cache *
+@@ -2088,6 +2097,9 @@ struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake);
  int mt76_token_consume(struct mt76_dev *dev, struct mt76_txwi_cache **ptxwi,
  		       u8 phy_idx);

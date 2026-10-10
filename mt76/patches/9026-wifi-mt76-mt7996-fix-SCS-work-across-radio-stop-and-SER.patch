@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1979,6 +1979,10 @@ void mt7996_unregister_device(struct mt7
+@@ -1980,6 +1980,10 @@ void mt7996_unregister_device(struct mt7
  	cancel_work_sync(&dev->rc_work);
  	mt7996_for_each_phy(dev, phy)
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt7996_unregister_thermal(&dev->phy);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2488,6 +2488,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2489,6 +2489,7 @@ void mt7996_mac_reset_work(struct work_s
  		set_bit(MT76_RESET, &phy->mt76->state);
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
  	}
@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -2616,6 +2617,12 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2617,6 +2618,12 @@ void mt7996_mac_reset_work(struct work_s
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -121,7 +121,6 @@ static void mt7996_stop_phy(struct mt799
+@@ -123,7 +123,6 @@ static void mt7996_stop_phy(struct mt799
  	dev = phy->dev;
  
  	cancel_delayed_work_sync(&phy->mt76->mac_work);

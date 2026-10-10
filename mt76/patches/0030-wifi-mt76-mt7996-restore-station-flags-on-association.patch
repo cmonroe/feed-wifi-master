@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1484,6 +1484,8 @@ mt7996_mac_sta_links_event(struct mt7996
+@@ -1486,6 +1486,8 @@ mt7996_mac_sta_links_event(struct mt7996
  
  		switch (ev) {
  		case MT76_STA_EVENT_ASSOC:

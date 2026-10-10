@@ -13,21 +13,16 @@ first poll. The combined RSSI counts a 0 dBm chain as valid, so a
 default of 0 made probe, auth and assoc frames read 0 dBm. That broke
 RSSI-based association rejection, steering and scan results.
 
-Repack mt76_rx_status with bitfield consolidation and __packed to keep the
-struct within skb->cb[48] when IEEE80211_MAX_CHAINS is increased to 5.
-Merges freq/phy_idx/aggr into a single u16 bitfield and consolidates
-amsdu/nss/band/rate_idx into another.
-
 Based on work by Benjamin Lin, StanleyYP Wang, and Shayne Chen
 (MediaTek).
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt76.h           |   21 +---
+ mt76.h           |    2 
  mt7996/debugfs.c |  235 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7996/mac.c     |   26 +++++-
  mt7996/main.c    |    1 
- 4 files changed, 267 insertions(+), 16 deletions(-)
+ 4 files changed, 261 insertions(+), 3 deletions(-)
 
 --- a/mt76.h
 +++ b/mt76.h
@@ -40,53 +35,6 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  #define MT76_N_WCIDS 1088
-@@ -768,25 +770,19 @@ struct mt76_mmio {
- 	int npu_type;
- };
- 
-+/* at most 48 bytes to fit in skb->cb */
- struct mt76_rx_status {
- 	union {
- 		struct mt76_wcid *wcid;
- 		u16 wcid_idx;
- 	};
--
- 	u32 reorder_time;
--
- 	u32 ampdu_ref;
- 	u32 timestamp;
--
- 	u8 iv[6];
--
--	u8 phy_idx:2;
--	u8 aggr:1;
-+	u16 freq:13, phy_idx:2, aggr:1;
- 	u8 qos_ctl;
- 	u16 seqno;
--
--	u16 freq;
- 	u32 flag;
- 	u8 enc_flags;
- 	u8 encoding:3, bw:4;
-@@ -801,14 +797,13 @@ struct mt76_rx_status {
- 			u8 gi:2;
- 		} eht;
- 	};
--
--	u8 amsdu:1, first_amsdu:1, last_amsdu:1;
--	u8 rate_idx;
--	u8 nss:5, band:3;
-+	u16 amsdu:1, first_amsdu:1, last_amsdu:1;
-+	u16 nss:3, band:3;
-+	u16 rate_idx:7;
- 	s8 signal;
- 	u8 chains;
- 	s8 chain_signal[IEEE80211_MAX_CHAINS];
--};
-+} __packed;
- 
- struct mt76_freq_range_power {
- 	const struct cfg80211_sar_freq_ranges *range;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
 @@ -1282,11 +1282,246 @@ static const struct file_operations fops
@@ -392,7 +340,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rxd += 24;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1295,6 +1295,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1297,6 +1297,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
  	for (i = 0; i < IEEE80211_MAX_CHAINS; ++i)
  		ewma_avg_signal_init(msta_link->chain_signal_avg + i);
  	ewma_avg_signal_init(&msta_link->signal_avg);
