@@ -7,22 +7,27 @@ by the primary frequency of its chain record. The record can outlive
 the chain, because the kernel ends an idle chain without an event
 when the AP switches onto its block. A CAC that the AP then runs on
 that primary counts as the chain CAC. Its abort leaves the switch
-state set, and a later radar does not move the AP.
+state set, and a later radar does not move the AP. The kernel also
+aborts a chain when the AP starts a CAC inside the chain block.
+hostapd can read that abort after it armed a replacement chain.
 
 The kernel marks an event with a background flag when its channel
 matches the chain it owns. The flag comes from 68b908b3c83b ("wifi:
 cfg80211: events, report background radar"). hostapd classifies an
 event by that flag alone, because the kernel of this tree sends it.
+A flagged abort changes the record only when its frequency lies in
+the recorded block. The abort of a replaced chain then leaves the
+replacement in place.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/ap/dfs.c                       |   43 +++++++++++++++++++------------------
- src/ap/dfs.h                       |    6 ++---
- src/ap/drv_callbacks.c             |    8 +++---
+ src/ap/dfs.c                       |   54 +++++++++++++++++++++----------------
+ src/ap/dfs.h                       |    6 ++--
+ src/ap/drv_callbacks.c             |    8 ++---
  src/drivers/driver.h               |    2 +
  src/drivers/driver_nl80211_event.c |    2 +
- wpa_supplicant/ap.c                |   11 ++++++---
- 6 files changed, 41 insertions(+), 31 deletions(-)
+ wpa_supplicant/ap.c                |   11 ++++---
+ 6 files changed, 50 insertions(+), 33 deletions(-)
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
@@ -58,16 +63,27 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				iface->radar_background.cac_started = 0;
  				if (!iface->radar_background.temp_ch)
  					return 0;
-@@ -1515,7 +1515,7 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1515,9 +1515,16 @@ int hostapd_dfs_complete_cac(struct host
  			    iface->radar_background.channel == -1)
  				hostapd_dfs_update_background_chain(iface);
  		}
 -	} else if (hostapd_dfs_is_background_event(iface, freq)) {
+-		iface->radar_background.cac_started = 0;
+-		hostapd_dfs_update_background_chain(iface);
 +	} else if (hostapd_dfs_is_background_event(iface, background)) {
- 		iface->radar_background.cac_started = 0;
- 		hostapd_dfs_update_background_chain(iface);
++		/* the kernel can abort a chain after hostapd armed its
++		 * replacement in another block */
++		if (dfs_background_chandef_contains(iface, freq)) {
++			iface->radar_background.cac_started = 0;
++			hostapd_dfs_update_background_chain(iface);
++		} else {
++			wpa_printf(MSG_DEBUG,
++				   "DFS: the abort of a chain that is no longer recorded");
++		}
  	} else if (iface->state == HAPD_IFACE_ENABLED) {
-@@ -1681,7 +1681,7 @@ static int hostapd_dfs_start_channel_swi
+ 		int i;
+ 
+@@ -1681,7 +1688,7 @@ static int hostapd_dfs_start_channel_swi
  
  static int
  hostapd_dfs_background_start_channel_switch(struct hostapd_iface *iface,
@@ -76,7 +92,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	if (!dfs_use_radar_background(iface))
  		return -1; /* Background radar chain not supported. */
-@@ -1694,12 +1694,12 @@ hostapd_dfs_background_start_channel_swi
+@@ -1694,12 +1701,12 @@ hostapd_dfs_background_start_channel_swi
  	/* Check if CSA in progress */
  	if (hostapd_csa_in_progress(iface)) {
  		/* the kernel stopped the chain; move it once the CSA ends */
@@ -91,7 +107,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/*
  		 * Radar pattern is reported on the background chain.
  		 * Just select a new random channel according to the
-@@ -1933,15 +1933,15 @@ static int dfs_follow_radar_detected(str
+@@ -1933,15 +1940,15 @@ static int dfs_follow_radar_detected(str
  
  
  /* A detect mode keeps only the chain that saw the radar on its channel */
@@ -110,7 +126,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	default:
  		return false;
  	}
-@@ -1950,8 +1950,10 @@ static bool dfs_detect_mode_skip(struct
+@@ -1950,8 +1957,10 @@ static bool dfs_detect_mode_skip(struct
  
  int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
  			       int ht_enabled, int chan_offset, int chan_width,
@@ -122,7 +138,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
  			DFS_EVENT_RADAR_DETECTED
-@@ -1991,17 +1993,18 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1991,17 +2000,18 @@ int hostapd_dfs_radar_detected(struct ho
  			   cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE))
  		return 0;
  
@@ -144,7 +160,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* Radar detected while operating, switch the channel. */
  		return hostapd_dfs_start_channel_switch(iface);
  	}
-@@ -2141,9 +2144,10 @@ static void dfs_chain_half_adopt(struct
+@@ -2141,9 +2151,10 @@ static void dfs_chain_half_adopt(struct
  
  int hostapd_dfs_start_cac(struct hostapd_data *hapd, int freq,
  			  int ht_enabled, int chan_offset, int chan_width,
@@ -156,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
-@@ -2153,7 +2157,8 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -2153,7 +2164,8 @@ int hostapd_dfs_start_cac(struct hostapd
  	}
  
  	dfs_chain_half_adopt(iface, freq, chan_width, cf1);
@@ -166,7 +182,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		iface->radar_background.cac_started = 1;
  	} else {
  		/* This is called when the driver indicates that an offloaded
-@@ -2178,9 +2183,7 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -2178,9 +2190,7 @@ int hostapd_dfs_start_cac(struct hostapd
  		freq, (freq - 5000) / 5, chan_offset,
  		channel_width_to_string(chan_width),
  		(cf1 - 5000) / 5, cf2 ? (cf2 - 5000) / 5 : 0,

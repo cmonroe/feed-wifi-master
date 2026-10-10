@@ -6,7 +6,9 @@ An AP that starts on an available DFS channel skips the CAC, and
 hostapd returns before it arms the background chain. A chain search
 also gives up when one random draw names the AP block or a block
 that the kernel refuses. Until a later DFS event arms a chain,
-no chain keeps a second DFS channel ready for a radar move.
+no chain keeps a second DFS channel ready for a radar move. A request
+during the CAC of a chain fails with -EBUSY, and hostapd drops the
+record of the chain that the kernel keeps.
 
 One search now serves every arm of the chain: it draws at random
 among the blocks that need a CAC and lie off the AP. If none fits
@@ -16,7 +18,9 @@ that needs no CAC. An AP that starts without a CAC arms the chain,
 unless one is recorded, before the AP beacons, because the kernel
 accepts the request then. After a refused switch onto the chain, the
 restart arms its own chain; a second search runs only during a CSA or
-with no chain.
+with no chain. The nl80211 driver passes on the kernel errno, and a
+request that fails with -EBUSY keeps the record, because the kernel
+keeps its chain.
 
 Limits: a candidate needs every radar channel USABLE, so a block
 that mixes USABLE and AVAILABLE channels gets no chain, although the
@@ -27,8 +31,9 @@ segment only, and the search keeps one random draw at that width.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/ap/dfs.c |  228 ++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 149 insertions(+), 79 deletions(-)
+ src/ap/dfs.c                 |  234 ++++++++++++++++++++++++++++---------------
+ src/drivers/driver_nl80211.c |    2 
+ 2 files changed, 156 insertions(+), 80 deletions(-)
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
@@ -243,7 +248,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	return 0;
-@@ -1239,53 +1303,56 @@ static int hostapd_dfs_request_channel_s
+@@ -1239,53 +1303,62 @@ static int hostapd_dfs_request_channel_s
  }
  
  
@@ -323,6 +328,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +				    oper_centr_freq_seg0_idx,
 +				    oper_centr_freq_seg1_idx, true);
  	hostapd_set_oper_chwidth(iface->conf, oper_chwidth);
++	/* on -EBUSY the kernel keeps the chain that it holds */
++	if (err == -EBUSY) {
++		wpa_printf(MSG_INFO,
++			   "DFS: the chain CAC is still pending, the record stays");
++		return;
++	}
 +	if (err) {
 +		wpa_printf(MSG_ERROR, "DFS failed to start CAC offchannel");
 +		iface->radar_background.channel = -1;
@@ -332,7 +343,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	iface->radar_background.channel = channel->chan;
  	iface->radar_background.freq = channel->freq;
-@@ -1431,7 +1498,10 @@ hostapd_dfs_start_channel_switch_backgro
+@@ -1431,7 +1504,10 @@ hostapd_dfs_start_channel_switch_backgro
  		hostapd_set_oper_centr_freq_seg1_idx(iface->conf, seg1);
  	}
  
@@ -344,3 +355,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	return 0;
  }
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -11686,7 +11686,7 @@ static int nl80211_start_radar_detection
+ 
+ 	wpa_printf(MSG_DEBUG, "nl80211: Failed to start radar detection: "
+ 		   "%d (%s)", ret, strerror(-ret));
+-	return -1;
++	return ret;
+ }
+ 
+ 
