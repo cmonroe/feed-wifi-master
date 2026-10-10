@@ -1,0 +1,105 @@
+From: Michael-CY Lee <michael-cy.lee@mediatek.com>
+Date: Thu, 16 Oct 2025 11:02:00 +0800
+Subject: [PATCH] wifi: mt76: reset channel state during scanning
+
+During a scan, every channel other than the operating channel starts
+its survey counters from zero and reports one dwell only. The
+operating channel keeps the counters it collected since the channel
+was set, so ACS compares the channels over different periods. The
+hardware scan worker also sets the channel again for a dwell on the
+operating channel. A channel set during a scan stops DFS radar
+detection until the scan ends.
+
+Restart the survey of the operating channel at each hardware scan
+dwell on it. If the phy is already on the operating channel, the dwell
+does not set the channel. Radar detection then stays on and
+transmission does not stop. hostapd computes channel utilisation from
+these counters, so the other channel sets keep them. These are the
+return between dwells or after a scan, a channel context change and a
+software scan. If a channel set during the scan fails, the scan ends
+as aborted and its completion sets the operating channel again.
+
+Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
+Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ scan.c |   42 +++++++++++++++++++++++++++++++++---------
+ 1 file changed, 33 insertions(+), 9 deletions(-)
+
+--- a/scan.c
++++ b/scan.c
+@@ -184,7 +184,7 @@ void mt76_scan_work(struct work_struct *
+ 	struct cfg80211_chan_def chandef = {};
+ 	int duration = HZ / 9; /* ~110 ms */
+ 	bool beacon_rx, offchannel = true;
+-	int i, idx;
++	int i, idx, ret = 0;
+ 
+ 	if (!dev->scan.req || !mt76_phy_scanning(phy))
+ 		return;
+@@ -200,17 +200,15 @@ void mt76_scan_work(struct work_struct *
+ 		goto probe;
+ 
+ 	idx = mt76_scan_next_chan_idx(phy);
+-	if (idx < 0) {
+-		mutex_lock(&dev->mutex);
+-		mt76_scan_phy_complete(phy, false);
+-		mutex_unlock(&dev->mutex);
+-		return;
+-	}
++	if (idx < 0)
++		goto complete;
+ 
+ 	if (phy->scan.chan && phy->num_sta && phy->offchannel) {
+ 		phy->scan.chan = NULL;
+-		mt76_set_channel(phy, &phy->main_chandef, false);
++		ret = mt76_set_channel(phy, &phy->main_chandef, false);
+ 		mt76_offchannel_notify(phy, false);
++		if (ret)
++			goto complete;
+ 		goto out;
+ 	}
+ 
+@@ -220,7 +218,27 @@ void mt76_scan_work(struct work_struct *
+ 
+ 	if (offchannel)
+ 		mt76_offchannel_notify(phy, true);
+-	mt76_set_channel(phy, &chandef, offchannel);
++
++	/* A channel set while MT76_SCANNING is held stops DFS radar
++	 * detection until the scan ends, so a dwell on the operating
++	 * channel keeps the channel as it is when the phy is on it.
++	 * phy->chandef also holds the chandef of a failed set, so a
++	 * failed set ends the scan; the completion restores main_chandef.
++	 */
++	if (offchannel || !cfg80211_chandef_identical(&chandef, &phy->chandef))
++		ret = mt76_set_channel(phy, &chandef, offchannel);
++	if (ret)
++		goto complete;
++
++	/* ACS compares this survey with the surveys of the other
++	 * channels, which start at their dwell
++	 */
++	if (!offchannel) {
++		mutex_lock(&dev->mutex);
++		mt76_update_survey(phy);
++		memset(phy->chan_state, 0, sizeof(*phy->chan_state));
++		mutex_unlock(&dev->mutex);
++	}
+ 
+ 	if (!req->n_ssids)
+ 		goto out;
+@@ -248,6 +266,12 @@ out:
+ 						  (req->duration >> 5)));
+ 
+ 	ieee80211_queue_delayed_work(phy->hw, &phy->scan_work, duration);
++	return;
++
++complete:
++	mutex_lock(&dev->mutex);
++	mt76_scan_phy_complete(phy, !!ret);
++	mutex_unlock(&dev->mutex);
+ }
+ 
+ int mt76_hw_scan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,

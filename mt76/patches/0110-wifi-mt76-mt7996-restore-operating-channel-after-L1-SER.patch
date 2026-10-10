@@ -2,29 +2,29 @@ From: Chad Monroe <chad@monroe.io>
 Date: Fri, 07 Aug 2026 15:08:47 -0700
 Subject: [PATCH] wifi: mt76: mt7996: restore operating channel after L1 SER
 
-mt76_scan_phy_complete() and mt76_roc_complete() skip re-programming
-the operating channel while MT76_MCU_RESET is set, since the MCU
-cannot be messaged during recovery. The L1 SER path sets that bit
-before aborting scan/ROC and never reprograms the channel afterwards,
-so a reset that interrupts an off-channel dwell leaves the firmware
-beaconing on the 20 MHz scan channel while mac80211 and hostapd still
-believe the configured chandef is active. Add mt76_channel_restore()
-and call it once recovery completes.
+An L1 SER aborts a running scan or remain-on-channel. Their completion
+skips the channel set during the recovery, because the MCU takes no
+commands then. A recovery that interrupts an off-channel dwell thus
+leaves the firmware beaconing on the scan channel, while mac80211 and
+hostapd still use the configured channel.
 
-The restore also runs when the scan dwelt on the operating channel,
-because radar detection stays stopped after that dwell, and it
-retries once when the firmware rejects the channel.
+The driver now sets the operating channel again when the recovery
+completes. It also does so after a channel set to the operating
+channel during a scan, because radar detection stays stopped after
+that set. Such a set is the return between dwells with stations, or a
+dwell after an off-channel dwell. The restore retries once when the
+firmware rejects the channel.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- channel.c    |   53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ channel.c    |   54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
  mt76.h       |    1 +
  mt7996/mac.c |    6 ++++++
- 3 files changed, 60 insertions(+)
+ 3 files changed, 61 insertions(+)
 
 --- a/channel.c
 +++ b/channel.c
-@@ -377,6 +377,59 @@ void mt76_abort_roc(struct mt76_phy *phy
+@@ -377,6 +377,60 @@ void mt76_abort_roc(struct mt76_phy *phy
  }
  EXPORT_SYMBOL_GPL(mt76_abort_roc);
  
@@ -32,12 +32,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 + * MT76_MCU_RESET is set (the MCU cannot be messaged during recovery)
 + * and clears phy->offchannel, so drivers call this after recovery.
 + * A chandef that differs from main_chandef shows a phy left on an
-+ * off-channel dwell. A scan dwell on the operating channel leaves the
-+ * chandef unchanged but radar detection stopped, which shows as a
-+ * dfs_state that no longer matches the phy. Phys without radar
-+ * detection keep MT_DFS_STATE_UNKNOWN and need no restore for it.
-+ * A scan or ROC that started after the recovery owns the channel, and
-+ * its completion re-programs main_chandef.
++ * off-channel dwell. A channel set to the operating channel during a
++ * scan leaves the chandef unchanged but radar detection stopped, so
++ * the dfs_state no longer matches the phy. Such a set is the return
++ * between dwells with stations, or a dwell after an off-channel dwell.
++ * Phys without radar detection keep MT_DFS_STATE_UNKNOWN and need no
++ * restore for it. A scan or ROC that started after the recovery owns
++ * the channel, and its completion re-programs main_chandef.
 + */
 +void mt76_channel_restore(struct mt76_phy *phy)
 +{
@@ -86,7 +87,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   enum ieee80211_roc_type type)
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1874,6 +1874,7 @@ void mt76_abort_scan(struct mt76_dev *de
+@@ -1873,6 +1873,7 @@ void mt76_abort_scan(struct mt76_dev *de
  void mt76_roc_complete_work(struct work_struct *work);
  void mt76_roc_complete(struct mt76_phy *phy);
  void mt76_abort_roc(struct mt76_phy *phy);

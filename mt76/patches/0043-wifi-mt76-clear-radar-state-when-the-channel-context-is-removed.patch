@@ -1,0 +1,34 @@
+From: Shayne Chen <shayne.chen@mediatek.com>
+Date: Tue, 10 Mar 2026 16:56:14 +0800
+Subject: [PATCH] wifi: mt76: clear radar state when the channel context
+ is removed
+
+When the last link leaves a channel context, mac80211 frees the
+context without a radar change, so the phy keeps radar detection
+marked on. A later channel set without a context, for example the
+return to the old operating channel at the end of a scan, then starts
+the radar detector or a CAC on a channel that no AP uses.
+
+Clear the radar state together with the channel context. The next
+channel context sets it again from its own configuration.
+
+Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ channel.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/channel.c
++++ b/channel.c
+@@ -70,8 +70,10 @@ void mt76_remove_chanctx(struct ieee8021
+ 		mt76_abort_scan(dev);
+ 
+ 	mutex_lock(&dev->mutex);
+-	if (phy->chanctx == ctx)
++	if (phy->chanctx == ctx) {
+ 		phy->chanctx = NULL;
++		phy->radar_enabled = false;
++	}
+ 	mutex_unlock(&dev->mutex);
+ }
+ EXPORT_SYMBOL_GPL(mt76_remove_chanctx);
