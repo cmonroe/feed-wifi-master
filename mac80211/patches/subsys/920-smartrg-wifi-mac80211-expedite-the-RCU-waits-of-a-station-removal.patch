@@ -1,0 +1,100 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Sun, 11 Oct 2026 15:18:33 -0700
+Subject: [PATCH] wifi: mac80211: expedite the RCU waits of a station removal
+
+mac80211 waits for RCU readers several times when hostapd removes a
+station: once when it deletes a key, once when the station loses its
+authorization, once for each TX aggregation session, once between
+the two parts of the removal and once when the tailroom count rises.
+These waits call synchronize_net(), which is expedited only under
+the RTNL. Since a05829a7222e ("cfg80211: avoid holding the RTNL when
+calling the driver") a station or key command holds the wiphy mutex
+instead, so each wait takes a full grace period, and no other
+nl80211 command of the wiphy runs in that time.
+
+hostapd removes the old entry of a station before it answers a new
+authentication, or a reassociation after FT over the DS. With HZ=100
+the answer comes after the retry time of the station, which sends
+its request again. hostapd handles the second request as a new
+exchange, and the roam fails. A deauthentication blocks hostapd in
+the same way: it deletes the pairwise key and removes the station
+while the next frame of that station waits.
+
+Expedite these waits, as synchronize_net() does under the RTNL.
+---
+ net/mac80211/agg-tx.c      |    2 +-
+ net/mac80211/ieee80211_i.h |   10 ++++++++++
+ net/mac80211/key.c         |    4 ++--
+ net/mac80211/sta_info.c    |    4 ++--
+ 4 files changed, 15 insertions(+), 5 deletions(-)
+
+--- a/net/mac80211/agg-tx.c
++++ b/net/mac80211/agg-tx.c
+@@ -397,7 +397,7 @@ int __ieee80211_stop_tx_ba_session(struc
+ 	 * the aggregation session is no longer OPERATIONAL.
+ 	 */
+ 	if (!local->in_reconfig)
+-		synchronize_net();
++		ieee80211_synchronize_net_expedited();
+ 
+ 	tid_tx->stop_initiator = reason == AGG_STOP_PEER_REQUEST ?
+ 					WLAN_BACK_RECIPIENT :
+--- a/net/mac80211/ieee80211_i.h
++++ b/net/mac80211/ieee80211_i.h
+@@ -1981,6 +1981,16 @@ static inline bool ieee80211_sdata_runni
+ 	return test_bit(SDATA_STATE_RUNNING, &sdata->state);
+ }
+ 
++/*
++ * For a wait under the wiphy mutex, which blocks every nl80211 command of
++ * the wiphy. synchronize_net() is expedited only under the RTNL, and
++ * cfg80211 does not hold the RTNL for a station or a key command.
++ */
++static inline void ieee80211_synchronize_net_expedited(void)
++{
++	synchronize_rcu_expedited();
++}
++
+ int ieee80211_hw_config(struct ieee80211_local *local, int radio_idx,
+ 			u32 changed);
+ int ieee80211_hw_conf_chan(struct ieee80211_local *local);
+--- a/net/mac80211/key.c
++++ b/net/mac80211/key.c
+@@ -102,7 +102,7 @@ static void increment_tailroom_need_coun
+ 		 * Flush all XMIT packets currently using HW encryption or no
+ 		 * encryption at all if the count transition is from 0 -> 1.
+ 		 */
+-		synchronize_net();
++		ieee80211_synchronize_net_expedited();
+ 	}
+ }
+ 
+@@ -796,7 +796,7 @@ static void ieee80211_key_destroy(struct
+ 	 * Synchronize so the TX path and rcu key iterators
+ 	 * can no longer be using this key before we free/remove it.
+ 	 */
+-	synchronize_net();
++	ieee80211_synchronize_net_expedited();
+ 
+ 	__ieee80211_key_destroy(key, delay_tailroom);
+ }
+--- a/net/mac80211/sta_info.c
++++ b/net/mac80211/sta_info.c
+@@ -1520,7 +1520,7 @@ static int _sta_info_move_state(struct s
+ 			 * on how the hardware offload works.
+ 			 */
+ 			if (local->ops->set_key) {
+-				synchronize_net();
++				ieee80211_synchronize_net_expedited();
+ 				if (local->ops->flush_sta)
+ 					drv_flush_sta(local, sta->sdata, sta);
+ 				else
+@@ -1669,7 +1669,7 @@ int __must_check __sta_info_destroy(stru
+ 	if (err)
+ 		return err;
+ 
+-	synchronize_net();
++	ieee80211_synchronize_net_expedited();
+ 
+ 	__sta_info_destroy_part2(sta, true);
+ 
