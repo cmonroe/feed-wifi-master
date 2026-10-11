@@ -1,0 +1,40 @@
+From: Matthew Cather <matthew.cather@adtran.com>
+Date: Tue, 22 Sep 2026 14:10:00 -0700
+Subject: [PATCH] hostapd: release rfkill config and assoc frame taxonomy
+
+Stubbed rfkill init returns a sentinel instead of NULL, so callers that
+own its config never release it. Station free skips the association
+frame copy that the ubus binding keeps per station.
+
+Both leaks are submitted upstream as openwrt/openwrt#25339. Drop this
+patch when it lands.
+
+Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
+---
+ src/ap/sta_info.c    |    2 ++
+ src/drivers/rfkill.h |    3 ++-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -375,6 +375,8 @@ void ap_free_sta(struct hostapd_data *ha
+ 	sta->probe_ie_taxonomy = NULL;
+ 	wpabuf_free(sta->assoc_ie_taxonomy);
+ 	sta->assoc_ie_taxonomy = NULL;
++	wpabuf_free(sta->assoc_frame_taxonomy);
++	sta->assoc_frame_taxonomy = NULL;
+ #endif /* CONFIG_TAXONOMY */
+ 
+ 	ht40_intolerant_remove(hapd->iface, sta);
+--- a/src/drivers/rfkill.h
++++ b/src/drivers/rfkill.h
+@@ -25,7 +25,8 @@ int rfkill_is_blocked(struct rfkill_data
+ #else
+ static inline struct rfkill_data * rfkill_init(struct rfkill_config *cfg)
+ {
+-	return (void *) 1;
++	/* callers release the config only on a NULL return */
++	return NULL;
+ }
+ 
+ static inline void rfkill_deinit(struct rfkill_data *rfkill)
