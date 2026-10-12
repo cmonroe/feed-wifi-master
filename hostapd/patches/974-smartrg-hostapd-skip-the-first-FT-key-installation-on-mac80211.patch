@@ -1,0 +1,56 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Sun, 11 Oct 2026 20:18:50 -0700
+Subject: [PATCH] hostapd: skip the first FT key installation on mac80211
+
+wpa_ft_install_ptk() configures the PTK when the FT request arrives,
+and again after the association. A driver that tracks the full client
+state accepts a pairwise key only for an associated STA, so the first
+attempt has two results there, and both are wrong:
+
+- The STA entry is new and not associated. The driver rejects the key,
+  and the AP logs "nl80211: kernel reports: key addition failed" at
+  error level for each FT over the air.
+- With FT over the DS, the AP can still hold an associated entry from
+  an earlier association of the STA. The driver accepts the key for
+  that entry. add_associated_sta() then replaces the entry for the
+  reassociation, and the second attempt gives the same TK to the new
+  entry, with a packet number that starts again.
+
+Leave the configuration to the call after the association for such a
+driver.
+---
+ src/ap/wpa_auth_ft.c |   21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+--- a/src/ap/wpa_auth_ft.c
++++ b/src/ap/wpa_auth_ft.c
+@@ -2900,9 +2900,28 @@ void wpa_ft_install_ptk(struct wpa_state
+ 		return;
+ 	}
+ 
+-	if (!retry)
++	if (!retry) {
++		u64 drv_flags = 0, drv_flags2 = 0;
++
+ 		wpa_auth_add_sta_ft(sm->wpa_auth, sm->addr);
+ 
++		/*
++		 * A driver that tracks the full client state takes a pairwise
++		 * key only for an associated STA. The entry of this exchange
++		 * becomes associated with the Reassociation Request frame. An
++		 * entry that is associated now is from an earlier association
++		 * and gets replaced then, and the same TK must not go to both
++		 * entries. So leave the configuration to the call after the
++		 * association.
++		 */
++		if (sm->wpa_auth->cb->get_drv_flags &&
++		    sm->wpa_auth->cb->get_drv_flags(sm->wpa_auth->cb_ctx,
++						    &drv_flags,
++						    &drv_flags2) == 0 &&
++		    FULL_AP_CLIENT_STATE_SUPP(drv_flags))
++			return;
++	}
++
+ 	/* FIX: add STA entry to kernel/driver here? The set_key will fail
+ 	 * most likely without this.. At the moment, STA entry is added only
+ 	 * after association has been completed. This function will be called
