@@ -1,0 +1,45 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Sun, 11 Oct 2026 20:22:10 -0700
+Subject: [PATCH] hostapd: answer a repeated FT reassociation after it completed
+
+A non-AP STA can send its Reassociation Request frame again after the
+AP completed the FT reassociation, for example when it did not receive
+the response. add_associated_sta() keeps the STA entry in this case,
+because the TK is configured, and updates the entry with the
+association parameters. A driver that tracks the full client state
+rejects these parameters for an associated entry, so the AP answered
+with status 17 (AP unable to handle new STA).
+
+Skip the update when the driver has the entry. The request passed the
+FT validation, so it has the nonces and the MIC of the completed
+exchange, and the second response has the status and the content of
+the first one. The TX status of that response runs the association
+callback again, which configures no key.
+---
+ src/ap/ieee802_11.c |   15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -6731,6 +6731,21 @@ static int add_associated_sta(struct hos
+ 		  * once per authentication exchange to guarantee a new TK is
+ 		  * used here */
+ 		sta->ft_over_ds = 0;
++	} else if (set && !sta->added_unassoc &&
++		   FULL_AP_CLIENT_STATE_SUPP(hapd->iface->drv_flags)) {
++		struct hostap_sta_driver_data data;
++
++		/*
++		 * The STA completed this reassociation and sent its request
++		 * again, because it did not get the response. The driver entry
++		 * is associated and has the TK. A driver that tracks the full
++		 * client state rejects the association parameters for such an
++		 * entry, so keep the entry as it is. Without an entry in the
++		 * driver, continue to the update that fails, because the TK
++		 * must not go to a new entry.
++		 */
++		if (hostapd_drv_read_sta_data(hapd, &data, sta->addr) == 0)
++			return 0;
+ 	}
+ 
+ 	if (sta->flags & WLAN_STA_HT)
