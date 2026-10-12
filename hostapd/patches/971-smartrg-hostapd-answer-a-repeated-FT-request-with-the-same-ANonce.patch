@@ -1,0 +1,161 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Sun, 11 Oct 2026 19:38:42 -0700
+Subject: [PATCH] hostapd: answer a repeated FT request with the same ANonce
+
+A non-AP STA that does not receive the FT response in time sends its
+request again, with the same SNonce. The AP processed the second
+request as a new exchange and generated a new ANonce, which replaced
+the first one. The STA can use either response for its Reassociation
+Request frame. When it used the first one, the AP rejected the
+reassociation with status 55 (Invalid FTE).
+
+Keep the ANonce when the request repeats the pending one: same SNonce,
+same PMKR1Name, and no valid Reassociation Request frame for it yet.
+Both responses are then equal. The PTK is the same too, so
+tk_already_set stays as it is, and the same key does not go to the
+driver twice.
+
+FT over the air and FT over the DS use the same function.
+---
+ src/ap/wpa_auth.c    |    1 +
+ src/ap/wpa_auth_ft.c |   45 +++++++++++++++++++++++++++++++++++----------
+ src/ap/wpa_auth_i.h  |    3 +++
+ 3 files changed, 39 insertions(+), 10 deletions(-)
+
+--- a/src/ap/wpa_auth_ft.c
++++ b/src/ap/wpa_auth_ft.c
+@@ -3150,10 +3150,14 @@ static int wpa_ft_process_auth_req(struc
+ 	size_t identity_len = 0, radius_cui_len = 0;
+ 	size_t pmk_r1_len, kdk_len, len;
+ 	int retval = WLAN_STATUS_UNSPECIFIED_FAILURE;
++	const u8 *snonce;
++	bool repeated;
+ 
+ 	*resp_ies = NULL;
+ 	*resp_ies_len = 0;
+ 
++	repeated = sm->ft_reassoc_pending && sm->PTK_valid &&
++		sm->pmk_r1_name_valid;
+ 	sm->pmk_r1_name_valid = 0;
+ 	conf = &sm->wpa_auth->conf;
+ 
+@@ -3276,6 +3280,9 @@ static int wpa_ft_process_auth_req(struc
+ 
+ pmk_r1_derived:
+ 	wpa_hexdump_key(MSG_DEBUG, "FT: Selected PMK-R1", pmk_r1, pmk_r1_len);
++	if (os_memcmp_const(sm->pmk_r1_name, pmk_r1_name,
++			    WPA_PMK_NAME_LEN) != 0)
++		repeated = false;
+ 	sm->pmk_r1_name_valid = 1;
+ 	os_memcpy(sm->pmk_r1_name, pmk_r1_name, WPA_PMK_NAME_LEN);
+ 	os_memcpy(sm->pmk_r1, pmk_r1, pmk_r1_len);
+@@ -3300,12 +3307,6 @@ pmk_r1_derived:
+ 	else
+ 		sm->hash_alg = RSN_HASH_SHA256;
+ 
+-	if (random_get_bytes(sm->ANonce, WPA_NONCE_LEN)) {
+-		wpa_printf(MSG_DEBUG, "FT: Failed to get random data for "
+-			   "ANonce");
+-		goto out;
+-	}
+-
+ 	/* Now that we know the correct PMK-R1 length and as such, the length
+ 	 * of the MIC field, fetch the SNonce. */
+ 	if (pmk_r1_len == SHA512_MAC_LEN) {
+@@ -3318,7 +3319,7 @@ pmk_r1_derived:
+ 			goto out;
+ 		}
+ 
+-		os_memcpy(sm->SNonce, ftie->snonce, WPA_NONCE_LEN);
++		snonce = ftie->snonce;
+ 	} else if (pmk_r1_len == SHA384_MAC_LEN) {
+ 		const struct rsn_ftie_sha384 *ftie;
+ 
+@@ -3329,7 +3330,7 @@ pmk_r1_derived:
+ 			goto out;
+ 		}
+ 
+-		os_memcpy(sm->SNonce, ftie->snonce, WPA_NONCE_LEN);
++		snonce = ftie->snonce;
+ 	} else {
+ 		const struct rsn_ftie *ftie;
+ 
+@@ -3340,8 +3341,27 @@ pmk_r1_derived:
+ 			goto out;
+ 		}
+ 
+-		os_memcpy(sm->SNonce, ftie->snonce, WPA_NONCE_LEN);
++		snonce = ftie->snonce;
++	}
++
++	/*
++	 * A STA that does not get the response in time sends its request
++	 * again, and it can use either response for the reassociation. Give
++	 * the same ANonce in both. A new ANonce would invalidate the first
++	 * response, and the STA would fail the reassociation with it.
++	 */
++	if (repeated &&
++	    os_memcmp_const(sm->SNonce, snonce, WPA_NONCE_LEN) != 0)
++		repeated = false;
++	if (repeated) {
++		wpa_printf(MSG_DEBUG,
++			   "FT: Repeated request - use the same ANonce");
++	} else if (random_get_bytes(sm->ANonce, WPA_NONCE_LEN)) {
++		wpa_printf(MSG_DEBUG, "FT: Failed to get random data for "
++			   "ANonce");
++		goto out;
+ 	}
++	os_memcpy(sm->SNonce, snonce, WPA_NONCE_LEN);
+ 
+ 	wpa_hexdump(MSG_DEBUG, "FT: Received SNonce",
+ 		    sm->SNonce, WPA_NONCE_LEN);
+@@ -3372,7 +3392,10 @@ pmk_r1_derived:
+ 
+ 	sm->pairwise = pairwise;
+ 	sm->PTK_valid = true;
+-	sm->tk_already_set = false;
++	/* The PTK of a repeated request is the one of the first request, so it
++	 * must not go to the driver a second time. */
++	if (!repeated)
++		sm->tk_already_set = false;
+ 	wpa_ft_install_ptk(sm, 0);
+ 
+ 	if (wpa_ft_set_vlan(sm->wpa_auth, sm->addr, &vlan) < 0) {
+@@ -3417,6 +3440,7 @@ pmk_r1_derived:
+ 
+ 	*resp_ies_len = pos - *resp_ies;
+ 
++	sm->ft_reassoc_pending = 1;
+ 	retval = WLAN_STATUS_SUCCESS;
+ 	goto out;
+ fail:
+@@ -3713,6 +3737,7 @@ int wpa_ft_validate_reassoc(struct wpa_s
+ 	}
+ #endif /* CONFIG_OCV */
+ 
++	sm->ft_reassoc_pending = 0;
+ 	retval = WLAN_STATUS_SUCCESS;
+ out:
+ 	wpa_ft_parse_ies_free(&parse);
+--- a/src/ap/wpa_auth_i.h
++++ b/src/ap/wpa_auth_i.h
+@@ -95,6 +95,9 @@ struct wpa_state_machine {
+ #ifdef CONFIG_IEEE80211R_AP
+ 	unsigned int ft_completed:1;
+ 	unsigned int pmk_r1_name_valid:1;
++	/* FT response sent and no valid Reassociation Request frame for it
++	 * yet */
++	unsigned int ft_reassoc_pending:1;
+ #endif /* CONFIG_IEEE80211R_AP */
+ 	unsigned int is_wnmsleep:1;
+ 	unsigned int pmkid_set:1;
+--- a/src/ap/wpa_auth.c
++++ b/src/ap/wpa_auth.c
+@@ -2503,6 +2503,7 @@ int wpa_auth_sm_event(struct wpa_state_m
+ 		sm->xxkey_len = 0;
+ 		os_memset(sm->pmk_r1, 0, sizeof(sm->pmk_r1));
+ 		sm->pmk_r1_len = 0;
++		sm->ft_reassoc_pending = 0;
+ #endif /* CONFIG_IEEE80211R_AP */
+ 		break;
+ 	case WPA_REAUTH:
