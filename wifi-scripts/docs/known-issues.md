@@ -28,6 +28,11 @@ satellites (SDG-8632, SDG-8614, SDG-8610, 854-v6). The SSID had
 - The RSNE of the WiFi 7 nodes has three AKMs and the capabilities 0x008c.
   The RSNE of the WiFi 6 nodes has two AKMs and the capabilities 0x000c. On
   SmartOS 26.9.0.101 of 2026-10-07, all eight nodes sent the second form.
+- Since the SDG-9935 fix, an AP leaves out WPA-PSK-SHA256 when its
+  `ieee80211w=1` comes from the EHT default. By the code, both families then
+  send the same two AKMs, and only the capabilities differ. Not measured.
+  By the code, the FT over the DS still fails: `wpa_compare_rsn_ie()` also
+  compares the capabilities. Not tested.
 - A wpa_supplicant station (v2.12-devel) failed each FT over the DS between a
   WiFi 6 and a WiFi 7 node, 10 of 10, with "FT: RSNE mismatch between
   Beacon/ProbeResp and FT protocol Reassociation Response frame".

@@ -1,0 +1,64 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Tue, 13 Oct 2026 06:18:49 -0700
+Subject: [PATCH] wifi-scripts: drop WPA-PSK-SHA256 on EHT default PMF
+
+iface_auth_type() gives a WPA2 BSS on an EHT radio ieee80211w=1 when
+the uci section sets no value, and wpa_key_mgmt() then adds
+WPA-PSK-SHA256 next to WPA-PSK. A client with a BCM4345 chip that
+selects WPA-PSK and leaves the 4-way handshake to its firmware fails
+it on such a BSS: the AP reports an invalid MIC in message 2/4, as
+for a wrong passphrase.
+
+The AP now leaves out WPA-PSK-SHA256 when only the EHT rule sets
+ieee80211w=1. The rule runs after the dpp, mbo and ocv rules, so that
+it does not flag a value that those rules set. A client that supports
+PMF negotiates PMF with WPA-PSK, so beacon protection stays. An
+explicit ieee80211w, sae-mixed, dpp, mbo and ocv keep the full list:
+for ieee80211w=1, hostapd.conf gives both AKMs as the common
+configuration of the PMF certification program. Stations keep
+WPA-PSK-SHA256, so that they can join an AP that offers only it.
+---
+ src/usr/share/ucode/wifi/ap.uc |   18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+--- a/src/usr/share/ucode/wifi/ap.uc
++++ b/src/usr/share/ucode/wifi/ap.uc
+@@ -227,10 +227,6 @@ function iface_auth_type(config, band, e
+ 	if (band == '6g' && config.wpa)
+ 		config.ieee80211w = 2;
+ 
+-	/* IEEE 802.11be-2024 12.12.9: beacon protection on EHT, which needs PMF */
+-	if (eht && (config.wpa & 2) && config.auth_type != 'psk-sae-compat')
+-		set_default(config, 'ieee80211w', 1);
+-
+ 	if (config.auth_type == 'psk-sae-compat') {
+ 		if (band != '6g') {
+ 			set_default(config, 'ieee80211w', 0);
+@@ -253,6 +249,13 @@ function iface_auth_type(config, band, e
+ 	if ((config.mbo || config.ocv) && (config.wpa & 2) && !config.ieee80211w)
+ 		config.ieee80211w = 1;
+ 
++	/* IEEE 802.11be-2024 12.12.9: beacon protection on EHT, which needs PMF */
++	if (eht && (config.wpa & 2) && config.auth_type != 'psk-sae-compat' &&
++	    config.ieee80211w == null) {
++		config.ieee80211w = 1;
++		config.eht_default_mfp = true;
++	}
++
+ 	if (config.auth_type == 'owe') {
+ 		set_default(config, 'owe_groups', '19 20 21');
+ 		set_default(config, 'owe_ptk_workaround', 1);
+@@ -774,6 +777,13 @@ export function generate(interface, data
+ 	iface_interworking(config);
+ 
+ 	iface.wpa_key_mgmt(config, data.config.band);
++	/* BCM4345 client firmware that selects WPA-PSK fails the 4-way handshake
++	 * when the BSS also offers WPA-PSK-SHA256. Only the EHT default drops it:
++	 * for an explicit ieee80211w=1, hostapd.conf gives both AKMs as the
++	 * common configuration of the PMF certification program. */
++	if (config.eht_default_mfp && config.wpa_key_mgmt)
++		config.wpa_key_mgmt = join(' ', filter(split(config.wpa_key_mgmt, ' '),
++			(akm) => akm != 'WPA-PSK-SHA256'));
+ 	append_vars(config, [
+ 		'wpa_key_mgmt',
+ 	]);
