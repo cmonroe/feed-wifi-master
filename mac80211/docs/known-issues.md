@@ -88,3 +88,41 @@ known way to reach the state on SmartOS.
 At the next mac80211 update, check whether the backports version carries both
 patches. If upstream applies them before that update, add them to
 `patches/subsys/`. When both are in, remove this entry.
+
+## A Retry of the First Management Frame Is Dropped as a Duplicate
+
+**Severity:** low. The station sends its request again after about 0.1 s,
+and the roam completes. Seen once in the tests of SDG-9913 on 2026-10-12, on
+an SDG-8733A with SmartOS 26.11.0.101. The cause comes from the source and
+from that one capture.
+
+### What happens
+
+- `__sta_info_alloc()` sets `last_seq_ctrl[]` to 0xffff for the 16 TIDs. The
+  array has one more entry, for management frames and for data frames without
+  QoS (`seqno_idx = IEEE80211_NUM_TIDS` in `ieee80211_parse_qos()`). That
+  entry stays 0.
+- `ieee80211_rx_h_check_dup()` drops a frame with the retry bit whose
+  sequence control field equals the stored value.
+- So on a new station entry, a retry with sequence number 0 counts as a
+  duplicate when the AP did not receive the first transmission. The radio
+  acknowledges the frame, and mac80211 drops it.
+- hostapd makes a new station entry at each authentication and at each FT
+  request over the DS. In the captures, wpa_supplicant on mt76 started its
+  management frames to a new AP with sequence number 0.
+- The case was an FT over the DS with PMF. The capture had the Reassociation
+  Request three times, with sequence number 0, two of them with the retry
+  bit, and an ACK. hostapd logged nothing. After 110 ms the station sent the
+  request with sequence number 1, and the answer came in 4 ms.
+
+### What is not known
+
+- The duplicate counter of that station entry (`rx_stats.num_duplicates`). It
+  was not read.
+- Whether other clients start with sequence number 0.
+
+### If it is fixed later
+
+The loop in `__sta_info_alloc()` must cover all entries of the array. The
+upstream kernel had the same lines on 2026-10-12, so the fix belongs
+upstream first.
