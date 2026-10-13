@@ -1,0 +1,68 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Mon, 12 Oct 2026 19:53:46 -0700
+Subject: [PATCH] wifi-scripts: keep the wlan board data in /etc/board.json
+
+0a91f73d5336 ("wifi-scripts: write the wlan data of board.json to
+tmpfs") makes wifi-detect.uc build /tmp/sysinfo/board.json from
+/etc/board-base.json and exit when the base file is missing. That
+layout comes from 220bdab34e25 ("base-files: keep the board.d data in
+board-base.json, board.json in tmpfs"), which the base-files of
+SmartOS does not have yet: it still writes /etc/board.json itself.
+The script then exits at every call, /etc/board.json never gets its
+wlan object, and "wifi config" creates no wifi-device section. A unit
+without such sections, for example after a factory reset, has no
+radio.
+
+Read and write /etc/board.json again. The other readers of the wlan
+object use that path. Drop this patch when base-files has
+220bdab34e25.
+---
+ src/usr/share/hostap/wifi-detect.uc |   23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
+
+--- a/src/usr/share/hostap/wifi-detect.uc
++++ b/src/usr/share/hostap/wifi-detect.uc
+@@ -4,15 +4,9 @@ import { readfile, writefile, realpath,
+ import { is_equal } from "/usr/share/hostap/common.uc";
+ let nl = require("nl80211");
+ 
+-let base_file = "/etc/board-base.json";
+-let board_file = "/tmp/sysinfo/board.json";
+-let base_data = readfile(base_file);
+-if (!base_data)
+-	exit(1);
+-
+-let prev_data = readfile(board_file);
+-let prev_board_data = prev_data ? json(prev_data) : null;
+-let board_data = json(base_data);
++let board_file = "/etc/board.json";
++let prev_board_data = json(readfile(board_file));
++let board_data = json(readfile(board_file));
+ 
+ function phy_idx(name) {
+ 	return +rtrim(readfile(`/sys/class/ieee80211/${name}/index`));
+@@ -34,6 +28,16 @@ function phy_path(name) {
+ 	return devpath;
+ }
+ 
++function cleanup() {
++	let wlan = board_data.wlan;
++
++	for (let name in wlan)
++		if (substr(name, 0, 3) == "phy")
++			delete wlan[name];
++		else
++			delete wlan[name].info;
++}
++
+ function wiphy_path_match(entry_path, path) {
+ 	if (type(entry_path) == "array")
+ 		return index(entry_path, path) >= 0;
+@@ -251,6 +255,7 @@ function wiphy_detect() {
+ 	}
+ }
+ 
++cleanup();
+ wiphy_detect();
+ if (!is_equal(prev_board_data, board_data)) {
+ 	let new_file = board_file + ".new";
