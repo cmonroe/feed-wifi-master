@@ -639,7 +639,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* DFS_H */
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8571,6 +8571,11 @@ int ieee802_11_mgmt(struct hostapd_data
+@@ -8572,6 +8572,11 @@ int ieee802_11_mgmt(struct hostapd_data
  		return 1;
  	}
  
