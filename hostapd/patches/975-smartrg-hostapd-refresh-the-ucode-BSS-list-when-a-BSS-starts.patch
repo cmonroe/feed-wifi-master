@@ -1,0 +1,65 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 15 Oct 2026 05:18:03 -0700
+Subject: [PATCH] hostapd: refresh the ucode BSS list when a BSS starts
+
+A stop of an interface releases the ucode resource of each BSS, and
+the next start gives each BSS a new resource. The hostapd.bss list
+of the script keeps the released resources, so the next in-place
+reload passes them to the BSS order call, which reads their NULL data.
+
+Each start of a BSS replaces its own entry in the list, because every
+setup path passes that point and no teardown path reaches it. Only the
+entry of that BSS changes, because a resource made for a stopped BSS
+can outlive the BSS. The BSS order call also rejects a released BSS
+or a BSS of another interface, because a script can pass any value.
+The reload then fails, and the script restarts the interface.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/ucode.c |   21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -626,7 +626,7 @@ uc_hostapd_iface_set_bss_order(uc_vm_t *
+ 		struct hostapd_data *bss;
+ 
+ 		bss = ucv_resource_data(ucv_array_get(bss_list, i), "hostapd.bss");
+-		if (bss->iface != iface)
++		if (!bss || bss->iface != iface)
+ 			goto free;
+ 
+ 		for (size_t k = 0; k < i; k++)
+@@ -1526,6 +1526,19 @@ void hostapd_ucode_free_iface(struct hos
+ 	ucv_put(wpa_ucode_registry_remove(iface_registry, iface->ucode.idx));
+ }
+ 
++static void
++hostapd_ucode_update_bss(struct hostapd_data *hapd, uc_value_t *val)
++{
++	uc_value_t *bss = ucv_object_get(ucv_prototype_get(global), "bss", NULL);
++	uc_value_t *list = ucv_object_get(bss, hapd->iface->phy, NULL);
++	bool found;
++
++	if (ucv_object_get(list, hapd->conf->iface, &found) == val || !found)
++		return;
++
++	ucv_object_add(list, hapd->conf->iface, ucv_get(val));
++}
++
+ void hostapd_ucode_bss_cb(struct hostapd_data *hapd, const char *type)
+ {
+ 	uc_value_t *val;
+@@ -1534,6 +1547,12 @@ void hostapd_ucode_bss_cb(struct hostapd
+ 		return;
+ 
+ 	val = hostapd_ucode_bss_get_uval(hapd);
++
++	/* A BSS that starts again gets a new resource, but hostapd.bss
++	 * still holds the one that its last stop released. */
++	if (!strcmp(type, "bss_add"))
++		hostapd_ucode_update_bss(hapd, val);
++
+ 	uc_value_push(ucv_string_new(hapd->iface->phy));
+ 	uc_value_push(ucv_string_new(hapd->conf->iface));
+ 	uc_value_push(ucv_get(val));
