@@ -1,0 +1,51 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 15 Oct 2026 13:17:14 -0700
+Subject: [PATCH] hostapd: release the ucode resource of a BSS that never started
+
+A BSS can get its ucode resource before it starts, for example while
+its interface waits for a CAC or an ACS scan. A BSS that is freed
+before it starts must release that resource. Otherwise the registry
+keeps a slot that points to freed memory, and the script gets no
+remove event.
+
+The teardown of BSS data releases the ucode resource before the
+started check, because every teardown path runs that code. The call
+does nothing for a BSS without a resource, so the delete of a BSS does
+not release the resource itself.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/hostapd.c |    2 +-
+ src/ap/ucode.c   |    3 +--
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -842,6 +842,7 @@ void hostapd_free_hapd_data(struct hosta
+ 	hapd->p2p_probe_resp_ie = NULL;
+ #endif /* CONFIG_P2P */
+ 
++	hostapd_ucode_free_bss(hapd);
+ 	if (!hapd->started) {
+ 		wpa_printf(MSG_ERROR, "%s: Interface %s wasn't started",
+ 			   __func__, hapd->conf ? hapd->conf->iface : "N/A");
+@@ -851,7 +852,6 @@ void hostapd_free_hapd_data(struct hosta
+ 	hapd->beacon_set_done = 0;
+ 
+ 	wpa_printf(MSG_DEBUG, "%s(%s)", __func__, hapd->conf->iface);
+-	hostapd_ucode_free_bss(hapd);
+ 	hostapd_ubus_free_bss(hapd);
+ 	accounting_deinit(hapd);
+ 	hostapd_deinit_wpa(hapd);
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -479,8 +479,7 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
+ 	if (hapd->conf->mld_ap && hapd->mld)
+ 		hostapd_mld_beacons_update(hapd);
+ #endif /* CONFIG_IEEE80211BE */
+-	/* deinit skips these for a bss that never started; both are idempotent */
+-	hostapd_ucode_free_bss(hapd);
++	/* deinit skips the ubus release for a bss that never started */
+ 	hostapd_ubus_free_bss(hapd);
+ 	hostapd_remove_iface_bss_conf(iface->conf, hapd->conf);
+ 	hostapd_config_free_bss(hapd->conf);
