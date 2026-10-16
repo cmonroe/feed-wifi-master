@@ -1,0 +1,93 @@
+From: Vitali Klotschko <vitali.klotschko@adtran.com>
+Date: Thu, 15 Oct 2026 10:48:37 +0000
+Subject: [PATCH] iwinfo: take the txpower maximum of the current frequency only
+
+Patch 103 (openwrt/iwinfo#41) matches the current frequency in a split
+wiphy dump. When the frequency is unknown, it falls back to the channel
+number, but nl80211_get_channel() derives that from the same failed
+lookup, so it is 0 too. The callback then accepts every channel, and
+since a split dump sends one channel per message, the last channel of
+the phy wins, disabled or not: on SDG-8732v the last 6 GHz channel, on a
+phy of its own the last channel of its band.
+
+Without the current frequency there is no channel to take the maximum
+of, so report none; rpcd's txpowerlist then answers with an empty list.
+Drop the dead fallback, which cost a radio that is down a second
+interface, hostapd and scan lookup per call, and skip disabled channels,
+as nl80211_get_freqlist_cb() does.
+
+A radio that is down still gets a list when nl80211_get_frequency() finds
+its frequency in hostapd's configuration or in the scan results.
+
+Signed-off-by: Vitali Klotschko <vitali.klotschko@adtran.com>
+---
+ iwinfo_nl80211.c |   20 +++++++-------------
+ 1 file changed, 7 insertions(+), 13 deletions(-)
+
+--- a/iwinfo_nl80211.c
++++ b/iwinfo_nl80211.c
+@@ -2577,14 +2577,13 @@ static int nl80211_get_assoclist(const c
+ 
+ struct nl80211_txpwrlist {
+ 	int freq;
+-	int channel;
+ 	int dbm_max;
+ };
+ 
+ static int nl80211_get_txpwrlist_cb(struct nl_msg *msg, void *arg)
+ {
+ 	struct nl80211_txpwrlist *txpwrlist = arg;
+-	int freq_cur, freq_cmp, ch_cur, ch_cmp, bands_remain, freqs_remain;
++	int freq_cur, freq_cmp, bands_remain, freqs_remain;
+ 
+ 	struct nlattr **attr = nl80211_parse(msg);
+ 	struct nlattr *bands[NL80211_BAND_ATTR_MAX + 1];
+@@ -2601,7 +2600,6 @@ static int nl80211_get_txpwrlist_cb(stru
+ 	};
+ 
+ 	freq_cur = txpwrlist->freq;
+-	ch_cur = txpwrlist->channel;
+ 
+ 	if (!attr[NL80211_ATTR_WIPHY_BANDS])
+ 		return NL_SKIP;
+@@ -2620,14 +2618,13 @@ static int nl80211_get_txpwrlist_cb(stru
+ 			          nla_data(freq), nla_len(freq), freq_policy);
+ 
+ 			if (!freqs[NL80211_FREQUENCY_ATTR_FREQ] ||
+-			    !freqs[NL80211_FREQUENCY_ATTR_MAX_TX_POWER])
++			    !freqs[NL80211_FREQUENCY_ATTR_MAX_TX_POWER] ||
++			    freqs[NL80211_FREQUENCY_ATTR_DISABLED])
+ 				continue;
+ 
+ 			freq_cmp = nla_get_u32(freqs[NL80211_FREQUENCY_ATTR_FREQ]);
+-			ch_cmp = nl80211_freq2channel(freq_cmp);
+ 
+-			if ((freq_cur && freq_cmp == freq_cur) ||
+-			    (!freq_cur && (!ch_cur || ch_cmp == ch_cur)))
++			if (freq_cmp == freq_cur)
+ 			{
+ 				txpwrlist->dbm_max = nla_get_u32(
+ 					freqs[NL80211_FREQUENCY_ATTR_MAX_TX_POWER]) / 100;
+@@ -2645,7 +2642,6 @@ static int nl80211_get_txpwrlist(const c
+ 	struct nl80211_msg_conveyor *cv;
+ 	struct nl80211_txpwrlist txpwrlist = {
+ 		.freq = 0,
+-		.channel = 0,
+ 		.dbm_max = -1,
+ 	};
+ 	uint32_t features = nl80211_get_protocol_features(ifname);
+@@ -2653,11 +2649,9 @@ static int nl80211_get_txpwrlist(const c
+ 	int flags;
+ 	struct iwinfo_txpwrlist_entry entry;
+ 
+-	if (nl80211_get_frequency(ifname, &txpwrlist.freq)) {
+-		txpwrlist.freq = 0;
+-		if (nl80211_get_channel(ifname, &txpwrlist.channel))
+-			txpwrlist.channel = 0;
+-	}
++	/* without the current frequency there is no channel to take the maximum of */
++	if (nl80211_get_frequency(ifname, &txpwrlist.freq) || !txpwrlist.freq)
++		goto out;
+ 
+ 	flags = features & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP ? NLM_F_DUMP : 0;
+ 	cv = nl80211_msg(ifname, NL80211_CMD_GET_WIPHY, flags);
