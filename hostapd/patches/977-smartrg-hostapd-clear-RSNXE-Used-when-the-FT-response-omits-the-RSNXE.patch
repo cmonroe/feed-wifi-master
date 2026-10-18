@@ -1,0 +1,35 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Thu, 15 Oct 2026 16:55:34 -0700
+Subject: [PATCH] hostapd: clear RSNXE Used when the FT response omits the RSNXE
+
+A non-AP STA that sends no RSNXE in its FT Reassociation Request,
+for example one that uses SAE without H2E, gets a Reassociation
+Response without the RSNXE. The AP still set the RSNXE Used subfield
+of the FTE MIC Control field whenever sae_pwe is 1 or 2, so the
+response announced an element that it did not carry and that the
+MIC did not cover. hostapd discards a request with this combination.
+Some STAs apply the same check to the response, discard it and send
+the request again, so the FT protocol never completes for them.
+
+Set RSNXE Used only when the response carries the RSNXE. A STA that
+sent an RSNXE gets the same response as before.
+---
+ src/ap/wpa_auth_ft.c |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+--- a/src/ap/wpa_auth_ft.c
++++ b/src/ap/wpa_auth_ft.c
+@@ -2714,7 +2714,12 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
+ 		anonce = NULL;
+ 		snonce = NULL;
+ 	}
+-	rsnxe_used = (auth_alg == WLAN_AUTH_FT) &&
++	/*
++	 * A response without the RSNXE must not announce one: some STAs
++	 * discard a response whose RSNXE Used bit and RSNXE do not match,
++	 * as hostapd discards such a request.
++	 */
++	rsnxe_used = (auth_alg == WLAN_AUTH_FT) && !omit_rsnxe &&
+ 		(conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
+ 		 conf->sae_pwe == SAE_PWE_BOTH);
+ #ifdef CONFIG_TESTING_OPTIONS
