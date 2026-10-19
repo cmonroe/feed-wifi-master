@@ -11,8 +11,9 @@ operating channel. A channel set during a scan stops DFS radar
 detection until the scan ends.
 
 Restart the survey of the operating channel at each hardware scan
-dwell on it. If the phy is already on the operating channel, the dwell
-does not set the channel. Radar detection then stays on and
+dwell on it. The noise floor is a measurement, not a counter, so the
+dwell keeps it. If the phy is already on the operating channel, the
+dwell does not set the channel. Radar detection then stays on and
 transmission does not stop. hostapd computes channel utilisation from
 these counters, so the other channel sets keep them. These are the
 return between dwells or after a scan, a channel context change and a
@@ -23,9 +24,10 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
 Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
+Co-developed-by: Colin Whittaker <colin.whittaker@adtran.com>
 ---
- scan.c |   42 +++++++++++++++++++++++++++++++++---------
- 1 file changed, 33 insertions(+), 9 deletions(-)
+ scan.c |   47 ++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 38 insertions(+), 9 deletions(-)
 
 --- a/scan.c
 +++ b/scan.c
@@ -61,7 +63,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		goto out;
  	}
  
-@@ -220,7 +218,27 @@ void mt76_scan_work(struct work_struct *
+@@ -220,7 +218,32 @@ void mt76_scan_work(struct work_struct *
  
  	if (offchannel)
  		mt76_offchannel_notify(phy, true);
@@ -79,18 +81,23 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		goto complete;
 +
 +	/* ACS compares this survey with the surveys of the other
-+	 * channels, which start at their dwell
++	 * channels, which start at their dwell. The noise floor is a
++	 * measurement, not a counter, so the dwell keeps it.
 +	 */
 +	if (!offchannel) {
++		s8 noise;
++
 +		mutex_lock(&dev->mutex);
 +		mt76_update_survey(phy);
++		noise = phy->chan_state->noise;
 +		memset(phy->chan_state, 0, sizeof(*phy->chan_state));
++		phy->chan_state->noise = noise;
 +		mutex_unlock(&dev->mutex);
 +	}
  
  	if (!req->n_ssids)
  		goto out;
-@@ -248,6 +266,12 @@ out:
+@@ -248,6 +271,12 @@ out:
  						  (req->duration >> 5)));
  
  	ieee80211_queue_delayed_work(phy->hw, &phy->scan_work, duration);
