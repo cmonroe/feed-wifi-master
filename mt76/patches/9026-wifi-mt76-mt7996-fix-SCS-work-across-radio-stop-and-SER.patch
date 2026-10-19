@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt7996_unregister_thermal(&dev->phy);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2489,6 +2489,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2495,6 +2495,7 @@ void mt7996_mac_reset_work(struct work_s
  		set_bit(MT76_RESET, &phy->mt76->state);
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
  	}
@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -2617,6 +2618,12 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2623,6 +2624,12 @@ void mt7996_mac_reset_work(struct work_s
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6464,10 +6464,17 @@ void mt7996_mcu_scs_sta_poll(struct work
+@@ -6447,10 +6447,17 @@ void mt7996_mcu_scs_sta_poll(struct work
  		    !phy->scs_ctrl.scs_enable)
  			continue;
  
@@ -91,7 +91,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (mt7996_mcu_set_scs_stats(phy))
  			dev_err(dev->mt76.dev, "Failed to send scs mcu cmd\n");
  		phy->scs_ctrl.sta_min_rssi = 0;
-@@ -6499,7 +6506,8 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -6482,7 +6489,8 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  
  	phy->scs_ctrl.scs_enable = enable;
  

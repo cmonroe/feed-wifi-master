@@ -15,7 +15,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2024,7 +2024,7 @@ mt7996_mcu_sta_amsdu_tlv(struct mt7996_d
+@@ -2008,7 +2008,7 @@ mt7996_mcu_sta_amsdu_tlv(struct mt7996_d
  
  	tlv = mt76_connac_mcu_add_tlv(skb, STA_REC_HW_AMSDU, sizeof(*amsdu));
  	amsdu = (struct sta_rec_amsdu *)tlv;

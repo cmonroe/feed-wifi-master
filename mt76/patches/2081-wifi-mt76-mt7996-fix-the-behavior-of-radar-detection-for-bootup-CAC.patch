@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt7996_dfs_init_radar_detector(phy);
  	mt7996_mac_cca_stats_reset(phy);
  
-@@ -1215,8 +1219,6 @@ mt7996_post_channel_switch(struct ieee80
+@@ -1221,8 +1225,6 @@ mt7996_post_channel_switch(struct ieee80
  
  	ieee80211_iterate_stations_mtx(hw, mt7996_mcu_update_sta_rec_bw, link);
  

@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6538,7 +6538,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6522,7 +6522,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  static bool mt7996_is_psd_country(char *country)
  {
@@ -44,7 +44,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -6563,6 +6563,19 @@ static s8 mt7996_get_power_bound(struct
+@@ -6547,6 +6547,19 @@ static s8 mt7996_get_power_bound(struct
         return txpower;
  }
  
@@ -64,7 +64,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy,
  			       int txpower_setting)
  {
-@@ -6591,6 +6604,11 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6575,6 +6588,11 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	if (txpower_setting == INT_MIN || txpower_setting > 127)
  		txpower_setting = 127;
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	txpower_limit = mt7996_get_power_bound(phy, txpower_setting);
  
  	if (phy->sku_limit_en) {
-@@ -6606,6 +6624,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6590,6 +6608,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		return 0;
  	}
  
@@ -86,7 +86,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
  	if (!skb) {
-@@ -6616,11 +6637,12 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6600,11 +6621,12 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la->cck, 4);
  
@@ -103,7 +103,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->eht[3], 8);
-@@ -6656,8 +6678,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6640,8 +6662,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	/* HE RU26, RU52, RU106, RU242, RU484, RU996, and RU2x996 */
  	skb_put_data(skb, &la->ru[0], 84);
@@ -115,7 +115,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	 */
  	skb_put_data(skb, &la->eht[0], 256);
  
-@@ -6687,7 +6710,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6671,7 +6694,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* FW would NOT compensate in the case of BF backoff table
  	 * driver needs to compensate for LPI PSD
  	 */
@@ -124,7 +124,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->path.ru[5], 5);
-@@ -6755,6 +6778,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -6739,6 +6762,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.psd_limit = enable ? mt7996_is_psd_country(dev->mt76.alpha2) : 0,
  	};
  
@@ -155,7 +155,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (ret)
  		goto out;
  
-@@ -923,7 +926,7 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -929,7 +932,7 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -164,7 +164,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rate = FR_RATE_IDX_OFDM_6M;
  
  		/* odd index for driver, even index for firmware */
-@@ -1118,9 +1121,10 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1124,9 +1127,10 @@ mt7996_link_info_changed(struct ieee8021
  		mt7996_update_mu_group(hw, link, info);
  
  	if (changed & BSS_CHANGED_TXPOWER &&
@@ -386,7 +386,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		txwi[6] |= cpu_to_le32(val);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -506,6 +506,7 @@ struct mt7996_phy {
+@@ -504,6 +504,7 @@ struct mt7996_phy {
  	u32 rx_ampdu_ts;
  	u32 ampdu_ref;
  	int txpower;
@@ -394,7 +394,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
-@@ -967,6 +968,7 @@ int mt7996_mcu_get_temperature(struct mt
+@@ -965,6 +966,7 @@ int mt7996_mcu_get_temperature(struct mt
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);
  int mt7996_mcu_set_thermal_info_query(struct mt7996_phy *phy);

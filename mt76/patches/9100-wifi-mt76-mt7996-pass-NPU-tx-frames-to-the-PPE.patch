@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1869,6 +1869,8 @@ int mt76_testmode_alloc_skb(struct mt76_
+@@ -1868,6 +1868,8 @@ int mt76_testmode_alloc_skb(struct mt76_
  #ifdef CONFIG_MT76_NPU
  void mt76_npu_check_ppe(struct mt76_dev *dev, struct sk_buff *skb,
  			u32 info);
@@ -107,7 +107,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt76_npu_dma_add_buf(struct mt76_phy *phy, struct mt76_queue *q,
  			 struct sk_buff *skb, struct mt76_queue_buf *buf,
  			 void *txwi_ptr);
-@@ -1892,6 +1894,12 @@ static inline void mt76_npu_check_ppe(st
+@@ -1891,6 +1893,12 @@ static inline void mt76_npu_check_ppe(st
  {
  }
  
@@ -155,7 +155,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	tx_info->skb = NULL;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -3379,11 +3379,9 @@ mt7996_net_fill_forward_path(struct ieee
+@@ -3391,11 +3391,9 @@ mt7996_net_fill_forward_path(struct ieee
  		path->mtk_wdma.wdma_idx = wed->wdma_idx;
  	else
  #endif
@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	path->mtk_wdma.wcid = msta_link->wcid.idx;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -771,6 +771,16 @@ mt7996_band_valid(struct mt7996_dev *dev
+@@ -769,6 +769,16 @@ mt7996_band_valid(struct mt7996_dev *dev
  	return band <= MT_BAND2;
  }
  

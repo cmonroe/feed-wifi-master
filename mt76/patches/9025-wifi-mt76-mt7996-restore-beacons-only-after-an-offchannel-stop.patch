@@ -44,10 +44,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->dev->eeprom_mode == EEPROM_MODE_FLASH) {
  		ret = mt7996_mcu_apply_tx_dpd(phy);
-@@ -767,8 +769,13 @@ int mt7996_set_channel(struct mt76_phy *
- 	if (!mphy->offchannel)
- 		mt7996_apply_edcca_limits(phy);
- 	phy->noise = 0;
+@@ -773,8 +775,13 @@ int mt7996_set_channel(struct mt76_phy *
+ 		phy->noise = 0;
+ 	else
+ 		phy->noise = -mphy->chan_state->noise << 4;
 -	if (!mphy->offchannel)
 +	/* a channel switch of a CSA also lands here, and a beacon upload at
 +	 * that point would start a second CSA countdown on the new channel

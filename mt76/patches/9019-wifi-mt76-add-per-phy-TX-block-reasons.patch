@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct delayed_work roc_work;
  	struct ieee80211_vif *roc_vif;
-@@ -1736,6 +1742,8 @@ void mt76_tx_check_agg_ssn(struct ieee80
+@@ -1735,6 +1741,8 @@ void mt76_tx_check_agg_ssn(struct ieee80
  void mt76_txq_schedule(struct mt76_phy *phy, enum mt76_txq_id qid);
  void mt76_txq_schedule_all(struct mt76_phy *phy);
  void mt76_txq_schedule_pending(struct mt76_phy *phy);

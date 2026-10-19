@@ -64,7 +64,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -910,6 +910,7 @@ static u8
+@@ -916,6 +916,7 @@ static u8
  mt7996_get_rates_table(struct mt7996_phy *phy, struct ieee80211_bss_conf *conf,
  		       bool beacon, bool mcast)
  {
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_vif_link *mvif = mt76_vif_conf_link(&dev->mt76, conf->vif, conf);
  	u16 rate;
-@@ -918,6 +919,9 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -924,6 +925,9 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -82,7 +82,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* odd index for driver, even index for firmware */
  		idx = MT7996_BEACON_RATES_TBL + 2 * phy->mt76->band_idx;
  		if (phy->beacon_rate != rate)
-@@ -1112,7 +1116,7 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1118,7 +1122,7 @@ mt7996_link_info_changed(struct ieee8021
  	if (changed & BSS_CHANGED_TXPOWER &&
  	    info->txpower != phy->txpower) {
  		phy->txpower = info->txpower;
@@ -93,7 +93,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6067,7 +6067,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -6051,7 +6051,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -102,7 +102,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -6536,6 +6536,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6520,6 +6520,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -125,7 +125,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static s8 mt7996_get_power_bound(struct mt7996_phy *phy, s8 txpower)
  {
         struct mt76_phy *mphy = phy->mt76;
-@@ -6547,7 +6563,8 @@ static s8 mt7996_get_power_bound(struct
+@@ -6531,7 +6547,8 @@ static s8 mt7996_get_power_bound(struct
         return txpower;
  }
  
@@ -135,7 +135,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
  #define TX_POWER_LIMIT_TABLE_PATH	1
-@@ -6572,7 +6589,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6556,7 +6573,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
@@ -146,7 +146,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6595,7 +6614,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6579,7 +6598,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	}
  
  	skb_put_data(skb, &req, sizeof(req));
@@ -185,7 +185,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb_put_data(skb, &la->mcs[0], 8); /* HT20 */
  	skb_put_data(skb, &la->mcs[1], 9); /* HT40 */
  
-@@ -6634,8 +6683,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6618,8 +6667,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la->path.cck, 5);
@@ -229,7 +229,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -6652,6 +6734,31 @@ out:
+@@ -6636,6 +6718,31 @@ out:
  	return ret;
  }
  
@@ -273,7 +273,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -967,7 +967,8 @@ int mt7996_mcu_get_temperature(struct mt
+@@ -965,7 +965,8 @@ int mt7996_mcu_get_temperature(struct mt
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);
  int mt7996_mcu_set_thermal_info_query(struct mt7996_phy *phy);

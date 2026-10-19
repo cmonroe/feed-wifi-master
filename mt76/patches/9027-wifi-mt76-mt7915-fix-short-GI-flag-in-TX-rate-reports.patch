@@ -75,7 +75,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		addr = mt7915_mac_wtbl_lmac_addr(dev, idx, 30);
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4496,6 +4496,8 @@ mt7915_mcu_parse_tx_gi(struct mt76_dev *
+@@ -4476,6 +4476,8 @@ mt7915_mcu_parse_tx_gi(struct mt76_dev *
  	case MT_PHY_TYPE_VHT:
  		if (gi)
  			rate->flags |= RATE_INFO_FLAGS_SHORT_GI;

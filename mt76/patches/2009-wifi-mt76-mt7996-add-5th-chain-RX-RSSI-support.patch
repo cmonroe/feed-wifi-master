@@ -340,7 +340,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rxd += 24;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1297,6 +1297,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1303,6 +1303,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
  	for (i = 0; i < IEEE80211_MAX_CHAINS; ++i)
  		ewma_avg_signal_init(msta_link->chain_signal_avg + i);
  	ewma_avg_signal_init(&msta_link->signal_avg);

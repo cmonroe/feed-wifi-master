@@ -76,7 +76,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	unsigned long ampdu_state;
  
  	u16 idx;
-@@ -1488,6 +1503,22 @@ static inline int mt76_decr(int val, int
+@@ -1487,6 +1502,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -593,7 +593,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  				     MT7996_WATCHDOG_TIME);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1247,7 +1247,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1253,7 +1253,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
  	struct mt7996_phy *phy = mt7996_vif_link_phy(link);
  	struct mt7996_sta_link *msta_link;
@@ -602,7 +602,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	if (!phy)
  		return -EINVAL;
-@@ -1287,6 +1287,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1293,6 +1293,9 @@ mt7996_mac_sta_init_link(struct mt7996_d
  
  	ewma_avg_signal_init(&msta_link->avg_ack_signal);
  	ewma_signal_init(&msta_link->wcid.rssi);
@@ -612,7 +612,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	rcu_assign_pointer(msta->link[link_id], msta_link);
  	msta->seclink_id = mt7996_sta_seclink_get(dev, msta);
-@@ -2462,6 +2465,87 @@ out:
+@@ -2468,6 +2471,87 @@ out:
  	rcu_read_unlock();
  }
  
@@ -700,7 +700,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  static void mt7996_link_rate_ctrl_update(void *data,
  					 struct mt7996_sta_link *msta_link)
  {
-@@ -3175,6 +3259,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -3181,6 +3265,7 @@ const struct ieee80211_ops mt7996_ops =
  	.set_bitrate_mask = mt7996_set_bitrate_mask,
  	.set_coverage_class = mt7996_set_coverage_class,
  	.sta_statistics = mt7996_sta_statistics,
@@ -710,7 +710,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	.sta_set_decap_offload = mt7996_sta_set_decap_offload,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -655,42 +655,167 @@ out:
+@@ -639,42 +639,167 @@ out:
  }
  
  static int
@@ -888,7 +888,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  static void
  mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
-@@ -714,11 +839,26 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -698,11 +823,26 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		elem_size = sizeof(res->rate[0]);
  		break;
  	case UNI_ALL_STA_TXRX_ADM_STAT:
@@ -916,7 +916,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	default:
  		return;
  	}
-@@ -728,8 +868,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -712,8 +852,13 @@ mt7996_mcu_rx_all_sta_info_event(struct
  
  	for (i = 0; i < sta_num; i++) {
  		u8 ac;
@@ -930,7 +930,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  		switch (le16_to_cpu(res->tag)) {
  		case UNI_ALL_STA_TXRX_RATE:
-@@ -739,21 +884,39 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -723,21 +868,39 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -978,7 +978,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			}
  			break;
  		case UNI_ALL_STA_TXRX_MSDU_COUNT:
-@@ -763,10 +926,59 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -747,10 +910,59 @@ mt7996_mcu_rx_all_sta_info_event(struct
  			if (!wcid)
  				break;
  
@@ -1042,7 +1042,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  			break;
  		default:
  			break;
-@@ -5710,9 +5922,132 @@ int mt7996_mcu_set_rro(struct mt7996_dev
+@@ -5694,9 +5906,132 @@ int mt7996_mcu_set_rro(struct mt7996_dev
  				 sizeof(req), true);
  }
  
@@ -1177,7 +1177,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	struct {
  		u8 _rsv[4];
  
-@@ -5723,7 +6058,7 @@ int mt7996_mcu_get_all_sta_info(struct m
+@@ -5707,7 +6042,7 @@ int mt7996_mcu_get_all_sta_info(struct m
  		.len = cpu_to_le16(sizeof(req) - 4),
  	};
  
@@ -1322,7 +1322,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	unsigned long changed;
  
  	struct mt76_connac_sta_key_conf bip;
-@@ -902,7 +913,9 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -900,7 +911,9 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);

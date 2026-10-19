@@ -12,7 +12,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5048,6 +5048,8 @@ int mt7996_mcu_set_ser(struct mt7996_dev
+@@ -5032,6 +5032,8 @@ int mt7996_mcu_set_ser(struct mt7996_dev
  	};
  
  	switch (action) {

@@ -465,7 +465,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt7996_phy {
  	struct mt76_phy *mt76;
  	struct mt7996_dev *dev;
-@@ -510,6 +523,8 @@ struct mt7996_phy {
+@@ -508,6 +521,8 @@ struct mt7996_phy {
  	u8 pp_mode;
  	u16 punct_bitmap;
  
@@ -474,7 +474,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct mt7996_scs_ctrl scs_ctrl;
  };
  
-@@ -1038,6 +1053,15 @@ static inline bool mt7996_has_ext_eeprom
+@@ -1036,6 +1051,15 @@ static inline bool mt7996_has_ext_eeprom
  	return !is_mt7996(&dev->mt76);
  }
  
@@ -490,7 +490,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt7996_mac_init(struct mt7996_dev *dev);
  u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
  bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
-@@ -1120,6 +1144,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1118,6 +1142,13 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
@@ -666,6 +666,6 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		mt7996_mcu_edcca_threshold_ctrl(phy, phy->user_edcca_threshold,
 +						true);
 +#endif
- 	phy->noise = 0;
- 	if (!mphy->offchannel)
- 		mt7996_mac_update_beacons(phy);
+ 	/* continue the noise average of the operating channel instead of
+ 	 * starting it again from a single IPI histogram reading
+ 	 */

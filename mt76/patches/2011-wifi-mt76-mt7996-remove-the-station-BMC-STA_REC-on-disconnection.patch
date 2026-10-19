@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1010,6 +1010,10 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1016,6 +1016,10 @@ mt7996_link_info_changed(struct ieee8021
  	else if (changed & BSS_CHANGED_BSSID)
  		eth_zero_addr(link->bmc_bssid);
  

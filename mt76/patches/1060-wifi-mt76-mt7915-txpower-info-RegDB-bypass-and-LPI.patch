@@ -209,7 +209,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -1524,7 +1524,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
+@@ -1504,7 +1504,8 @@ mt7915_mcu_set_spe_idx(struct mt7915_dev
  	struct mt7915_vif *mvif = (struct mt7915_vif *)vif->drv_priv;
  	struct mt7915_sta *msta = (struct mt7915_sta *)sta->drv_priv;
  	struct mt76_phy *mphy = mvif->phy->mt76;
@@ -219,7 +219,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &msta->wcid,
  					      &spe_idx, RATE_PARAM_SPE_UPDATE);
-@@ -3526,6 +3527,22 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3506,6 +3507,22 @@ mt7915_update_txpower(struct mt7915_phy
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -242,7 +242,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3556,14 +3573,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3536,14 +3553,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -282,7 +282,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb_put_data(skb, &la.mcs[0], len[SKU_HT_BW20]);
  	skb_put_data(skb, &la.mcs[1], len[SKU_HT_BW40]);
  
-@@ -3592,8 +3632,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3572,8 +3612,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
@@ -319,7 +319,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* HT20 and HT40 */
  	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
-@@ -3669,6 +3735,12 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3649,6 +3715,12 @@ int mt7915_mcu_get_txpower_sku(struct mt
  			return -EINVAL;
  		}
  		memcpy(txpower, skb->data + 4, len);
@@ -332,7 +332,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	dev_kfree_skb(skb);
-@@ -3676,6 +3748,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3656,6 +3728,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	return 0;
  }
  
@@ -368,7 +368,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -940,6 +940,8 @@ struct mt76_phy {
+@@ -939,6 +939,8 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -467,7 +467,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -728,6 +728,7 @@ int mt7915_mmio_wed_init(struct mt7915_d
+@@ -726,6 +726,7 @@ int mt7915_mmio_wed_init(struct mt7915_d
  void mt7915_vendor_register(struct mt7915_phy *phy);
  #endif
  

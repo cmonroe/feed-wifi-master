@@ -25,6 +25,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 Co-developed-by: Colin Whittaker <colin.whittaker@adtran.com>
+Signed-off-by: Colin Whittaker <colin.whittaker@adtran.com>
 ---
  scan.c |   47 ++++++++++++++++++++++++++++++++++++++---------
  1 file changed, 38 insertions(+), 9 deletions(-)

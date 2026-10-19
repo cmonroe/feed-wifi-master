@@ -92,7 +92,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1265,6 +1265,11 @@ struct mt76_power_limits {
+@@ -1264,6 +1264,11 @@ struct mt76_power_limits {
  	} path;
  };
  
@@ -104,7 +104,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -2161,6 +2166,9 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -2160,6 +2165,9 @@ s8 mt76_get_rate_power_limits(struct mt7
  			      struct ieee80211_channel *chan,
  			      struct mt76_power_limits *dest,
  			      s8 target_power);
@@ -259,12 +259,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -#endif
 +	if (!mphy->offchannel)
 +		mt7996_apply_edcca_limits(phy);
- 	phy->noise = 0;
- 	if (!mphy->offchannel)
- 		mt7996_mac_update_beacons(phy);
+ 	/* continue the noise average of the operating channel instead of
+ 	 * starting it again from a single IPI histogram reading
+ 	 */
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -533,6 +533,8 @@ struct mt7996_phy {
+@@ -531,6 +531,8 @@ struct mt7996_phy {
  	u16 punct_bitmap;
  
  	u8 user_edcca_threshold[EDCCA_MAX_BW_NUM];
@@ -273,7 +273,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct mt7996_scs_ctrl scs_ctrl;
  };
-@@ -879,6 +881,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -877,6 +879,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);

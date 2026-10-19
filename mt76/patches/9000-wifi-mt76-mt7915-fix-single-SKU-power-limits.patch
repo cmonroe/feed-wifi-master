@@ -145,7 +145,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -3529,7 +3529,7 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3509,7 +3509,7 @@ mt7915_update_txpower(struct mt7915_phy
  
  static int mt7915_get_psd_country(char *country)
  {
@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -3564,6 +3564,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3544,6 +3544,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	struct mt76_power_limits *la;
  	struct sk_buff *skb;
  
@@ -165,7 +165,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	tx_power = mt76_get_power_bound(mphy, hw->conf.power_level);
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -3577,6 +3581,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3557,6 +3561,10 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -176,7 +176,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(hdr) + MT7915_SKU_RATE_NUM);
  	if (!skb) {
-@@ -3587,8 +3595,11 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3567,8 +3575,11 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la->cck, len[SKU_CCK]);
  
@@ -190,7 +190,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->mcs[0], len[SKU_OFDM]);
-@@ -3641,7 +3652,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3621,7 +3632,7 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la->path.cck, 4);
  
@@ -199,7 +199,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->path.ru[3], 4);
-@@ -3771,6 +3782,10 @@ int mt7915_mcu_set_lpi(struct mt7915_phy
+@@ -3751,6 +3762,10 @@ int mt7915_mcu_set_lpi(struct mt7915_phy
  		.enable = en,
  		.psd_limit = en ? mt7915_get_psd_country(mdev->alpha2) : 0,
  	};
@@ -210,7 +210,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return mt76_mcu_send_msg(mdev, MCU_EXT_CMD(LPI_CTRL), &req,
  				 sizeof(req), false);
  }
-@@ -3808,9 +3823,13 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3788,9 +3803,13 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	} __packed req = {
  		.band_idx = phy->mt76->band_idx,
  	};
@@ -226,7 +226,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	req.sku_enable = dev->dbg.sku_disable ? 0 : phy->sku_limit_en;
  	req.format_id = TX_POWER_LIMIT_ENABLE;
-@@ -3824,9 +3843,11 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3804,9 +3823,11 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	req.sku_enable = dev->dbg.sku_disable ? 0 : phy->sku_path_en;
  	req.format_id = TX_POWER_LIMIT_PATH_ENABLE;
  
@@ -323,7 +323,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		.info = {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -980,6 +980,8 @@ struct mt76_phy {
+@@ -979,6 +979,8 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -332,7 +332,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1118,8 +1120,6 @@ struct mt76_dev {
+@@ -1117,8 +1119,6 @@ struct mt76_dev {
  		bool aborted;
  	} scan;
  
@@ -341,7 +341,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool mgmt_pwr_enhance;
  
  #ifdef CONFIG_NL80211_TESTMODE
-@@ -1243,6 +1243,11 @@ struct mt76_mib_stats {
+@@ -1242,6 +1242,11 @@ struct mt76_mib_stats {
  	u32 ul_hetrig_4mu_cnt;
  };
  
@@ -449,7 +449,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* hardware won't add HTC for mgmt/ctrl frame */
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -254,6 +254,12 @@ struct mt7915_phy {
+@@ -252,6 +252,12 @@ struct mt7915_phy {
  	bool sku_limit_en:1;
  	bool sku_path_en:1;
  
@@ -462,7 +462,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 stats_work_count;
  	struct list_head stats_list;
  	spinlock_t stats_lock;
-@@ -541,6 +547,7 @@ int mt7915_dma_reset(struct mt7915_dev *
+@@ -539,6 +545,7 @@ int mt7915_dma_reset(struct mt7915_dev *
  int mt7915_dma_start(struct mt7915_dev *dev, bool reset, bool wed_reset);
  int mt7915_txbf_init(struct mt7915_dev *dev);
  void mt7915_init_txpower(struct mt7915_phy *phy);

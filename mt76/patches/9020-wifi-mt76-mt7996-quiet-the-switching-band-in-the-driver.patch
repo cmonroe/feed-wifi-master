@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_dfs_init_radar_detector(struct mt7996_phy *phy)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -3109,7 +3131,7 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3107,7 +3129,7 @@ int mt7996_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
  
@@ -97,7 +97,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (dfs_state == MT_DFS_STATE_CAC)
-@@ -3117,11 +3139,11 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3115,11 +3137,11 @@ int mt7996_dfs_init_radar_detector(struc
  
  	err = mt7996_mcu_rdd_cmd(dev, RDD_CAC_END, rdd_idx, 0);
  	if (err < 0) {
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  
  stop:
-@@ -3130,7 +3152,7 @@ stop:
+@@ -3128,7 +3150,7 @@ stop:
  		return err;
  
  	mt7996_dfs_stop_radar_detector(phy);
@@ -173,7 +173,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* Hw requires to destroy active links tearing down the interface, so
  	 * postpone it removing the interface.
  	 */
-@@ -1153,6 +1183,9 @@ mt7996_channel_switch_beacon(struct ieee
+@@ -1159,6 +1189,9 @@ mt7996_channel_switch_beacon(struct ieee
  		if (link_phy != phy)
  			continue;
  
@@ -183,7 +183,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* Reset beacon when channel switch triggered during CAC to let
  		 * FW correctly perform CSA countdown
  		 */
-@@ -1174,9 +1207,21 @@ mt7996_pre_channel_switch(struct ieee802
+@@ -1180,9 +1213,21 @@ mt7996_pre_channel_switch(struct ieee802
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	struct cfg80211_chan_def *c = &ch_switch->chandef, *rdd2_chandef;
  	struct mt7996_phy *phy = mt7996_band_phy(dev, c->chan->band);
@@ -205,7 +205,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (phy != dev->rdd2_phy)
  		goto out;
  
-@@ -1224,10 +1269,34 @@ mt7996_post_channel_switch(struct ieee80
+@@ -1230,10 +1275,34 @@ mt7996_post_channel_switch(struct ieee80
  out:
  	mutex_unlock(&dev->mt76.mutex);
  
@@ -243,7 +243,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static void
-@@ -3497,6 +3566,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -3503,6 +3572,7 @@ const struct ieee80211_ops mt7996_ops =
  	.channel_switch_beacon = mt7996_channel_switch_beacon,
  	.pre_channel_switch = mt7996_pre_channel_switch,
  	.post_channel_switch = mt7996_post_channel_switch,
@@ -263,7 +263,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  struct mt7996_vif_link_info {
-@@ -520,6 +523,7 @@ struct mt7996_phy {
+@@ -518,6 +521,7 @@ struct mt7996_phy {
  	bool has_aux_rx;
  	bool counter_reset;
  	bool rdd_tx_paused;

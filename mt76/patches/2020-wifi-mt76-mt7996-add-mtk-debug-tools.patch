@@ -259,7 +259,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -587,6 +587,7 @@ struct mt7996_dev {
+@@ -585,6 +585,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -267,7 +267,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	u32 token_debug_idx;
  
-@@ -606,6 +607,17 @@ struct mt7996_dev {
+@@ -604,6 +605,17 @@ struct mt7996_dev {
  		u8 fem:4;
  	} var;
  
@@ -285,7 +285,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool vow_atf_en;
  };
  
-@@ -1073,6 +1085,12 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1071,6 +1083,12 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  

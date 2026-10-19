@@ -71,7 +71,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1081,6 +1081,9 @@ struct mt76_dev {
+@@ -1080,6 +1080,9 @@ struct mt76_dev {
  
  	atomic_t bus_hung;
  
@@ -81,7 +81,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int first_failed_mcu_cmd;
  	int last_successful_mcu_cmd;
  };
-@@ -1388,6 +1391,7 @@ int mt76_eeprom_override(struct mt76_phy
+@@ -1387,6 +1390,7 @@ int mt76_eeprom_override(struct mt76_phy
  int mt76_get_of_data_from_mtd(struct mt76_dev *dev, void *eep, int offset, int len);
  int mt76_get_of_data_from_nvmem(struct mt76_dev *dev, void *eep,
  				const char *cell_name, int len);
@@ -486,7 +486,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -324,8 +324,11 @@ struct mt7915_dev {
+@@ -322,8 +322,11 @@ struct mt7915_dev {
  	u32 hw_pattern;
  	u32 ple1_sts;
  
@@ -498,7 +498,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool muru_debug;
  	bool ibf;
  
-@@ -628,7 +631,11 @@ void mt7915_mcu_exit(struct mt7915_dev *
+@@ -626,7 +629,11 @@ void mt7915_mcu_exit(struct mt7915_dev *
  
  static inline u16 mt7915_wtbl_size(struct mt7915_dev *dev)
  {
@@ -511,7 +511,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static inline u16 mt7915_eeprom_size(struct mt7915_dev *dev)
-@@ -733,6 +740,7 @@ void mt7915_dump_tmac_info(u8 *tmac_info
+@@ -731,6 +738,7 @@ void mt7915_dump_tmac_info(u8 *tmac_info
  int mt7915_mcu_set_txpower_level(struct mt7915_phy *phy, u8 drop_level);
  void mt7915_packet_log_to_host(struct mt7915_dev *dev, const void *data, int len, int type, int des_len);
  int mt7915_mcu_set_amsdu_algo(struct mt7915_dev *dev, u16 wcid, u8 enable);
