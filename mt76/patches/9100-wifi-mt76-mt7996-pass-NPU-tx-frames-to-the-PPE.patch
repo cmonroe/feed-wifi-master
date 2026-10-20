@@ -122,7 +122,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				       struct sk_buff *skb,
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -952,6 +952,20 @@ mt7996_tx_use_mgmt(struct mt7996_dev *de
+@@ -981,6 +981,20 @@ mt7996_tx_use_mgmt(struct mt7996_dev *de
  	return false;
  }
  
@@ -143,10 +143,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_tx_prepare_skb(struct mt76_dev *mdev, void *txwi_ptr,
  			  enum mt76_txq_id qid, struct mt76_wcid *wcid,
  			  struct ieee80211_sta *sta,
-@@ -1128,6 +1142,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
- 
- 		txp->fw.token = cpu_to_le16(id);
- 		txp->fw.rept_wds_wcid = cpu_to_le16(sta ? wcid->idx : 0xfff);
+@@ -1158,6 +1172,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+ 		/* wcid in txp can only be primary or secondary link */
+ 		wcid_txd = mt7996_get_txd_wcid(wcid, tid);
+ 		txp->fw.rept_wds_wcid = cpu_to_le16(sta ? wcid_txd->idx : 0xfff);
 +
 +		if (is_8023 && sta && mlink && mt76_npu_device_active(mdev))
 +			mt7996_npu_check_ppe_tx(dev, tx_info->skb, wcid, mlink);
@@ -155,7 +155,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	tx_info->skb = NULL;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -3391,11 +3391,9 @@ mt7996_net_fill_forward_path(struct ieee
+@@ -3393,11 +3393,9 @@ mt7996_net_fill_forward_path(struct ieee
  		path->mtk_wdma.wdma_idx = wed->wdma_idx;
  	else
  #endif

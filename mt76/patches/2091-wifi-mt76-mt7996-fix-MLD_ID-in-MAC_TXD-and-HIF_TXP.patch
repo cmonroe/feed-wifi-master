@@ -1,0 +1,124 @@
+From: Peter Chiu <chui-hao.chiu@mediatek.com>
+Date: Mon, 1 Jun 2026 15:04:47 +0800
+Subject: [PATCH] wifi: mt76: mt7996: fix MLD_ID in MAC_TXD and HIF_TXP
+
+Problem:
+MCU command timeout and firmware state is normal.
+Firmware keep showing the following error log.
+"ERROR!! NO PAUSE..."
+
+Root Cause:
+If MLD_ID field in TXD is neither primary link id nor secondary
+link id, it may leads to firmware busy when the third link is in
+power saving mode.
+
+Solution:
+Driver fills in MLD_ID depends on TID even if driver needs to
+force link on the third link.
+
+Feature:
+Stability
+
+Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
+---
+ mt7996/mac.c | 44 +++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 37 insertions(+), 7 deletions(-)
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -800,6 +800,31 @@ struct mt76_wcid *mt7996_get_tx_wcid(str
+ 	return wcid;
+ }
+ 
++static struct mt76_wcid *mt7996_get_txd_wcid(struct mt76_wcid *wcid, u8 tid)
++{
++	struct mt7996_sta_link *msta_link;
++	struct mt7996_sta *msta;
++	u8 link_id;
++
++	if (!wcid->sta)
++		return wcid;
++
++	msta_link = container_of(wcid, struct mt7996_sta_link, wcid);
++	msta = msta_link->sta;
++
++	if (!msta || wcid->link_id == msta->seclink_id ||
++	    wcid->link_id == msta->deflink_id)
++		return wcid;
++
++	link_id = (tid % 2) ? msta->seclink_id : msta->deflink_id;
++
++	msta_link = mt7996_sta_link(msta, link_id);
++	if (msta_link)
++		return &msta_link->wcid;
++
++	return wcid;
++}
++
+ void mt7996_mac_write_txwi(struct mt7996_dev *dev, __le32 *txwi,
+ 			   struct sk_buff *skb, struct mt76_wcid *wcid,
+ 			   struct ieee80211_key_conf *key, int pid,
+@@ -820,6 +845,8 @@ void mt7996_mac_write_txwi(struct mt7996
+ 					 BSS_CHANGED_FILS_DISCOVERY));
+ 	bool beacon = !!(changed & (BSS_CHANGED_BEACON |
+ 				    BSS_CHANGED_BEACON_ENABLED)) && (!inband_disc);
++	u8 tid = skb->priority & IEEE80211_QOS_CTL_TID_MASK;
++	struct mt76_wcid *wcid_txd;
+ 
+ 	mvif = vif ? (struct mt7996_vif *)vif->drv_priv : NULL;
+ 	if (mvif) {
+@@ -855,7 +882,9 @@ void mt7996_mac_write_txwi(struct mt7996
+ 	      FIELD_PREP(MT_TXD0_Q_IDX, q_idx);
+ 	txwi[0] = cpu_to_le32(val);
+ 
+-	val = FIELD_PREP(MT_TXD1_WLAN_IDX, wcid->idx) |
++	/* WLAN_IDX can only be primary or secondary link */
++	wcid_txd = mt7996_get_txd_wcid(wcid, tid);
++	val = FIELD_PREP(MT_TXD1_WLAN_IDX, wcid_txd->idx) |
+ 	      FIELD_PREP(MT_TXD1_OWN_MAC, omac_idx);
+ 
+ 	if (band_idx)
+@@ -964,6 +993,7 @@ int mt7996_tx_prepare_skb(struct mt76_de
+ 	struct mt76_txwi_cache *t;
+ 	int id, i, pid, nbuf = tx_info->nbuf - 1;
+ 	bool is_8023 = info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP;
++	u8 tid = tx_info->skb->priority & IEEE80211_QOS_CTL_TID_MASK;
+ 	__le32 *ptr = (__le32 *)txwi_ptr;
+ 	u8 *txwi = (u8 *)txwi_ptr;
+ 	u8 link_id;
+@@ -975,14 +1005,11 @@ int mt7996_tx_prepare_skb(struct mt76_de
+ 		wcid = &dev->mt76.global_wcid;
+ 
+ 	if ((is_8023 || ieee80211_is_data_qos(hdr->frame_control)) && sta && sta->mlo &&
+-	    likely(tx_info->skb->protocol != cpu_to_be16(ETH_P_PAE))) {
+-		u8 tid = tx_info->skb->priority & IEEE80211_QOS_CTL_TID_MASK;
+-
++	    likely(tx_info->skb->protocol != cpu_to_be16(ETH_P_PAE)))
+ 		link_id = (tid % 2) ? msta->seclink_id : msta->deflink_id;
+-	} else {
++	else
+ 		link_id = u32_get_bits(info->control.flags,
+ 				       IEEE80211_TX_CTRL_MLO_LINK);
+-	}
+ 
+ 	/* non-MLD frames are LINK_UNSPECIFIED; use the wcid's own link */
+ 	if (link_id == IEEE80211_LINK_UNSPECIFIED &&
+@@ -1086,6 +1113,7 @@ int mt7996_tx_prepare_skb(struct mt76_de
+ 		tx_info->buf[0].len = MT_TXD_SIZE + mac_txp_size;
+ 	} else {
+ 		struct mt76_connac_txp_common *txp;
++		struct mt76_wcid *wcid_txd;
+ 
+ 		txp = (struct mt76_connac_txp_common *)(txwi + MT_TXD_SIZE);
+ 		for (i = 0; i < nbuf; i++) {
+@@ -1123,7 +1151,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+ 		}
+ 
+ 		txp->fw.token = cpu_to_le16(id);
+-		txp->fw.rept_wds_wcid = cpu_to_le16(sta ? wcid->idx : 0xfff);
++		/* wcid in txp can only be primary or secondary link */
++		wcid_txd = mt7996_get_txd_wcid(wcid, tid);
++		txp->fw.rept_wds_wcid = cpu_to_le16(sta ? wcid_txd->idx : 0xfff);
+ 	}
+ 
+ 	tx_info->skb = NULL;
