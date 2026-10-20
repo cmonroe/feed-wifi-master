@@ -511,7 +511,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		uc_wpas_iface_status_multi_ap(vm, ret, wpa_s);
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -122,6 +122,7 @@ start_disabled=1
+@@ -125,6 +125,7 @@ start_disabled=1
  function iface_freq_info(iface, config, params)
  {
  	let freq = params.frequency;
@@ -519,7 +519,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!freq)
  		return null;
  
-@@ -130,19 +131,23 @@ function iface_freq_info(iface, config,
+@@ -133,19 +134,23 @@ function iface_freq_info(iface, config,
  		sec_offset = 0;
  
  	let width = 0;
@@ -554,7 +554,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (freq < 4000)
-@@ -157,7 +162,7 @@ function iface_freq_info(iface, config,
+@@ -160,7 +165,7 @@ function iface_freq_info(iface, config,
  	if (freq > 5925 && width > 0 && sec_offset == 0)
  		sec_offset = null;
  
@@ -563,7 +563,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  function iface_add(phy, config, phy_status, start_disabled)
-@@ -2150,6 +2155,8 @@ let main_obj = {
+@@ -2199,6 +2204,8 @@ let main_obj = {
  			up: true,
  			frequency: 0,
  			sec_chan_offset: 0,
@@ -572,7 +572,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			csa: true,
  			csa_count: 0,
  			no_link: true,
-@@ -2159,6 +2166,9 @@ let main_obj = {
+@@ -2208,6 +2215,9 @@ let main_obj = {
  			if (req.args.up == null || !phy)
  				return libubus.STATUS_INVALID_ARGUMENT;
  
@@ -582,7 +582,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			let config = hostapd.data.config[phy];
  			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)
  				return 0;
-@@ -2212,6 +2222,8 @@ let main_obj = {
+@@ -2286,6 +2296,8 @@ let main_obj = {
  				if (!freq_info)
  					return fail();
  
@@ -602,7 +602,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  function iface_status_fill_radio(mld, radio, msg, status)
-@@ -1056,6 +1058,8 @@ function iface_hostapd_notify(ifname, if
+@@ -1059,6 +1061,8 @@ function iface_hostapd_notify(ifname, if
  		if (!mld) {
  			msg.frequency = status.frequency;
  			msg.sec_chan_offset = status.sec_chan_offset;
@@ -611,7 +611,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  		break;
  	default:
-@@ -1108,6 +1112,8 @@ function iface_channel_switch(ifname, if
+@@ -1111,6 +1115,8 @@ function iface_channel_switch(ifname, if
  		csa_count: info.csa_count ? info.csa_count - 1 : 0,
  		frequency: info.frequency,
  		sec_chan_offset: info.sec_chan_offset,

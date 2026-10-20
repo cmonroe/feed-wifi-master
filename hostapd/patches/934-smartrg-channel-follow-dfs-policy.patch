@@ -6,9 +6,11 @@ The colocated STA owns the radio's only channel context, so a channel
 that hostapd picks on its own cannot start. The CAC or the beacon
 fails, setup fails with DFS_FAILED, and netifd loops. The
 channel_follow=1 keyword, which the ucode configuration writes for
-such a radio, stops hostapd from relocating. When the followed block
-has unavailable channels, the DFS setup parks the interface in the
-DFS state until the NOP ends or the STA supplies a new channel.
+such a radio, stops hostapd from relocating. The inline config
+leaves the keyword out on a radio that a station MLD spans without a
+link. When the followed block has unavailable channels, the DFS setup
+parks the interface in the DFS state until the NOP ends or the STA
+supplies a new channel.
 
 On a radar that overlaps the AP chandef, the AP reads the DFS state
 from the driver, because cfg80211 changes it without an event.
@@ -22,6 +24,12 @@ marks its channels unavailable.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
+ hostapd/config_file.c    |    2 
+ openwrt/files/hostapd.uc |    7 +-
+ src/ap/ap_config.h       |    1 
+ src/ap/dfs.c             |  147 +++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 156 insertions(+), 1 deletion(-)
+
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
 @@ -3376,6 +3376,8 @@ static int hostapd_config_fill(struct ho
@@ -35,11 +43,21 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	} else if (os_strcmp(buf, "enable_edmg") == 0) {
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -82,6 +82,9 @@ ${join("\n", config.radio.data)}
+@@ -76,13 +76,18 @@ function iface_remove(cfg)
+ 			wdev_remove(bss.ifname);
+ }
+ 
+-function iface_gen_config(config, start_disabled)
++function iface_gen_config(config, start_disabled, channel_follow)
+ {
++	channel_follow ??= config.radio.channel_follow;
++
+ 	let str = `data:
+ ${join("\n", config.radio.data)}
  channel=${config.radio.channel}
  `;
  
-+	if (config.radio.channel_follow)
++	if (channel_follow)
 +		str += "channel_follow=1\n";
 +
  	for (let i = 0; i < length(config.bss); i++) {

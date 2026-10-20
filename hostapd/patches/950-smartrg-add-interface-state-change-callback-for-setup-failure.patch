@@ -8,19 +8,19 @@ such a transition to netifd as a setup failure, so that netifd can
 set the radio up again after a transient failure.
 
 hostapd does not report a transition that it causes itself while it
-applies a configuration or follows an AP-STA stop or start. Without
-that, a station that leaves a DFS channel makes netifd restart the
-radio in a loop. A configuration that fails or throws makes
-config_set reply with an error, not with the process ID. netifd then
-treats it as a failed setup.
+applies a configuration or follows an AP-STA stop, start or restart.
+Without that, a station that leaves a DFS channel makes netifd
+restart the radio in a loop. A configuration that fails or throws
+makes config_set reply with an error, not with the process ID.
+netifd then treats it as a failed setup.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- openwrt/files/hostapd.uc |   76 +++++++++++++++++++++++++++++++++++++++++++----
- src/ap/hostapd.c         |    6 +++
- src/ap/ucode.c           |   13 ++++++++
+ openwrt/files/hostapd.uc |   86 ++++++++++++++++++++++++++++++++++++++++++-----
+ src/ap/hostapd.c         |    6 ++-
+ src/ap/ucode.c           |   13 +++++++
  src/ap/ucode.h           |   11 ++++++
- 4 files changed, 99 insertions(+), 7 deletions(-)
+ 4 files changed, 107 insertions(+), 9 deletions(-)
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
@@ -102,7 +102,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static inline int hostapd_ucode_dpp_rx_action(struct hostapd_data *hapd,
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -65,6 +65,18 @@ hostapd.data.bss_info_fields = {
+@@ -66,6 +66,18 @@ hostapd.data.bss_info_fields = {
  hostapd.data.mld = {};
  hostapd.data.dpp_hooks = {};
  
@@ -121,7 +121,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function iface_remove(cfg)
  {
  	if (!cfg || !cfg.bss || !cfg.bss[0] || !cfg.bss[0].ifname)
-@@ -469,7 +481,7 @@ function iface_restart(phydev, config, o
+@@ -489,7 +501,7 @@ function iface_restart(phydev, config, o
  				delete cur.bssid;
  		if (pending)
  			iface_supplicant_start(phydev);
@@ -130,7 +130,19 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  	iface_macaddr_sync(phydev, config);
  
-@@ -1500,7 +1512,7 @@ function mld_link_bss_remove(phy, name)
+@@ -1067,7 +1079,10 @@ function iface_start_failed(name)
+ // beacons of a stopped interface; a disabled one needs a restart.
+ function iface_resume(name, iface)
+ {
+-	if (!iface.start(null))
++	hostapd.data.configuring = name;
++	let ret = iface.start(null);
++	delete hostapd.data.configuring;
++	if (!ret)
+ 		return false;
+ 
+ 	delete hostapd.data.apsta_stopped[name];
+@@ -1533,7 +1548,7 @@ function mld_link_bss_remove(phy, name)
  	iface_macaddr_prune(phy, config);
  }
  
@@ -139,7 +151,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	let old_config = hostapd.data.config[name];
  
-@@ -1536,8 +1548,20 @@ function iface_set_config(name, config)
+@@ -1569,8 +1584,20 @@ function iface_set_config(name, config)
  	}
  
  	hostapd.printf(`Restart interface for phy ${name}`);
@@ -161,7 +173,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return ret;
  }
  
-@@ -2067,7 +2091,9 @@ let main_obj = {
+@@ -2100,14 +2127,19 @@ let main_obj = {
  			if (!req.args.up) {
  				delete hostapd.data.apsta_freq[phy];
  				hostapd.data.apsta_stopped[phy] = true;
@@ -171,7 +183,18 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				return 0;
  			}
  
-@@ -2123,7 +2149,15 @@ let main_obj = {
+ 			let restart = () => {
+ 				let phydev = phy_open(config.phy, config.radio_idx);
+-				if (phydev)
++				if (phydev) {
++					hostapd.data.configuring = phy;
+ 					iface_restart(phydev, config, config);
++					delete hostapd.data.configuring;
++				}
+ 				return 0;
+ 			};
+ 
+@@ -2172,7 +2204,15 @@ let main_obj = {
  			if (!freq_info)
  				return 0;
  
@@ -188,7 +211,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				return fail();
  
  			delete hostapd.data.apsta_stopped[phy];
-@@ -2189,6 +2223,7 @@ let main_obj = {
+@@ -2238,6 +2278,7 @@ let main_obj = {
  			radio: 0,
  			config: "",
  			prev_config: "",
@@ -196,7 +219,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
  		call: function(req) {
  			let phy = req.args.phy;
-@@ -2196,21 +2231,28 @@ let main_obj = {
+@@ -2245,21 +2286,28 @@ let main_obj = {
  			let name = phy_name(phy, radio);
  			let file = req.args.config;
  			let prev_file = req.args.prev_config;
@@ -227,7 +250,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			if (hostapd.data.auth_obj)
  				hostapd.data.auth_obj.notify("reload", { phy, radio });
-@@ -2483,4 +2525,26 @@ return {
+@@ -2532,4 +2580,26 @@ return {
  			return null;
  		return response;
  	},

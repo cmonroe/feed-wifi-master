@@ -28,7 +28,7 @@ that the kernel refused for some BSSes.
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -438,12 +438,24 @@ function csa_timer_cancel(name)
+@@ -457,12 +457,24 @@ function csa_timer_cancel(name)
  	}
  }
  
@@ -53,7 +53,7 @@ that the kernel refused for some BSSes.
  
  	if (pending)
  		pending.abort();
-@@ -916,6 +928,82 @@ function iface_csa_check(name)
+@@ -936,6 +948,82 @@ function iface_csa_check(name)
  		iface_restart(phydev, config, config);
  }
  
@@ -136,7 +136,7 @@ that the kernel refused for some BSSes.
  function iface_channel_switch(name, config)
  {
  	let radio = config.radio;
-@@ -968,17 +1056,8 @@ function iface_channel_switch(name, conf
+@@ -988,17 +1076,8 @@ function iface_channel_switch(name, conf
  	hostapd.data.csa_timer ??= {};
  	csa_timer_cancel(name);
  
@@ -156,7 +156,7 @@ that the kernel refused for some BSSes.
  
  	return true;
  }
-@@ -2088,6 +2167,8 @@ let main_obj = {
+@@ -2124,6 +2203,8 @@ let main_obj = {
  			if (!iface)
  				return 0;
  
@@ -165,7 +165,7 @@ that the kernel refused for some BSSes.
  			if (!req.args.up) {
  				delete hostapd.data.apsta_freq[phy];
  				hostapd.data.apsta_stopped[phy] = true;
-@@ -2134,7 +2215,7 @@ let main_obj = {
+@@ -2189,7 +2270,7 @@ let main_obj = {
  				if (req.args.csa) {
  					freq_info.csa_count = req.args.csa_count ?? 10;
  					if (!iface.switch_channel(freq_info))
