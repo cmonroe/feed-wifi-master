@@ -126,3 +126,34 @@ from that one capture.
 The loop in `__sta_info_alloc()` must cover all entries of the array. The
 upstream kernel had the same lines on 2026-10-12, so the fix belongs
 upstream first.
+
+## A Hidden Beacon Entry Keeps a Reference for Each Nontransmitted Entry
+
+**Severity:** low, a memory leak in a rare case. Found in the code of
+backports 7.2 on 2026-10-19, in the review of patch 923. Not seen on a unit.
+
+### What happens
+
+- cfg80211 puts the entry with the SSID of a hidden BSS into the group of
+  the beacon entry without the SSID (`hidden_beacon_bss`). `bss_ref_get()`
+  and `bss_ref_put()` count each reference of a member on the beacon entry
+  too.
+- When cfg80211 makes a nontransmitted entry of a multi-BSSID set,
+  `__cfg80211_bss_update()` calls `bss_ref_get()` on the transmitter. If the
+  transmitter is a member of a hidden group, this call also counts on the
+  beacon entry.
+- `bss_ref_put()` of the nontransmitted entry gives its reference back to
+  the transmitter only. So the beacon entry keeps one reference for each
+  nontransmitted entry that cfg80211 made, and it is not freed when it
+  expires.
+- `cfg80211_combine_bsses()` adds the full refcount of a member, the
+  references of its nontransmitted entries included, with the same result.
+- The case needs a multi-BSSID AP whose transmitted BSS has a hidden SSID,
+  and a station that knows that SSID.
+
+### If it is fixed later
+
+The release of a nontransmitted entry must also release the count on the
+hidden beacon entry of its transmitter. The upstream kernel has the same
+code, so the fix belongs upstream first. Patch 923 moves only the share that
+the beacon entry mirrors, so it does not depend on this fix.

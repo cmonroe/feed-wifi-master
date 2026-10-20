@@ -1,0 +1,106 @@
+From: Koral Ilgun <koral.ilgun@adtran.com>
+Date: Mon, 19 Oct 2026 17:20:00 -0700
+Subject: [PATCH] wifi: cfg80211: regroup a hidden BSS entry after a channel switch
+
+For a hidden SSID, the entry with the SSID takes its beacon data from
+the beacon entry of its group. A channel switch moves only the entry
+with the SSID. The beacon entry stays on the old channel, and
+cfg80211_combine_bsses() does not add the moved entry to the group of
+the new channel, because it already has beacon data.
+
+The moved entry then keeps the last beacon of the old channel, which
+carries the CSA element, and its timestamp stops. After a second
+channel switch, that CSA element names a channel other than the one
+of the entry, and mac80211 rejects each new authentication with "AP
+is in CSA process".
+
+Move the entry out of the old group after the rehash. It joins the
+group of the new channel if that beacon entry exists; else it stays
+without beacon data, so that cfg80211_combine_bsses() adopts it at the
+first beacon. Only the references that the beacon entry mirrors move
+with it, because the references that nontransmitted entries hold on
+their transmitter are not mirrored. The old beacon entry keeps the
+ownership of its data. A hidden nontransmitted entry keeps its old
+group.
+
+The timestamp of the moved entry stays current now, so the entry no
+longer expires 30 s after the switch. The previous patch keeps its
+probe response data of the old channel out of new connections.
+
+Fixes: 0afd425b1b64 ("cfg80211: fix duplicated scan entries after channel switch")
+---
+ net/wireless/scan.c |   56 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 56 insertions(+)
+
+--- a/net/wireless/scan.c
++++ b/net/wireless/scan.c
+@@ -3444,6 +3444,58 @@ void cfg80211_bss_iter(struct wiphy *wip
+ }
+ EXPORT_SYMBOL(cfg80211_bss_iter);
+ 
++/*
++ * A hidden BSS entry with the SSID takes its beacon data from the beacon
++ * entry of its group. A channel switch moves only the entry with the
++ * SSID, so its beacon data and timestamps would stay those of the last
++ * beacon on the old channel, CSA element included, and
++ * cfg80211_combine_bsses() never adopts an entry that has beacon data.
++ */
++static void cfg80211_regroup_hidden_bss(struct cfg80211_registered_device *rdev,
++					struct cfg80211_internal_bss *bss)
++{
++	struct cfg80211_internal_bss *old, *hidden;
++	struct cfg80211_bss *nontrans;
++	unsigned long share = bss->refcount;
++
++	lockdep_assert_held(&rdev->bss_lock);
++
++	/*
++	 * The beacon entry mirrors the references of its member, but not
++	 * those that the nontransmitted entries of the member hold on it.
++	 */
++	list_for_each_entry(nontrans, &bss->pub.nontrans_list, nontrans_list) {
++		if (WARN_ON_ONCE(share <= bss_from_pub(nontrans)->refcount))
++			return;
++		share -= bss_from_pub(nontrans)->refcount;
++	}
++
++	old = bss_from_pub(bss->pub.hidden_beacon_bss);
++	/* still linked, so it keeps a reference of its own */
++	if (WARN_ON_ONCE(old->refcount <= share))
++		return;
++
++	list_del_init(&bss->hidden_list);
++	bss->pub.hidden_beacon_bss = NULL;
++	/* the old beacon entry owns these and frees them */
++	RCU_INIT_POINTER(bss->pub.beacon_ies, NULL);
++	old->refcount -= share;
++
++	hidden = rb_find_bss(rdev, bss, BSS_CMP_HIDE_ZLEN);
++	if (!hidden)
++		hidden = rb_find_bss(rdev, bss, BSS_CMP_HIDE_NUL);
++	/* without one, cfg80211_combine_bsses() adopts it at the first beacon */
++	if (!hidden || !rcu_access_pointer(hidden->pub.beacon_ies))
++		return;
++
++	list_add(&bss->hidden_list, &hidden->hidden_list);
++	bss->pub.hidden_beacon_bss = &hidden->pub;
++	hidden->refcount += share;
++	rcu_assign_pointer(bss->pub.beacon_ies, hidden->pub.beacon_ies);
++	bss->ts = hidden->ts;
++	bss->pub.ts_boottime = hidden->pub.ts_boottime;
++}
++
+ void cfg80211_update_assoc_bss_entry(struct wireless_dev *wdev,
+ 				     unsigned int link_id,
+ 				     struct ieee80211_channel *chan)
+@@ -3511,6 +3563,10 @@ void cfg80211_update_assoc_bss_entry(str
+ 			rdev->bss_generation++;
+ 	}
+ 	cfg80211_rehash_bss(rdev, cbss);
++	/* a rehash that collides drops the entry from the tree */
++	if (cbss->pub.hidden_beacon_bss &&
++	    rb_find_bss(rdev, cbss, BSS_CMP_REGULAR) == cbss)
++		cfg80211_regroup_hidden_bss(rdev, cbss);
+ 
+ 	list_for_each_entry_safe(nontrans_bss, tmp,
+ 				 &cbss->pub.nontrans_list,

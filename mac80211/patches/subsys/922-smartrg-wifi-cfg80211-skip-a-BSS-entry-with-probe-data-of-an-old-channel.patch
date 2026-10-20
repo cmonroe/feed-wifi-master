@@ -1,0 +1,92 @@
+From: Koral Ilgun <koral.ilgun@adtran.com>
+Date: Mon, 19 Oct 2026 17:20:00 -0700
+Subject: [PATCH] wifi: cfg80211: skip a BSS entry with probe data of an old channel
+
+After a channel switch, cfg80211_update_assoc_bss_entry() moves the
+entry of the current BSS to the new channel. Unless an entry of the
+new channel replaces it, the entry keeps the probe response data of
+the old channel, and cfg80211_update_known_bss() lets only a probe
+response replace them, not a beacon.
+
+mac80211 takes the operating parameters of the next association from
+these data. With the HT Operation element of the old channel,
+ieee80211_determine_ap_chan() sees a wrong control channel, and the
+station connects without HT, VHT, HE and EHT. For a visible SSID the
+beacons keep the entry current, so this has no time limit.
+
+Mark the moved entry, and do not return a marked entry that nothing
+holds from __cfg80211_get_bss(), as for an expired one. A new
+connection then gets ENOENT, and wpa_supplicant scans the channel for
+the BSS before it tries again. A probe response clears the mark. The
+data stay in the entry, because the entry of a hidden SSID needs them
+for its SSID and no beacon can replace them. A held entry is still
+returned, so a new authentication from the connected state keeps the
+old data.
+
+Fixes: 0afd425b1b64 ("cfg80211: fix duplicated scan entries after channel switch")
+---
+ net/wireless/core.h |    5 +++++
+ net/wireless/scan.c |   17 +++++++++++++++++
+ 2 files changed, 22 insertions(+)
+
+--- a/net/wireless/core.h
++++ b/net/wireless/core.h
+@@ -213,6 +213,11 @@ struct cfg80211_internal_bss {
+ 
+ 	enum bss_source_type bss_source;
+ 
++	/* the probe response data are from the channel before a channel
++	 * switch moved this entry; beacons do not replace them
++	 */
++	bool proberesp_stale;
++
+ 	/* must be last because of priv member */
+ 	struct cfg80211_bss pub;
+ };
+--- a/net/wireless/scan.c
++++ b/net/wireless/scan.c
+@@ -1643,6 +1643,14 @@ struct cfg80211_bss *__cfg80211_get_bss(
+ 		if (time_after(now, bss->ts + IEEE80211_SCAN_RESULT_EXPIRE) &&
+ 		    !atomic_read(&bss->hold))
+ 			continue;
++		/*
++		 * Nor ones whose probe response data still describe the
++		 * channel before a channel switch: a new connection would
++		 * take the operating parameters of the old channel. Without
++		 * the entry, the caller scans and gets new data.
++		 */
++		if (bss->proberesp_stale && !atomic_read(&bss->hold))
++			continue;
+ 		if (is_bss(&bss->pub, bssid, ssid, ssid_len)) {
+ 			res = bss;
+ 			bss_ref_get(rdev, res);
+@@ -1909,6 +1917,7 @@ cfg80211_update_known_bss(struct cfg8021
+ 		/* Override possible earlier Beacon frame IEs */
+ 		rcu_assign_pointer(known->pub.ies,
+ 				   new->pub.proberesp_ies);
++		known->proberesp_stale = new->proberesp_stale;
+ 		if (old) {
+ 			cfg80211_check_stuck_ecsa(rdev, known, old);
+ 			kfree_rcu((struct cfg80211_bss_ies *)old, rcu_head);
+@@ -3461,6 +3470,12 @@ void cfg80211_update_assoc_bss_entry(str
+ 		cbss = bss_from_pub(cbss->pub.transmitted_bss);
+ 
+ 	cbss->pub.channel = chan;
++	/*
++	 * Only a probe response on the new channel replaces the probe
++	 * response data. An entry of the new channel that this one takes
++	 * over below brings its own state.
++	 */
++	cbss->proberesp_stale = !!rcu_access_pointer(cbss->pub.proberesp_ies);
+ 
+ 	list_for_each_entry(bss, &rdev->bss_list, list) {
+ 		if (!cfg80211_bss_type_match(bss->pub.capability,
+@@ -3502,6 +3517,8 @@ void cfg80211_update_assoc_bss_entry(str
+ 				 nontrans_list) {
+ 		bss = bss_from_pub(nontrans_bss);
+ 		bss->pub.channel = chan;
++		bss->proberesp_stale =
++			!!rcu_access_pointer(bss->pub.proberesp_ies);
+ 		cfg80211_rehash_bss(rdev, bss);
+ 	}
+ 
