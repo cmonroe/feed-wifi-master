@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_IEEE80211BE
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2327,16 +2327,22 @@ static void hostapd_event_iface_unavaila
+@@ -2353,16 +2353,22 @@ static void hostapd_event_iface_unavaila
  	hostapd_cleanup_cca_params(hapd);
  #endif /* CONFIG_IEEE80211AX */
  
@@ -78,7 +78,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2610,6 +2616,10 @@ static void hostapd_iface_enable(struct
+@@ -2635,6 +2641,10 @@ static void hostapd_iface_enable(struct
  
  static void hostapd_iface_disable(struct hostapd_data *hapd)
  {
@@ -91,7 +91,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hapd->disabled = 1;
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -833,6 +833,10 @@ void hostapd_free_hapd_data(struct hosta
+@@ -839,6 +839,10 @@ void hostapd_free_hapd_data(struct hosta
  	hapd->eht_mld_link_removal_tx = 0;
  #endif /* CONFIG_IEEE80211BE */
  
@@ -102,7 +102,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	os_free(hapd->probereq_cb);
  	hapd->probereq_cb = NULL;
  	hapd->num_probereq_cb = 0;
-@@ -5225,6 +5229,111 @@ void hostapd_cleanup_cs_params(struct ho
+@@ -5420,6 +5424,111 @@ void hostapd_cleanup_cs_params(struct ho
  }
  
  
@@ -214,7 +214,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void hostapd_chan_switch_config(struct hostapd_data *hapd,
  				struct hostapd_freq_params *freq_params)
  {
-@@ -5299,6 +5408,17 @@ int hostapd_switch_channel(struct hostap
+@@ -5494,6 +5603,17 @@ int hostapd_switch_channel(struct hostap
  		return -1;
  	}
  
@@ -232,7 +232,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd_cca_state_save(hapd, &cca);
  	ret = hostapd_fill_csa_settings(hapd, settings);
  	if (ret) {
-@@ -5306,6 +5426,7 @@ int hostapd_switch_channel(struct hostap
+@@ -5501,6 +5621,7 @@ int hostapd_switch_channel(struct hostap
  		return ret;
  	}
  
@@ -240,7 +240,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = hostapd_drv_switch_channel(hapd, settings);
  	free_beacon_data(&settings->beacon_csa);
  	free_beacon_data(&settings->beacon_after);
-@@ -5318,6 +5439,7 @@ int hostapd_switch_channel(struct hostap
+@@ -5513,6 +5634,7 @@ int hostapd_switch_channel(struct hostap
  		 * abort after this reply, and both events need the state.
  		 */
  		hostapd_cca_state_restore(hapd, &cca);
@@ -250,7 +250,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_cleanup_cs_params(hapd);
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -373,6 +373,9 @@ struct hostapd_data {
+@@ -380,6 +380,9 @@ struct hostapd_data {
  	int csa_in_progress;
  	unsigned int cs_c_off_ecsa_beacon;
  	unsigned int cs_c_off_ecsa_proberesp;
@@ -260,7 +260,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  #ifdef CONFIG_IEEE80211AX
  	bool cca_in_progress;
-@@ -929,6 +932,9 @@ void
+@@ -939,6 +942,9 @@ void
  hostapd_switch_channel_fallback(struct hostapd_iface *iface,
  				const struct hostapd_freq_params *freq_params);
  void hostapd_cleanup_cs_params(struct hostapd_data *hapd);
@@ -269,10 +269,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +void hostapd_cs_refused_restart_defer(struct hostapd_data *hapd);
  void hostapd_periodic_iface(struct hostapd_iface *iface);
  int hostapd_owe_trans_get_info(struct hostapd_data *hapd);
- void hostapd_owe_update_trans(struct hostapd_iface *iface);;
+ bool hostapd_owe_trans_static(struct hostapd_bss_config *conf);
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1826,6 +1826,9 @@ hostapd_switch_chan(struct ubus_context
+@@ -1882,6 +1882,9 @@ hostapd_switch_chan(struct ubus_context
  				   hapd->iface, NULL))
  		return UBUS_STATUS_UNKNOWN_ERROR;
  

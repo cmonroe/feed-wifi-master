@@ -21,7 +21,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -626,7 +626,7 @@ uc_hostapd_iface_set_bss_order(uc_vm_t *
+@@ -625,7 +625,7 @@ uc_hostapd_iface_set_bss_order(uc_vm_t *
  		struct hostapd_data *bss;
  
  		bss = ucv_resource_data(ucv_array_get(bss_list, i), "hostapd.bss");
@@ -30,7 +30,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			goto free;
  
  		for (size_t k = 0; k < i; k++)
-@@ -1526,6 +1526,19 @@ void hostapd_ucode_free_iface(struct hos
+@@ -1561,6 +1561,19 @@ void hostapd_ucode_free_iface(struct hos
  	ucv_put(wpa_ucode_registry_remove(iface_registry, iface->ucode.idx));
  }
  
@@ -50,7 +50,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void hostapd_ucode_bss_cb(struct hostapd_data *hapd, const char *type)
  {
  	uc_value_t *val;
-@@ -1534,6 +1547,12 @@ void hostapd_ucode_bss_cb(struct hostapd
+@@ -1569,6 +1582,12 @@ void hostapd_ucode_bss_cb(struct hostapd
  		return;
  
  	val = hostapd_ucode_bss_get_uval(hapd);

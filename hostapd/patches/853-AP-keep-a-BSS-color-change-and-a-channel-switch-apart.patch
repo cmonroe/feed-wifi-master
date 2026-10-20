@@ -32,7 +32,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4123,6 +4123,13 @@ int hostapd_disable_iface(struct hostapd
+@@ -4312,6 +4312,13 @@ int hostapd_disable_iface(struct hostapd
  		   WPA_DRIVER_FLAGS_AP_TEARDOWN_SUPPORT);
  
  #ifdef NEED_AP_MLME
@@ -46,7 +46,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (j = 0; j < hapd_iface->num_bss; j++)
  		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
  #endif /* NEED_AP_MLME */
-@@ -5145,6 +5152,14 @@ static int hostapd_fill_csa_settings(str
+@@ -5340,6 +5347,14 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
@@ -61,7 +61,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = hostapd_build_beacon_data(hapd, &settings->beacon_after);
  
  	/* change back the configuration */
-@@ -5226,9 +5241,46 @@ void hostapd_chan_switch_config(struct h
+@@ -5421,9 +5436,46 @@ void hostapd_chan_switch_config(struct h
  }
  
  
@@ -108,7 +108,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int ret;
  
  	if (!(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_AP_CSA)) {
-@@ -5236,9 +5288,12 @@ int hostapd_switch_channel(struct hostap
+@@ -5431,9 +5483,12 @@ int hostapd_switch_channel(struct hostap
  		return -1;
  	}
  
@@ -122,7 +122,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	ret = hostapd_drv_switch_channel(hapd, settings);
  	free_beacon_data(&settings->beacon_csa);
-@@ -5248,6 +5303,11 @@ int hostapd_switch_channel(struct hostap
+@@ -5443,6 +5498,11 @@ int hostapd_switch_channel(struct hostap
  #endif /* CONFIG_IEEE80211AX */
  
  	if (ret) {
@@ -134,7 +134,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* if we failed, clean cs parameters */
  		hostapd_cleanup_cs_params(hapd);
  		return ret;
-@@ -5437,6 +5497,17 @@ void hostapd_switch_color_timeout_handle
+@@ -5678,6 +5738,17 @@ void hostapd_switch_color_timeout_handle
  	u64 avoided;
  	int i, r;
  
@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	  * DOT11BSS_COLOR_COLLISION_AP_PERIOD (50 s by default). */
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2578,6 +2578,16 @@ static int hostapd_ctrl_iface_color_chan
+@@ -2603,6 +2603,16 @@ static int hostapd_ctrl_iface_color_chan
  		return -1;
  	}
  
@@ -173,7 +173,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	 * changing Beacon frames is sufficient. */
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2314,6 +2314,13 @@ static void hostapd_event_iface_unavaila
+@@ -2340,6 +2340,13 @@ static void hostapd_event_iface_unavaila
  	wpa_printf(MSG_DEBUG, "Interface %s is unavailable -- stopped",
  		   hapd->conf->iface);
  

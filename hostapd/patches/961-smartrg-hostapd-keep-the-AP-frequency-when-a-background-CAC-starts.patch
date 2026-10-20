@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -11626,7 +11626,9 @@ static int nl80211_start_radar_detection
+@@ -11660,7 +11660,9 @@ static int nl80211_start_radar_detection
  
  	ret = send_and_recv_cmd(drv, msg);
  	if (ret == 0) {

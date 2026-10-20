@@ -30,7 +30,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -959,6 +959,9 @@ static int hostapd_ctrl_iface_get_config
+@@ -981,6 +981,9 @@ static int hostapd_ctrl_iface_get_config
  {
  	int ret;
  	char *pos, *end;
@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	pos = buf;
  	end = buf + buflen;
-@@ -998,12 +1001,10 @@ static int hostapd_ctrl_iface_get_config
+@@ -1020,12 +1023,10 @@ static int hostapd_ctrl_iface_get_config
  		pos += ret;
  	}
  
@@ -56,7 +56,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		ret = os_snprintf(pos, end - pos, "psk=%s\n", hex);
  		if (os_snprintf_error(end - pos, ret))
  			return pos - buf;
-@@ -1414,6 +1415,21 @@ static int hostapd_ctrl_iface_disable(st
+@@ -1442,6 +1443,21 @@ static int hostapd_ctrl_iface_disable(st
  }
  
  
@@ -78,7 +78,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int
  hostapd_ctrl_iface_kick_mismatch_psk_sta_iter(struct hostapd_data *hapd,
  					      struct sta_info *sta, void *ctx)
-@@ -1428,9 +1444,18 @@ hostapd_ctrl_iface_kick_mismatch_psk_sta
+@@ -1456,9 +1472,18 @@ hostapd_ctrl_iface_kick_mismatch_psk_sta
  
  	pmk = wpa_auth_get_pmk(sta->wpa_sm, &pmk_len);
  
@@ -100,7 +100,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		sta_match = psk->group == 0 &&
  			ether_addr_equal(sta->addr, psk->addr);
  		bss_match = psk->group == 1;
-@@ -1455,7 +1480,8 @@ static int hostapd_ctrl_iface_reload_wpa
+@@ -1483,7 +1508,8 @@ static int hostapd_ctrl_iface_reload_wpa
  	struct hostapd_bss_config *conf = hapd->conf;
  	int err;
  
@@ -110,7 +110,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	err = hostapd_setup_wpa_psk(conf);
  	if (err < 0) {
-@@ -5674,9 +5700,11 @@ static int hostapd_ctrl_iface_dup_param(
+@@ -5682,9 +5708,11 @@ static int hostapd_ctrl_iface_dup_param(
  					struct hostapd_data *dst_hapd,
  					const char *param)
  {
@@ -122,7 +122,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	value = os_zalloc(HOSTAPD_CLI_DUP_VALUE_MAX_LEN);
  	if (!value) {
  		wpa_printf(MSG_ERROR,
-@@ -5713,9 +5741,9 @@ static int hostapd_ctrl_iface_dup_param(
+@@ -5721,9 +5749,9 @@ static int hostapd_ctrl_iface_dup_param(
  		os_snprintf(value, HOSTAPD_CLI_DUP_VALUE_MAX_LEN, "%s",
  			    src_hapd->conf->ssid.wpa_passphrase);
  	} else if (os_strcmp(param, "wpa_psk") == 0 &&
@@ -247,7 +247,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   pbkdf2_sha1(hapd->conf->ssid.wpa_passphrase,
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1498,6 +1498,7 @@ void hostapd_config_free_radius_attr(str
+@@ -1497,6 +1497,7 @@ void hostapd_config_free_radius_attr(str
  void hostapd_config_free_eap_user(struct hostapd_eap_user *user);
  void hostapd_config_free_eap_users(struct hostapd_eap_user *user);
  void hostapd_config_clear_wpa_psk(struct hostapd_wpa_psk **p);
@@ -266,8 +266,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!hapd->started)
  		return;
  
-@@ -141,15 +139,6 @@ static void hostapd_reload_bss(struct ho
- 	radius_client_reconfig(hapd->radius, hapd->conf->radius);
+@@ -142,15 +140,6 @@ static void hostapd_reload_bss(struct ho
+ 		radius_client_reconfig(hapd->radius, hapd->conf->radius);
  #endif /* CONFIG_NO_RADIUS */
  
 -	ssid = &hapd->conf->ssid;

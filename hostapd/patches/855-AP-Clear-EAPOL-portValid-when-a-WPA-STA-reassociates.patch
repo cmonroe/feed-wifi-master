@@ -31,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ieee802_1x.c
 +++ b/src/ap/ieee802_1x.c
-@@ -1481,6 +1481,20 @@ void ieee802_1x_new_station(struct hosta
+@@ -1495,6 +1495,20 @@ void ieee802_1x_new_station(struct hosta
  	}
  #endif /* CONFIG_FILS */
  

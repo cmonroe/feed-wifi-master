@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2561,7 +2561,7 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2589,7 +2589,7 @@ static int hostapd_ctrl_iface_chan_switc
  		dfs_range += hostapd_is_dfs_overlap(
  			iface, bandwidth, settings.freq_params.center_freq2);
  
@@ -32,7 +32,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		ret = ieee80211_freq_to_chan(settings.freq_params.freq, &chan);
  		if (ret == NUM_HOSTAPD_MODES) {
  			wpa_printf(MSG_ERROR,
-@@ -2607,7 +2607,20 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2635,7 +2635,20 @@ static int hostapd_ctrl_iface_chan_switc
  		}
  	}
  
@@ -56,7 +56,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* NEED_AP_MLME */
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1816,7 +1816,7 @@ static const struct hostapd_cli_cmd host
+@@ -1817,7 +1817,7 @@ static const struct hostapd_cli_cmd host
  	  "<addr> = send QoS Map Configure frame" },
  	{ "chan_switch", hostapd_cli_cmd_chan_switch, NULL,
  	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]\n"

@@ -24,7 +24,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -991,9 +991,14 @@ static const struct blobmsg_policy csa_p
+@@ -1047,9 +1047,14 @@ static const struct blobmsg_policy csa_p
  static void switch_chan_fallback_cb(void *eloop_data, void *user_ctx)
  {
  	struct hostapd_iface *iface = eloop_data;
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  #ifdef NEED_AP_MLME
-@@ -1005,7 +1010,6 @@ hostapd_switch_chan(struct ubus_context
+@@ -1061,7 +1066,6 @@ hostapd_switch_chan(struct ubus_context
  	struct blob_attr *tb[__CSA_MAX];
  	struct hostapd_data *hapd = get_hapd_from_object(obj);
  	struct hostapd_config *iconf = hapd->iface->conf;
@@ -49,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct hostapd_hw_modes *mode = hapd->iface->current_mode;
  	struct csa_settings css = {
  		.freq_params = {
-@@ -1101,10 +1105,12 @@ hostapd_switch_chan(struct ubus_context
+@@ -1157,10 +1161,12 @@ hostapd_switch_chan(struct ubus_context
  	if (!ret || !tb[CSA_FORCE] || !blobmsg_get_bool(tb[CSA_FORCE]))
  		return ret;
  
@@ -68,7 +68,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #undef SET_CSA_SETTING
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1124,6 +1124,7 @@ static void hostapd_cleanup_iface(struct
+@@ -1145,6 +1145,7 @@ static void hostapd_cleanup_iface(struct
  {
  	wpa_printf(MSG_DEBUG, "%s(%p)", __func__, iface);
  	hostapd_ucode_free_iface(iface);
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd_afc_stop(iface);
  	eloop_cancel_timeout(hostapd_interface_setup_failure_handler, iface,
  			     NULL);
-@@ -4107,6 +4108,9 @@ int hostapd_disable_iface(struct hostapd
+@@ -4296,6 +4297,9 @@ int hostapd_disable_iface(struct hostapd
  	if (hapd_iface == NULL)
  		return -1;
  
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -604,6 +604,7 @@ struct hostapd_mld {
+@@ -613,6 +613,7 @@ struct hostapd_mld {
  struct hostapd_iface {
  	struct hapd_interfaces *interfaces;
  	struct hostapd_ucode_iface ucode;
@@ -113,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void hostapd_ubus_add_bss(struct hostapd_data *hapd);
  void hostapd_ubus_free_bss(struct hostapd_data *hapd);
  void hostapd_ubus_add_vlan(struct hostapd_data *hapd, struct hostapd_vlan *vlan);
-@@ -103,6 +109,7 @@ void hostapd_ubus_notify_apup_newpeer(
+@@ -105,6 +111,7 @@ void hostapd_ubus_notify_apup_newpeer(
  #else
  
  struct hostapd_ubus_bss {};
@@ -121,7 +121,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static inline void hostapd_ubus_add_iface(struct hostapd_iface *iface)
  {
-@@ -112,6 +119,10 @@ static inline void hostapd_ubus_free_ifa
+@@ -114,6 +121,10 @@ static inline void hostapd_ubus_free_ifa
  {
  }
  

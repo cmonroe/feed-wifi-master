@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5384,6 +5384,18 @@ static int hostapd_config_fill(struct ho
+@@ -5339,6 +5339,18 @@ static int hostapd_config_fill(struct ho
  			return 1;
  		}
  		conf->edcca_compensation = (s8) val;
@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4234,6 +4234,28 @@ static int hostapd_ctrl_afc_send_request
+@@ -4239,6 +4239,28 @@ static int hostapd_ctrl_afc_send_request
  #endif /* CONFIG_AFC */
  
  
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4879,6 +4901,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4887,6 +4909,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "GET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_get_edcca(hapd, buf+10, reply,
  							  reply_size);
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		reply_len = 16;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1369,6 +1369,19 @@ struct hostapd_config {
+@@ -1368,6 +1368,19 @@ struct hostapd_config {
  	u8 edcca_enable;
  	s8 edcca_compensation;
  	int *edcca_threshold;

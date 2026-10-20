@@ -27,7 +27,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1151,6 +1151,7 @@ int hostapd_start_dfs_cac(struct hostapd
+@@ -1152,6 +1152,7 @@ int hostapd_start_dfs_cac(struct hostapd
  		if (radar_background) {
  			iface->radar_background.cac_started = 1;
  			iface->radar_background.chwidth = oper_chwidth;
@@ -65,7 +65,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			     int ht_enabled, int chan_offset, int chan_width,
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4045,6 +4045,10 @@ int hostapd_enable_iface(struct hostapd_
+@@ -4234,6 +4234,10 @@ int hostapd_enable_iface(struct hostapd_
  	if (hapd_iface->interfaces == NULL ||
  	    hapd_iface->interfaces->driver_init == NULL ||
  	    hapd_iface->interfaces->driver_init(hapd_iface)) {
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_deinit_driver(hapd_iface->bss[0]->driver,
  				      hapd_iface->bss[0]->drv_priv,
  				      hapd_iface);
-@@ -4052,6 +4056,9 @@ int hostapd_enable_iface(struct hostapd_
+@@ -4241,6 +4245,9 @@ int hostapd_enable_iface(struct hostapd_
  	}
  
  	if (hostapd_setup_interface(hapd_iface)) {
@@ -86,7 +86,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_deinit_driver(hapd_iface->bss[0]->driver,
  				      hapd_iface->bss[0]->drv_priv,
  				      hapd_iface);
-@@ -4134,6 +4141,8 @@ int hostapd_disable_iface(struct hostapd
+@@ -4323,6 +4330,8 @@ int hostapd_disable_iface(struct hostapd
  #endif /* CONFIG_IEEE80211AX */
  	for (j = 0; j < hapd_iface->num_bss; j++)
  		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
@@ -95,7 +95,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* NEED_AP_MLME */
  	hapd_iface->radar_background.update_after_csa = 0;
  
-@@ -4479,6 +4488,11 @@ static int hostapd_remove_bss(struct hos
+@@ -4669,6 +4678,11 @@ static int hostapd_remove_bss(struct hos
  	if (idx < iface->num_bss) {
  		struct hostapd_data *hapd = iface->bss[idx];
  
@@ -109,7 +109,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   __func__, hapd, hapd->conf->iface);
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -691,6 +691,8 @@ struct hostapd_iface {
+@@ -700,6 +700,8 @@ struct hostapd_iface {
  		int centr_freq_seg1_idx;
  		/* The AP width can change later without a chain move */
  		int chwidth;
@@ -120,7 +120,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		 */
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -468,6 +468,11 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
+@@ -467,6 +467,11 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
  		hostapd_free_link_stas(hapd);
  #endif /* CONFIG_IEEE80211BE */
  

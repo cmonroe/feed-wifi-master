@@ -25,7 +25,7 @@ does one second without a TX status.
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4555,6 +4555,7 @@ static void handle_auth(struct hostapd_d
+@@ -4551,6 +4551,7 @@ static void handle_auth(struct hostapd_d
  	if (sta) {
  		sta->flags &= ~WLAN_STA_PENDING_FILS_ERP;
  		sta->ft_over_ds = 0;
@@ -33,7 +33,7 @@ does one second without a TX status.
  		if ((fc & WLAN_FC_RETRY) &&
  		    sta->last_seq_ctrl != WLAN_INVALID_MGMT_SEQ &&
  		    sta->last_seq_ctrl == seq_ctrl &&
-@@ -7649,6 +7650,29 @@ static void handle_assoc(struct hostapd_
+@@ -7718,6 +7719,29 @@ static void handle_assoc(struct hostapd_
  	sta->last_subtype = reassoc ? WLAN_FC_STYPE_REASSOC_REQ :
  		WLAN_FC_STYPE_ASSOC_REQ;
  
@@ -63,7 +63,7 @@ does one second without a TX status.
  	if (hapd->tkip_countermeasures) {
  		resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
  		goto fail;
-@@ -7940,6 +7964,13 @@ static void handle_assoc(struct hostapd_
+@@ -8024,6 +8048,13 @@ static void handle_assoc(struct hostapd_
  					    mgmt->sa, resp, reassoc,
  					    pos, left, rssi, omit_rsnxe);
  
@@ -77,7 +77,7 @@ does one second without a TX status.
  	if (set_beacon)
  		ieee802_11_update_beacons(hapd->iface);
  
-@@ -8824,6 +8855,9 @@ static void handle_assoc_cb(struct hosta
+@@ -8938,6 +8969,9 @@ static void handle_assoc_cb(struct hosta
  	else
  		status = le_to_host16(mgmt->u.assoc_resp.status_code);
  

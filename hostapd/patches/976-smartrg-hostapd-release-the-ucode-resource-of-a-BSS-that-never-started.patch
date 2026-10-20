@@ -21,7 +21,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -842,6 +842,7 @@ void hostapd_free_hapd_data(struct hosta
+@@ -848,6 +848,7 @@ void hostapd_free_hapd_data(struct hosta
  	hapd->p2p_probe_resp_ie = NULL;
  #endif /* CONFIG_P2P */
  
@@ -29,8 +29,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!hapd->started) {
  		wpa_printf(MSG_ERROR, "%s: Interface %s wasn't started",
  			   __func__, hapd->conf ? hapd->conf->iface : "N/A");
-@@ -851,7 +852,6 @@ void hostapd_free_hapd_data(struct hosta
- 	hapd->beacon_set_done = 0;
+@@ -861,7 +862,6 @@ void hostapd_free_hapd_data(struct hosta
+ #endif /* CONFIG_OWE */
  
  	wpa_printf(MSG_DEBUG, "%s(%s)", __func__, hapd->conf->iface);
 -	hostapd_ucode_free_bss(hapd);
@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd_deinit_wpa(hapd);
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -479,8 +479,7 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
+@@ -478,8 +478,7 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
  	if (hapd->conf->mld_ap && hapd->mld)
  		hostapd_mld_beacons_update(hapd);
  #endif /* CONFIG_IEEE80211BE */

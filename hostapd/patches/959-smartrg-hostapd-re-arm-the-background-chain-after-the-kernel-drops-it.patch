@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1148,10 +1148,12 @@ int hostapd_start_dfs_cac(struct hostapd
+@@ -1149,10 +1149,12 @@ int hostapd_start_dfs_cac(struct hostapd
  
  	res = hapd->driver->start_dfs_cac(hapd->drv_priv, &data);
  	if (!res) {
@@ -119,7 +119,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -686,6 +686,8 @@ struct hostapd_iface {
+@@ -695,6 +695,8 @@ struct hostapd_iface {
  		int freq;
  		int centr_freq_seg0_idx;
  		int centr_freq_seg1_idx;

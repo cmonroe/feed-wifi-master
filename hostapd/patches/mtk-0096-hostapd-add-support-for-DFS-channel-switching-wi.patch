@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2492,12 +2492,13 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2520,12 +2520,13 @@ static int hostapd_ctrl_iface_chan_switc
  					  char *pos)
  {
  #ifdef NEED_AP_MLME
@@ -57,7 +57,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	unsigned int num_err = 0;
  	int err = 0;
  
-@@ -2529,63 +2530,72 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2557,63 +2558,72 @@ static int hostapd_ctrl_iface_chan_switc
  		settings.link_id = iface->bss[0]->mld_link_id;
  #endif /* CONFIG_IEEE80211BE */
  
@@ -165,7 +165,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (iface->cac_started) {
-@@ -2594,6 +2604,23 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2622,6 +2632,23 @@ static int hostapd_ctrl_iface_chan_switc
  		return hostapd_force_channel_switch(iface, &settings);
  	}
  
@@ -189,7 +189,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < iface->num_bss; i++) {
  
  		/* Save CHAN_SWITCH VHT, HE, and EHT config */
-@@ -2607,8 +2634,13 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2635,8 +2662,13 @@ static int hostapd_ctrl_iface_chan_switc
  		}
  	}
  
@@ -204,7 +204,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* The kernel skips the CAC only for a switch that it accepts */
  	if (settings.freq_params.radar_background)
-@@ -2620,6 +2652,52 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2648,6 +2680,52 @@ static int hostapd_ctrl_iface_chan_switc
  			settings.freq_params.center_freq2,
  			HOSTAPD_CHAN_DFS_AVAILABLE);
  
@@ -257,7 +257,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  #else /* NEED_AP_MLME */
  	return -1;
-@@ -4301,9 +4379,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
+@@ -4306,9 +4384,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
  	else
  		return -1;
  
@@ -271,7 +271,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2805,6 +2805,11 @@ static int __ieee802_11_set_beacon(struc
+@@ -2826,6 +2826,11 @@ static int __ieee802_11_set_beacon(struc
  	}
  #endif /* CONFIG_IEEE80211AX */
  
@@ -281,8 +281,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	}
 +
  	hapd->beacon_set_done = 1;
+ 	hapd->beacon_started = 1;
  
- 	if (ieee802_11_build_ap_params(hapd, &params) < 0)
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
 @@ -1433,6 +1433,7 @@ int hostapd_parse_csa_settings(struct ho
@@ -639,7 +639,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* DFS_H */
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8572,6 +8572,11 @@ int ieee802_11_mgmt(struct hostapd_data
+@@ -8686,6 +8686,11 @@ int ieee802_11_mgmt(struct hostapd_data
  		return 1;
  	}
  
@@ -653,7 +653,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return 1;
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -5495,6 +5495,14 @@ int hostapd_force_channel_switch(struct
+@@ -5690,6 +5690,14 @@ int hostapd_force_channel_switch(struct
  		return ret;
  	}
  

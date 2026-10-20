@@ -24,7 +24,7 @@ the STA.
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6731,6 +6731,22 @@ static int add_associated_sta(struct hos
+@@ -6794,6 +6794,22 @@ static int add_associated_sta(struct hos
  		  * once per authentication exchange to guarantee a new TK is
  		  * used here */
  		sta->ft_over_ds = 0;

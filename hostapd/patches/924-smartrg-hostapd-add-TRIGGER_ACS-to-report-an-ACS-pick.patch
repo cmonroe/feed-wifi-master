@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "ap/nan_usd_ap.h"
  #include "wps/wps_defs.h"
  #include "wps/wps.h"
-@@ -1393,6 +1394,16 @@ static int hostapd_ctrl_iface_reload_bss
+@@ -1421,6 +1422,16 @@ static int hostapd_ctrl_iface_reload_bss
  }
  
  
@@ -64,7 +64,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int hostapd_ctrl_iface_disable(struct hostapd_iface *iface)
  {
  	if (hostapd_disable_iface(iface) < 0) {
-@@ -2456,6 +2467,11 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2484,6 +2495,11 @@ static int hostapd_ctrl_iface_chan_switc
  	if (ret)
  		return ret;
  
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	settings.link_id = -1;
  #ifdef CONFIG_IEEE80211BE
  	/* Reject if EHT is disabled in channel switch settings but the
-@@ -4279,6 +4295,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4287,6 +4303,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strcmp(buf, "RELOAD") == 0) {
  		if (hostapd_ctrl_iface_reload(hapd->iface))
  			reply_len = -1;
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			reply_len = -1;
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1263,6 +1263,12 @@ static int hostapd_cli_cmd_reload_config
+@@ -1264,6 +1264,12 @@ static int hostapd_cli_cmd_reload_config
  	return wpa_ctrl_command(ctrl, "RELOAD_CONFIG");
  }
  
@@ -101,7 +101,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static int hostapd_cli_cmd_disable(struct wpa_ctrl *ctrl, int argc,
  				   char *argv[])
-@@ -1940,6 +1946,8 @@ static const struct hostapd_cli_cmd host
+@@ -1941,6 +1947,8 @@ static const struct hostapd_cli_cmd host
  	  "<addr> = send a link measurement report request to a station"},
  	{ "reload_wpa_psk", hostapd_cli_cmd_reload_wpa_psk, NULL,
  	  "= reload wpa_psk_file only" },
@@ -122,7 +122,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (iface->bss[0]->conf->logger_stdout_level > 0)
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -779,6 +779,44 @@ struct hostapd_iface {
+@@ -788,6 +788,44 @@ struct hostapd_iface {
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
  
@@ -169,7 +169,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1353,10 +1353,175 @@ static void hostapd_notify_bad_chans(str
+@@ -1357,10 +1357,175 @@ static void hostapd_notify_bad_chans(str
  }
  
  
@@ -345,7 +345,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (err)
  		goto out;
  
-@@ -1366,6 +1531,7 @@ int hostapd_acs_completed(struct hostapd
+@@ -1370,6 +1535,7 @@ int hostapd_acs_completed(struct hostapd
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
  			ACS_EVENT_COMPLETED "freq=%d channel=%d",
  			iface->freq, iface->conf->channel);
@@ -355,7 +355,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		wpa_printf(MSG_ERROR, "ACS error - reported complete, but no result available");
 --- a/src/ap/acs.c
 +++ b/src/ap/acs.c
-@@ -378,6 +378,11 @@ static void acs_fail(struct hostapd_ifac
+@@ -381,6 +381,11 @@ static void acs_fail(struct hostapd_ifac
  {
  	wpa_printf(MSG_ERROR, "ACS: Failed to start");
  	acs_cleanup(iface);
@@ -367,7 +367,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd_disable_iface(iface);
  }
  
-@@ -879,7 +884,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -882,7 +887,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  		    mode->mode == HOSTAPD_MODE_IEEE80211A &&
  		    iface->conf->ieee80211n &&
  		    !acs_usable_bw_chan(chan, ACS_BW40)) {
@@ -376,7 +376,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
  				   chan->chan);
  			continue;
-@@ -889,14 +894,14 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -892,14 +897,14 @@ acs_find_ideal_chan_mode(struct hostapd_
  		    (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
  		     iface->conf->ieee80211be)) {
  			if (bw == 80 && !acs_usable_bw_chan(chan, ACS_BW80)) {
@@ -393,7 +393,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
  					   chan->chan);
  				continue;
-@@ -908,7 +913,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -911,7 +916,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  			if (bw == 320 &&
  			    !acs_usable_bw320_chan(iface, chan,
  						   &bw320_offset)) {
@@ -402,7 +402,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  					   "ACS: Channel %d: not allowed as primary channel for 320 MHz bandwidth",
  					   chan->chan);
  				continue;
-@@ -926,7 +931,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -929,7 +934,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  
  			if (!chan_bw_allowed(chan2, bw, secondary_channel != -1,
  					     j == 0)) {
@@ -411,7 +411,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  					   "ACS: Channel %d: BW %u is not supported",
  					   chan2->chan, bw);
  				break;
-@@ -969,7 +974,7 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -972,7 +977,7 @@ acs_find_ideal_chan_mode(struct hostapd_
  		}
  
  		if (j != n_chans) {
@@ -420,7 +420,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				   chan->chan);
  			continue;
  		}
-@@ -1058,11 +1063,11 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -1061,11 +1066,11 @@ acs_find_ideal_chan_mode(struct hostapd_
  
  		if (bias) {
  			factor *= bias->bias;
@@ -434,7 +434,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				   "ACS:  * channel %d: total interference = %Lg",
  				   chan->chan, factor);
  		}
-@@ -1142,13 +1147,14 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1145,13 +1150,14 @@ acs_find_ideal_chan(struct hostapd_iface
  		}
  	}
  
@@ -451,7 +451,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	for (i = 0; i < iface->num_hw_features; i++) {
  		mode = &iface->hw_features[i];
-@@ -1159,8 +1165,8 @@ bw_selected:
+@@ -1162,8 +1168,8 @@ bw_selected:
  	}
  
  	if (ideal_chan) {
@@ -462,7 +462,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  #ifdef CONFIG_IEEE80211BE
  		if (iface->conf->punct_acs_threshold)
-@@ -1200,6 +1206,16 @@ static void acs_adjust_secondary(struct
+@@ -1203,6 +1209,16 @@ static void acs_adjust_secondary(struct
  
  static void acs_adjust_center_freq(struct hostapd_iface *iface)
  {
@@ -479,7 +479,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int center;
  
  	wpa_printf(MSG_DEBUG, "ACS: Adjusting center frequency");
-@@ -1279,7 +1295,6 @@ static int acs_study_bss_based(struct ho
+@@ -1282,7 +1298,6 @@ static int acs_study_bss_based(struct ho
  	scan_res = hostapd_driver_get_scan_results(iface->bss[0]);
  	if (!scan_res) {
  		wpa_printf(MSG_INFO, "ACS: Scan request failed");
@@ -487,7 +487,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return -1;
  	}
  
-@@ -1326,6 +1341,10 @@ static void acs_study(struct hostapd_ifa
+@@ -1329,6 +1344,10 @@ static void acs_study(struct hostapd_ifa
  	struct hostapd_channel_data *ideal_chan;
  	int err;
  
@@ -498,7 +498,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	err = acs_study_options(iface);
  	if (err < 0) {
  		wpa_printf(MSG_ERROR, "ACS: All study options have failed");
-@@ -1351,6 +1370,11 @@ static void acs_study(struct hostapd_ifa
+@@ -1354,6 +1373,11 @@ static void acs_study(struct hostapd_ifa
  		acs_adjust_center_freq(iface);
  	}
  
@@ -510,7 +510,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	err = hostapd_select_hw_mode(iface);
  	if (err) {
  		wpa_printf(MSG_ERROR,
-@@ -1394,7 +1418,7 @@ static size_t acs_mld_partners(struct ho
+@@ -1400,7 +1424,7 @@ static size_t acs_mld_partners(struct ho
  		struct hostapd_iface *h = interfaces->iface[i];
  
  		if (!h || h == iface || !h->num_bss ||
@@ -519,7 +519,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		    !hostapd_is_ml_partner(iface->bss[0], h->bss[0]))
  			continue;
  
-@@ -1416,7 +1440,9 @@ static size_t acs_mld_partners(struct ho
+@@ -1422,7 +1446,9 @@ static size_t acs_mld_partners(struct ho
  
  static void acs_scan_failed(struct hostapd_iface *iface)
  {
@@ -530,7 +530,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	acs_fail(iface);
  }
  
-@@ -1458,7 +1484,7 @@ static void acs_scan_complete(struct hos
+@@ -1464,7 +1490,7 @@ static void acs_scan_complete(struct hos
  	ifaces[0] = iface;
  	n = 1 + acs_mld_partners(iface, &ifaces[1], true);
  
@@ -538,8 +538,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	wpa_printf(MSG_WARNING, "ACS: Using survey based algorithm (acs_num_scans=%d)",
  		   iface->conf->acs_num_scans);
  
- 	/* Each link keeps its scan_cb until the survey event, which goes to the
-@@ -1601,11 +1627,11 @@ static int acs_request_scan(struct hosta
+ 	/* The survey event goes to the link that requested the scan, which
+@@ -1610,11 +1636,11 @@ static int acs_request_scan(struct hosta
  	}
  
  	if (!iface->acs_num_retries)
@@ -553,7 +553,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   "ACS: Re-try scanning attempt %d (%d / %d)",
  			   iface->acs_num_retries,
  			   iface->acs_num_completed_scans + 1,
-@@ -1619,7 +1645,7 @@ static int acs_request_scan(struct hosta
+@@ -1628,7 +1654,7 @@ static int acs_request_scan(struct hosta
  		if (iface->acs_num_retries >= ACS_SCAN_RETRY_MAX_COUNT) {
  			wpa_printf(MSG_ERROR,
  				   "ACS: Failed to request initial scan (all re-attempts failed)");
@@ -562,7 +562,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			return -1;
  		}
  
-@@ -1696,7 +1722,9 @@ enum hostapd_chan_status acs_init(struct
+@@ -1705,7 +1731,9 @@ enum hostapd_chan_status acs_init(struct
  	if (acs_request_scan(iface) < 0)
  		return HOSTAPD_CHAN_INVALID;
  
@@ -607,7 +607,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return hostapd_dfs_start_channel_switch_cac(iface);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1096,6 +1096,8 @@ void hostapd_cleanup_iface_partial(struc
+@@ -1117,6 +1117,8 @@ void hostapd_cleanup_iface_partial(struc
  #ifdef NEED_AP_MLME
  	hostapd_stop_setup_timers(iface);
  #endif /* NEED_AP_MLME */
@@ -655,7 +655,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* HW_FEATURES_H */
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1029,6 +1029,11 @@ hostapd_switch_chan(struct ubus_context
+@@ -1085,6 +1085,11 @@ hostapd_switch_chan(struct ubus_context
  	if (!tb[CSA_FREQ])
  		return UBUS_STATUS_INVALID_ARGUMENT;
  
@@ -669,7 +669,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (iconf->secondary_channel)
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -740,6 +740,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
+@@ -739,6 +739,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
  		hapd->beacon_set_done = 0;
  	}
  
@@ -679,7 +679,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return NULL;
  }
  
-@@ -860,6 +863,11 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -859,6 +862,11 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	if (!iface || ucv_type(info) != UC_OBJECT)
  		return NULL;
  
@@ -693,7 +693,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		csa.cs_count = intval;
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2303,8 +2303,8 @@ static void hostapd_event_get_survey_mld
+@@ -2329,8 +2329,8 @@ static void hostapd_event_get_survey_mld
  		struct hostapd_iface *h = interfaces->iface[i];
  
  		if (!h || h == hapd->iface || !h->num_bss ||
@@ -703,11 +703,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		    !h->scan_cb || !hostapd_is_ml_partner(hapd, h->bss[0]))
  			continue;
  
- 		hostapd_event_get_survey(h, survey_results);
-@@ -2608,6 +2608,8 @@ static void hostapd_iface_disable(struct
- 	hostapd_free_stas(hapd);
+ 		hostapd_survey_list_add(h, survey_results, true);
+@@ -2634,6 +2634,8 @@ static void hostapd_iface_disable(struct
  	wpa_msg(hapd->msg_ctx, MSG_INFO, INTERFACE_DISABLED);
  	hapd->disabled = 1;
+ 	hostapd_owe_update_trans(hapd->iface);
 +	/* TRIGGER_ACS reports a channel for a running AP only */
 +	hostapd_manual_acs_end(hapd->iface);
  }

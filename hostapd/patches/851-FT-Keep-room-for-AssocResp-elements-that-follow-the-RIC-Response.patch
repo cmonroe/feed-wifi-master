@@ -20,15 +20,13 @@ one for each remaining element.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/ap/ieee802_11.c     |   87 ++++++++++++++++++++++++++++++++++++--
- src/ap/ieee802_11.h     |    2 +
- src/ap/ieee802_11_eht.c |   11 +++++
- src/ap/wpa_auth_ft.c    |   12 ++++--
- 4 files changed, 105 insertions(+), 7 deletions(-)
+ src/ap/ieee802_11.c  |   87 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ src/ap/wpa_auth_ft.c |   12 ++++---
+ 2 files changed, 92 insertions(+), 7 deletions(-)
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6774,6 +6774,86 @@ static int add_associated_sta(struct hos
+@@ -6837,6 +6837,86 @@ static int add_associated_sta(struct hos
  }
  
  
@@ -115,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
  			   const u8 *addr, u16 status_code, int reassoc,
  			   const u8 *ies, size_t ies_len, int rssi,
-@@ -6781,12 +6861,13 @@ static u16 send_assoc_resp(struct hostap
+@@ -6844,12 +6924,13 @@ static u16 send_assoc_resp(struct hostap
  {
  	int send_len;
  	u8 *buf;
@@ -131,7 +129,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_FILS
  	if (sta && sta->fils_hlp_resp)
  		buflen += wpabuf_len(sta->fils_hlp_resp);
-@@ -6858,7 +6939,7 @@ static u16 send_assoc_resp(struct hostap
+@@ -6923,7 +7004,7 @@ static u16 send_assoc_resp(struct hostap
  		/* IEEE 802.11r: Mobility Domain Information, Fast BSS
  		 * Transition Information, RSN, [RIC Response] */
  		p = wpa_sm_write_assoc_resp_ies(sta->wpa_sm, p,
@@ -140,37 +138,6 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  						sta->auth_alg, ies, ies_len,
  						omit_rsnxe, reassoc,
  						sta->vlan_id);
---- a/src/ap/ieee802_11.h
-+++ b/src/ap/ieee802_11.h
-@@ -126,6 +126,8 @@ u8 * hostapd_eid_eht_ml_beacon(struct ho
- 			       u8 *eid, bool include_mld_id);
- u8 * hostapd_eid_eht_ml_assoc(struct hostapd_data *hapd, struct sta_info *info,
- 			      u8 *eid);
-+size_t hostapd_eid_eht_ml_assoc_len(struct hostapd_data *hapd,
-+				    struct sta_info *info);
- u8 * hostapd_eid_eht_basic_ml_common(struct hostapd_data *hapd,
- 				     u8 *eid, struct mld_info *mld_info,
- 				     bool include_mld_id, bool include_bpcc);
---- a/src/ap/ieee802_11_eht.c
-+++ b/src/ap/ieee802_11_eht.c
-@@ -884,6 +884,17 @@ u8 * hostapd_eid_eht_ml_assoc(struct hos
- }
- 
- 
-+size_t hostapd_eid_eht_ml_assoc_len(struct hostapd_data *hapd,
-+				    struct sta_info *info)
-+{
-+	if (!ap_sta_is_mld(hapd, info))
-+		return 0;
-+
-+	return hostapd_eid_eht_basic_ml_len(hapd, info, false, true) +
-+		hostapd_eid_eht_reconf_ml_len(hapd);
-+}
-+
-+
- size_t hostapd_eid_eht_ml_beacon_len(struct hostapd_data *hapd,
- 				     struct mld_info *info,
- 				     bool include_mld_id)
 --- a/src/ap/wpa_auth_ft.c
 +++ b/src/ap/wpa_auth_ft.c
 @@ -2418,7 +2418,7 @@ static u8 * wpa_ft_process_rdie(struct w

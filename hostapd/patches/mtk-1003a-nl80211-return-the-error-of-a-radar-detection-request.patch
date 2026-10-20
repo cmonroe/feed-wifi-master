@@ -18,7 +18,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -11686,7 +11686,7 @@ static int nl80211_start_radar_detection
+@@ -11720,7 +11720,7 @@ static int nl80211_start_radar_detection
  
  	wpa_printf(MSG_DEBUG, "nl80211: Failed to start radar detection: "
  		   "%d (%s)", ret, strerror(-ret));

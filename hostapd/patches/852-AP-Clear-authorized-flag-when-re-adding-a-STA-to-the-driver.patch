@@ -29,7 +29,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6711,6 +6711,12 @@ static int add_associated_sta(struct hos
+@@ -6774,6 +6774,12 @@ static int add_associated_sta(struct hos
  		hostapd_drv_sta_remove(hapd, sta->addr);
  		wpa_auth_sm_event(sta->wpa_sm, WPA_DRV_STA_REMOVED);
  		set = 0;

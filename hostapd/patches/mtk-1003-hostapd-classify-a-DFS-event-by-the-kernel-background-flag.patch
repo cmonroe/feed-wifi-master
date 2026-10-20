@@ -223,7 +223,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				 int center_freq, int center_freq2);
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2351,7 +2351,7 @@ static void hostapd_event_dfs_radar_dete
+@@ -2377,7 +2377,7 @@ static void hostapd_event_dfs_radar_dete
  	wpa_printf(MSG_DEBUG, "DFS radar detected on %d MHz", radar->freq);
  	hostapd_dfs_radar_detected(hapd->iface, radar->freq, radar->ht_enabled,
  				   radar->chan_offset, radar->chan_width,
@@ -232,7 +232,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2371,7 +2371,7 @@ static void hostapd_event_dfs_cac_finish
+@@ -2397,7 +2397,7 @@ static void hostapd_event_dfs_cac_finish
  	wpa_printf(MSG_DEBUG, "DFS CAC finished on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(hapd->iface, 1, radar->freq, radar->ht_enabled,
  				 radar->chan_offset, radar->chan_width,
@@ -241,7 +241,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2381,7 +2381,7 @@ static void hostapd_event_dfs_cac_aborte
+@@ -2407,7 +2407,7 @@ static void hostapd_event_dfs_cac_aborte
  	wpa_printf(MSG_DEBUG, "DFS CAC aborted on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(hapd->iface, 0, radar->freq, radar->ht_enabled,
  				 radar->chan_offset, radar->chan_width,
@@ -250,7 +250,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* an aborted post-CSA CAC ends the switch without a switch event */
  	if (!hostapd_csa_in_progress(hapd->iface))
-@@ -2405,7 +2405,7 @@ static void hostapd_event_dfs_cac_starte
+@@ -2431,7 +2431,7 @@ static void hostapd_event_dfs_cac_starte
  	wpa_printf(MSG_DEBUG, "DFS offload CAC started on %d MHz", radar->freq);
  	hostapd_dfs_start_cac(hapd, radar->freq, radar->ht_enabled,
  			      radar->chan_offset, radar->chan_width,
@@ -261,7 +261,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -7563,6 +7563,7 @@ union wpa_event_data {
+@@ -7571,6 +7571,7 @@ union wpa_event_data {
  	 * struct dfs_event - Data for radar detected events
  	 * @freq: Frequency of the channel in MHz
  	 * @link_id: If >= 0, Link ID of the MLO link
@@ -269,7 +269,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	 */
  	struct dfs_event {
  		int freq;
-@@ -7572,6 +7573,7 @@ union wpa_event_data {
+@@ -7580,6 +7581,7 @@ union wpa_event_data {
  		int cf1;
  		int cf2;
  		int link_id;
@@ -279,7 +279,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/**
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2842,6 +2842,8 @@ static void nl80211_radar_event(struct i
+@@ -2841,6 +2841,8 @@ static void nl80211_radar_event(struct i
  		data.dfs_event.cf1 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ1]);
  	if (tb[NL80211_ATTR_CENTER_FREQ2])
  		data.dfs_event.cf2 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ2]);
@@ -290,7 +290,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		   "nl80211: Checking suitable BSS for the DFS event");
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -2164,7 +2164,7 @@ void wpas_ap_event_dfs_radar_detected(st
+@@ -2143,7 +2143,7 @@ void wpas_ap_event_dfs_radar_detected(st
  	hostapd_dfs_radar_detected(iface, radar->freq,
  				   radar->ht_enabled, radar->chan_offset,
  				   radar->chan_width,
@@ -299,7 +299,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2180,7 +2180,8 @@ void wpas_ap_event_dfs_cac_started(struc
+@@ -2159,7 +2159,8 @@ void wpas_ap_event_dfs_cac_started(struc
  	wpa_printf(MSG_DEBUG, "DFS CAC started on %d MHz", radar->freq);
  	hostapd_dfs_start_cac(iface->bss[0], radar->freq,
  			      radar->ht_enabled, radar->chan_offset,
@@ -309,7 +309,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2196,7 +2197,8 @@ void wpas_ap_event_dfs_cac_finished(stru
+@@ -2175,7 +2176,8 @@ void wpas_ap_event_dfs_cac_finished(stru
  	wpa_printf(MSG_DEBUG, "DFS CAC finished on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(iface, 1, radar->freq,
  				 radar->ht_enabled, radar->chan_offset,
@@ -319,7 +319,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2212,7 +2214,8 @@ void wpas_ap_event_dfs_cac_aborted(struc
+@@ -2191,7 +2193,8 @@ void wpas_ap_event_dfs_cac_aborted(struc
  	wpa_printf(MSG_DEBUG, "DFS CAC aborted on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(iface, 0, radar->freq,
  				 radar->ht_enabled, radar->chan_offset,

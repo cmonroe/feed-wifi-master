@@ -14,7 +14,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1463,6 +1463,8 @@ static const char * hostapd_manual_acs_r
+@@ -1467,6 +1467,8 @@ static const char * hostapd_manual_acs_r
  		return "the interface is not enabled";
  	if (iface->manual_acs_triggered)
  		return "a manual run is in progress";

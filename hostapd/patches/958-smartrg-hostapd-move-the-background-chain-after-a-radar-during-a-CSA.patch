@@ -68,7 +68,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	} else if (hapd->iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD) {
  		/* Complete AP configuration for the first bring up. */
  		if (is_dfs0 > 0 &&
-@@ -2376,6 +2377,10 @@ static void hostapd_event_dfs_cac_aborte
+@@ -2402,6 +2403,10 @@ static void hostapd_event_dfs_cac_aborte
  	hostapd_dfs_complete_cac(hapd->iface, 0, radar->freq, radar->ht_enabled,
  				 radar->chan_offset, radar->chan_width,
  				 radar->cf1, radar->cf2);
@@ -81,7 +81,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4140,6 +4140,7 @@ int hostapd_disable_iface(struct hostapd
+@@ -4329,6 +4329,7 @@ int hostapd_disable_iface(struct hostapd
  	for (j = 0; j < hapd_iface->num_bss; j++)
  		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
  #endif /* NEED_AP_MLME */
@@ -89,7 +89,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* same as hostapd_interface_deinit without deinitializing ctrl-iface */
  	for (j = 0; j < hapd_iface->num_bss; j++) {
-@@ -5427,6 +5428,13 @@ hostapd_switch_channel_fallback(struct h
+@@ -5622,6 +5623,13 @@ hostapd_switch_channel_fallback(struct h
  	iface->conf->ieee80211ax = freq_params->he_enabled;
  	iface->conf->ieee80211be = freq_params->eht_enabled;
  
@@ -105,7 +105,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	 * argument may actually point to one of these.
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -692,6 +692,8 @@ struct hostapd_iface {
+@@ -701,6 +701,8 @@ struct hostapd_iface {
  		unsigned int temp_ch:1;
  		/* CAC started on radar offchain */
  		unsigned int cac_started:1;
@@ -114,7 +114,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	} radar_background;
  
  	u16 hw_flags;
-@@ -914,6 +916,7 @@ void hostapd_channel_list_updated(struct
+@@ -924,6 +926,7 @@ void hostapd_channel_list_updated(struct
  void hostapd_set_state(struct hostapd_iface *iface, enum hostapd_iface_state s);
  const char * hostapd_state_text(enum hostapd_iface_state s);
  int hostapd_csa_in_progress(struct hostapd_iface *iface);

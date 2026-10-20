@@ -59,7 +59,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  # configured with the channel parameter. channel and op_class together can
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1114,6 +1114,7 @@ struct hostapd_config {
+@@ -1115,6 +1115,7 @@ struct hostapd_config {
  	u8 op_class;
  	u8 channel;
  	int channel_follow;
@@ -69,7 +69,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 acs;
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1296,21 +1296,101 @@ int hostapd_determine_mode(struct hostap
+@@ -1300,21 +1300,101 @@ int hostapd_determine_mode(struct hostap
  }
  
  

@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	} else if (os_strcmp(buf, "enable_edmg") == 0) {
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -81,6 +81,9 @@ ${join("\n", config.radio.data)}
+@@ -82,6 +82,9 @@ ${join("\n", config.radio.data)}
  channel=${config.radio.channel}
  `;
  
@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		let type = i > 0 ? "bss" : "interface";
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1112,6 +1112,7 @@ struct hostapd_config {
+@@ -1113,6 +1113,7 @@ struct hostapd_config {
  	int fragm_threshold;
  	u8 op_class;
  	u8 channel;

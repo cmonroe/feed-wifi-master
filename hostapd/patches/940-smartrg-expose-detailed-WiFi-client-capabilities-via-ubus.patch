@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6190,6 +6190,14 @@ skip_wpa_ies:
+@@ -6184,6 +6184,14 @@ skip_wpa_ies:
  		hostapd_wfa_capab(hapd, sta, elems->wfa_capab,
  				  elems->wfa_capab + elems->wfa_capab_len);
  
@@ -54,7 +54,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		struct wpa_state_machine *sm = sta->wpa_sm;
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -506,6 +506,8 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -602,6 +602,8 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->t_c_url);
  	wpabuf_free(sta->hs20_deauth_req);
  	os_free(sta->hs20_session_info_url);
@@ -65,7 +65,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	sae_clear_data(sta->sae);
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -356,6 +356,9 @@ struct sta_info {
+@@ -351,6 +351,9 @@ struct sta_info {
  	bool link_removal_tx;
  #endif /* CONFIG_IEEE80211BE */
  
@@ -151,7 +151,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static struct ubus_context *ctx;
  static struct blob_buf b;
-@@ -231,71 +245,721 @@ hostapd_bss_reload(struct ubus_context *
+@@ -234,71 +248,721 @@ hostapd_bss_reload(struct ubus_context *
  
  
  static void
@@ -288,14 +288,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		}
 +	}
 +	return value;
- }
- 
- static void
--hostapd_parse_capab_blobmsg(struct sta_info *sta)
++}
++
++static void
 +capab_table_add(const char *table_name, const bitfield_descriptor *capas,
 +		uint8_t capas_len, uint8_t *data, bool filter_false)
- {
--	void *r, *v;
++{
 +	void *table = table_name ? blobmsg_open_table(&b, table_name) : NULL;
 +
 +	for (int i = 0; i < capas_len; i++) {
@@ -308,8 +306,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		uint8_t byte_idx = capas[i].bitstart / 8;
 +		uint8_t bit_mask = 1 << (capas[i].bitstart % 8);
 +		uint8_t bit_val = !!(data[byte_idx] & bit_mask);
- 
--	v = blobmsg_open_table(&b, "capabilities");
++
 +		if (filter_false && !bit_val)
 +			continue;
 +
@@ -318,11 +315,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +
 +	if (table_name)
 +		blobmsg_close_table(&b, table);
-+}
-+
-+static void
+ }
+ 
+ static void
+-hostapd_parse_capab_blobmsg(struct sta_info *sta)
 +ht_mcs_map_add(uint8_t *mcs_bitmask, uint8_t nss, bool ueqm)
-+{
+ {
+-	void *r, *v;
 +	static const ht_mcs_t ht_mcs[] = {
 +		{ "1ss",  0,  7 },
 +		{ "2ss",  8, 15 },
@@ -602,7 +601,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +				HE_PHYCAP_CHANNEL_WIDTH_SET_80PLUS80MHZ_IN_5G));
 +	else
 +		only_20mhz = !(chwidth & HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_IN_2G);
-+
+ 
+-	v = blobmsg_open_table(&b, "capabilities");
 +	ptr = ehtc->optional;
 +	mcs_table = blobmsg_open_table(&b, "supported_mcs_set");
 +
@@ -875,8 +875,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +out:
 +	blobmsg_close_table(&b, table);
 +}
- 
--	blobmsg_close_table(&b, v);
++
 +static int rate_compare(const void *a, const void *b)
 +{
 +	return *(const u8 *)a - *(const u8 *)b;
@@ -899,13 +898,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	for (i = 0; i < len; i++)
 +		blobmsg_add_u32(&b, "", rates[i] >> 1);
 +	os_free(rates);
-+
+ 
+-	blobmsg_close_table(&b, v);
 +out:
 +	blobmsg_close_array(&b, r);
  }
  
  static void
-@@ -359,7 +1023,8 @@ hostapd_ubus_sta_mld_add(struct hostapd_
+@@ -362,7 +1026,8 @@ hostapd_ubus_sta_mld_add(struct hostapd_
  
  /* A non-AP MLD is listed once, with the station of its association link. */
  static void
@@ -915,7 +915,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct hostap_sta_driver_data sta_driver_data;
  	struct sta_info *sta;
-@@ -374,42 +1039,67 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -377,42 +1042,67 @@ hostapd_bss_clients_add(struct hostapd_d
  		{ "authorized", WLAN_STA_AUTHORIZED },
  		{ "preauth", WLAN_STA_PREAUTH },
  		{ "wds", WLAN_STA_WDS },
@@ -986,7 +986,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  		blobmsg_close_array(&b, r);
  
-@@ -420,8 +1110,8 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -423,8 +1113,8 @@ hostapd_bss_clients_add(struct hostapd_d
  			blobmsg_add_string_buffer(&b);
  #endif
  
@@ -997,7 +997,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			r = blobmsg_open_table(&b, "bytes");
  			blobmsg_add_u64(&b, "rx", sta_driver_data.rx_bytes);
  			blobmsg_add_u64(&b, "tx", sta_driver_data.tx_bytes);
-@@ -435,14 +1125,14 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -438,14 +1128,14 @@ hostapd_bss_clients_add(struct hostapd_d
  			blobmsg_add_u32(&b, "tx", sta_driver_data.tx_packets);
  			blobmsg_close_table(&b, r);
  			r = blobmsg_open_table(&b, "rate");
@@ -1014,7 +1014,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_ubus_sta_mld_add(hapd, sta);
  
  		blobmsg_close_table(&b, c);
-@@ -450,25 +1140,28 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -453,25 +1143,28 @@ hostapd_bss_clients_add(struct hostapd_d
  }
  
  static int
@@ -1048,7 +1048,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	blobmsg_close_array(&b, list);
  	ubus_send_reply(ctx, req, b.head);
  
-@@ -476,6 +1169,22 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -479,6 +1172,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -1071,7 +1071,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -2199,6 +2908,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -2255,6 +2964,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),

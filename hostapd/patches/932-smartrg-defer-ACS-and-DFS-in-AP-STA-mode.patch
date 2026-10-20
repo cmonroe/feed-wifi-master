@@ -20,16 +20,16 @@ complete.
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  hostapd/config_file.c    |    2 +
- openwrt/files/hostapd.uc |   52 +++++++++++++++++++++++++++++--------
+ openwrt/files/hostapd.uc |   52 +++++++++++++++++++++++++++++++++++++----------
  src/ap/ap_config.h       |    1 
- src/ap/dfs.c             |   15 ++++++++++
- src/ap/hw_features.c     |   15 ++++++++++
+ src/ap/dfs.c             |   15 +++++++++++++
+ src/ap/hw_features.c     |   15 +++++++++++++
  src/ap/ucode.c           |    1 
  6 files changed, 75 insertions(+), 11 deletions(-)
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -144,9 +144,18 @@ function iface_freq_info(iface, config,
+@@ -145,9 +145,18 @@ function iface_freq_info(iface, config,
  	return hostapd.freq_info(freq, sec_offset, width);
  }
  
@@ -50,7 +50,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	let bss = config.bss[0];
  	let ret = hostapd.add_iface(`bss_config=${phy}:${config_inline}`);
-@@ -162,7 +171,16 @@ function iface_add(phy, config, phy_stat
+@@ -163,7 +172,16 @@ function iface_add(phy, config, phy_stat
  
  	let freq_info = iface_freq_info(iface, config, phy_status);
  
@@ -68,7 +68,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  function bss_macaddr_name(group, bss)
-@@ -302,6 +320,7 @@ function __iface_pending_next(pending, s
+@@ -303,6 +321,7 @@ function __iface_pending_next(pending, s
  		return "check_phy";
  	case "check_phy":
  		let phy_status = data;
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (phy_status && phy_status.state == "COMPLETED") {
  			if (iface_add(phy, config, phy_status))
  				return "done";
-@@ -315,7 +334,7 @@ function __iface_pending_next(pending, s
+@@ -316,7 +335,7 @@ function __iface_pending_next(pending, s
  		});
  		return "wpas_stopped";
  	case "wpas_stopped":
@@ -85,7 +85,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			hostapd.printf(`hostapd.add_iface failed for phy ${phy} ifname=${bss.ifname}`);
  		pending.call("wpa_supplicant", "phy_set_state", {
  			phy: phydev.phy,
-@@ -1840,24 +1859,35 @@ let main_obj = {
+@@ -2072,26 +2091,37 @@ let main_obj = {
  				return 0;
  			}
  
@@ -108,6 +108,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -						return libubus.STATUS_UNKNOWN_ERROR;
 +					if (!iface.switch_channel(freq_info))
 +						return fail();
+ 
+ 					delete hostapd.data.apsta_stopped[phy];
  					return 0;
  				}
  			}
@@ -126,11 +128,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +			if (!iface.start(freq_info))
 +				return fail();
  
+ 			delete hostapd.data.apsta_stopped[phy];
  			return 0;
- 		}
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1318,6 +1318,21 @@ hostapd_check_chans(struct hostapd_iface
+@@ -1322,6 +1322,21 @@ hostapd_check_chans(struct hostapd_iface
  	 * which is used to trigger ACS.
  	 */
  
@@ -189,7 +191,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifndef CONFIG_ACS
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1115,6 +1115,7 @@ struct hostapd_config {
+@@ -1116,6 +1116,7 @@ struct hostapd_config {
  	int enable_edmg;
  	u8 edmg_channel;
  	u8 acs;
@@ -199,7 +201,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 acs_freq_list_present;
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -821,6 +821,7 @@ out:
+@@ -820,6 +820,7 @@ out:
  
  	for (i = 0; i < iface->num_bss; i++)
  		iface->bss[i]->conf->start_disabled = 0;

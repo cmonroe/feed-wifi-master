@@ -17,7 +17,7 @@ Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
 
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -375,6 +375,8 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -471,6 +471,8 @@ void ap_free_sta(struct hostapd_data *ha
  	sta->probe_ie_taxonomy = NULL;
  	wpabuf_free(sta->assoc_ie_taxonomy);
  	sta->assoc_ie_taxonomy = NULL;

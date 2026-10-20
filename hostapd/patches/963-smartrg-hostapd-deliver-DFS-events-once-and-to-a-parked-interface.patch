@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1161,6 +1161,23 @@ int hostapd_start_dfs_cac(struct hostapd
+@@ -1162,6 +1162,23 @@ int hostapd_start_dfs_cac(struct hostapd
  }
  
  
@@ -89,7 +89,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	} while (res);
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5137,6 +5137,19 @@ struct wpa_driver_ops {
+@@ -5134,6 +5134,19 @@ struct wpa_driver_ops {
  	int (*start_dfs_cac)(void *priv, struct hostapd_freq_params *freq);
  
  	/**
@@ -111,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	 * @link_id: Link ID of the specified link; -1 for non-MLD
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -11637,6 +11637,31 @@ static int nl80211_start_radar_detection
+@@ -11671,6 +11671,31 @@ static int nl80211_start_radar_detection
  	return -1;
  }
  
@@ -143,7 +143,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_TDLS
  
  static int nl80211_add_peer_capab(struct nl_msg *msg,
-@@ -16916,6 +16941,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -16958,6 +16983,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.poll_client = nl80211_poll_client,
  	.set_p2p_powersave = nl80211_set_p2p_powersave,
  	.start_dfs_cac = nl80211_start_radar_detection,
@@ -153,7 +153,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	.send_tdls_mgmt = nl80211_send_tdls_mgmt,
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2755,9 +2755,39 @@ static void nl80211_process_radar_event(
+@@ -2754,9 +2754,39 @@ static void nl80211_process_radar_event(
  }
  
  
@@ -193,7 +193,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	union wpa_event_data data;
  	enum nl80211_radar_event event_type;
  	struct i802_bss *bss_iter;
-@@ -2833,7 +2863,8 @@ static void nl80211_radar_event(struct i
+@@ -2832,7 +2862,8 @@ static void nl80211_radar_event(struct i
  		 */
  		for_each_link_default(bss_iter->valid_links, i, 0) {
  			if (bss_iter->links[i].freq < 5180 ||
@@ -203,7 +203,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				continue;
  
  			data.dfs_event.link_id = bss_iter->valid_links ?
-@@ -2850,6 +2881,12 @@ static void nl80211_radar_event(struct i
+@@ -2849,6 +2880,12 @@ static void nl80211_radar_event(struct i
  						    event_type);
  
  			hit = true;

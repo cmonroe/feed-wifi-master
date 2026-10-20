@@ -22,7 +22,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3535,6 +3535,8 @@ struct hostapd_iface * hostapd_alloc_ifa
+@@ -3692,6 +3692,8 @@ struct hostapd_iface * hostapd_alloc_ifa
  		return NULL;
  
  	dl_list_init(&hapd_iface->sta_seen);

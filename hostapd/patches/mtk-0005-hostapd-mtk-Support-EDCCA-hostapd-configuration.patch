@@ -73,7 +73,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int hostapd_config_bss(struct hostapd_config *conf, const char *ifname)
  {
  	struct hostapd_bss_config **all, *bss;
-@@ -5324,6 +5355,35 @@ static int hostapd_config_fill(struct ho
+@@ -5279,6 +5310,35 @@ static int hostapd_config_fill(struct ho
  		os_strlcpy(bss->apup_peer_ifname_prefix,
  		           pos, sizeof(bss->apup_peer_ifname_prefix));
  #endif // def CONFIG_APUP
@@ -130,7 +130,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_HS20
  static int hostapd_ctrl_iface_hs20_deauth_req(struct hostapd_data *hapd,
  					      const char *cmd)
-@@ -3695,6 +3707,114 @@ free_cmd_buffer:
+@@ -3700,6 +3712,114 @@ free_cmd_buffer:
  #endif /* CONFIG_TESTING_OPTIONS */
  #endif /* CONFIG_IEEE80211BE */
  
@@ -245,7 +245,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  #ifdef CONFIG_NAN_USD
  
-@@ -4753,6 +4873,12 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4761,6 +4881,12 @@ static int hostapd_ctrl_iface_receive_pr
  		if (hostapd_ctrl_afc_send_request(hapd, buf + 16) < 0)
  			reply_len = -1;
  #endif /* CONFIG_AFC */
@@ -270,7 +270,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd_set_and_check_bw320_offset(conf, 0);
  
  	conf->disable_mcs15_rx = true;
-@@ -1115,6 +1118,7 @@ void hostapd_config_free(struct hostapd_
+@@ -1114,6 +1117,7 @@ void hostapd_config_free(struct hostapd_
  #ifdef CONFIG_ACS
  	os_free(conf->acs_chan_bias);
  #endif /* CONFIG_ACS */
@@ -280,7 +280,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_AFC
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1365,8 +1365,39 @@ struct hostapd_config {
+@@ -1364,8 +1364,39 @@ struct hostapd_config {
  		int min_power;
  	} afc;
  #endif /* CONFIG_AFC */
@@ -322,7 +322,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  hostapd_get_oper_chwidth(struct hostapd_config *conf)
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1457,3 +1457,31 @@ int hostapd_remove_pmkid(struct hostapd_
+@@ -1458,3 +1458,31 @@ int hostapd_remove_pmkid(struct hostapd_
  
  	return hostapd_drv_remove_pmkid(hapd, &params);
  }
@@ -370,7 +370,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3191,6 +3191,13 @@ dfs_offload:
+@@ -3344,6 +3344,13 @@ dfs_offload:
  	}
  #endif /* CONFIG_MESH */
  
@@ -417,7 +417,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	[MTK_VENDOR_ATTR_EDCCA_CTRL_PRI20_VAL] = { .type = NLA_U8 },
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5892,6 +5892,11 @@ struct wpa_driver_ops {
+@@ -5900,6 +5900,11 @@ struct wpa_driver_ops {
  	struct hostapd_multi_hw_info *
  	(*get_multi_hw_info)(void *priv, unsigned int *num_multi_hws);
  
@@ -441,7 +441,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  
  #ifndef NETLINK_CAP_ACK
-@@ -15896,6 +15899,167 @@ static int testing_nl80211_radio_disable
+@@ -15938,6 +15941,167 @@ static int testing_nl80211_radio_disable
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -609,7 +609,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static struct hostapd_multi_hw_info *
  wpa_driver_get_multi_hw_info(void *priv, unsigned int *num_multi_hws)
-@@ -17041,6 +17205,10 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -17084,6 +17248,10 @@ const struct wpa_driver_ops wpa_driver_n
  	.radio_disable = testing_nl80211_radio_disable,
  #endif /* CONFIG_TESTING_OPTIONS */
  	.get_multi_hw_info = wpa_driver_get_multi_hw_info,
@@ -628,8 +628,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	unsigned int connect_ext_vendor_cmd_avail:1;
 +	unsigned int mtk_edcca_vendor_cmd_avail:1;
  	unsigned int support_ap_scan:1;
+ 	unsigned int mesh_handle_dfs:1;
  
- 	u8 extra_bss_membership_selectors[8];
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
 @@ -19,6 +19,7 @@
@@ -640,7 +640,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  
  static int protocol_feature_handler(struct nl_msg *msg, void *arg)
-@@ -1540,6 +1541,12 @@ static int wiphy_info_handler(struct nl_
+@@ -1536,6 +1537,12 @@ static int wiphy_info_handler(struct nl_
  					break;
  				}
  #endif /* CONFIG_DRIVER_NL80211_BRCM */

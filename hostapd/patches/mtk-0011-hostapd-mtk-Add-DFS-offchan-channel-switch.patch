@@ -30,7 +30,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4256,6 +4256,93 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
+@@ -4261,6 +4261,93 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
  }
  
  
@@ -124,7 +124,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4904,6 +4991,8 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4912,6 +4999,8 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "DFS_DETECT_MODE ", 16) == 0) {
  		reply_len = hostapd_ctrl_iface_set_dfs_detect_mode(hapd, buf + 16,
  								   reply, reply_size);
