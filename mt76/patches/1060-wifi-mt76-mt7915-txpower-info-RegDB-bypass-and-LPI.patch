@@ -219,7 +219,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	return mt7915_mcu_set_fixed_rate_ctrl(dev, vif, sta, &msta->wcid,
  					      &spe_idx, RATE_PARAM_SPE_UPDATE);
-@@ -3506,6 +3507,22 @@ mt7915_update_txpower(struct mt7915_phy
+@@ -3507,6 +3508,22 @@ mt7915_update_txpower(struct mt7915_phy
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -242,7 +242,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7915_mcu_set_txpower_sku(struct mt7915_phy *phy)
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
-@@ -3536,14 +3553,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3537,14 +3554,37 @@ int mt7915_mcu_set_txpower_sku(struct mt
  		mt7915_update_txpower(phy, tx_power);
  		return 0;
  	}
@@ -282,7 +282,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb_put_data(skb, &la.mcs[0], len[SKU_HT_BW20]);
  	skb_put_data(skb, &la.mcs[1], len[SKU_HT_BW40]);
  
-@@ -3572,8 +3612,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
+@@ -3573,8 +3613,34 @@ int mt7915_mcu_set_txpower_sku(struct mt
  	hdr.limit_type = TX_POWER_LIMIT_TABLE_PATH;
  	skb_put_data(skb, &hdr, sizeof(hdr));
  	skb_put_data(skb, &la.path.cck, sizeof(la.path.cck));
@@ -319,7 +319,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* HT20 and HT40 */
  	skb_put_data(skb, &la.path.ru[3], sizeof(la.path.ru[3]));
-@@ -3649,6 +3715,12 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3650,6 +3716,12 @@ int mt7915_mcu_get_txpower_sku(struct mt
  			return -EINVAL;
  		}
  		memcpy(txpower, skb->data + 4, len);
@@ -332,7 +332,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	dev_kfree_skb(skb);
-@@ -3656,6 +3728,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
+@@ -3657,6 +3729,21 @@ int mt7915_mcu_get_txpower_sku(struct mt
  	return 0;
  }
  

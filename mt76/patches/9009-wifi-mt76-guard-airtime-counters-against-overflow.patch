@@ -197,7 +197,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
  		default:
  			break;
-@@ -3313,6 +3336,7 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3314,6 +3337,7 @@ int mt7915_mcu_get_chan_mib_info(struct
  	struct sk_buff *skb;
  	static const u32 *offs;
  	int i, ret, len, offs_cc;
@@ -205,7 +205,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 cc_tx;
  
  	/* strict order */
-@@ -3363,11 +3387,16 @@ int mt7915_mcu_get_chan_mib_info(struct
+@@ -3364,11 +3388,16 @@ int mt7915_mcu_get_chan_mib_info(struct
  	if (chan_switch)
  		goto out;
  
@@ -368,7 +368,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			}
  			break;
  		case UNI_ALL_STA_RX_MPDU_COUNT:
-@@ -5299,6 +5308,7 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5300,6 +5309,7 @@ int mt7996_mcu_get_chan_mib_info(struct
  	struct mt7996_dev *dev = phy->dev;
  	struct mt7996_mcu_mib *res;
  	struct sk_buff *skb;
@@ -376,7 +376,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i, ret;
  
  	for (i = 0; i < IDX_NUM; i++) {
-@@ -5320,16 +5330,20 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5321,16 +5331,20 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)

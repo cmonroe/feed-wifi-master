@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5118,8 +5118,11 @@ static int
+@@ -5119,8 +5119,11 @@ static int
  mt7996_mcu_set_obss_spr_pd(struct mt7996_phy *phy,
  			   struct ieee80211_he_obss_pd *he_obss_pd)
  {
@@ -36,7 +36,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct {
  		u8 band_idx;
  		u8 __rsv[3];
-@@ -5127,45 +5130,45 @@ mt7996_mcu_set_obss_spr_pd(struct mt7996
+@@ -5128,45 +5131,45 @@ mt7996_mcu_set_obss_spr_pd(struct mt7996
  		__le16 tag;
  		__le16 len;
  
@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static int
-@@ -5173,6 +5176,9 @@ mt7996_mcu_set_obss_spr_siga(struct mt79
+@@ -5174,6 +5177,9 @@ mt7996_mcu_set_obss_spr_siga(struct mt79
  			     struct mt7996_vif_link *link,
  			     struct ieee80211_he_obss_pd *he_obss_pd)
  {
@@ -108,7 +108,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct mt7996_dev *dev = phy->dev;
  	u8 omac = link->mt76.omac_idx;
  	struct {
-@@ -5184,27 +5190,32 @@ mt7996_mcu_set_obss_spr_siga(struct mt79
+@@ -5185,27 +5191,32 @@ mt7996_mcu_set_obss_spr_siga(struct mt79
  
  		u8 omac;
  		u8 __rsv2[3];
@@ -148,7 +148,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static int
-@@ -5219,10 +5230,12 @@ mt7996_mcu_set_obss_spr_bitmap(struct mt
+@@ -5220,10 +5231,12 @@ mt7996_mcu_set_obss_spr_bitmap(struct mt
  		__le16 tag;
  		__le16 len;
  
@@ -165,7 +165,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	} __packed req = {
  		.band_idx = phy->mt76->band_idx,
  		.tag = cpu_to_le16(UNI_CMD_SR_SET_SRG_BITMAP),
-@@ -5230,17 +5243,20 @@ mt7996_mcu_set_obss_spr_bitmap(struct mt
+@@ -5231,17 +5244,20 @@ mt7996_mcu_set_obss_spr_bitmap(struct mt
  	};
  	u32 bitmap;
  

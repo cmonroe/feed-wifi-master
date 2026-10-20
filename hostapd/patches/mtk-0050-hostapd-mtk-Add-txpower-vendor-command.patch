@@ -42,7 +42,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5343,6 +5343,12 @@ static int hostapd_config_fill(struct ho
+@@ -5396,6 +5396,12 @@ static int hostapd_config_fill(struct ho
  			return 1;
  		}
  		conf->dfs_detect_mode = mode;
@@ -69,7 +69,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	conf->disable_mcs15_rx = true;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1368,6 +1368,8 @@ struct hostapd_config {
+@@ -1370,6 +1370,8 @@ struct hostapd_config {
  	s8 edcca_compensation;
  	int *edcca_threshold;
  	u8 dfs_detect_mode;

@@ -44,11 +44,9 @@ Signed-off-by: Brandon Arrendondo <brandon.arrendondo@bissell.com>
  src/ap/wpa_auth_ft.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/src/ap/wpa_auth_ft.c b/src/ap/wpa_auth_ft.c
-index 76b14ddd35cc..172f3db40718 100644
 --- a/src/ap/wpa_auth_ft.c
 +++ b/src/ap/wpa_auth_ft.c
-@@ -2416,7 +2416,7 @@ static u8 * wpa_ft_process_rdie(struct wpa_state_machine *sm,
+@@ -2416,7 +2416,7 @@ static u8 * wpa_ft_process_rdie(struct w
  	wpa_hexdump(MSG_MSGDUMP, "FT: Resource descriptor IE(s)",
  		    ies, ies_len);
  
@@ -57,6 +55,3 @@ index 76b14ddd35cc..172f3db40718 100644
  		wpa_printf(MSG_ERROR, "FT: Not enough room for response RDIE");
  		return pos;
  	}
--- 
-2.47.3
-

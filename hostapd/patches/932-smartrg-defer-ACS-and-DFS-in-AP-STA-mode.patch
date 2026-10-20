@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return HOSTAPD_CHAN_ACS;
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -870,6 +870,21 @@ int hostapd_handle_dfs(struct hostapd_if
+@@ -871,6 +871,21 @@ int hostapd_handle_dfs(struct hostapd_if
  		return 1;
  	}
  

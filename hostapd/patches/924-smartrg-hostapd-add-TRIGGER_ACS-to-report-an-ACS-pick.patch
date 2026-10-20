@@ -655,7 +655,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* HW_FEATURES_H */
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1026,6 +1026,11 @@ hostapd_switch_chan(struct ubus_context
+@@ -1029,6 +1029,11 @@ hostapd_switch_chan(struct ubus_context
  	if (!tb[CSA_FREQ])
  		return UBUS_STATUS_INVALID_ARGUMENT;
  

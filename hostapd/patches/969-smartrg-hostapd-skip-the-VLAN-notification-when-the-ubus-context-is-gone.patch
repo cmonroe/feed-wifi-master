@@ -17,7 +17,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -3186,6 +3186,11 @@ hostapd_ubus_vlan_action(struct hostapd_
+@@ -3189,6 +3189,11 @@ hostapd_ubus_vlan_action(struct hostapd_
  	void *c;
  	int i;
  

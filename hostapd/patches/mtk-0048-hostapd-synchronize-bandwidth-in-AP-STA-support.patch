@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -735,6 +735,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
+@@ -734,6 +734,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
  	if (!iface)
  		return NULL;
  
@@ -49,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (iface->state != HAPD_IFACE_ENABLED)
  		uc_hostapd_disable_iface(iface);
  
-@@ -764,8 +767,21 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+@@ -763,8 +766,21 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  	if (!iface)
  		return NULL;
  
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (ucv_type(info) != UC_OBJECT)
  		return NULL;
-@@ -779,27 +795,40 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+@@ -778,27 +794,40 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  		}								\
  	} while(0)
  
@@ -125,7 +125,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	intval = ucv_int64_get(ucv_object_get(info, "frequency", NULL));
  	if (!errno)
-@@ -833,6 +862,15 @@ out:
+@@ -832,6 +861,15 @@ out:
  		return ucv_boolean_new(true);
  	}
  
@@ -141,7 +141,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
  
-@@ -874,10 +912,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -873,10 +911,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  		return ucv_boolean_new(false);
  	}
  
@@ -158,7 +158,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		csa.freq_params.sec_channel_offset = intval;
  
  	csa.freq_params.ht_enabled = conf->ieee80211n;
-@@ -906,13 +948,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -905,13 +947,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  		break;
  	}
  

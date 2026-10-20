@@ -1014,7 +1014,7 @@ Squash of the following MediaTek commits:
  		req.band_idx = phy->mt76->band_idx;
  		req.scan_mode = 2;
  		break;
-@@ -4616,6 +4617,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4617,6 +4618,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  }
  #endif
  

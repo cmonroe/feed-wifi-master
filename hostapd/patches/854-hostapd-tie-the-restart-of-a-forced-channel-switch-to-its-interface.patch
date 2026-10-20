@@ -24,7 +24,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -988,9 +988,14 @@ static const struct blobmsg_policy csa_p
+@@ -991,9 +991,14 @@ static const struct blobmsg_policy csa_p
  static void switch_chan_fallback_cb(void *eloop_data, void *user_ctx)
  {
  	struct hostapd_iface *iface = eloop_data;
@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  #ifdef NEED_AP_MLME
-@@ -1002,7 +1007,6 @@ hostapd_switch_chan(struct ubus_context
+@@ -1005,7 +1010,6 @@ hostapd_switch_chan(struct ubus_context
  	struct blob_attr *tb[__CSA_MAX];
  	struct hostapd_data *hapd = get_hapd_from_object(obj);
  	struct hostapd_config *iconf = hapd->iface->conf;
@@ -49,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct hostapd_hw_modes *mode = hapd->iface->current_mode;
  	struct csa_settings css = {
  		.freq_params = {
-@@ -1098,10 +1102,12 @@ hostapd_switch_chan(struct ubus_context
+@@ -1101,10 +1105,12 @@ hostapd_switch_chan(struct ubus_context
  	if (!ret || !tb[CSA_FORCE] || !blobmsg_get_bool(tb[CSA_FORCE]))
  		return ret;
  

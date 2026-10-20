@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6447,10 +6447,17 @@ void mt7996_mcu_scs_sta_poll(struct work
+@@ -6448,10 +6448,17 @@ void mt7996_mcu_scs_sta_poll(struct work
  		    !phy->scs_ctrl.scs_enable)
  			continue;
  
@@ -91,7 +91,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (mt7996_mcu_set_scs_stats(phy))
  			dev_err(dev->mt76.dev, "Failed to send scs mcu cmd\n");
  		phy->scs_ctrl.sta_min_rssi = 0;
-@@ -6482,7 +6489,8 @@ int mt7996_mcu_set_scs(struct mt7996_phy
+@@ -6483,7 +6490,8 @@ int mt7996_mcu_set_scs(struct mt7996_phy
  
  	phy->scs_ctrl.scs_enable = enable;
  

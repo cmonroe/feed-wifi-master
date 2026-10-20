@@ -357,7 +357,7 @@ Squash of the following MediaTek commits:
  {
  #define RED_DISABLE		0
  #define RED_BY_WA_ENABLE	2
-@@ -3682,7 +3690,9 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3683,7 +3691,9 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	};
  	int ret;
  
@@ -368,7 +368,7 @@ Squash of the following MediaTek commits:
  	req.format_id = TX_POWER_LIMIT_ENABLE;
  
  	ret = mt76_mcu_send_msg(&dev->mt76,
-@@ -3691,7 +3701,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
+@@ -3692,7 +3702,7 @@ int mt7915_mcu_set_sku_en(struct mt7915_
  	if (ret)
  		return ret;
  
@@ -377,7 +377,7 @@ Squash of the following MediaTek commits:
  	req.format_id = TX_POWER_LIMIT_PATH_ENABLE;
  
  	return mt76_mcu_send_msg(&dev->mt76,
-@@ -3885,8 +3895,7 @@ int mt7915_mcu_set_txbf(struct mt7915_de
+@@ -3886,8 +3896,7 @@ int mt7915_mcu_set_txbf(struct mt7915_de
  				 sizeof(req), true);
  }
  
@@ -387,7 +387,7 @@ Squash of the following MediaTek commits:
  {
  	struct mt7915_dev *dev = phy->dev;
  	struct mt7915_mcu_sr_ctrl req = {
-@@ -4542,6 +4551,23 @@ out:
+@@ -4543,6 +4552,23 @@ out:
  	return ret;
  }
  
@@ -411,7 +411,7 @@ Squash of the following MediaTek commits:
  int mt7915_mcu_rf_regval(struct mt7915_dev *dev, u32 regidx, u32 *val, bool set)
  {
  	struct {
-@@ -4570,3 +4596,37 @@ int mt7915_mcu_rf_regval(struct mt7915_d
+@@ -4571,3 +4597,37 @@ int mt7915_mcu_rf_regval(struct mt7915_d
  
  	return 0;
  }

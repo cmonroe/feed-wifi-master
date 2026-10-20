@@ -109,7 +109,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			"default": "chanlist"
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
-@@ -532,7 +532,7 @@ function generate(config) {
+@@ -543,7 +543,7 @@ function generate(config) {
  	else
  		set_default(config, 'enable_background_radar', false);
  

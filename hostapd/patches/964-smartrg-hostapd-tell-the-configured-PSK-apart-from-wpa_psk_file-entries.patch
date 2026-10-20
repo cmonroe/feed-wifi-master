@@ -247,7 +247,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   pbkdf2_sha1(hapd->conf->ssid.wpa_passphrase,
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1496,6 +1496,7 @@ void hostapd_config_free_radius_attr(str
+@@ -1498,6 +1498,7 @@ void hostapd_config_free_radius_attr(str
  void hostapd_config_free_eap_user(struct hostapd_eap_user *user);
  void hostapd_config_free_eap_users(struct hostapd_eap_user *user);
  void hostapd_config_clear_wpa_psk(struct hostapd_wpa_psk **p);

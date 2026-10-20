@@ -106,7 +106,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_disable_iface(iface);
  		hostapd_enable_iface(iface);
  
-@@ -1759,14 +1791,11 @@ static int hostapd_dfs_start_channel_swi
+@@ -1758,14 +1790,11 @@ static int hostapd_dfs_start_channel_swi
  		}
  
  		if (channel_type == DFS_ANY_CHANNEL) {

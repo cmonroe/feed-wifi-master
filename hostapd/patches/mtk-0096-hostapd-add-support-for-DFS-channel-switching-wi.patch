@@ -124,7 +124,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	else
 -		dfs_range += hostapd_is_dfs_overlap(
 -			iface, bandwidth, settings.freq_params.freq);
--
++		freq = settings.freq_params.freq;
+ 
 -	if (settings.freq_params.center_freq2)
 -		dfs_range += hostapd_is_dfs_overlap(
 -			iface, bandwidth, settings.freq_params.center_freq2);
@@ -141,8 +142,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -		}
 -
 -		settings.freq_params.channel = chan;
-+		freq = settings.freq_params.freq;
- 
+-
 -		wpa_printf(MSG_DEBUG,
 -			   "DFS/CAC to (channel=%u, freq=%d, sec_channel_offset=%d, bw=%d, center_freq1=%d)",
 -			   settings.freq_params.channel,

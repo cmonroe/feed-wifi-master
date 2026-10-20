@@ -73,7 +73,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int hostapd_config_bss(struct hostapd_config *conf, const char *ifname)
  {
  	struct hostapd_bss_config **all, *bss;
-@@ -5271,6 +5302,35 @@ static int hostapd_config_fill(struct ho
+@@ -5324,6 +5355,35 @@ static int hostapd_config_fill(struct ho
  		os_strlcpy(bss->apup_peer_ifname_prefix,
  		           pos, sizeof(bss->apup_peer_ifname_prefix));
  #endif // def CONFIG_APUP
@@ -270,7 +270,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd_set_and_check_bw320_offset(conf, 0);
  
  	conf->disable_mcs15_rx = true;
-@@ -1114,6 +1117,7 @@ void hostapd_config_free(struct hostapd_
+@@ -1115,6 +1118,7 @@ void hostapd_config_free(struct hostapd_
  #ifdef CONFIG_ACS
  	os_free(conf->acs_chan_bias);
  #endif /* CONFIG_ACS */
@@ -280,7 +280,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_AFC
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1363,8 +1363,39 @@ struct hostapd_config {
+@@ -1365,8 +1365,39 @@ struct hostapd_config {
  		int min_power;
  	} afc;
  #endif /* CONFIG_AFC */

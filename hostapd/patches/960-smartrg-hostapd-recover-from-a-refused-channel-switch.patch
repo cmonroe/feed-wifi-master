@@ -272,7 +272,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void hostapd_owe_update_trans(struct hostapd_iface *iface);;
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1823,6 +1823,9 @@ hostapd_switch_chan(struct ubus_context
+@@ -1826,6 +1826,9 @@ hostapd_switch_chan(struct ubus_context
  				   hapd->iface, NULL))
  		return UBUS_STATUS_UNKNOWN_ERROR;
  
