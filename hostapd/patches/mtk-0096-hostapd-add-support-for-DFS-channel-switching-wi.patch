@@ -33,9 +33,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  src/ap/ctrl_iface_ap.c |   8 ++
  src/ap/dfs.c           | 210 ++++++++++++++++++++++++++++++++++++-----
  src/ap/dfs.h           |  12 ++-
- src/ap/hostapd.c       |   8 ++
+ src/ap/hostapd.c       |   2 +
  src/ap/ieee802_11.c    |   5 +
- 7 files changed, 339 insertions(+), 71 deletions(-)
+ 7 files changed, 333 insertions(+), 71 deletions(-)
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
@@ -653,17 +653,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return 1;
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -5690,6 +5690,14 @@ int hostapd_force_channel_switch(struct
+@@ -5690,6 +5690,8 @@ int hostapd_force_channel_switch(struct
  		return ret;
  	}
  
-+	/* the restart can drop the kernel chain; the next DFS event arms a
-+	 * new one. The requested channel replaces a pending move to the
-+	 * chain, and an ACS radio must not select another channel.
-+	 */
-+	iface->radar_background.channel = -1;
-+	iface->radar_background.cac_started = 0;
-+	iface->radar_background.temp_ch = 0;
++	/* an ACS radio must not select another channel on the restart */
 +	iface->is_ch_switch_dfs = true;
  	ret = hostapd_enable_iface(iface);
  	if (ret)

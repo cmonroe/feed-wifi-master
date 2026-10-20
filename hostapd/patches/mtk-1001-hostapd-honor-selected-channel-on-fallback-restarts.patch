@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		ret = configured_fixed_chan_to_freq(iface);
  		if (ret < 0)
-@@ -5790,6 +5795,7 @@ hostapd_switch_channel_fallback(struct h
+@@ -5777,6 +5782,7 @@ hostapd_switch_channel_fallback(struct h
  	 * argument may actually point to one of these.
  	 * These params will be cleared during interface disable below.
  	 */

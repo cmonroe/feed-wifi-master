@@ -4,17 +4,12 @@ Subject: [PATCH] hostapd: move the background chain after a radar during a CSA
 
 A radar on the background chain stops the chain in the kernel. While
 a CSA ran, hostapd ignored that radar, so the chain stayed off until
-a later event moved it. When the CSA ended with an AP stop instead,
-hostapd kept the old chain record across the restart, and no event
-armed the chain again.
+a later event moved it.
 
-hostapd now records the radar and moves the chain when the CSA
-completes, or when a CAC abort ends the CSA. When a failed CSA makes
-hostapd restart the interface, it drops the chain record, so the next
-DFS event arms a new chain. The restart in the fallback of a CSA
-request that the driver rejects also drops the record. A move onto
-the background chain keeps its own copy of the target and arms a new
-chain after the restart.
+hostapd records the radar and moves the chain when the CSA completes,
+or when a CAC abort ends the CSA. A move onto the background chain
+keeps its own copy of the target and arms a new chain after the
+restart.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
@@ -89,20 +84,6 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* same as hostapd_interface_deinit without deinitializing ctrl-iface */
  	for (j = 0; j < hapd_iface->num_bss; j++) {
-@@ -5622,6 +5623,13 @@ hostapd_switch_channel_fallback(struct h
- 	iface->conf->ieee80211ax = freq_params->he_enabled;
- 	iface->conf->ieee80211be = freq_params->eht_enabled;
- 
-+	/* the restart can drop the kernel chain; the next DFS event arms a
-+	 * new one
-+	 */
-+	iface->radar_background.channel = -1;
-+	iface->radar_background.cac_started = 0;
-+	iface->radar_background.temp_ch = 0;
-+
- 	/*
- 	 * cs_params must not be cleared earlier because the freq_params
- 	 * argument may actually point to one of these.
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -701,6 +701,8 @@ struct hostapd_iface {
