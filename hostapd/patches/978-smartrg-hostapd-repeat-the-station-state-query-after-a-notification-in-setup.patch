@@ -1,0 +1,75 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 20 Oct 2026 15:30:37 -0700
+Subject: [PATCH] hostapd: repeat the station state query after a notification in setup
+
+hostapd drops a station notification for a radio whose AP is in
+setup, because the setup adds the AP only after the reply to its
+query of the station state. A notification that arrives while that
+query is outstanding is lost, and the setup then uses the station
+state from before the notification.
+
+Such a notification marks the reply stale, and the setup asks for the
+station state again before it adds the AP. The AP then starts in the
+state that matches the station. A notification before the first
+reply costs one extra query.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ openwrt/files/hostapd.uc |   29 ++++++++++++++++++++++++-----
+ 1 file changed, 24 insertions(+), 5 deletions(-)
+
+--- a/openwrt/files/hostapd.uc
++++ b/openwrt/files/hostapd.uc
+@@ -318,6 +318,16 @@ function iface_supplicant_start(phydev)
+ 	});
+ }
+ 
++function iface_pending_phy_status(pending)
++{
++	let phydev = pending.phydev;
++
++	pending.call("wpa_supplicant", "phy_status", {
++		phy: phydev.phy,
++		radio: phydev.radio ?? -1,
++	});
++}
++
+ function __iface_pending_next(pending, state, ret, data)
+ {
+ 	let config = pending.config;
+@@ -348,12 +358,15 @@ function __iface_pending_next(pending, s
+ 			}
+ 		}
+ 
+-		pending.call("wpa_supplicant", "phy_status", {
+-			phy: phydev.phy,
+-			radio: phydev.radio ?? -1,
+-		});
++		iface_pending_phy_status(pending);
+ 		return "check_phy";
+ 	case "check_phy":
++		if (pending.phy_stale) {
++			delete pending.phy_stale;
++			iface_pending_phy_status(pending);
++			return "check_phy";
++		}
++
+ 		let phy_status = data;
+ 		pending.has_sta_iface = !!(phy_status && phy_status.state);
+ 		if (phy_status && phy_status.state == "COMPLETED") {
+@@ -2200,8 +2213,14 @@ let main_obj = {
+ 				return 0;
+ 
+ 			let iface = hostapd.interfaces[phy];
+-			if (!iface)
++			if (!iface) {
++				// the setup adds the iface only after the phy_status reply,
++				// which this notification makes stale
++				let pending = hostapd.data.pending_config[phy];
++				if (pending && pending.next_state == "check_phy")
++					pending.phy_stale = true;
+ 				return 0;
++			}
+ 
+ 			apsta_csa_retry_cancel(phy);
+ 
