@@ -7,6 +7,37 @@ becomes its record and the entry leaves this file.
 The entries are in order of severity, most severe first. Put a new entry at
 its rank.
 
+## A Concurrent Scan Makes the Reconnect to an Expired BSS Entry Fail
+
+**Severity:** low. One connection attempt fails, and wpa_supplicant ignores
+the BSS for 10 s. Seen once in six runs on 2026-10-20, in the tests of
+SDG-10080, on an SDG-8732v satellite with SmartOS 26.11.0.101 r36846.
+
+### What happens
+
+- When cfg80211 has no current entry for the BSS, the authentication gets
+  ENOENT. `wpa_driver_nl80211_authenticate()` then starts a scan of that
+  channel for the SSID, and sends the authentication again when the scan
+  ends.
+- It returns the result of the scan trigger. If another scan runs on the
+  interface, the trigger fails, and SME counts a failed connection and puts
+  the BSSID on the ignore list.
+- On a satellite, the other scan is mostly the `iw ... scan freq <f> ssid`
+  of `mesh-client-besthop.sh`, every 10 s.
+- In the test, the satellite then joined another satellite. With only one
+  parent, wpa_supplicant clears the ignore list after its next scan, which
+  also refreshes the entry.
+- cfg80211 has no current entry when the entry expired, or, with patch 922
+  of mac80211, when a channel switch moved it. So the case comes at the first
+  reconnect after a channel switch of the parent.
+
+### If it is fixed later
+
+When the scan trigger fails because a scan runs, keep the authentication
+parameters and start the scan when the other scan ends, instead of an error
+to SME. The finding comes from the hostapd source 2026.08.07 of the build;
+upstream hostap was not checked.
+
 ## The First FT Between Two APs Waits for a Key Pull That Gets No Answer
 
 **Severity:** low. The roam completes, 1 s late over the DS and 0.1 s late
