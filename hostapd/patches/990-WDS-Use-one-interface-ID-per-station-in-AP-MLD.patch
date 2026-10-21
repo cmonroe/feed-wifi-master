@@ -1,0 +1,91 @@
+From: Piotr Kubik <piotr.kubik@adtran.com>
+Date: Wed, 21 Oct 2026 18:20:00 +0200
+Subject: [PATCH] WDS: Use one interface ID per station in AP MLD
+
+An AP MLD gave a Multi-AP backhaul STA two WDS interfaces. The
+association callback named the first one by the AID, because the STA
+had no WLAN_STA_WDS flag yet. The first 4-address frame then allocated
+an MLD-wide ID and added a second interface, which the STA used. When
+the STA left, the link STA that was freed last removed the interface
+by the AID and did not release the ID, because only the link STA that
+allocated the ID knew it. Each association left one interface and one
+ID behind, until the ID space was used up.
+
+Use the MLD-wide ID in the association callback as well, give a new ID
+to every link STA of the station, and remove the interface by the ID
+whenever a link STA has one.
+
+Fixes: ec2ecd606cd1 ("WDS: Support WDS interface creation in AP MLD")
+Fixes: 7561cfa1ea9a ("WDS: Interface removal in MLO cases")
+---
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -5088,6 +5088,14 @@ static int hostapd_get_wds_mld_ifname_id
+ 	sta->wds_ifname_id = ifname_id;
+ 	mld->wds_ifname_id[i] |= BIT(j);
+ 	wpa_printf(MSG_DEBUG, "  new WDS ifname_id %d", sta->wds_ifname_id);
++
++	/* The link STAs share the WDS interface, and the one that leaves
++	 * last removes it in ap_free_sta(), so each of them needs the ID. */
++	for_each_mld_link(link_bss, hapd) {
++		link_sta = ap_get_sta(link_bss, sta->addr);
++		if (link_sta)
++			link_sta->wds_ifname_id = ifname_id;
++	}
+ 	return 0;
+ }
+ #endif /* CONFIG_IEEE80211BE */
+@@ -9446,17 +9454,33 @@ skip_update:
+ 		int ifname_id = sta->aid;
+ 
+ #ifdef CONFIG_IEEE80211BE
+-		if (hapd->conf->mld_ap && (sta->flags & WLAN_STA_WDS))
+-			ifname_id = sta->wds_ifname_id;
++		/* An AP MLD names the WDS interface by the MLD-wide ID, also
++		 * for a Multi-AP backhaul STA that did not send a 4-address
++		 * frame yet. With the AID, the first 4-address frame adds a
++		 * second interface, and only one of the two is removed. */
++		if (hapd->conf->mld_ap) {
++			if (hostapd_get_wds_mld_ifname_id(hapd, sta) < 0)
++				ifname_id = 0;
++			else
++				ifname_id = sta->wds_ifname_id;
++		}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+-		wpa_printf(MSG_DEBUG, "Reenable 4-address WDS mode for STA "
+-			   MACSTR " (ifname_id %u)",
+-			   MAC2STR(sta->addr), ifname_id);
+-		ret = hostapd_set_wds_sta(hapd, ifname_wds, sta->addr,
+-					  ifname_id, 1);
+-		if (!ret)
+-			hostapd_set_wds_encryption(hapd, sta, ifname_wds);
++		if (ifname_id > 0) {
++			wpa_printf(MSG_DEBUG,
++				   "Reenable 4-address WDS mode for STA "
++				   MACSTR " (ifname_id %u)",
++				   MAC2STR(sta->addr), ifname_id);
++			ret = hostapd_set_wds_sta(hapd, ifname_wds, sta->addr,
++						  ifname_id, 1);
++			if (!ret)
++				hostapd_set_wds_encryption(hapd, sta,
++							   ifname_wds);
++		} else {
++			wpa_printf(MSG_DEBUG,
++				   "No room for WDS ifname_id to reenable 4-address WDS mode for STA "
++				   MACSTR, MAC2STR(sta->addr));
++		}
+ 	}
+ 
+ 	if (sta->auth_alg == WLAN_AUTH_FT)
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -410,7 +410,7 @@ void ap_free_sta(struct hostapd_data *ha
+ 		int ifname_id = sta->aid;
+ 
+ #ifdef CONFIG_IEEE80211BE
+-		if (hapd->conf->mld_ap && (sta->flags & WLAN_STA_WDS))
++		if (hapd->conf->mld_ap && sta->wds_ifname_id > 0)
+ 			ifname_id = sta->wds_ifname_id;
+ 
+ 		if (ap_sta_is_mld(hapd, sta)) {
