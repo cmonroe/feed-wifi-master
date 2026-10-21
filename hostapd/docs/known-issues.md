@@ -151,10 +151,69 @@ SDG-9913 on 2026-10-11 and 2026-10-12, on each build of the tests: release
 
 ### What is not known
 
-- Which other paths give the line.
+- Which other paths give the line. On 2026-10-20 the line also came at the
+  removal of a station, in the same millisecond as "deauthenticated due to
+  local deauth request". That was a satellite backhaul station on an
+  SDG-8712v controller with 26.11.0.101.
 - Whether a station with a VLAN other than 0 can lose its VLAN this way.
 
 ### If it matters later
 
 Read the callers of `ap_sta_bind_vlan()` that run before the kernel has the
 station entry.
+
+## FT and FILS Authentication Replies Go to the MLD Address of the Client
+
+**Severity:** low. The shipped settings cannot reach it: no SmartRG package
+sets the `mlo` option of a `wifi-iface`, so no unit runs an AP MLD. Found
+from the code during the investigation of SDG-10128 on 2026-10-20. Not tested;
+the lab has no AP MLD.
+
+### What happens
+
+- Patches 192 and 193 address the Authentication replies of open system and
+  SAE to the link address that sent the request. A client of an AP MLD can
+  pick a new link address for each attempt, and the driver maps the MLD
+  address back to a link only while it knows the current link address.
+- The FT and FILS replies do not have this fix:
+  - `handle_auth_ft_finish()` sends to the `dst` that the FT code passes,
+    and `wpa_ft_process_auth()` and `ft_finish_pull()` pass `sm->addr`.
+    `handle_auth()` creates the WPA state machine with `sta->addr`, which
+    is the MLD address of such a client.
+  - `handle_auth_fils_finish()` sends to `sta->addr`.
+- So an FT or FILS reply to a client that changed its link address goes to
+  an address that no station answers.
+
+### What would close it
+
+Use `sta->auth_link_addr` for the reply of an MLD client in both functions,
+as patch 193 does for SAE.
+
+## A usteer Ban Does Not Stop a Client of an AP MLD
+
+**Severity:** low. The shipped settings cannot reach it, for the same reason
+as the entry above. Found from the code during the investigation of
+SDG-10128 on 2026-10-20. Not tested.
+
+### What happens
+
+- hostapd names a client of an AP MLD by its MLD address in the ubus
+  notifications (`hostapd_ubus_sta_addr()`). usteer kicks that address
+  with `del_client` and a `ban_time`, and `hostapd_bss_ban_client()` stores
+  the ban under it.
+- `hostapd_ubus_handle_event()` looks up the ban by the source address of
+  the received frame. For an Authentication request of a client that is not
+  associated, that is the link address (the header of patch 192 states this).
+- When the link address of the client differs from its MLD address, the
+  lookup misses. The client can authenticate and associate again at once,
+  and the ban has no effect.
+
+### What is not known
+
+- How many clients use their MLD address as a link address. For such a
+  client the ban works.
+
+### What would close it
+
+In `hostapd_ubus_handle_event()`, also look up the MLD address that
+`hostapd_process_ml_auth()` reads from the Authentication frame.
