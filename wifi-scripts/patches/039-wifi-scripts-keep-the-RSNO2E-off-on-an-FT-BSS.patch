@@ -1,0 +1,55 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 22 Oct 2026 16:30:29 -0700
+Subject: [PATCH] wifi-scripts: keep the RSNO2E off on an FT BSS
+
+A fast BSS transition keeps the AKM and the pairwise cipher of the
+initial association (IEEE 802.11-2024 12.7.1.6.1). The target AP
+rejects an FT authentication with another pairwise cipher with
+status 42. f51374894635 ("wifi-scripts: SAE-EXT-KEY and GCMP-256 in
+the EHT RSNO2E") puts both items into the RSNE Override 2 element of
+an EHT BSS, and an AP without EHT sends no such element. A mobility
+domain with EHT and non-EHT APs therefore splits in two. A client
+that takes SAE-EXT-KEY and GCMP-256 on an EHT AP cannot roam with FT
+to a non-EHT AP. Some clients then repeat the FT authentication
+instead of a fresh SAE authentication and stay on the EHT AP.
+
+A BSS with ieee80211r offers the items of the element only when
+sae_ext_key or gcmp256 asks for them. Every AP of the mobility domain
+then offers the same set by default. An explicit 1 on every AP keeps
+the domain uniform too, with both items in the RSNE.
+---
+ src/usr/share/ucode/wifi/iface.uc |   17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+--- a/src/usr/share/ucode/wifi/iface.uc
++++ b/src/usr/share/ucode/wifi/iface.uc
+@@ -116,16 +116,25 @@ export function parse_encryption(config,
+ 	 * RSNE that already offers the AKM and the pairwise cipher of the RSNO2E
+ 	 * makes the RSNO2E a duplicate, so the BSS sends none. An AP MLD sends
+ 	 * none only where that holds on every link (ap.uc mld_rsno2()).
++	 *
++	 * A fast BSS transition keeps the AKM and the pairwise cipher of the
++	 * initial association (IEEE 802.11-2024 12.7.1.6.1), and an AP without
++	 * EHT sends no RSNO2E. A BSS with ieee80211r therefore offers the RSNO2E
++	 * items only when the option asks for them, so that every AP of the
++	 * mobility domain offers the same set.
+ 	 */
+ 	let eht = wildcard(dev_config?.htmode ?? '', 'EHT*');
++	let ft = !!config.ieee80211r;
+ 	let compat = (config.auth_type == 'sae-compat');
+ 	let rsno2_mode = config.auth_type in [ 'sae', 'psk3', 'sae-mixed', 'psk3-mixed' ] ||
+ 		(!!config.mlo && config.auth_type == 'psk2');
+ 	/* all links of an AP MLD must reach the same decision */
+-	let rsno2_sae = (eht || !!config.mlo) && rsno2_mode && config.sae_ext_key !== false;
+-	let rsno2_pairwise = (config.gcmp256 !== false && phy_features?.cipher_gcmp256) ? 'GCMP-256' : 'CCMP';
+-	config.gcmp256 ??= compat && eht;
+-	config.sae_ext_key ??= compat && eht;
++	let rsno2_sae = (eht || !!config.mlo) && rsno2_mode &&
++		(ft ? config.sae_ext_key === true : config.sae_ext_key !== false);
++	let rsno2_gcmp256 = ft ? config.gcmp256 === true : config.gcmp256 !== false;
++	let rsno2_pairwise = (rsno2_gcmp256 && phy_features?.cipher_gcmp256) ? 'GCMP-256' : 'CCMP';
++	config.gcmp256 ??= compat && eht && !ft;
++	config.sae_ext_key ??= compat && eht && !ft;
+ 
+ 	switch(config.auth_type) {
+ 	case 'owe':
