@@ -7,7 +7,13 @@ filter relevant entries when dumping to userspace.
 
 prevents returning scan entries for other bands in single wiphy mode.
 
+the filter takes the radio mask of the interface, not the radios of its
+active links: a station MLD with fewer links than radios must see the
+entries of the other radios to add the missing links.
+
 Signed-off-by: Chad Monroe <chad@monroe.io>
+Co-developed-by: Piotr Kubik <piotr.kubik@adtran.com>
+Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
 ---
  net/wireless/core.h    |    1 +
  net/wireless/nl80211.c |   13 +++++++++++++
@@ -38,13 +44,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		attrbuf[NL80211_ATTR_BSS_DUMP_INCLUDE_USE_DATA];
  	kfree(attrbuf);
  
-+	iface_mask = 0;
-+	if (wdev->netdev)
-+		iface_mask = rdev_get_radio_mask(rdev, wdev->netdev);
 +	all_mask = rdev->wiphy.n_radio ?
 +		BIT(rdev->wiphy.n_radio) - 1 : ~0U;
-+	if (!iface_mask)
-+		iface_mask = wdev->radio_mask ? wdev->radio_mask : all_mask;
++	/*
++	 * The radios the interface may use, not the radios of its active
++	 * links: a station MLD needs the entries of a radio without a link.
++	 */
++	iface_mask = wdev->radio_mask ?: all_mask;
 +
  	spin_lock_bh(&rdev->bss_lock);
  
