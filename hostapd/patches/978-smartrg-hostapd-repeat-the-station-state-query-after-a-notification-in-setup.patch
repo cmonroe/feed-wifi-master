@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -318,6 +318,16 @@ function iface_supplicant_start(phydev)
+@@ -329,6 +329,16 @@ function iface_supplicant_start(phydev)
  	});
  }
  
@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function __iface_pending_next(pending, state, ret, data)
  {
  	let config = pending.config;
-@@ -348,12 +358,15 @@ function __iface_pending_next(pending, s
+@@ -359,12 +369,15 @@ function __iface_pending_next(pending, s
  			}
  		}
  
@@ -57,7 +57,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		let phy_status = data;
  		pending.has_sta_iface = !!(phy_status && phy_status.state);
  		if (phy_status && phy_status.state == "COMPLETED") {
-@@ -2196,8 +2209,14 @@ let main_obj = {
+@@ -2207,8 +2220,14 @@ let main_obj = {
  				return 0;
  
  			let iface = hostapd.interfaces[phy];

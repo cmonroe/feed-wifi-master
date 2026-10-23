@@ -18,18 +18,22 @@ wpa_supplicant mesh BSS sets it, and the setup of that BSS must
 complete. An AP on a radio that a station MLD spans without a link
 has no channel to follow and runs the radio's own configuration. The
 AP restarts when a link appears on such a radio, and when the link of
-a following radio leaves.
+a following radio leaves. That AP starts without the start_disabled
+that the setup writes beside a STA, because no station link starts it
+later.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
+Co-developed-by: Piotr Kubik <piotr.kubik@adtran.com>
+Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
 ---
  hostapd/config_file.c           |    2 
- openwrt/files/hostapd.uc        |  117 +++++++++++++++++++++++++++++++++-------
+ openwrt/files/hostapd.uc        |  128 +++++++++++++++++++++++++++++++++-------
  openwrt/files/wpa_supplicant.uc |    3 +
  src/ap/ap_config.h              |    1 
  src/ap/dfs.c                    |   15 +++++
  src/ap/hw_features.c            |   15 +++++
  src/ap/ucode.c                  |    1 
- 7 files changed, 134 insertions(+), 20 deletions(-)
+ 7 files changed, 145 insertions(+), 20 deletions(-)
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
@@ -41,7 +45,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  hostapd.data.file_fields = {
  	vlan_file: true,
-@@ -145,9 +146,29 @@ function iface_freq_info(iface, config,
+@@ -145,9 +146,40 @@ function iface_freq_info(iface, config,
  	return hostapd.freq_info(freq, sec_offset, width);
  }
  
@@ -51,7 +55,18 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 -	let config_inline = iface_gen_config(config, !!phy_status);
 +	let linkless = !!phy_status?.no_link;
 +	if (linkless) {
-+		if (hostapd.add_iface(`bss_config=${phy}:${iface_gen_config(config, false, false)}`) < 0)
++		/*
++		 * The setup writes start_disabled for every AP beside a STA, and a
++		 * start_disabled BSS waits for a start that no station link triggers.
++		 */
++		let own = {
++			...config,
++			bss: map(config.bss, (bss) => ({
++				...bss,
++				data: filter(bss.data, (l) => l != "start_disabled=1"),
++			})),
++		};
++		if (hostapd.add_iface(`bss_config=${phy}:${iface_gen_config(own, false, false)}`) < 0)
 +			return false;
 +
 +		delete hostapd.data.apsta_freq[phy];
@@ -73,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	let bss = config.bss[0];
  	let ret = hostapd.add_iface(`bss_config=${phy}:${config_inline}`);
-@@ -163,7 +184,21 @@ function iface_add(phy, config, phy_stat
+@@ -163,7 +195,21 @@ function iface_add(phy, config, phy_stat
  
  	let freq_info = iface_freq_info(iface, config, phy_status);
  
@@ -96,7 +111,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  function bss_macaddr_name(group, bss)
-@@ -303,6 +338,7 @@ function __iface_pending_next(pending, s
+@@ -303,6 +349,7 @@ function __iface_pending_next(pending, s
  		return "check_phy";
  	case "check_phy":
  		let phy_status = data;
@@ -104,7 +119,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (phy_status && phy_status.state == "COMPLETED") {
  			if (iface_add(phy, config, phy_status))
  				return "done";
-@@ -316,7 +352,7 @@ function __iface_pending_next(pending, s
+@@ -316,7 +363,7 @@ function __iface_pending_next(pending, s
  		});
  		return "wpas_stopped";
  	case "wpas_stopped":
@@ -113,7 +128,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			hostapd.printf(`hostapd.add_iface failed for phy ${phy} ifname=${bss.ifname}`);
  		pending.call("wpa_supplicant", "phy_set_state", {
  			phy: phydev.phy,
-@@ -415,6 +451,7 @@ function iface_restart(phydev, config, o
+@@ -415,6 +462,7 @@ function iface_restart(phydev, config, o
  		pending.abort();
  
  	delete hostapd.data.apsta_stopped[phy];
@@ -121,7 +136,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd.remove_iface(phy);
  
  	let prev_bssid = {};
-@@ -1017,6 +1054,17 @@ function iface_start_failed(name)
+@@ -1017,6 +1065,17 @@ function iface_start_failed(name)
  	       !hostapd.data.apsta_stopped[name];
  }
  
@@ -139,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  // Whether the interface runs the channel `config` names already. A channel
  // switch hostapd makes by itself, after a radar, leaves the stored config on
  // the channel it left, so a config that names the channel it moved to is no
-@@ -1275,7 +1323,8 @@ function iface_reload_config(name, phyde
+@@ -1275,7 +1334,8 @@ function iface_reload_config(name, phyde
  		bsscfg.bssid = addr;
  	}
  
@@ -149,7 +164,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	// Step 7: fill in the gaps with new interfaces
  	for (let i = 0; i < length(config.bss); i++) {
-@@ -1432,6 +1481,7 @@ function iface_config_remove(name, old_c
+@@ -1432,6 +1492,7 @@ function iface_config_remove(name, old_c
  
  	delete hostapd.data.apsta_freq[name];
  	delete hostapd.data.apsta_stopped[name];
@@ -157,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd.remove_iface(name);
  	return iface_remove(old_config);
  }
-@@ -2045,6 +2095,20 @@ let main_obj = {
+@@ -2045,6 +2106,20 @@ let main_obj = {
  				return 0;
  			}
  
@@ -178,7 +193,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			if (req.args.frequency)
  				hostapd.data.apsta_freq[phy] = req.args.frequency;
  			else if (req.args.no_link && hostapd.data.apsta_freq[phy]) {
-@@ -2055,39 +2119,52 @@ let main_obj = {
+@@ -2055,39 +2130,52 @@ let main_obj = {
  				 * happened to use last.
  				 */
  				delete hostapd.data.apsta_freq[phy];
