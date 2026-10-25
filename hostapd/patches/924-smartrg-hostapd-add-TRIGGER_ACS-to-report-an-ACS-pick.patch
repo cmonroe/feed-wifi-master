@@ -655,7 +655,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* HW_FEATURES_H */
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1085,6 +1085,11 @@ hostapd_switch_chan(struct ubus_context
+@@ -1079,6 +1079,11 @@ hostapd_switch_chan(struct ubus_context
  	if (!tb[CSA_FREQ])
  		return UBUS_STATUS_INVALID_ARGUMENT;
  
@@ -669,7 +669,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (iconf->secondary_channel)
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -739,6 +739,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
+@@ -752,6 +752,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
  		hapd->beacon_set_done = 0;
  	}
  
@@ -679,7 +679,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return NULL;
  }
  
-@@ -859,6 +862,11 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -872,6 +875,11 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  	if (!iface || ucv_type(info) != UC_OBJECT)
  		return NULL;
  

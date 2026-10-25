@@ -121,7 +121,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd.remove_iface(phy);
  
  	let prev_bssid = {};
-@@ -1021,6 +1058,17 @@ function iface_start_failed(name)
+@@ -1017,6 +1054,17 @@ function iface_start_failed(name)
  	       !hostapd.data.apsta_stopped[name];
  }
  
@@ -139,7 +139,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  // Whether the interface runs the channel `config` names already. A channel
  // switch hostapd makes by itself, after a radar, leaves the stored config on
  // the channel it left, so a config that names the channel it moved to is no
-@@ -1279,7 +1327,8 @@ function iface_reload_config(name, phyde
+@@ -1275,7 +1323,8 @@ function iface_reload_config(name, phyde
  		bsscfg.bssid = addr;
  	}
  
@@ -149,7 +149,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	// Step 7: fill in the gaps with new interfaces
  	for (let i = 0; i < length(config.bss); i++) {
-@@ -1436,6 +1485,7 @@ function iface_config_remove(name, old_c
+@@ -1432,6 +1481,7 @@ function iface_config_remove(name, old_c
  
  	delete hostapd.data.apsta_freq[name];
  	delete hostapd.data.apsta_stopped[name];
@@ -157,7 +157,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd.remove_iface(name);
  	return iface_remove(old_config);
  }
-@@ -2049,6 +2099,20 @@ let main_obj = {
+@@ -2045,6 +2095,20 @@ let main_obj = {
  				return 0;
  			}
  
@@ -178,7 +178,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			if (req.args.frequency)
  				hostapd.data.apsta_freq[phy] = req.args.frequency;
  			else if (req.args.no_link && hostapd.data.apsta_freq[phy]) {
-@@ -2059,39 +2123,52 @@ let main_obj = {
+@@ -2055,39 +2119,52 @@ let main_obj = {
  				 * happened to use last.
  				 */
  				delete hostapd.data.apsta_freq[phy];
@@ -317,7 +317,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 acs_freq_list_present;
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -820,6 +820,7 @@ out:
+@@ -833,6 +833,7 @@ out:
  
  	for (i = 0; i < iface->num_bss; i++)
  		iface->bss[i]->conf->start_disabled = 0;

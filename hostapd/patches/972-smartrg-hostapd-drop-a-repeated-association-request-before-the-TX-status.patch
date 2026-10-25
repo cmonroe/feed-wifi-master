@@ -77,7 +77,7 @@ does one second without a TX status.
  	if (set_beacon)
  		ieee802_11_update_beacons(hapd->iface);
  
-@@ -8938,6 +8969,9 @@ static void handle_assoc_cb(struct hosta
+@@ -8942,6 +8973,9 @@ static void handle_assoc_cb(struct hosta
  	else
  		status = le_to_host16(mgmt->u.assoc_resp.status_code);
  

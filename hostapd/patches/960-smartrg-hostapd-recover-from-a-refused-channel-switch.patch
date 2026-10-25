@@ -272,7 +272,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  bool hostapd_owe_trans_static(struct hostapd_bss_config *conf);
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1882,6 +1882,9 @@ hostapd_switch_chan(struct ubus_context
+@@ -1876,6 +1876,9 @@ hostapd_switch_chan(struct ubus_context
  				   hapd->iface, NULL))
  		return UBUS_STATUS_UNKNOWN_ERROR;
  

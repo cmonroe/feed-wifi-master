@@ -127,7 +127,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
   * @chandef: the new channel definition
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -1997,7 +1997,7 @@ static int ieee80211_change_beacon(struc
+@@ -2004,7 +2004,7 @@ static int ieee80211_change_beacon(struc
  	return 0;
  }
  
@@ -136,7 +136,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	if (!link->u.ap.next_beacon)
  		return;
-@@ -4251,18 +4251,15 @@ static void ieee80211_end_cac(struct wip
+@@ -4261,18 +4261,15 @@ static void ieee80211_end_cac(struct wip
  
  	lockdep_assert_wiphy(local->hw.wiphy);
  
@@ -162,7 +162,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  }
  
-@@ -4464,6 +4461,40 @@ static int ieee80211_set_after_csa_beaco
+@@ -4474,6 +4471,40 @@ static int ieee80211_set_after_csa_beaco
  	return 0;
  }
  
@@ -203,7 +203,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int __ieee80211_csa_finalize(struct ieee80211_link_data *link_data)
  {
  	struct ieee80211_sub_if_data *sdata = link_data->sdata;
-@@ -4497,6 +4528,12 @@ static int __ieee80211_csa_finalize(stru
+@@ -4507,6 +4538,12 @@ static int __ieee80211_csa_finalize(stru
  					&link_data->csa.chanreq.oper))
  		return -EINVAL;
  
@@ -216,7 +216,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	link_conf->csa_active = false;
  
  	err = ieee80211_set_after_csa_beacon(link_data, &changed);
-@@ -4520,25 +4557,36 @@ static int __ieee80211_csa_finalize(stru
+@@ -4530,25 +4567,36 @@ static int __ieee80211_csa_finalize(stru
  	return 0;
  }
  
@@ -265,7 +265,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  void ieee80211_csa_finalize_work(struct wiphy *wiphy, struct wiphy_work *work)
-@@ -4719,6 +4767,7 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4729,6 +4777,7 @@ __ieee80211_channel_switch(struct wiphy
  	struct ieee80211_link_data *link_data;
  	u64 changed = 0;
  	u8 link_id = params->link_id;
@@ -273,7 +273,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int err;
  
  	lockdep_assert_wiphy(local->hw.wiphy);
-@@ -4726,9 +4775,6 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4736,9 +4785,6 @@ __ieee80211_channel_switch(struct wiphy
  	if (ieee80211_is_scan_ongoing(wiphy, local, &params->chandef))
  		return -EBUSY;
  
@@ -283,7 +283,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (WARN_ON(link_id >= IEEE80211_MLD_MAX_NUM_LINKS))
  		return -EINVAL;
  
-@@ -4741,8 +4787,10 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4751,8 +4797,10 @@ __ieee80211_channel_switch(struct wiphy
  	if (chanreq.oper.punctured && !link_conf->eht_support)
  		return -EINVAL;
  
@@ -296,7 +296,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return -EBUSY;
  
  	conf = wiphy_dereference(wiphy, link_conf->chanctx_conf);
-@@ -4765,6 +4813,12 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4775,6 +4823,12 @@ __ieee80211_channel_switch(struct wiphy
  
  	chanctx = container_of(conf, struct ieee80211_chanctx, conf);
  
@@ -309,7 +309,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ch_switch.timestamp = 0;
  	ch_switch.device_timestamp = 0;
  	ch_switch.block_tx = params->block_tx;
-@@ -4812,11 +4866,16 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4822,11 +4876,16 @@ __ieee80211_channel_switch(struct wiphy
  		ieee80211_link_info_change_notify(sdata, link_data, changed);
  		drv_channel_switch_beacon(sdata, &link_data->csa.chanreq.oper);
  	} else {
@@ -328,7 +328,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return err;
  }
  
-@@ -6007,7 +6066,7 @@ ieee80211_skip_cac(struct wireless_dev *
+@@ -6028,7 +6087,7 @@ ieee80211_skip_cac(struct wireless_dev *
  	wiphy_hrtimer_work_cancel(sdata->local->hw.wiphy,
  				  &link->dfs_cac_timer_work);
  	if (wdev->links[link_id].cac_started) {
@@ -337,7 +337,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		cac_time_ms = wdev->links[link_id].cac_time_ms;
  		wdev->links[link_id].cac_start_time = jiffies -
  				       msecs_to_jiffies(cac_time_ms + 1);
-@@ -6100,6 +6159,7 @@ const struct cfg80211_ops mac80211_confi
+@@ -6121,6 +6180,7 @@ const struct cfg80211_ops mac80211_confi
  #endif
  	.get_channel = ieee80211_cfg_get_channel,
  	.start_radar_detection = ieee80211_start_radar_detection,
@@ -347,7 +347,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	.set_qos_map = ieee80211_set_qos_map,
 --- a/net/mac80211/ieee80211_i.h
 +++ b/net/mac80211/ieee80211_i.h
-@@ -2168,6 +2168,7 @@ int ieee80211_mgmt_tx_cancel_wait(struct
+@@ -2173,6 +2173,7 @@ int ieee80211_mgmt_tx_cancel_wait(struct
  void ieee80211_csa_finalize_work(struct wiphy *wiphy, struct wiphy_work *work);
  int ieee80211_channel_switch(struct wiphy *wiphy, struct net_device *dev,
  			     struct cfg80211_csa_settings *params);
@@ -355,7 +355,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  /* color change handling */
  void ieee80211_color_change_finalize_work(struct wiphy *wiphy,
-@@ -2860,7 +2861,9 @@ bool ieee80211_is_radio_idx_in_scan_req(
+@@ -2865,7 +2866,9 @@ bool ieee80211_is_radio_idx_in_scan_req(
  					struct cfg80211_scan_request *scan_req,
  					int radio_idx);
  
@@ -367,7 +367,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void ieee80211_dfs_radar_detected_work(struct wiphy *wiphy,
 --- a/net/mac80211/mlme.c
 +++ b/net/mac80211/mlme.c
-@@ -3984,6 +3984,18 @@ void ieee80211_dynamic_ps_timer(struct t
+@@ -4023,6 +4023,18 @@ void ieee80211_dynamic_ps_timer(struct t
  	wiphy_work_queue(local->hw.wiphy, &local->dynamic_ps_enable_work);
  }
  
@@ -386,7 +386,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void ieee80211_dfs_cac_timer_work(struct wiphy *wiphy, struct wiphy_work *work)
  {
  	struct ieee80211_link_data *link =
-@@ -3995,7 +4007,7 @@ void ieee80211_dfs_cac_timer_work(struct
+@@ -4034,7 +4046,7 @@ void ieee80211_dfs_cac_timer_work(struct
  	lockdep_assert_wiphy(sdata->local->hw.wiphy);
  
  	if (sdata->wdev.links[link->link_id].cac_started) {
@@ -545,7 +545,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				 struct cfg80211_chan_def *chandef)
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -12212,8 +12212,9 @@ skip_beacons:
+@@ -12377,8 +12377,9 @@ skip_beacons:
  			goto free;
  	}
  

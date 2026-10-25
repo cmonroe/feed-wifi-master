@@ -26,8 +26,6 @@ call dev_fill_forward_path() to retrieve a DEV_PATH_MTK_WDMA path.
 
 Fixes: 871df5007eda ("netfilter: flowtable: bail out if forward path cannot be discovered")
 Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
-[ The mac80211 part only. It needs the kernel part of this commit:
-  DEV_PATH_IEEE80211 and the ieee80211 flag of the context. ]
 ---
  net/mac80211/iface.c | 7 +++++++
  1 file changed, 7 insertions(+)

@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* netlink port which started critical protocol (0 means not started) */
  	u32 crit_proto_nlportid;
-@@ -512,6 +515,15 @@ cfg80211_start_background_radar_detectio
+@@ -529,6 +532,15 @@ cfg80211_start_background_radar_detectio
  
  void cfg80211_stop_radar_detection(struct wireless_dev *wdev);
  void cfg80211_stop_background_radar_detection(struct wireless_dev *wdev);
@@ -114,7 +114,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			     struct cfg80211_ml_reconf_req *req)
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -22403,14 +22403,10 @@ void cfg80211_ch_switch_notify(struct ne
+@@ -22578,14 +22578,10 @@ void cfg80211_ch_switch_notify(struct ne
  						       &wdev->links[link_id].ap.chandef,
  						       0);
  		wdev->links[link_id].ap.chandef = *chandef;
@@ -131,7 +131,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			cfg80211_stop_background_radar_detection(rdev->background_radar_wdev);
  		break;
  	case NL80211_IFTYPE_ADHOC:
-@@ -22483,6 +22479,9 @@ void cfg80211_ch_switch_started_notify(s
+@@ -22658,6 +22654,9 @@ void cfg80211_ch_switch_started_notify(s
  
  	trace_cfg80211_ch_switch_started_notify(dev, chandef, link_id);
  
@@ -143,7 +143,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				 NL80211_CMD_CH_SWITCH_STARTED_NOTIFY,
 --- a/net/wireless/ap.c
 +++ b/net/wireless/ap.c
-@@ -45,6 +45,7 @@ static int ___cfg80211_stop_ap(struct cf
+@@ -48,6 +48,7 @@ static int ___cfg80211_stop_ap(struct cf
  		if (notify)
  			nl80211_send_ap_stopped(wdev, link_id);
  
@@ -153,7 +153,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -1271,6 +1271,14 @@ cfg80211_offchan_chain_is_active(struct
+@@ -1330,6 +1330,14 @@ cfg80211_offchan_chain_is_active(struct
  				    false);
  }
  
@@ -168,7 +168,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  bool cfg80211_any_wiphy_oper_chan(struct wiphy *wiphy,
  				  struct ieee80211_channel *chan)
  {
-@@ -1290,7 +1298,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
+@@ -1349,7 +1357,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
  		guard(wiphy)(&rdev->wiphy);
  
  		found = cfg80211_is_wiphy_oper_chan(&rdev->wiphy, chan) ||
@@ -178,7 +178,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		if (found)
  			return true;
-@@ -2061,7 +2070,8 @@ static bool cfg80211_sta_subchan_in_use(
+@@ -2117,7 +2126,8 @@ static bool cfg80211_sta_subchan_in_use(
  		return true;
  
  	return cfg80211_is_wiphy_oper_chan(wiphy, chan) ||

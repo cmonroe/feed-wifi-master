@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hostapd_deinit_wpa(hapd);
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -478,8 +478,7 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
+@@ -479,8 +479,7 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
  	if (hapd->conf->mld_ap && hapd->mld)
  		hostapd_mld_beacons_update(hapd);
  #endif /* CONFIG_IEEE80211BE */

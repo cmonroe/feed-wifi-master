@@ -22,11 +22,9 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  net/mac80211/tx.c          | 24 +++++++++++++++---------
  2 files changed, 16 insertions(+), 10 deletions(-)
 
-diff --git a/net/mac80211/ieee80211_i.h b/net/mac80211/ieee80211_i.h
-index d05f59467399..9374c2942489 100644
 --- a/net/mac80211/ieee80211_i.h
 +++ b/net/mac80211/ieee80211_i.h
-@@ -2475,7 +2475,7 @@ static inline bool ieee80211_require_encrypted_assoc(__le16 fc,
+@@ -2486,7 +2486,7 @@ static inline bool ieee80211_require_enc
  /* sta_out needs to be checked for ERR_PTR() before using */
  int ieee80211_lookup_ra_sta(struct ieee80211_sub_if_data *sdata,
  			    struct sk_buff *skb,
@@ -35,11 +33,9 @@ index d05f59467399..9374c2942489 100644
  
  static inline void
  ieee80211_tx_skb_tid_band(struct ieee80211_sub_if_data *sdata,
-diff --git a/net/mac80211/tx.c b/net/mac80211/tx.c
-index 814399989b5e..c8217f6d146e 100644
 --- a/net/mac80211/tx.c
 +++ b/net/mac80211/tx.c
-@@ -2532,7 +2532,7 @@ static inline bool ieee80211_is_tdls_setup(struct sk_buff *skb)
+@@ -2534,7 +2534,7 @@ static inline bool ieee80211_is_tdls_set
  
  int ieee80211_lookup_ra_sta(struct ieee80211_sub_if_data *sdata,
  			    struct sk_buff *skb,
@@ -48,7 +44,7 @@ index 814399989b5e..c8217f6d146e 100644
  {
  	struct sta_info *sta;
  
-@@ -2553,7 +2553,10 @@ int ieee80211_lookup_ra_sta(struct ieee80211_sub_if_data *sdata,
+@@ -2555,7 +2555,10 @@ int ieee80211_lookup_ra_sta(struct ieee8
  			*sta_out = ERR_PTR(-ENOENT);
  			return 0;
  		}
@@ -60,7 +56,7 @@ index 814399989b5e..c8217f6d146e 100644
  		break;
  #ifdef CPTCFG_MAC80211_MESH
  	case NL80211_IFTYPE_MESH_POINT:
-@@ -4419,7 +4422,8 @@ void __ieee80211_subif_start_xmit(struct sk_buff *skb,
+@@ -4452,7 +4455,8 @@ void __ieee80211_subif_start_xmit(struct
  	    ieee80211_mesh_xmit_fast(sdata, skb, ctrl_flags))
  		goto out;
  
@@ -70,7 +66,7 @@ index 814399989b5e..c8217f6d146e 100644
  		goto out_free;
  
  	if (IS_ERR(sta))
-@@ -4848,7 +4852,10 @@ static void __ieee80211_subif_start_xmit_8023(struct sk_buff *skb,
+@@ -4893,7 +4897,10 @@ static void __ieee80211_subif_start_xmit
  
  	rcu_read_lock();
  
@@ -82,7 +78,7 @@ index 814399989b5e..c8217f6d146e 100644
  		kfree_skb(skb);
  		goto out;
  	}
-@@ -4869,8 +4876,7 @@ static void __ieee80211_subif_start_xmit_8023(struct sk_buff *skb,
+@@ -4914,8 +4921,7 @@ static void __ieee80211_subif_start_xmit
  		link = &sdata->deflink;
  		key = rcu_dereference(link->default_multicast_key);
  	} else if (unlikely(IS_ERR_OR_NULL(sta) || !sta->uploaded ||
@@ -92,7 +88,7 @@ index 814399989b5e..c8217f6d146e 100644
  		goto skip_offload;
  	} else {
  		key = rcu_dereference(sta->ptk[sta->ptk_idx]);
-@@ -4931,7 +4937,7 @@ ieee80211_build_data_template(struct ieee80211_sub_if_data *sdata,
+@@ -4976,7 +4982,7 @@ ieee80211_build_data_template(struct iee
  
  	rcu_read_lock();
  
@@ -101,7 +97,7 @@ index 814399989b5e..c8217f6d146e 100644
  		kfree_skb(skb);
  		skb = ERR_PTR(-EINVAL);
  		goto out;
-@@ -5002,7 +5008,7 @@ static bool ieee80211_tx_pending_skb(struct ieee80211_local *local,
+@@ -5047,7 +5053,7 @@ static bool ieee80211_tx_pending_skb(str
  		}
  		result = ieee80211_tx(sdata, NULL, skb, true);
  	} else if (info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP) {
@@ -110,7 +106,7 @@ index 814399989b5e..c8217f6d146e 100644
  			dev_kfree_skb(skb);
  			return true;
  		}
-@@ -6639,7 +6645,7 @@ int ieee80211_tx_control_port(struct wiphy *wiphy, struct net_device *dev,
+@@ -6680,7 +6686,7 @@ int ieee80211_tx_control_port(struct wip
  	 * AF_PACKET
  	 */
  	rcu_read_lock();
@@ -119,6 +115,3 @@ index 814399989b5e..c8217f6d146e 100644
  	if (err) {
  		dev_kfree_skb(skb);
  		rcu_read_unlock();
--- 
-2.47.3
-

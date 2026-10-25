@@ -120,7 +120,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		 */
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -467,6 +467,11 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
+@@ -468,6 +468,11 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
  		hostapd_free_link_stas(hapd);
  #endif /* CONFIG_IEEE80211BE */
  

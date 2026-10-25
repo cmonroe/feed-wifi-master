@@ -29,7 +29,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/include/net/mac80211.h
 +++ b/include/net/mac80211.h
-@@ -3999,12 +3999,15 @@ enum ieee80211_frame_release_type {
+@@ -4001,12 +4001,15 @@ enum ieee80211_frame_release_type {
   *	the peer.
   * @IEEE80211_RC_NSS_CHANGED: N_SS (number of spatial streams) was changed
   *	by the peer
@@ -45,7 +45,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  /**
-@@ -8226,4 +8229,18 @@ bool ieee80211_vif_nan_started(struct ie
+@@ -8239,4 +8242,18 @@ bool ieee80211_vif_nan_started(struct ie
   * Return: 0 if success and non-zero on error
   */
  int ieee80211_encrypt_tx_skb(struct sk_buff *skb);
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/net/mac80211/sta_info.c
 +++ b/net/mac80211/sta_info.c
-@@ -3856,6 +3856,44 @@ ieee80211_sta_current_bw(struct link_sta
+@@ -3938,6 +3938,44 @@ ieee80211_sta_current_bw(struct link_sta
  	return IEEE80211_STA_RX_BW_20;
  }
  

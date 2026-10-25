@@ -28,11 +28,9 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  net/wireless/scan.c | 22 ++++++++++++----------
  1 file changed, 12 insertions(+), 10 deletions(-)
 
-diff --git a/net/wireless/scan.c b/net/wireless/scan.c
-index caa9c6495f20..d35c826c4b1a 100644
 --- a/net/wireless/scan.c
 +++ b/net/wireless/scan.c
-@@ -1992,20 +1992,22 @@ cfg80211_update_known_bss(struct cfg80211_registered_device *rdev,
+@@ -1937,20 +1937,22 @@ cfg80211_update_known_bss(struct cfg8021
  			return false;
  		}
  
@@ -65,6 +63,3 @@ index caa9c6495f20..d35c826c4b1a 100644
  	}
  
  	known->pub.beacon_interval = new->pub.beacon_interval;
--- 
-2.47.3
-

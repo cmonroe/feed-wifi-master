@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -733,6 +733,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
+@@ -746,6 +746,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
  	if (!iface)
  		return NULL;
  
@@ -49,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (iface->state != HAPD_IFACE_ENABLED)
  		uc_hostapd_disable_iface(iface);
  
-@@ -762,8 +765,21 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+@@ -775,8 +778,21 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  	if (!iface)
  		return NULL;
  
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (ucv_type(info) != UC_OBJECT)
  		return NULL;
-@@ -777,27 +793,40 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+@@ -790,27 +806,40 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  		}								\
  	} while(0)
  
@@ -125,7 +125,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	intval = ucv_int64_get(ucv_object_get(info, "frequency", NULL));
  	if (!errno)
-@@ -831,6 +860,15 @@ out:
+@@ -844,6 +873,15 @@ out:
  		return ucv_boolean_new(true);
  	}
  
@@ -141,7 +141,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
  
-@@ -872,10 +910,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -885,10 +923,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  		return ucv_boolean_new(false);
  	}
  
@@ -158,7 +158,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		csa.freq_params.sec_channel_offset = intval;
  
  	csa.freq_params.ht_enabled = conf->ieee80211n;
-@@ -904,13 +946,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -917,13 +959,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  		break;
  	}
  
@@ -563,7 +563,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  function iface_add(phy, config, phy_status, start_disabled)
-@@ -2199,6 +2204,8 @@ let main_obj = {
+@@ -2195,6 +2200,8 @@ let main_obj = {
  			up: true,
  			frequency: 0,
  			sec_chan_offset: 0,
@@ -572,7 +572,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			csa: true,
  			csa_count: 0,
  			no_link: true,
-@@ -2208,6 +2215,9 @@ let main_obj = {
+@@ -2204,6 +2211,9 @@ let main_obj = {
  			if (req.args.up == null || !phy)
  				return libubus.STATUS_INVALID_ARGUMENT;
  
@@ -582,7 +582,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			let config = hostapd.data.config[phy];
  			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)
  				return 0;
-@@ -2286,6 +2296,8 @@ let main_obj = {
+@@ -2282,6 +2292,8 @@ let main_obj = {
  				if (!freq_info)
  					return fail();
  

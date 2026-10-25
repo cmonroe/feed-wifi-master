@@ -23,7 +23,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  /**
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -1370,6 +1370,26 @@ static bool cfg80211_chandef_dfs_availab
+@@ -1429,6 +1429,26 @@ static bool cfg80211_chandef_dfs_availab
  	return true;
  }
  
@@ -50,7 +50,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  unsigned int
  cfg80211_chandef_dfs_cac_time(struct wiphy *wiphy,
  			      const struct cfg80211_chan_def *chandef)
-@@ -1403,6 +1423,12 @@ cfg80211_chandef_dfs_cac_time(struct wip
+@@ -1462,6 +1482,12 @@ cfg80211_chandef_dfs_cac_time(struct wip
  
  		if (cf == 2 && c->dfs_cac_ms > t2)
  			t2 = c->dfs_cac_ms;

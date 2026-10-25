@@ -19,11 +19,9 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  net/mac80211/tx.c | 48 +++++++++++++++++++++++++++++++++--------------
  1 file changed, 34 insertions(+), 14 deletions(-)
 
-diff --git a/net/mac80211/tx.c b/net/mac80211/tx.c
-index 3a1e2c9e1565..ee792b77a8c6 100644
 --- a/net/mac80211/tx.c
 +++ b/net/mac80211/tx.c
-@@ -3877,6 +3877,38 @@ static bool ieee80211_xmit_fast(struct ieee80211_sub_if_data *sdata,
+@@ -3885,6 +3885,38 @@ static bool ieee80211_xmit_fast(struct i
  	return true;
  }
  
@@ -62,7 +60,7 @@ index 3a1e2c9e1565..ee792b77a8c6 100644
  struct sk_buff *ieee80211_tx_dequeue(struct ieee80211_hw *hw,
  				     struct ieee80211_txq *txq)
  {
-@@ -3943,20 +3975,8 @@ struct sk_buff *ieee80211_tx_dequeue(struct ieee80211_hw *hw,
+@@ -3951,20 +3983,8 @@ begin:
  
  	if (txq->sta) {
  		tx.sta = container_of(txq->sta, struct sta_info, sta);
@@ -85,6 +83,3 @@ index 3a1e2c9e1565..ee792b77a8c6 100644
  			I802_DEBUG_INC(local->tx_handlers_drop_unauth_port);
  			ieee80211_free_txskb(&local->hw, skb);
  			goto begin;
--- 
-2.47.3
-

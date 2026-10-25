@@ -49,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -1590,3 +1590,16 @@ void hostapd_ucode_apup_newpeer(struct h
+@@ -1604,3 +1604,16 @@ void hostapd_ucode_apup_newpeer(struct h
  	ucv_put(val);
  }
  #endif // def CONFIG_APUP
@@ -130,7 +130,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  	iface_macaddr_sync(phydev, config);
  
-@@ -1067,7 +1079,10 @@ function iface_start_failed(name)
+@@ -1063,7 +1075,10 @@ function iface_start_failed(name)
  // beacons of a stopped interface; a disabled one needs a restart.
  function iface_resume(name, iface)
  {
@@ -142,7 +142,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return false;
  
  	delete hostapd.data.apsta_stopped[name];
-@@ -1533,7 +1548,7 @@ function mld_link_bss_remove(phy, name)
+@@ -1529,7 +1544,7 @@ function mld_link_bss_remove(phy, name)
  	iface_macaddr_prune(phy, config);
  }
  
@@ -151,7 +151,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	let old_config = hostapd.data.config[name];
  
-@@ -1569,8 +1584,20 @@ function iface_set_config(name, config)
+@@ -1565,8 +1580,20 @@ function iface_set_config(name, config)
  	}
  
  	hostapd.printf(`Restart interface for phy ${name}`);
@@ -173,7 +173,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return ret;
  }
  
-@@ -2100,14 +2127,19 @@ let main_obj = {
+@@ -2096,14 +2123,19 @@ let main_obj = {
  			if (!req.args.up) {
  				delete hostapd.data.apsta_freq[phy];
  				hostapd.data.apsta_stopped[phy] = true;
@@ -194,7 +194,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				return 0;
  			};
  
-@@ -2172,7 +2204,15 @@ let main_obj = {
+@@ -2168,7 +2200,15 @@ let main_obj = {
  			if (!freq_info)
  				return 0;
  
@@ -211,7 +211,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				return fail();
  
  			delete hostapd.data.apsta_stopped[phy];
-@@ -2238,6 +2278,7 @@ let main_obj = {
+@@ -2234,6 +2274,7 @@ let main_obj = {
  			radio: 0,
  			config: "",
  			prev_config: "",
@@ -219,7 +219,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		},
  		call: function(req) {
  			let phy = req.args.phy;
-@@ -2245,21 +2286,28 @@ let main_obj = {
+@@ -2241,21 +2282,28 @@ let main_obj = {
  			let name = phy_name(phy, radio);
  			let file = req.args.config;
  			let prev_file = req.args.prev_config;
@@ -250,7 +250,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			if (hostapd.data.auth_obj)
  				hostapd.data.auth_obj.notify("reload", { phy, radio });
-@@ -2532,4 +2580,26 @@ return {
+@@ -2528,4 +2576,26 @@ return {
  			return null;
  		return response;
  	},
