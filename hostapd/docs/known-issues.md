@@ -217,3 +217,23 @@ SDG-10128 on 2026-10-20. Not tested.
 
 In `hostapd_ubus_handle_event()`, also look up the MLD address that
 `hostapd_process_ml_auth()` reads from the Authentication frame.
+
+## A Station That Changes Its MAC Address Gets No Holdoff
+
+**Severity:** low. Each attempt of such a station writes one line to the
+log. No such station is known. Found from the code in the work on SDG-10128
+on 2026-10-25.
+
+### What happens
+
+- Patch 982 counts the repeats of a rejected answer for each MAC address,
+  for 10 s, and writes them as one line.
+- A station that uses a new random MAC address for each attempt gets a new
+  entry each time, so each attempt writes one line.
+- The count is kept for 64 stations per BSS. With more addresses, each new
+  address replaces the oldest entry, which writes its pending count.
+
+### What would close it
+
+- A limit for each BSS on the lines of rejected answers per second, in
+  addition to the count for each MAC address.

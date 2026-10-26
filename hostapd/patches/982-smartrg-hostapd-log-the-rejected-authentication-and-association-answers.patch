@@ -1,0 +1,244 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Sun, 25 Oct 2026 16:55:40 -0700
+Subject: [PATCH] hostapd: log the rejected authentication and association answers
+
+syslog showed no 802.11 status code, so a log of the unit could not
+tell why the AP rejected an authentication or an association.
+
+Log each answer with a non-zero status at INFO, after the driver
+accepts the frame: "auth reply alg=<n> trans=<n> status=<n>" and
+"assoc reply status=<n>". A success is logged only for the SAE
+Confirm, FT and FILS, because "authenticated" and "associated" already
+mark the others, and an SAE Commit succeeds also with a wrong
+password. A station that repeats a rejected request, for example
+during a ban, gets the same answer each time, so the repeats of one
+answer within 10 s are counted and logged as one line with
+"repeated=<n>". The count is kept for 64 stations per BSS; a new
+station replaces the oldest.
+---
+ src/ap/hostapd.c    |    2 
+ src/ap/hostapd.h    |    1 
+ src/ap/ieee802_11.c |  158 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ src/ap/ieee802_11.h |    1 
+ 4 files changed, 161 insertions(+), 1 deletion(-)
+
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -830,6 +830,7 @@ void hostapd_free_hapd_data(struct hostapd_data *hapd)
+ 
+ #ifdef NEED_AP_MLME
+ 	hostapd_cleanup_cs_refused(hapd);
++	hostapd_reply_holdoff_flush(hapd);
+ #endif /* NEED_AP_MLME */
+ 
+ 	os_free(hapd->probereq_cb);
+@@ -3571,6 +3572,7 @@ hostapd_alloc_bss_data(struct hostapd_iface *hapd_iface,
+ 	dl_list_init(&hapd->sae_commit_queue);
+ #endif /* CONFIG_SAE */
+ 	dl_list_init(&hapd->erp_keys);
++	dl_list_init(&hapd->reply_holdoff);
+ 
+ 	return hapd;
+ }
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -440,6 +440,7 @@ struct hostapd_data {
+ 	int dot11RSNASAERetransPeriod; /* msec */
+ 	struct dl_list sae_commit_queue; /* struct hostapd_sae_commit_queue */
+ #endif /* CONFIG_SAE */
++	struct dl_list reply_holdoff; /* struct reply_holdoff */
+ 
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	unsigned int ext_mgmt_frame_handling:1;
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -355,6 +355,158 @@ static u16 auth_shared_key(struct hostapd_data *hapd, struct sta_info *sta,
+ #endif /* CONFIG_WEP */
+ 
+ 
++/* A STA that repeats a rejected request gets the same answer each time, so
++ * the repeats of one answer within the holdoff are counted, not logged. */
++#define REPLY_HOLDOFF_SEC 10
++#define REPLY_HOLDOFF_MAX 64
++
++struct reply_holdoff {
++	struct dl_list list;
++	struct hostapd_data *hapd;
++	u8 addr[ETH_ALEN];
++	bool auth;
++	u16 auth_alg;
++	u16 auth_transaction;
++	u16 status;
++	unsigned int repeated;
++};
++
++
++static void reply_line_write(struct hostapd_data *hapd, const u8 *addr,
++			     bool auth, u16 auth_alg, u16 auth_transaction,
++			     u16 status, unsigned int repeated)
++{
++	char extra[24] = "";
++
++	if (repeated)
++		os_snprintf(extra, sizeof(extra), " repeated=%u", repeated);
++	if (auth)
++		hostapd_logger(hapd, addr, HOSTAPD_MODULE_IEEE80211,
++			       HOSTAPD_LEVEL_INFO,
++			       "auth reply alg=%u trans=%u status=%u%s",
++			       auth_alg, auth_transaction, status, extra);
++	else
++		hostapd_logger(hapd, addr, HOSTAPD_MODULE_IEEE80211,
++			       HOSTAPD_LEVEL_INFO, "assoc reply status=%u%s",
++			       status, extra);
++}
++
++
++static void reply_holdoff_write(struct reply_holdoff *h)
++{
++	reply_line_write(h->hapd, h->addr, h->auth, h->auth_alg,
++			 h->auth_transaction, h->status, h->repeated);
++	h->repeated = 0;
++}
++
++
++static void reply_holdoff_timeout(void *eloop_ctx, void *timeout_ctx)
++{
++	struct reply_holdoff *h = eloop_ctx;
++
++	if (h->repeated) {
++		reply_holdoff_write(h);
++		eloop_register_timeout(REPLY_HOLDOFF_SEC, 0,
++				       reply_holdoff_timeout, h, NULL);
++		return;
++	}
++	dl_list_del(&h->list);
++	os_free(h);
++}
++
++
++static void reply_holdoff_end(struct reply_holdoff *h)
++{
++	eloop_cancel_timeout(reply_holdoff_timeout, h, NULL);
++	if (h->repeated)
++		reply_holdoff_write(h);
++	dl_list_del(&h->list);
++	os_free(h);
++}
++
++
++void hostapd_reply_holdoff_flush(struct hostapd_data *hapd)
++{
++	struct reply_holdoff *h, *tmp;
++
++	dl_list_for_each_safe(h, tmp, &hapd->reply_holdoff,
++			      struct reply_holdoff, list)
++		reply_holdoff_end(h);
++}
++
++
++static bool reply_is_success(bool auth, u16 auth_alg, u16 status)
++{
++	if (status == WLAN_STATUS_SUCCESS)
++		return true;
++	return auth && auth_alg == WLAN_AUTH_SAE &&
++		(status == WLAN_STATUS_SAE_HASH_TO_ELEMENT ||
++		 status == WLAN_STATUS_SAE_PK);
++}
++
++
++/* "authenticated" and "associated" already mark the success of open system
++ * and of an association, so a success is logged only for the methods that
++ * have no such line. An SAE Commit succeeds also with a wrong password, so
++ * only the Confirm shows that SAE succeeded. */
++static bool reply_success_logged(bool auth, u16 auth_alg,
++				 u16 auth_transaction)
++{
++	if (auth && auth_alg == WLAN_AUTH_SAE)
++		return auth_transaction == WLAN_AUTH_TR_SEQ_SAE_CONFIRM;
++	return auth && (auth_alg == WLAN_AUTH_FT ||
++			auth_alg == WLAN_AUTH_FILS_SK ||
++			auth_alg == WLAN_AUTH_FILS_SK_PFS ||
++			auth_alg == WLAN_AUTH_FILS_PK);
++}
++
++
++static void reply_log(struct hostapd_data *hapd, const u8 *addr, bool auth,
++		      u16 auth_alg, u16 auth_transaction, u16 status)
++{
++	struct reply_holdoff *h;
++
++	if (reply_is_success(auth, auth_alg, status)) {
++		if (reply_success_logged(auth, auth_alg, auth_transaction))
++			reply_line_write(hapd, addr, auth, auth_alg,
++					 auth_transaction, status, 0);
++		return;
++	}
++
++	dl_list_for_each(h, &hapd->reply_holdoff, struct reply_holdoff, list) {
++		if (!ether_addr_equal(h->addr, addr))
++			continue;
++		if (h->auth == auth && h->auth_alg == auth_alg &&
++		    h->auth_transaction == auth_transaction &&
++		    h->status == status) {
++			h->repeated++;
++			return;
++		}
++		reply_holdoff_end(h);
++		break;
++	}
++
++	if (dl_list_len(&hapd->reply_holdoff) >= REPLY_HOLDOFF_MAX)
++		reply_holdoff_end(dl_list_first(&hapd->reply_holdoff,
++						struct reply_holdoff, list));
++
++	reply_line_write(hapd, addr, auth, auth_alg, auth_transaction, status,
++			 0);
++	h = os_zalloc(sizeof(*h));
++	if (!h)
++		return;
++	h->hapd = hapd;
++	os_memcpy(h->addr, addr, ETH_ALEN);
++	h->auth = auth;
++	h->auth_alg = auth_alg;
++	h->auth_transaction = auth_transaction;
++	h->status = status;
++	dl_list_add_tail(&hapd->reply_holdoff, &h->list);
++	eloop_register_timeout(REPLY_HOLDOFF_SEC, 0, reply_holdoff_timeout, h,
++			       NULL);
++}
++
++
+ static int send_auth_reply(struct hostapd_data *hapd, struct sta_info *sta,
+ 			   const u8 *dst,
+ 			   u16 auth_alg, u16 auth_transaction, u16 resp,
+@@ -515,8 +667,10 @@ static int send_auth_reply(struct hostapd_data *hapd, struct sta_info *sta,
+ 
+ 	if (hostapd_drv_send_mlme(hapd, reply, rlen, 0, NULL, 0, 0) < 0)
+ 		wpa_printf(MSG_INFO, "send_auth_reply: send failed");
+-	else
++	else {
+ 		reply_res = WLAN_STATUS_SUCCESS;
++		reply_log(hapd, dst, true, auth_alg, auth_transaction, resp);
++	}
+ 
+ 	os_free(buf);
+ 
+@@ -7375,6 +7529,8 @@ rsnxe_done:
+ 		wpa_printf(MSG_INFO, "Failed to send assoc resp: %s",
+ 			   strerror(errno));
+ 		res = WLAN_STATUS_UNSPECIFIED_FAILURE;
++	} else {
++		reply_log(hapd, addr, false, 0, 0, status_code);
+ 	}
+ 
+ done:
+--- a/src/ap/ieee802_11.h
++++ b/src/ap/ieee802_11.h
+@@ -191,6 +191,7 @@ u8 * hostapd_eid_time_adv(struct hostapd_data *hapd, u8 *eid);
+ u8 * hostapd_eid_time_zone(struct hostapd_data *hapd, u8 *eid);
+ int hostapd_update_time_adv(struct hostapd_data *hapd);
+ void hostapd_client_poll_ok(struct hostapd_data *hapd, const u8 *addr);
++void hostapd_reply_holdoff_flush(struct hostapd_data *hapd);
+ u8 * hostapd_eid_bss_max_idle_period(struct hostapd_data *hapd, u8 *eid,
+ 				     u16 value);
+ 
