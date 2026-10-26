@@ -1,0 +1,47 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Sun, 25 Oct 2026 16:45:37 -0700
+Subject: [PATCH] hostapd: log the 4-way handshake failures at INFO
+
+The retry limit of the 4-way handshake and an invalid MIC in message
+2/4 were logged at debug level, so syslog did not show why a station
+failed to connect after it associated.
+
+Log the retry limits at INFO. Log the invalid MIC at INFO only when no
+PSK was tried, for example with 802.1X: after a failed PSK, hostapd
+already logs AP-STA-POSSIBLE-PSK-MISMATCH at INFO for each message
+2/4, and a client with a wrong PSK repeats its attempt.
+---
+ src/ap/wpa_auth.c |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+--- a/src/ap/wpa_auth.c
++++ b/src/ap/wpa_auth.c
+@@ -4000,8 +4000,9 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
+ 	}
+ 
+ 	if (!ok) {
++		/* A failed PSK is reported at INFO as a possible PSK mismatch */
+ 		wpa_auth_logger(sm->wpa_auth, wpa_auth_get_spa(sm),
+-				LOGGER_DEBUG,
++				psk_found ? LOGGER_DEBUG : LOGGER_INFO,
+ 				"invalid MIC in msg 2/4 of 4-Way Handshake");
+ 		if (psk_found)
+ 			wpa_auth_psk_failure_report(sm->wpa_auth, sm->addr);
+@@ -5637,7 +5638,7 @@ SM_STEP(WPA_PTK)
+ 		else if (sm->TimeoutCtr > conf->wpa_pairwise_update_count) {
+ 			wpa_auth->dot11RSNA4WayHandshakeFailures++;
+ 			wpa_auth_vlogger(wpa_auth, wpa_auth_get_spa(sm),
+-					 LOGGER_DEBUG,
++					 LOGGER_INFO,
+ 					 "PTKSTART: Retry limit %u reached",
+ 					 conf->wpa_pairwise_update_count);
+ 			sm->disconnect_reason =
+@@ -5670,7 +5671,7 @@ SM_STEP(WPA_PTK)
+ 			  sm->TimeoutCtr > 1)) {
+ 			wpa_auth->dot11RSNA4WayHandshakeFailures++;
+ 			wpa_auth_vlogger(wpa_auth, wpa_auth_get_spa(sm),
+-					 LOGGER_DEBUG,
++					 LOGGER_INFO,
+ 					 "PTKINITNEGOTIATING: Retry limit %u reached",
+ 					 conf->wpa_pairwise_update_count);
+ 			sm->disconnect_reason =
