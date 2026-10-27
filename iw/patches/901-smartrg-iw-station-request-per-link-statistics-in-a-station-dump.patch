@@ -1,0 +1,136 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 26 Oct 2026 20:21:11 -0700
+Subject: [PATCH] iw: station: request per-link statistics in a station dump
+
+A station dump shows one record for an MLD station. Its counters are
+the sums over all links, and its signal and rates come from one link,
+so the record cannot show the state of each link.
+
+With NL80211_ATTR_STA_DUMP_LINK_STATS, the kernel sends one message
+per link after the message of the station. iw prints these links in
+the layout of its existing link blocks. A station without MLO on an
+AP MLD gets one link block, because the kernel reports the link that
+it uses. A kernel without the flag ignores it, because nl80211 parses
+a station dump request without strict validation. The station get
+command is unchanged, because the flag applies to a dump only.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ station.c |   78 +++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 50 insertions(+), 28 deletions(-)
+
+--- a/station.c
++++ b/station.c
+@@ -451,13 +451,46 @@ static void print_nested_sta_handler(str
+ 	}
+ }
+ 
++static int print_sta_links(struct nlattr *links, const char *link_indent,
++			   const struct nla_policy *policy, void *arg)
++{
++	struct nlattr *link_sinfo[NL80211_STA_INFO_MAX + 1];
++	struct nlattr *attrs, *link[NL80211_ATTR_MAX + 1];
++	char mac_addr[20];
++	int rem;
++
++	nla_for_each_nested(attrs, links, rem) {
++		nla_parse_nested(link, NL80211_ATTR_MAX, attrs, NULL);
++		if (!link[NL80211_ATTR_MLO_LINK_ID])
++			continue;
++
++		printf("%sLink %u:", link_indent,
++		       nla_get_u8(link[NL80211_ATTR_MLO_LINK_ID]));
++		if (link[NL80211_ATTR_MAC]) {
++			mac_addr_n2a(mac_addr, nla_data(link[NL80211_ATTR_MAC]));
++			printf("\n\t\taddress: %s", mac_addr);
++		}
++		if (!link[NL80211_ATTR_STA_INFO]) {
++			fprintf(stderr, "link sta stats missing!\n");
++			return -1;
++		}
++
++		if (nla_parse_nested(link_sinfo, NL80211_STA_INFO_MAX,
++				     link[NL80211_ATTR_STA_INFO], policy)) {
++			fprintf(stderr, "failed to parse nested attributes!\n");
++			return -1;
++		}
++		print_nested_sta_handler(link_sinfo, arg, "\n\t\t");
++	}
++
++	return 0;
++}
++
+ static int print_sta_handler(struct nl_msg *msg, void *arg)
+ {
+ 	struct nlattr *tb[NL80211_ATTR_MAX + 1];
+ 	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+ 	struct nlattr *sinfo[NL80211_STA_INFO_MAX + 1];
+-	struct nlattr *link_sinfo[NL80211_STA_INFO_MAX + 1];
+-	struct nlattr *attrs, *link[NL80211_ATTR_MAX + 1];
+ 	char mac_addr[20], state_name[10], dev[20];
+ 	struct nl80211_sta_flag_update *sta_flags;
+ 	static struct nla_policy stats_policy[NL80211_STA_INFO_MAX + 1] = {
+@@ -513,6 +546,14 @@ static int print_sta_handler(struct nl_m
+ 	 * the kernel starts sending station notifications.
+ 	 */
+ 
++	/* A dump with link statistics sends each link in a message of its own */
++	if (!tb[NL80211_ATTR_STA_INFO] && tb[NL80211_ATTR_MLO_LINKS]) {
++		if (!print_sta_links(tb[NL80211_ATTR_MLO_LINKS], "\t",
++				     stats_policy, arg))
++			printf("\n");
++		return NL_SKIP;
++	}
++
+ 	if (!tb[NL80211_ATTR_STA_INFO]) {
+ 		fprintf(stderr, "sta stats missing!\n");
+ 		return NL_SKIP;
+@@ -655,32 +696,10 @@ static int print_sta_handler(struct nl_m
+ 	printf("\n\tcurrent time:\t%llu ms\n", now_ms);
+ 
+ 	/* print link specific fields */
+-	if (tb[NL80211_ATTR_MLO_LINKS]) {
+-		int ret = 0;
+-
+-		nla_for_each_nested(attrs, tb[NL80211_ATTR_MLO_LINKS], ret) {
+-			nla_parse_nested(link, NL80211_ATTR_MAX, attrs, NULL);
+-			if (link[NL80211_ATTR_MLO_LINK_ID]) {
+-				printf("\n\tLink %u:", nla_get_u8(link[NL80211_ATTR_MLO_LINK_ID]));
+-				if (link[NL80211_ATTR_MAC]) {
+-					mac_addr_n2a(mac_addr, nla_data(link[NL80211_ATTR_MAC]));
+-					printf("\n\t\taddress: %s", mac_addr);
+-				}
+-				if (!link[NL80211_ATTR_STA_INFO]) {
+-					fprintf(stderr, "link sta stats missing!\n");
+-					return NL_SKIP;
+-				}
+-
+-				if (nla_parse_nested(link_sinfo, NL80211_STA_INFO_MAX,
+-						     link[NL80211_ATTR_STA_INFO],
+-						     stats_policy)) {
+-					fprintf(stderr, "failed to parse nested attributes!\n");
+-					return NL_SKIP;
+-				}
+-				print_nested_sta_handler(link_sinfo, arg, "\n\t\t");
+-			}
+-		}
+-	}
++	if (tb[NL80211_ATTR_MLO_LINKS] &&
++	    print_sta_links(tb[NL80211_ATTR_MLO_LINKS], "\n\t",
++			    stats_policy, arg))
++		return NL_SKIP;
+ 	printf("\n");
+ 	return NL_SKIP;
+ }
+@@ -1070,8 +1089,11 @@ static int handle_station_dump(struct nl
+ 			       int argc, char **argv,
+ 			       enum id_input id)
+ {
++	NLA_PUT_FLAG(msg, NL80211_ATTR_STA_DUMP_LINK_STATS);
+ 	register_handler(print_sta_handler, *argv);
+ 	return 0;
++ nla_put_failure:
++	return -ENOBUFS;
+ }
+ COMMAND(station, dump, "[-v]",
+ 	NL80211_CMD_GET_STATION, NLM_F_DUMP, CIB_NETDEV, handle_station_dump,
