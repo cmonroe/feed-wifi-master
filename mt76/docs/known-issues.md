@@ -33,3 +33,23 @@ Put the ipk into `/FLASH/persist/hotfix` and reboot. The hotfix init script
 path calls `hotfix-install.sh` without `-f`, so the ipk needs a higher
 version than the installed package. Remove the ipk and reboot to return to
 the image.
+
+## mt7915 Testmode Keeps the Background Radar Phy After an Off-Channel Test
+
+**Severity:** low. Only a testmode session reaches it, and a module reload
+ends it. Found on 2026-10-27 in a source review for SDG-12894; not seen on a
+unit.
+
+### What happens
+
+- `mt7915_tm_set_offchan()` (vendor patch 1050) sets `dev->rdd2_phy` when a
+  testmode off-channel radar test starts. Nothing in testmode clears it.
+  Only `mt7915_set_radar_background()` with no channel does.
+- After such a test, the driver treats the band as the carrier of the
+  background radar chain. `mt7915_set_radar_background()` then refuses a
+  background CAC on the other band with `-EBUSY`.
+
+### Fix
+
+Clear `dev->rdd2_phy` and `dev->rdd2_chandef` when testmode ends the
+off-channel test, or when the phy leaves testmode.
