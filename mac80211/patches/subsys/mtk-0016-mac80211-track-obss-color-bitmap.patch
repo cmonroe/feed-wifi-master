@@ -122,7 +122,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	link_conf->s1g_long_beacon_period = params->s1g_long_beacon_period;
  	sdata->vif.cfg.s1g = params->chandef.chan->band == NL80211_BAND_S1GHZ;
  
-@@ -5700,6 +5701,8 @@ static int ieee80211_color_change_finali
+@@ -5702,6 +5703,8 @@ static int ieee80211_color_change_finali
  
  	lockdep_assert_wiphy(local->hw.wiphy);
  

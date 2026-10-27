@@ -31,7 +31,7 @@ Fixes: 0afd425b1b64 ("cfg80211: fix duplicated scan entries after channel switch
 
 --- a/net/wireless/core.h
 +++ b/net/wireless/core.h
-@@ -213,6 +213,11 @@ struct cfg80211_internal_bss {
+@@ -219,6 +219,11 @@ struct cfg80211_internal_bss {
  
  	enum bss_source_type bss_source;
  

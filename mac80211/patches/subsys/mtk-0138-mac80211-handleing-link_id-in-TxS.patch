@@ -12,11 +12,9 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  net/wireless/nl80211.c | 7 +++++--
  4 files changed, 15 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
-index 0ff9d1d2..8d7b50de 100644
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -9213,6 +9213,7 @@ static inline bool cfg80211_rx_mgmt(struct wireless_dev *wdev, int freq,
+@@ -9597,6 +9597,7 @@ static inline bool cfg80211_rx_mgmt(stru
   * @buf: Management frame (header + body)
   * @len: length of the frame data
   * @ack: Whether frame was acknowledged
@@ -24,7 +22,7 @@ index 0ff9d1d2..8d7b50de 100644
   */
  struct cfg80211_tx_status {
  	u64 cookie;
-@@ -9221,6 +9222,7 @@ struct cfg80211_tx_status {
+@@ -9605,6 +9606,7 @@ struct cfg80211_tx_status {
  	const u8 *buf;
  	size_t len;
  	bool ack;
@@ -32,7 +30,7 @@ index 0ff9d1d2..8d7b50de 100644
  };
  
  /**
-@@ -9257,7 +9259,8 @@ static inline void cfg80211_mgmt_tx_status(struct wireless_dev *wdev,
+@@ -9641,7 +9643,8 @@ static inline void cfg80211_mgmt_tx_stat
  		.cookie = cookie,
  		.buf = buf,
  		.len = len,
@@ -42,11 +40,9 @@ index 0ff9d1d2..8d7b50de 100644
  	};
  
  	cfg80211_mgmt_tx_status_ext(wdev, &status, gfp);
-diff --git a/include/net/mac80211.h b/include/net/mac80211.h
-index edbd0e34..99f2e1ee 100644
 --- a/include/net/mac80211.h
 +++ b/include/net/mac80211.h
-@@ -1085,6 +1085,7 @@ enum mac80211_tx_control_flags {
+@@ -1170,6 +1170,7 @@ enum mac80211_tx_control_flags {
   */
  enum mac80211_tx_status_flags {
  	IEEE80211_TX_STATUS_ACK_SIGNAL_VALID = BIT(0),
@@ -54,7 +50,7 @@ index edbd0e34..99f2e1ee 100644
  };
  
  /*
-@@ -1311,7 +1312,7 @@ struct ieee80211_tx_info {
+@@ -1396,7 +1397,7 @@ struct ieee80211_tx_info {
  			u8 ampdu_ack_len;
  			u8 ampdu_len;
  			u8 antenna;
@@ -63,11 +59,9 @@ index edbd0e34..99f2e1ee 100644
  			u16 tx_time;
  			u8 flags;
  			u8 pad2;
-diff --git a/net/mac80211/status.c b/net/mac80211/status.c
-index 32cde1b7..87c0daca 100644
 --- a/net/mac80211/status.c
 +++ b/net/mac80211/status.c
-@@ -632,6 +632,7 @@ static void ieee80211_report_ack_skb(struct ieee80211_local *local,
+@@ -633,6 +633,7 @@ static void ieee80211_report_ack_skb(str
  			.buf = skb->data,
  			.len = skb->len,
  			.ack = acked,
@@ -75,7 +69,7 @@ index 32cde1b7..87c0daca 100644
  		};
  
  		if (ieee80211_is_timing_measurement(orig_skb) ||
-@@ -641,6 +642,9 @@ static void ieee80211_report_ack_skb(struct ieee80211_local *local,
+@@ -642,6 +643,9 @@ static void ieee80211_report_ack_skb(str
  			status.ack_tstamp = ktime_to_ns(ack_hwtstamp);
  		}
  
@@ -85,11 +79,9 @@ index 32cde1b7..87c0daca 100644
  		rcu_read_lock();
  		sdata = ieee80211_sdata_from_skb(local, skb);
  		if (sdata) {
-diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
-index e06e8302..c44f62fc 100644
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -21005,7 +21005,9 @@ static void nl80211_frame_tx_status(struct wireless_dev *wdev,
+@@ -22096,7 +22096,9 @@ static void nl80211_frame_tx_status(stru
  			       status->tx_tstamp, NL80211_ATTR_PAD)) ||
  	    (status->ack_tstamp &&
  	     nla_put_u64_64bit(msg, NL80211_ATTR_RX_HW_TIMESTAMP,
@@ -100,7 +92,7 @@ index e06e8302..c44f62fc 100644
  		goto nla_put_failure;
  
  	genlmsg_end(msg, hdr);
-@@ -21026,7 +21028,8 @@ void cfg80211_control_port_tx_status(struct wireless_dev *wdev, u64 cookie,
+@@ -22117,7 +22119,8 @@ void cfg80211_control_port_tx_status(str
  		.cookie = cookie,
  		.buf = buf,
  		.len = len,
@@ -110,6 +102,3 @@ index e06e8302..c44f62fc 100644
  	};
  
  	nl80211_frame_tx_status(wdev, &status, gfp,
--- 
-2.45.2
-

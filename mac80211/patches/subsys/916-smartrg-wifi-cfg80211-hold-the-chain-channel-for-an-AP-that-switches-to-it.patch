@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* netlink port which started critical protocol (0 means not started) */
  	u32 crit_proto_nlportid;
-@@ -529,6 +532,15 @@ cfg80211_start_background_radar_detectio
+@@ -538,6 +541,15 @@ cfg80211_start_background_radar_detectio
  
  void cfg80211_stop_radar_detection(struct wireless_dev *wdev);
  void cfg80211_stop_background_radar_detection(struct wireless_dev *wdev);
@@ -53,7 +53,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1437,6 +1437,58 @@ void cfg80211_stop_background_radar_dete
+@@ -1439,6 +1439,58 @@ void cfg80211_stop_background_radar_dete
  	rdev->background_radar_wdev = NULL;
  }
  
@@ -153,7 +153,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -1330,6 +1330,14 @@ cfg80211_offchan_chain_is_active(struct
+@@ -1362,6 +1362,14 @@ cfg80211_offchan_chain_is_active(struct
  				    false);
  }
  
@@ -168,7 +168,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  bool cfg80211_any_wiphy_oper_chan(struct wiphy *wiphy,
  				  struct ieee80211_channel *chan)
  {
-@@ -1349,7 +1357,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
+@@ -1381,7 +1389,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
  		guard(wiphy)(&rdev->wiphy);
  
  		found = cfg80211_is_wiphy_oper_chan(&rdev->wiphy, chan) ||
@@ -178,7 +178,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		if (found)
  			return true;
-@@ -2117,7 +2126,8 @@ static bool cfg80211_sta_subchan_in_use(
+@@ -2149,7 +2158,8 @@ static bool cfg80211_sta_subchan_in_use(
  		return true;
  
  	return cfg80211_is_wiphy_oper_chan(wiphy, chan) ||

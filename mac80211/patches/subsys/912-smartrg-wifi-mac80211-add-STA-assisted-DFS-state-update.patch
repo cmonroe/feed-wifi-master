@@ -38,7 +38,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -9785,6 +9785,32 @@ void cfg80211_cac_event(struct net_devic
+@@ -9791,6 +9791,32 @@ void cfg80211_cac_event(struct net_devic
  			unsigned int link_id);
  
  /**
@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static bool cfg80211_valid_60g_freq(u32 freq)
  {
-@@ -1013,17 +1014,8 @@ static bool cfg80211_dfs_sta_present(str
+@@ -1045,17 +1046,8 @@ static bool cfg80211_dfs_sta_present(str
  void cfg80211_set_dfs_concurrent(struct wiphy *wiphy,
  				 const struct cfg80211_chan_def *chandef)
  {
@@ -174,7 +174,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	cfg80211_set_dfs_state(wiphy, chandef, NL80211_DFS_AVAILABLE);
  }
-@@ -1139,7 +1131,7 @@ EXPORT_SYMBOL(cfg80211_chandef_dfs_usabl
+@@ -1171,7 +1163,7 @@ EXPORT_SYMBOL(cfg80211_chandef_dfs_usabl
   * Checks if center frequency of chan falls with in the bandwidth
   * range of chandef.
   */
@@ -183,7 +183,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			  struct ieee80211_channel *chan,
  			  bool primary_only)
  {
-@@ -1308,7 +1300,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
+@@ -1340,7 +1332,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
  }
  
  void cfg80211_update_last_available(struct wiphy *wiphy,
@@ -193,7 +193,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct ieee80211_channel *c;
  	int width;
-@@ -1325,7 +1318,7 @@ void cfg80211_update_last_available(stru
+@@ -1357,7 +1350,7 @@ void cfg80211_update_last_available(stru
  		if (!c)
  			return;
  
@@ -202,7 +202,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  }
  
-@@ -1916,6 +1909,224 @@ bool cfg80211_any_usable_channels(struct
+@@ -1948,6 +1941,224 @@ bool cfg80211_any_usable_channels(struct
  }
  EXPORT_SYMBOL(cfg80211_any_usable_channels);
  
@@ -429,7 +429,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/net/wireless/core.h
 +++ b/net/wireless/core.h
-@@ -498,6 +498,9 @@ void cfg80211_set_cac_state(struct wiphy
+@@ -507,6 +507,9 @@ void cfg80211_set_cac_state(struct wiphy
  
  void cfg80211_dfs_channels_update_work(struct work_struct *work);
  void cfg80211_update_last_available(struct wiphy *wiphy,
@@ -439,7 +439,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				    const struct cfg80211_chan_def *chandef);
  
  void cfg80211_sched_dfs_chan_update(struct cfg80211_registered_device *rdev);
-@@ -519,7 +522,7 @@ bool cfg80211_any_wiphy_oper_chan(struct
+@@ -528,7 +531,7 @@ bool cfg80211_any_wiphy_oper_chan(struct
  
  bool cfg80211_beaconing_iface_active(struct wireless_dev *wdev);
  
@@ -462,7 +462,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* the AP now operates on the channel the chain monitors */
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1165,7 +1165,8 @@ void __cfg80211_radar_event(struct wiphy
+@@ -1167,7 +1167,8 @@ void __cfg80211_radar_event(struct wiphy
  	 * case the radar is detected on only one of multiple channels
  	 * spanned by the chandef.
  	 */
@@ -472,7 +472,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (offchan) {
  		cancel_delayed_work(&rdev->background_cac_done_wk);
-@@ -1283,7 +1284,7 @@ cfg80211_background_chain_leave(struct c
+@@ -1285,7 +1286,7 @@ cfg80211_background_chain_leave(struct c
  		return;
  
  	cfg80211_update_last_available(&rdev->wiphy,

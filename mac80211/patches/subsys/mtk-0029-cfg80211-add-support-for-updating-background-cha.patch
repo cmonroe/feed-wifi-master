@@ -13,7 +13,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -9819,6 +9819,20 @@ bool cfg80211_dfs_sta_covered(struct wip
+@@ -9825,6 +9825,20 @@ bool cfg80211_dfs_sta_covered(struct wip
  			      const struct cfg80211_chan_def *chandef);
  
  /**
@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1417,6 +1417,18 @@ void cfg80211_stop_radar_detection(struc
+@@ -1419,6 +1419,18 @@ void cfg80211_stop_radar_detection(struc
  	}
  }
  

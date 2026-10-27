@@ -62,8 +62,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	kfree(params.beacon_after.rnr_ies);
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -891,6 +891,65 @@ void cfg80211_set_dfs_state(struct wiphy
- 	}
+@@ -923,6 +923,65 @@ void cfg80211_count_radar_event(struct w
+ 	spin_unlock_irqrestore(&rdev->radar_count_lock, flags);
  }
  
 +int cfg80211_dfs_cac_skip(struct wiphy *wiphy,
@@ -130,7 +130,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			    bool cac_ongoing)
 --- a/net/wireless/core.h
 +++ b/net/wireless/core.h
-@@ -492,6 +492,23 @@ void cfg80211_set_dfs_state(struct wiphy
+@@ -501,6 +501,23 @@ void cfg80211_count_radar_event(struct w
  void cfg80211_set_dfs_concurrent(struct wiphy *wiphy,
  				 const struct cfg80211_chan_def *chandef);
  

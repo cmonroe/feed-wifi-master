@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -5111,6 +5111,8 @@ struct mgmt_frame_regs {
+@@ -5117,6 +5117,8 @@ struct mgmt_frame_regs {
   *
   * @start_radar_detection: Start radar detection in the driver.
   *
@@ -50,7 +50,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
   * @end_cac: End running CAC, probably because a related CAC
   *	was finished on another phy.
   *
-@@ -5516,6 +5518,11 @@ struct cfg80211_ops {
+@@ -5522,6 +5524,11 @@ struct cfg80211_ops {
  					 struct net_device *dev,
  					 struct cfg80211_chan_def *chandef,
  					 u32 cac_time_ms, int link_id);
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	void	(*end_cac)(struct wiphy *wiphy,
  			   struct net_device *dev, unsigned int link_id);
  	int	(*update_ft_ies)(struct wiphy *wiphy, struct net_device *dev,
-@@ -9931,11 +9938,15 @@ static inline void cfg80211_report_obss_
+@@ -9937,11 +9944,15 @@ static inline void cfg80211_report_obss_
   *	NOTE: If this is set, wiphy mutex must be held.
   * @reg_power: &enum ieee80211_ap_reg_power value indicating the
   *	advertised/used 6 GHz regulatory power setting
@@ -78,7 +78,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  };
  
  /**
-@@ -9999,6 +10010,46 @@ cfg80211_reg_can_beacon_relax(struct wip
+@@ -10005,6 +10016,46 @@ cfg80211_reg_can_beacon_relax(struct wip
  }
  
  /**
@@ -136,7 +136,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	if (!link->u.ap.next_beacon)
  		return;
-@@ -4261,18 +4261,15 @@ static void ieee80211_end_cac(struct wip
+@@ -4263,18 +4263,15 @@ static void ieee80211_end_cac(struct wip
  
  	lockdep_assert_wiphy(local->hw.wiphy);
  
@@ -162,7 +162,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  }
  
-@@ -4474,6 +4471,40 @@ static int ieee80211_set_after_csa_beaco
+@@ -4476,6 +4473,40 @@ static int ieee80211_set_after_csa_beaco
  	return 0;
  }
  
@@ -203,7 +203,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int __ieee80211_csa_finalize(struct ieee80211_link_data *link_data)
  {
  	struct ieee80211_sub_if_data *sdata = link_data->sdata;
-@@ -4507,6 +4538,12 @@ static int __ieee80211_csa_finalize(stru
+@@ -4509,6 +4540,12 @@ static int __ieee80211_csa_finalize(stru
  					&link_data->csa.chanreq.oper))
  		return -EINVAL;
  
@@ -216,7 +216,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	link_conf->csa_active = false;
  
  	err = ieee80211_set_after_csa_beacon(link_data, &changed);
-@@ -4530,25 +4567,36 @@ static int __ieee80211_csa_finalize(stru
+@@ -4532,25 +4569,36 @@ static int __ieee80211_csa_finalize(stru
  	return 0;
  }
  
@@ -265,7 +265,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  void ieee80211_csa_finalize_work(struct wiphy *wiphy, struct wiphy_work *work)
-@@ -4729,6 +4777,7 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4731,6 +4779,7 @@ __ieee80211_channel_switch(struct wiphy
  	struct ieee80211_link_data *link_data;
  	u64 changed = 0;
  	u8 link_id = params->link_id;
@@ -273,7 +273,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int err;
  
  	lockdep_assert_wiphy(local->hw.wiphy);
-@@ -4736,9 +4785,6 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4738,9 +4787,6 @@ __ieee80211_channel_switch(struct wiphy
  	if (ieee80211_is_scan_ongoing(wiphy, local, &params->chandef))
  		return -EBUSY;
  
@@ -283,7 +283,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (WARN_ON(link_id >= IEEE80211_MLD_MAX_NUM_LINKS))
  		return -EINVAL;
  
-@@ -4751,8 +4797,10 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4753,8 +4799,10 @@ __ieee80211_channel_switch(struct wiphy
  	if (chanreq.oper.punctured && !link_conf->eht_support)
  		return -EINVAL;
  
@@ -296,7 +296,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return -EBUSY;
  
  	conf = wiphy_dereference(wiphy, link_conf->chanctx_conf);
-@@ -4775,6 +4823,12 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4777,6 +4825,12 @@ __ieee80211_channel_switch(struct wiphy
  
  	chanctx = container_of(conf, struct ieee80211_chanctx, conf);
  
@@ -309,7 +309,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ch_switch.timestamp = 0;
  	ch_switch.device_timestamp = 0;
  	ch_switch.block_tx = params->block_tx;
-@@ -4822,11 +4876,16 @@ __ieee80211_channel_switch(struct wiphy
+@@ -4824,11 +4878,16 @@ __ieee80211_channel_switch(struct wiphy
  		ieee80211_link_info_change_notify(sdata, link_data, changed);
  		drv_channel_switch_beacon(sdata, &link_data->csa.chanreq.oper);
  	} else {
@@ -328,7 +328,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return err;
  }
  
-@@ -6028,7 +6087,7 @@ ieee80211_skip_cac(struct wireless_dev *
+@@ -6030,7 +6089,7 @@ ieee80211_skip_cac(struct wireless_dev *
  	wiphy_hrtimer_work_cancel(sdata->local->hw.wiphy,
  				  &link->dfs_cac_timer_work);
  	if (wdev->links[link_id].cac_started) {
@@ -337,7 +337,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		cac_time_ms = wdev->links[link_id].cac_time_ms;
  		wdev->links[link_id].cac_start_time = jiffies -
  				       msecs_to_jiffies(cac_time_ms + 1);
-@@ -6121,6 +6180,7 @@ const struct cfg80211_ops mac80211_confi
+@@ -6123,6 +6182,7 @@ const struct cfg80211_ops mac80211_confi
  #endif
  	.get_channel = ieee80211_cfg_get_channel,
  	.start_radar_detection = ieee80211_start_radar_detection,
@@ -458,7 +458,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/net/wireless/chan.c
 +++ b/net/wireless/chan.c
-@@ -1871,8 +1871,13 @@ static bool _cfg80211_reg_can_beacon(str
+@@ -1903,8 +1903,13 @@ static bool _cfg80211_reg_can_beacon(str
  	check_radar = dfs_required != 0;
  
  	if (dfs_required > 0 &&
@@ -474,7 +474,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		prohibited_flags &= ~IEEE80211_CHAN_NO_IR;
  		check_radar = false;
  	}
-@@ -1910,6 +1915,9 @@ bool cfg80211_reg_check_beaconing(struct
+@@ -1942,6 +1947,9 @@ bool cfg80211_reg_check_beaconing(struct
  							   chandef->chan);
  	}
  
@@ -484,7 +484,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (cfg->reg_power == IEEE80211_REG_VLP_AP)
  		permitting_flags |= IEEE80211_CHAN_ALLOW_6GHZ_VLP_AP;
  
-@@ -1925,6 +1933,58 @@ bool cfg80211_reg_check_beaconing(struct
+@@ -1957,6 +1965,58 @@ bool cfg80211_reg_check_beaconing(struct
  }
  EXPORT_SYMBOL(cfg80211_reg_check_beaconing);
  
