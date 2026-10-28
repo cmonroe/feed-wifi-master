@@ -21,7 +21,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -848,6 +848,7 @@ void hostapd_free_hapd_data(struct hosta
+@@ -1559,6 +1559,7 @@ void hostapd_free_hapd_data(struct hosta
  	hapd->p2p_probe_resp_ie = NULL;
  #endif /* CONFIG_P2P */
  
@@ -29,8 +29,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!hapd->started) {
  		wpa_printf(MSG_ERROR, "%s: Interface %s wasn't started",
  			   __func__, hapd->conf ? hapd->conf->iface : "N/A");
-@@ -861,7 +862,6 @@ void hostapd_free_hapd_data(struct hosta
- #endif /* CONFIG_OWE */
+@@ -1576,7 +1577,6 @@ void hostapd_free_hapd_data(struct hosta
+ #endif /* CONFIG_IEEE80211BE */
  
  	wpa_printf(MSG_DEBUG, "%s(%s)", __func__, hapd->conf->iface);
 -	hostapd_ucode_free_bss(hapd);

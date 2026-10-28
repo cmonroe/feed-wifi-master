@@ -41,7 +41,7 @@ Expedite these waits, as synchronize_net() does under the RTNL.
  					WLAN_BACK_RECIPIENT :
 --- a/net/mac80211/ieee80211_i.h
 +++ b/net/mac80211/ieee80211_i.h
-@@ -1981,6 +1981,16 @@ static inline bool ieee80211_sdata_runni
+@@ -2034,6 +2034,16 @@ static inline bool ieee80211_sdata_runni
  	return test_bit(SDATA_STATE_RUNNING, &sdata->state);
  }
  
@@ -80,7 +80,7 @@ Expedite these waits, as synchronize_net() does under the RTNL.
  }
 --- a/net/mac80211/sta_info.c
 +++ b/net/mac80211/sta_info.c
-@@ -1520,7 +1520,7 @@ static int _sta_info_move_state(struct s
+@@ -1522,7 +1522,7 @@ static int _sta_info_move_state(struct s
  			 * on how the hardware offload works.
  			 */
  			if (local->ops->set_key) {
@@ -89,7 +89,7 @@ Expedite these waits, as synchronize_net() does under the RTNL.
  				if (local->ops->flush_sta)
  					drv_flush_sta(local, sta->sdata, sta);
  				else
-@@ -1669,7 +1669,7 @@ int __must_check __sta_info_destroy(stru
+@@ -1671,7 +1671,7 @@ int __must_check __sta_info_destroy(stru
  	if (err)
  		return err;
  

@@ -114,7 +114,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			     struct cfg80211_ml_reconf_req *req)
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -22578,14 +22578,10 @@ void cfg80211_ch_switch_notify(struct ne
+@@ -23378,14 +23378,10 @@ void cfg80211_ch_switch_notify(struct ne
  						       &wdev->links[link_id].ap.chandef,
  						       0);
  		wdev->links[link_id].ap.chandef = *chandef;
@@ -131,7 +131,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			cfg80211_stop_background_radar_detection(rdev->background_radar_wdev);
  		break;
  	case NL80211_IFTYPE_ADHOC:
-@@ -22658,6 +22654,9 @@ void cfg80211_ch_switch_started_notify(s
+@@ -23458,6 +23454,9 @@ void cfg80211_ch_switch_started_notify(s
  
  	trace_cfg80211_ch_switch_started_notify(dev, chandef, link_id);
  
@@ -143,7 +143,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				 NL80211_CMD_CH_SWITCH_STARTED_NOTIFY,
 --- a/net/wireless/ap.c
 +++ b/net/wireless/ap.c
-@@ -48,6 +48,7 @@ static int ___cfg80211_stop_ap(struct cf
+@@ -49,6 +49,7 @@ static int ___cfg80211_stop_ap(struct cf
  		if (notify)
  			nl80211_send_ap_stopped(wdev, link_id);
  

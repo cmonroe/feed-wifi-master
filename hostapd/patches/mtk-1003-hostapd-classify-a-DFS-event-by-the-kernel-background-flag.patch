@@ -261,7 +261,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -7571,6 +7571,7 @@ union wpa_event_data {
+@@ -7727,6 +7727,7 @@ union wpa_event_data {
  	 * struct dfs_event - Data for radar detected events
  	 * @freq: Frequency of the channel in MHz
  	 * @link_id: If >= 0, Link ID of the MLO link
@@ -269,7 +269,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	 */
  	struct dfs_event {
  		int freq;
-@@ -7580,6 +7581,7 @@ union wpa_event_data {
+@@ -7736,6 +7737,7 @@ union wpa_event_data {
  		int cf1;
  		int cf2;
  		int link_id;
@@ -279,7 +279,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/**
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2841,6 +2841,8 @@ static void nl80211_radar_event(struct i
+@@ -2896,6 +2896,8 @@ static void nl80211_radar_event(struct i
  		data.dfs_event.cf1 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ1]);
  	if (tb[NL80211_ATTR_CENTER_FREQ2])
  		data.dfs_event.cf2 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ2]);

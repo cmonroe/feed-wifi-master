@@ -25,7 +25,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2457,6 +2457,12 @@ mt7996_mac_reset_vif_iter(void *data, u8
+@@ -2476,6 +2476,12 @@ mt7996_mac_reset_vif_iter(void *data, u8
  	struct mt7996_dev *dev = data;
  	int i;
  
@@ -33,14 +33,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	 * assigns the channel context again, so nothing may resolve a phy
 +	 * through it and send BSS commands before that
 +	 */
-+	mlink->ctx = NULL;
++	mt76_vif_link_ctx_set(mlink, NULL);
 +
  	rcu_read_lock();
  	for (i = 0; i < ARRAY_SIZE(mvif->link); i++) {
  
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1124,6 +1124,14 @@ mt7996_post_channel_switch(struct ieee80
+@@ -1213,6 +1213,14 @@ mt7996_post_channel_switch(struct ieee80
  	if (!link)
  		goto out;
  

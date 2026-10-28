@@ -45,9 +45,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "ap/dfs.h"
 +#include "ap/hw_features.h"
  #include "ap/nan_usd_ap.h"
- #include "wps/wps_defs.h"
- #include "wps/wps.h"
-@@ -1421,6 +1422,16 @@ static int hostapd_ctrl_iface_reload_bss
+ #include "ap/robust_av.h"
+ #include "ap/scs.h"
+@@ -1584,6 +1585,16 @@ static int hostapd_ctrl_iface_reload_bss
  }
  
  
@@ -64,7 +64,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int hostapd_ctrl_iface_disable(struct hostapd_iface *iface)
  {
  	if (hostapd_disable_iface(iface) < 0) {
-@@ -2484,6 +2495,11 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2647,6 +2658,11 @@ static int hostapd_ctrl_iface_chan_switc
  	if (ret)
  		return ret;
  
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	settings.link_id = -1;
  #ifdef CONFIG_IEEE80211BE
  	/* Reject if EHT is disabled in channel switch settings but the
-@@ -4287,6 +4303,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4450,6 +4466,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strcmp(buf, "RELOAD") == 0) {
  		if (hostapd_ctrl_iface_reload(hapd->iface))
  			reply_len = -1;
@@ -88,7 +88,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			reply_len = -1;
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1264,6 +1264,12 @@ static int hostapd_cli_cmd_reload_config
+@@ -1342,6 +1342,12 @@ static int hostapd_cli_cmd_reload_config
  	return wpa_ctrl_command(ctrl, "RELOAD_CONFIG");
  }
  
@@ -101,7 +101,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static int hostapd_cli_cmd_disable(struct wpa_ctrl *ctrl, int argc,
  				   char *argv[])
-@@ -1941,6 +1947,8 @@ static const struct hostapd_cli_cmd host
+@@ -2019,6 +2025,8 @@ static const struct hostapd_cli_cmd host
  	  "<addr> = send a link measurement report request to a station"},
  	{ "reload_wpa_psk", hostapd_cli_cmd_reload_wpa_psk, NULL,
  	  "= reload wpa_psk_file only" },
@@ -122,7 +122,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (iface->bss[0]->conf->logger_stdout_level > 0)
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -788,6 +788,44 @@ struct hostapd_iface {
+@@ -815,6 +815,44 @@ struct hostapd_iface {
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
  
@@ -607,7 +607,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return hostapd_dfs_start_channel_switch_cac(iface);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1117,6 +1117,8 @@ void hostapd_cleanup_iface_partial(struc
+@@ -1833,6 +1833,8 @@ void hostapd_cleanup_iface_partial(struc
  #ifdef NEED_AP_MLME
  	hostapd_stop_setup_timers(iface);
  #endif /* NEED_AP_MLME */
@@ -655,7 +655,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* HW_FEATURES_H */
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -1079,6 +1079,11 @@ hostapd_switch_chan(struct ubus_context
+@@ -1161,6 +1161,11 @@ hostapd_switch_chan(struct ubus_context
  	if (!tb[CSA_FREQ])
  		return UBUS_STATUS_INVALID_ARGUMENT;
  
@@ -669,9 +669,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (iconf->secondary_channel)
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -752,6 +752,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
- 		hapd->beacon_set_done = 0;
- 	}
+@@ -748,6 +748,9 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
+ 	for (i = 0; i < iface->num_bss; i++)
+ 		hostapd_bss_stop_ap(iface->bss[i]);
  
 +	/* TRIGGER_ACS reports a channel for a running AP only */
 +	hostapd_manual_acs_end(iface);

@@ -1,0 +1,101 @@
+From: Ramasamy Kaliappan <ramasamy.kaliappan@oss.qualcomm.com>
+Date: Tue, 1 Sep 2026 17:17:31 +0530
+Subject: [PATCH] WDS: Interface removal in MLO cases
+
+A WDS interface is shared by the station across affiliated links. Do not
+remove the interface when the station is removed from one link while it
+is still present on another affiliated link. Remove the WDS interface
+and release its identifier only after the station has been removed from
+all links.
+
+Signed-off-by: Ramasamy Kaliappan <ramasamy.kaliappan@oss.qualcomm.com>
+Signed-off-by: Aaradhana Sahu <aaradhana.sahu@oss.qualcomm.com>
+
+[identifier part of hostap commit 7561cfa1ea9a. OpenWrt carries the
+ removal part, and removes the AP_VLAN from the link STA that holds
+ its owner mark. The removal names the AP_VLAN by the MLD-wide ID, and
+ a partner link STA that takes the mark also takes the ID. The ID is
+ released when no partner link STA holds it, also where the AP_VLAN
+ does not exist, because a postponed 4-address enable allocates the
+ ID before it creates the AP_VLAN.]
+---
+ src/ap/sta_info.c | 39 ++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 38 insertions(+), 1 deletion(-)
+
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -409,6 +409,27 @@ void ap_sta_clear_sae_pt(struct sta_info
+ }
+ 
+ 
++#ifdef CONFIG_IEEE80211BE
++static bool ap_sta_wds_ifname_id_shared(struct hostapd_data *hapd,
++					struct sta_info *sta)
++{
++	struct hostapd_data *phapd;
++	struct sta_info *psta;
++
++	for_each_mld_link(phapd, hapd) {
++		if (phapd == hapd)
++			continue;
++
++		psta = ap_get_sta(phapd, sta->addr);
++		if (psta && psta->wds_ifname_id == sta->wds_ifname_id)
++			return true;
++	}
++
++	return false;
++}
++#endif /* CONFIG_IEEE80211BE */
++
++
+ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
+ {
+ #ifndef CONFIG_NO_VLAN
+@@ -424,7 +445,12 @@ void ap_free_sta(struct hostapd_data *ha
+ 	hostapd_set_sta_flags(hapd, sta);
+ 
+ 	if (sta->wds_vlan) {
++		int ifname_id = sta->aid;
++
+ #ifdef CONFIG_IEEE80211BE
++		if (hapd->conf->mld_ap && (sta->flags & WLAN_STA_WDS))
++			ifname_id = sta->wds_ifname_id;
++
+ 		if (ap_sta_is_mld(hapd, sta)) {
+ 			struct hostapd_data *phapd;
+ 			struct sta_info *psta;
+@@ -436,6 +462,9 @@ void ap_free_sta(struct hostapd_data *ha
+ 				psta = ap_get_sta(phapd, sta->addr);
+ 				if (psta) {
+ 					psta->wds_vlan = 1;
++					if (!psta->wds_ifname_id)
++						psta->wds_ifname_id =
++							sta->wds_ifname_id;
+ 					remove = false;
+ 					break;
+ 				}
+@@ -444,7 +473,8 @@ void ap_free_sta(struct hostapd_data *ha
+ #endif /* CONFIG_IEEE80211BE */
+ 
+ 		if (remove)
+-			hostapd_set_wds_sta(hapd, NULL, sta->addr, sta->aid, 0);
++			hostapd_set_wds_sta(hapd, NULL, sta->addr, ifname_id,
++					    0);
+ 	}
+ 
+ 	if (sta->ipaddr)
+@@ -464,6 +494,13 @@ void ap_free_sta(struct hostapd_data *ha
+ 		hapd->sta_aid[(sta->aid - 1) / 32] &=
+ 			~BIT((sta->aid - 1) % 32);
+ 
++#ifdef CONFIG_IEEE80211BE
++	if (sta->wds_ifname_id > 0 && hapd->mld &&
++	    !ap_sta_wds_ifname_id_shared(hapd, sta))
++		hapd->mld->wds_ifname_id[(sta->wds_ifname_id - 1) / 32] &=
++			~BIT((sta->wds_ifname_id - 1) % 32);
++#endif /* CONFIG_IEEE80211BE */
++
+ 	hapd->num_sta--;
+ 	if (sta->nonerp_set) {
+ 		sta->nonerp_set = 0;

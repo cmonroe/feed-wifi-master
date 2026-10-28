@@ -151,7 +151,7 @@ FT over the air and FT over the DS use the same function.
  	unsigned int pmkid_set:1;
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -2503,6 +2503,7 @@ int wpa_auth_sm_event(struct wpa_state_m
+@@ -2501,6 +2501,7 @@ int wpa_auth_sm_event(struct wpa_state_m
  		sm->xxkey_len = 0;
  		os_memset(sm->pmk_r1, 0, sizeof(sm->pmk_r1));
  		sm->pmk_r1_len = 0;

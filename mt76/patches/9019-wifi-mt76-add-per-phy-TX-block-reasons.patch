@@ -41,7 +41,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct delayed_work roc_work;
  	struct ieee80211_vif *roc_vif;
-@@ -1735,6 +1741,8 @@ void mt76_tx_check_agg_ssn(struct ieee80
+@@ -1738,6 +1744,8 @@ void mt76_tx_check_agg_ssn(struct ieee80
  void mt76_txq_schedule(struct mt76_phy *phy, enum mt76_txq_id qid);
  void mt76_txq_schedule_all(struct mt76_phy *phy);
  void mt76_txq_schedule_pending(struct mt76_phy *phy);
@@ -52,7 +52,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt76_release_buffered_frames(struct ieee80211_hw *hw,
 --- a/tx.c
 +++ b/tx.c
-@@ -550,7 +550,8 @@ mt76_txq_send_burst(struct mt76_phy *phy
+@@ -576,7 +576,8 @@ mt76_txq_send_burst(struct mt76_phy *phy
  		goto out;
  
  	do {
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			break;
  
  		if (stop || mt76_txq_stopped(q))
-@@ -602,7 +603,8 @@ mt76_txq_schedule_list(struct mt76_phy *
+@@ -628,7 +629,8 @@ mt76_txq_schedule_list(struct mt76_phy *
  			continue;
  
  		phy = mt76_dev_phy(dev, wcid->phy_idx);
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			continue;
  
  		q = phy->q_tx[qid];
-@@ -735,7 +737,8 @@ mt76_txq_schedule_pending_wcid(struct mt
+@@ -761,7 +763,8 @@ mt76_txq_schedule_pending_wcid(struct mt
  			qid = MT_TXQ_PSD;
  
  		q = phy->q_tx[qid];
@@ -82,7 +82,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			ret = -1;
  			break;
  		}
-@@ -808,6 +811,62 @@ void mt76_txq_schedule_all(struct mt76_p
+@@ -834,6 +837,62 @@ void mt76_txq_schedule_all(struct mt76_p
  }
  EXPORT_SYMBOL_GPL(mt76_txq_schedule_all);
  

@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/lib/netifd/wireless.uc
 +++ b/src/lib/netifd/wireless.uc
-@@ -167,6 +167,36 @@ function update_config(new_devices, mlo_
+@@ -175,6 +175,36 @@ function update_config(new_devices, mlo_
  	}
  }
  
@@ -64,8 +64,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +
  function config_init(uci)
  {
- 	let config = uci.get_all("wireless");
-@@ -347,6 +377,12 @@ function config_init(uci)
+ 	config_pending = true;
+@@ -357,6 +387,12 @@ function config_init(uci)
  		}
  	}
  

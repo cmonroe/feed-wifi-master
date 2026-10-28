@@ -24,17 +24,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +++ b/mt7996/main.c
 @@ -26,6 +26,11 @@ int mt7996_run(struct mt7996_phy *phy)
  	if (ret)
- 		return ret;
+ 		goto disable_radio;
  
 +	/* set a parking channel */
 +	ret = mt7996_mcu_set_chan_info(phy, UNI_CHANNEL_SWITCH);
 +	if (ret)
-+		return ret;
++		goto disable_radio;
 +
  	ret = mt7996_mcu_set_thermal_throttling(phy, MT7996_THERMAL_THROTTLE_MAX);
  	if (ret)
- 		return ret;
-@@ -83,6 +88,8 @@ static void mt7996_stop_phy(struct mt799
+ 		goto disable_radio;
+@@ -88,6 +93,8 @@ static void mt7996_stop_phy(struct mt799
  	dev = phy->dev;
  
  	cancel_delayed_work_sync(&phy->mt76->mac_work);
@@ -43,7 +43,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -3220,6 +3227,44 @@ mt7996_set_eml_op_mode(struct ieee80211_
+@@ -3543,6 +3550,44 @@ mt7996_set_eml_op_mode(struct ieee80211_
  	return ret;
  }
  
@@ -88,9 +88,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  const struct ieee80211_ops mt7996_ops = {
  	.add_chanctx = mt76_add_chanctx,
  	.remove_chanctx = mt76_remove_chanctx,
-@@ -3252,6 +3297,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -3574,6 +3619,7 @@ const struct ieee80211_ops mt7996_ops =
+ 	.release_buffered_frames = mt76_release_buffered_frames,
  	.get_txpower = mt7996_get_txpower,
- 	.channel_switch_beacon = mt7996_channel_switch_beacon,
  	.post_channel_switch = mt7996_post_channel_switch,
 +	.event_callback = mt7996_event_callback,
  	.get_stats = mt7996_get_stats,

@@ -1,0 +1,28 @@
+From: Matthew Cather <matthew.cather@adtran.com>
+Date: Tue, 22 Sep 2026 14:10:00 -0700
+Subject: [PATCH] hostapd: release the rfkill config without rfkill support
+
+Without CONFIG_RFKILL, the stub of rfkill_init() returns a sentinel
+instead of NULL. The nl80211 and wext drivers release the rfkill
+config only on a NULL return, so each driver instance leaks it.
+
+Submitted upstream as openwrt/openwrt#25339. Drop this patch when it
+lands.
+
+Signed-off-by: Matthew Cather <matthew.cather@adtran.com>
+---
+ src/drivers/rfkill.h |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/src/drivers/rfkill.h
++++ b/src/drivers/rfkill.h
+@@ -25,7 +25,8 @@ int rfkill_is_blocked(struct rfkill_data
+ #else
+ static inline struct rfkill_data * rfkill_init(struct rfkill_config *cfg)
+ {
+-	return (void *) 1;
++	/* callers release the config only on a NULL return */
++	return NULL;
+ }
+ 
+ static inline void rfkill_deinit(struct rfkill_data *rfkill)

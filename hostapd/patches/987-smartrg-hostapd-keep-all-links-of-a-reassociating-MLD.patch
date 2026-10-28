@@ -22,9 +22,22 @@ so that removal also dropped the partner links from the driver: the AP
 kept the association link only, while the station used all links. Add
 the partner link stations again after the MLD station is added.
 
+A non-AP MLD that does not acknowledge the response to its first
+association sends its request again without a new authentication.
+hostapd removed the MLD station from the driver and kept the link
+stations, so the next request found these link stations, and the
+driver refused each new link because it had no MLD station. Add the
+MLD station again as authenticated and not associated, and free its
+link stations, as a new authentication does. The retry gets a new
+AID, because the freed link stations release their AID on the partner
+links, where another station can take it before the retry.
+
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6842,6 +6842,31 @@ bool hostapd_is_multiple_link_mld(struct
+@@ -6966,6 +6966,31 @@ bool hostapd_is_multiple_link_mld(struct
  #endif /* CONFIG_IEEE80211BE */
  
  
@@ -56,7 +69,7 @@ the partner link stations again after the MLD station is added.
  int hostapd_process_assoc_ml_info(struct hostapd_data *hapd,
  				  struct sta_info *sta,
  				  const u8 *ies, size_t ies_len,
-@@ -6890,6 +6915,7 @@ int hostapd_process_assoc_ml_info(struct
+@@ -7014,6 +7039,7 @@ int hostapd_process_assoc_ml_info(struct
  				ieee80211_ml_build_assoc_resp(hapd, link, sta,
  							      false);
  		} else {
@@ -64,7 +77,7 @@ the partner link stations again after the MLD station is added.
  			if (ieee80211_ml_process_link(
  				    bss, sta, link, ies, ies_len,
  				    reassoc ? LINK_PARSE_REASSOC :
-@@ -6926,6 +6952,32 @@ static void send_deauth(struct hostapd_d
+@@ -7050,6 +7076,32 @@ static void send_deauth(struct hostapd_d
  }
  
  
@@ -97,7 +110,7 @@ the partner link stations again after the MLD station is added.
  static int add_associated_sta(struct hostapd_data *hapd,
  			      struct sta_info *sta, int reassoc)
  {
-@@ -6935,7 +6987,7 @@ static int add_associated_sta(struct hos
+@@ -7059,7 +7111,7 @@ static int add_associated_sta(struct hos
  	struct ieee80211_eht_capabilities eht_cap;
  	int set = 1;
  	const u8 *mld_link_addr = NULL;
@@ -106,7 +119,7 @@ the partner link stations again after the MLD station is added.
  	u16 eml_cap = 0;
  
  #ifdef CONFIG_ENC_ASSOC
-@@ -6998,6 +7050,7 @@ static int add_associated_sta(struct hos
+@@ -7122,6 +7174,7 @@ static int add_associated_sta(struct hos
  		hostapd_drv_sta_remove(hapd, sta->addr);
  		wpa_auth_sm_event(sta->wpa_sm, WPA_DRV_STA_REMOVED);
  		set = 0;
@@ -114,7 +127,7 @@ the partner link stations again after the MLD station is added.
  		/*
  		 * The new driver entry has no key until the 4-way handshake or
  		 * the FT key installation. Clear the flag without an event,
-@@ -7079,6 +7132,11 @@ static int add_associated_sta(struct hos
+@@ -7203,6 +7256,11 @@ static int add_associated_sta(struct hos
  
  	sta->added_unassoc = 0;
  
@@ -126,3 +139,56 @@ the partner link stations again after the MLD station is added.
  	return 0;
  }
  
+@@ -9356,6 +9414,37 @@ static void hostapd_ml_handle_assoc_cb(s
+ }
+ 
+ 
++/*
++ * A non-AP MLD that did not acknowledge the response to its first association
++ * sends the request again without a new authentication. The links of that
++ * request need the MLD station in the driver and no link STA of this one.
++ */
++static bool hostapd_ml_unacked_first_assoc(struct hostapd_data *hapd,
++					   struct sta_info *sta)
++{
++	return ap_sta_is_mld(hapd, sta) && !(sta->flags & WLAN_STA_ASSOC) &&
++		FULL_AP_CLIENT_STATE_SUPP(hapd->iface->drv_flags) &&
++		!(hapd->conf->mesh & MESH_ENABLED);
++}
++
++
++static void hostapd_ml_reset_unacked_assoc(struct hostapd_data *hapd,
++					   struct sta_info *sta)
++{
++	struct hostapd_data *aid_bss = hostapd_mbssid_get_tx_bss(hapd);
++	int aid_bit = sta->aid - (1 << hostapd_max_bssid_indicator(aid_bss));
++
++	if (ap_sta_re_add(hapd, sta) == 0)
++		sta->flags |= WLAN_STA_AUTH;
++
++	/* The partner links released this AID with their link STAs, so another
++	 * station can take it there before the retry. */
++	if (sta->aid > 0 && aid_bit >= 0)
++		aid_bss->sta_aid[aid_bit / 32] &= ~BIT(aid_bit % 32);
++	sta->aid = 0;
++}
++
++
+ static void handle_assoc_cb(struct hostapd_data *hapd,
+ 			    const struct ieee80211_mgmt *mgmt,
+ 			    size_t len, int reassoc, int ok)
+@@ -9411,6 +9500,14 @@ static void handle_assoc_cb(struct hosta
+ 			       HOSTAPD_LEVEL_DEBUG,
+ 			       "did not acknowledge association response");
+ 		sta->flags &= ~WLAN_STA_ASSOC_REQ_OK;
++		/* The reset frees the partner link STAs, and with AID 0 the ML
++		 * callback would match an unrelated STA of a partner link. */
++		if (status == WLAN_STATUS_SUCCESS &&
++		    hostapd_ml_unacked_first_assoc(hapd, sta)) {
++			hostapd_ml_reset_unacked_assoc(hapd, sta);
++			return;
++		}
++
+ 		/* The STA is added only in case of SUCCESS */
+ 		if (status == WLAN_STATUS_SUCCESS)
+ 			hostapd_drv_sta_remove(hapd, sta->addr);

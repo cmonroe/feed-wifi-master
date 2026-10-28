@@ -15,7 +15,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
 --- a/src/usr/share/ucode/wifi/iface.uc
 +++ b/src/usr/share/ucode/wifi/iface.uc
-@@ -293,8 +293,9 @@ export function wpa_key_mgmt(config, ban
+@@ -299,8 +299,9 @@ export function wpa_key_mgmt(config, ban
  		append_value(config, 'wpa_key_mgmt', 'WPA-PSK');
  		if (config.ieee80211w)
  			append_value(config, 'wpa_key_mgmt', 'WPA-PSK-SHA256');

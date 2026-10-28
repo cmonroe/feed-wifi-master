@@ -36,7 +36,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -285,35 +285,26 @@ mt7996_mcu_set_timeout(struct mt76_dev *
+@@ -293,35 +293,26 @@ mt7996_mcu_set_timeout(struct mt76_dev *
  }
  
  static int
@@ -74,7 +74,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	val = FIELD_PREP(MT_TXD0_TX_BYTES, skb->len) |
  	      FIELD_PREP(MT_TXD0_PKT_FMT, MT_TX_TYPE_CMD) |
-@@ -376,6 +367,23 @@ exit:
+@@ -384,6 +375,23 @@ exit:
  	if (wait_seq)
  		*wait_seq = seq;
  
@@ -98,7 +98,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return mt76_tx_queue_skb_raw(dev, mdev->q_mcu[qid], skb, 0);
  }
  
-@@ -4030,7 +4038,9 @@ int mt7996_mcu_init_firmware(struct mt79
+@@ -4245,7 +4253,9 @@ int mt7996_mcu_init_firmware(struct mt79
  int mt7996_mcu_init(struct mt7996_dev *dev)
  {
  	static const struct mt76_mcu_ops mt7996_mcu_ops = {

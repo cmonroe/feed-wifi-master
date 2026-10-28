@@ -16,7 +16,7 @@ already logs AP-STA-POSSIBLE-PSK-MISMATCH at INFO for each message
 
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -4000,8 +4000,9 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
+@@ -4006,8 +4006,9 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
  	}
  
  	if (!ok) {
@@ -27,7 +27,7 @@ already logs AP-STA-POSSIBLE-PSK-MISMATCH at INFO for each message
  				"invalid MIC in msg 2/4 of 4-Way Handshake");
  		if (psk_found)
  			wpa_auth_psk_failure_report(sm->wpa_auth, sm->addr);
-@@ -5637,7 +5638,7 @@ SM_STEP(WPA_PTK)
+@@ -5643,7 +5644,7 @@ SM_STEP(WPA_PTK)
  		else if (sm->TimeoutCtr > conf->wpa_pairwise_update_count) {
  			wpa_auth->dot11RSNA4WayHandshakeFailures++;
  			wpa_auth_vlogger(wpa_auth, wpa_auth_get_spa(sm),
@@ -36,7 +36,7 @@ already logs AP-STA-POSSIBLE-PSK-MISMATCH at INFO for each message
  					 "PTKSTART: Retry limit %u reached",
  					 conf->wpa_pairwise_update_count);
  			sm->disconnect_reason =
-@@ -5670,7 +5671,7 @@ SM_STEP(WPA_PTK)
+@@ -5676,7 +5677,7 @@ SM_STEP(WPA_PTK)
  			  sm->TimeoutCtr > 1)) {
  			wpa_auth->dot11RSNA4WayHandshakeFailures++;
  			wpa_auth_vlogger(wpa_auth, wpa_auth_get_spa(sm),

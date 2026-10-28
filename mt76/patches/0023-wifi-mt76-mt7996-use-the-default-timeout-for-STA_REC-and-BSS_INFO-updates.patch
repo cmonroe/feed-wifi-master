@@ -21,7 +21,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -273,8 +273,6 @@ mt7996_mcu_set_timeout(struct mt76_dev *
+@@ -281,8 +281,6 @@ mt7996_mcu_set_timeout(struct mt76_dev *
  	case MCU_UNI_CMD_THERMAL:
  	case MCU_UNI_CMD_TWT:
  	case MCU_UNI_CMD_GET_MIB_INFO:

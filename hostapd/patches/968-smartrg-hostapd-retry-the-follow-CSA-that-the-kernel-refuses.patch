@@ -16,20 +16,24 @@ than the station. When the APs finish late, the first beacon of
 the uplink on the new channel has no CSA element, and mac80211
 aborts the switch of the station.
 
-The switch_channel binding reported the result of the last BSS
-only, and a BSS that already switches refuses a second request. It
-now reports success when every running BSS switches to the
-requested frequency, so that a repeated request completes a switch
-that the kernel refused for some BSSes.
+The switch_channel binding stops at the first BSS that fails, and a
+BSS that already switches refuses a second request. A repeated
+request therefore skips the BSSes that switch to the requested
+frequency, and the binding reports success when every running BSS
+switches to it. A repeated request then completes a switch that the
+kernel refused for some BSSes.
+
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  openwrt/files/hostapd.uc |  105 +++++++++++++++++++++++++++++++++++++++++------
- src/ap/ucode.c           |   17 +++++++
- 2 files changed, 110 insertions(+), 12 deletions(-)
+ src/ap/ucode.c           |   29 ++++++++++++
+ 2 files changed, 120 insertions(+), 14 deletions(-)
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -468,12 +468,24 @@ function csa_timer_cancel(name)
- 	}
+@@ -567,6 +567,17 @@ function iface_link_reload_cancel(name)
+ 	delete hostapd.data.link_reload[name];
  }
  
 +const APSTA_CSA_RETRY_MS = 50;
@@ -46,14 +50,15 @@ that the kernel refused for some BSSes.
  function iface_restart(phydev, config, old_config)
  {
  	let phy = phydev.name;
- 	let pending = hostapd.data.pending_config[phy];
+@@ -574,6 +585,7 @@ function iface_restart(phydev, config, o
  
  	csa_timer_cancel(phy);
+ 	iface_link_reload_cancel(phy);
 +	apsta_csa_retry_cancel(phy);
  
  	if (pending)
  		pending.abort();
-@@ -943,6 +955,82 @@ function iface_csa_check(name)
+@@ -1088,6 +1100,82 @@ function iface_csa_check(name)
  		iface_restart(phydev, config, config);
  }
  
@@ -136,7 +141,7 @@ that the kernel refused for some BSSes.
  function iface_channel_switch(name, config)
  {
  	let radio = config.radio;
-@@ -995,17 +1083,8 @@ function iface_channel_switch(name, conf
+@@ -1140,17 +1228,8 @@ function iface_channel_switch(name, conf
  	hostapd.data.csa_timer ??= {};
  	csa_timer_cancel(name);
  
@@ -156,7 +161,7 @@ that the kernel refused for some BSSes.
  
  	return true;
  }
-@@ -2131,6 +2210,8 @@ let main_obj = {
+@@ -2435,6 +2514,8 @@ let main_obj = {
  			if (!iface)
  				return 0;
  
@@ -165,7 +170,7 @@ that the kernel refused for some BSSes.
  			if (!req.args.up) {
  				delete hostapd.data.apsta_freq[phy];
  				hostapd.data.apsta_stopped[phy] = true;
-@@ -2196,7 +2277,7 @@ let main_obj = {
+@@ -2500,7 +2581,7 @@ let main_obj = {
  				if (req.args.csa) {
  					freq_info.csa_count = req.args.csa_count ?? 10;
  					if (!iface.switch_channel(freq_info))
@@ -176,10 +181,23 @@ that the kernel refused for some BSSes.
  					return 0;
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -928,6 +928,23 @@ uc_hostapd_iface_switch_channel(uc_vm_t
- 	for (i = 0; i < iface->num_bss; i++)
- 		ret = hostapd_switch_channel(iface->bss[i], &csa);
+@@ -927,8 +927,33 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  
+ 	/* mac80211 completes the switch only if every BSS of the radio
+ 	 * takes part */
+-	for (i = 0; i < iface->num_bss && !ret; i++)
+-		ret = hostapd_switch_channel(iface->bss[i], &csa);
++	for (i = 0; i < iface->num_bss && !ret; i++) {
++		struct hostapd_data *hapd = iface->bss[i];
++
++		/* A repeated request asks only the BSSes that the kernel
++		 * refused, because a BSS that switches refuses it. */
++		if (hapd->csa_in_progress &&
++		    hapd->cs_freq_params.freq == csa.freq_params.freq)
++			continue;
++		ret = hostapd_switch_channel(hapd, &csa);
++	}
++
 +	/*
 +	 * A caller repeats a switch that the kernel refused for some BSSes,
 +	 * and a BSS that already switches refuses the repeated request. So
@@ -196,7 +214,6 @@ that the kernel refused for some BSSes.
 +			return ucv_boolean_new(false);
 +		ret = 0;
 +	}
-+
+ 
  	return ucv_boolean_new(!ret);
  }
- 

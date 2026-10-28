@@ -22,17 +22,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -3352,17 +3352,23 @@ mt7996_net_fill_forward_path(struct ieee
+@@ -3638,17 +3638,23 @@ mt7996_net_fill_forward_path(struct ieee
  			     struct net_device_path_ctx *ctx,
  			     struct net_device_path *path)
  {
 +	struct mt7996_vif *mvif = (struct mt7996_vif *)vif->drv_priv;
  	struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
- 	struct mtk_wed_device *wed = &dev->mt76.mmio.wed;
 +	u8 link_id = READ_ONCE(msta->deflink_id);
  	struct mt7996_sta_link *msta_link;
  	struct mt7996_vif_link *link;
+ 	struct mtk_wed_device *wed;
  
 -	link = mt7996_vif_link(dev, vif, msta->deflink_id);
 +	if (link_id >= IEEE80211_MLD_MAX_NUM_LINKS)

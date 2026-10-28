@@ -133,7 +133,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  					&rdev->background_radar_chandef,
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -22559,6 +22559,15 @@ void cfg80211_ch_switch_notify(struct ne
+@@ -23359,6 +23359,15 @@ void cfg80211_ch_switch_notify(struct ne
  			cfg80211_update_last_available(wdev->wiphy,
  						       &wdev->links[link_id].ap.chandef);
  		wdev->links[link_id].ap.chandef = *chandef;

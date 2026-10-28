@@ -28,7 +28,7 @@ Signed-off-by: Colin Whittaker <colin.whittaker@adtran.com>
  			"description": "List of MACs used by the macfilter option",
 --- a/src/usr/share/ucode/wifi/ap.uc
 +++ b/src/usr/share/ucode/wifi/ap.uc
-@@ -294,8 +294,7 @@ function iface_auth_type(config, band, e
+@@ -307,8 +307,7 @@ function iface_auth_type(config, band, e
  
  		if (config.ppsk) {
  			iface_authentication_server(config);
@@ -38,7 +38,7 @@ Signed-off-by: Colin Whittaker <colin.whittaker@adtran.com>
  		} else if (key_kind(config.key) == 'psk') {
  			config.wpa_psk = config.key;
  		} else if (key_kind(config.key) == 'passphrase') {
-@@ -367,7 +366,9 @@ function iface_ppsk(config) {
+@@ -380,7 +379,9 @@ function iface_ppsk(config) {
  		return;
  
  	iface_authentication_server(config);
@@ -49,7 +49,7 @@ Signed-off-by: Colin Whittaker <colin.whittaker@adtran.com>
  }
  
  function iface_wps(config, band) {
-@@ -429,6 +430,10 @@ function iface_macfilter(config) {
+@@ -442,6 +443,10 @@ function iface_macfilter(config) {
  		append('macaddr_acl', 0);
  		break;
  

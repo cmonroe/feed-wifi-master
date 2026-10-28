@@ -32,7 +32,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/debugfs.c
 +++ b/debugfs.c
-@@ -113,6 +113,8 @@ mt76_register_debugfs_fops(struct mt76_p
+@@ -116,6 +116,8 @@ mt76_register_debugfs_fops(struct mt76_p
  	debugfs_create_bool("led_active_low", 0600, dir, &phy->leds.al);
  	debugfs_create_u32("regidx", 0600, dir, &dev->debugfs_reg);
  	debugfs_create_file_unsafe("regval", 0600, dir, dev, fops);
@@ -79,7 +79,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spinlock_t rx_token_lock;
  	struct idr rx_token;
-@@ -2088,6 +2097,9 @@ struct mt76_txwi_cache *
+@@ -2098,6 +2107,9 @@ struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake);
  int mt76_token_consume(struct mt76_dev *dev, struct mt76_txwi_cache **ptxwi,
  		       u8 phy_idx);
@@ -91,7 +91,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt76_rx_token_consume(struct mt76_dev *dev, void *ptr,
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -750,6 +750,7 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -751,6 +751,7 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
  	t->wcid = wcid->idx;
@@ -99,7 +99,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	id = mt76_token_consume(mdev, &t, wcid->phy_idx);
  	if (id < 0)
-@@ -1929,6 +1930,24 @@ void mt7915_mac_update_stats(struct mt79
+@@ -1930,6 +1931,24 @@ void mt7915_mac_update_stats(struct mt79
  	}
  }
  
@@ -124,7 +124,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void mt7915_mac_severe_check(struct mt7915_phy *phy)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -1959,8 +1978,9 @@ static void mt7915_mac_severe_check(stru
+@@ -1960,8 +1979,9 @@ static void mt7915_mac_severe_check(stru
  		dev_warn(dev->mt76.dev,
  			 "band%d: PLE error 0x%x detected, triggering L1 SER\n",
  			 phy->mt76->band_idx, ple_err);
@@ -136,7 +136,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  	dev->ple1_sts = ple_err;
  }
-@@ -2018,6 +2038,7 @@ void mt7915_mac_work(struct work_struct
+@@ -2019,6 +2039,7 @@ void mt7915_mac_work(struct work_struct
  
  		mt7915_mac_update_stats(phy);
  		mt7915_mac_severe_check(phy);
@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "mt76.h"
  
  static int
-@@ -1079,6 +1080,203 @@ mt76_token_release(struct mt76_dev *dev,
+@@ -1100,6 +1101,203 @@ mt76_token_release(struct mt76_dev *dev,
  }
  EXPORT_SYMBOL_GPL(mt76_token_release);
  

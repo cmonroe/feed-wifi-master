@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1379,7 +1379,7 @@ int mt7996_mcu_add_bss_info(struct mt799
+@@ -1437,7 +1437,7 @@ int mt7996_mcu_add_bss_info(struct mt799
  		mt7996_mcu_bss_txcmd_tlv(skb, true);
  		mt7996_mcu_bss_ifs_timing_tlv(skb, phy);
  

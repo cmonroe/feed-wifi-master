@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/usr/share/ucode/iwinfo.uc
 +++ b/src/usr/share/ucode/iwinfo.uc
-@@ -195,6 +195,11 @@ function format_band(freq) {
+@@ -210,6 +210,11 @@ function format_band(freq) {
  	return '60';
  }
  
@@ -32,7 +32,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function format_frequency(freq) {
  	return freq ? sprintf('%.03f', freq / 1000.0) : 'unknown';
  }
-@@ -420,6 +425,7 @@ export function freqlist(name) {
+@@ -442,6 +447,7 @@ export function freqlist(name) {
  	let phy = iface ? find_phy(iface.wiphy) : phy_by_name(name);
  	if (!phy)
  		return [];
@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	let channels = [];
  
  	for (let k, band in phy.wiphy_bands) {
-@@ -427,6 +433,8 @@ export function freqlist(name) {
+@@ -449,6 +455,8 @@ export function freqlist(name) {
  			continue;
  
  		let band_name = format_band(band.freqs[0].freq);

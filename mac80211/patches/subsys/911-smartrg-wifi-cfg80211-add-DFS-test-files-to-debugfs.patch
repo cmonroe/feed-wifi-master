@@ -61,7 +61,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u64 cac_start_time;
  	s8 psd;
  };
-@@ -5635,6 +5641,7 @@ struct cfg80211_ops {
+@@ -6022,6 +6028,7 @@ struct cfg80211_ops {
  			    bool val);
  	int	(*start_pd)(struct wiphy *wiphy, struct wireless_dev *wdev);
  	void	(*stop_pd)(struct wiphy *wiphy, struct wireless_dev *wdev);
@@ -71,7 +71,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /*
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -6015,6 +6015,31 @@ ieee80211_set_peer_nan_sched(struct wiph
+@@ -6184,6 +6184,31 @@ ieee80211_set_peer_nan_sched(struct wiph
  	return ieee80211_nan_set_peer_sched(sdata, sched);
  }
  
@@ -103,7 +103,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  const struct cfg80211_ops mac80211_config_ops = {
  	.add_virtual_intf = ieee80211_add_iface,
  	.del_virtual_intf = ieee80211_del_iface,
-@@ -6133,4 +6158,5 @@ const struct cfg80211_ops mac80211_confi
+@@ -6307,4 +6332,5 @@ const struct cfg80211_ops mac80211_confi
  	.set_epcs = ieee80211_set_epcs,
  	.nan_set_local_sched = ieee80211_set_local_nan_sched,
  	.nan_set_peer_sched = ieee80211_set_peer_nan_sched,
@@ -808,7 +808,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  					NL80211_RADAR_CAC_STARTED);
 --- a/net/wireless/rdev-ops.h
 +++ b/net/wireless/rdev-ops.h
-@@ -1636,4 +1636,17 @@ rdev_set_epcs(struct cfg80211_registered
+@@ -1712,4 +1712,17 @@ rdev_set_epcs(struct cfg80211_registered
  	return ret;
  }
  
@@ -828,7 +828,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif /* __CFG80211_RDEV_OPS */
 --- a/net/wireless/trace.h
 +++ b/net/wireless/trace.h
-@@ -4409,6 +4409,20 @@ TRACE_EVENT(cfg80211_nan_channel_evac,
+@@ -4577,6 +4577,20 @@ TRACE_EVENT(cfg80211_nan_channel_evac,
  	TP_printk(WDEV_PR_FMT ", " WIPHY_PR_FMT ", " CHAN_DEF_PR_FMT,
  		  WDEV_PR_ARG, WIPHY_PR_ARG, CHAN_DEF_PR_ARG)
  );

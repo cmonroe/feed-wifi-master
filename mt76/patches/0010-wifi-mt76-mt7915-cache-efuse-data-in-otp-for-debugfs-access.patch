@@ -9,12 +9,12 @@ the working EEPROM comes from flash or nvmem.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7915/eeprom.c | 42 ++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 42 insertions(+)
+ mt7915/eeprom.c |   46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
 
 --- a/mt7915/eeprom.c
 +++ b/mt7915/eeprom.c
-@@ -126,11 +126,53 @@ out:
+@@ -126,11 +126,57 @@ out:
  	return ret;
  }
  
@@ -22,8 +22,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +{
 +	u8 free_block_num;
 +	u32 block_num, i;
++	int ret;
 +
-+	mt7915_mcu_get_eeprom_free_block(dev, &free_block_num);
++	ret = mt7915_mcu_get_eeprom_free_block(dev, &free_block_num);
++	if (ret)
++		return ret;
++
 +	/* efuse info not enough */
 +	if (free_block_num >= 29)
 +		return -EINVAL;

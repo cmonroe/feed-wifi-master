@@ -259,7 +259,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -585,6 +585,7 @@ struct mt7996_dev {
+@@ -587,6 +587,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -267,7 +267,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	u32 token_debug_idx;
  
-@@ -604,6 +605,17 @@ struct mt7996_dev {
+@@ -606,6 +607,17 @@ struct mt7996_dev {
  		u8 fem:4;
  	} var;
  
@@ -285,7 +285,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool vow_atf_en;
  };
  
-@@ -1071,6 +1083,12 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1098,6 +1110,12 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
@@ -5653,7 +5653,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +++ b/mt7996/main.c
 @@ -39,8 +39,18 @@ int mt7996_run(struct mt7996_phy *phy)
  	if (ret)
- 		return ret;
+ 		goto disable_radio;
  
 +#ifdef CONFIG_MTK_DEBUG
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
@@ -5669,7 +5669,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +						phy->sku_path_en);
 +#endif
  	if (ret)
- 		return ret;
+ 		goto disable_radio;
  
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
@@ -5716,7 +5716,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1124,6 +1124,7 @@ struct tx_power_ctrl {
+@@ -1189,6 +1189,7 @@ struct tx_power_ctrl {
  		bool ate_mode_enable;
  		bool percentage_ctrl_enable;
  		bool bf_backoff_enable;
@@ -5724,7 +5724,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		u8 power_drop_level;
  	};
  	u8 band_idx;
-@@ -1137,6 +1138,7 @@ enum {
+@@ -1202,6 +1203,7 @@ enum {
  	UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL = 3,
  	UNI_TXPOWER_POWER_LIMIT_TABLE_CTRL = 4,
  	UNI_TXPOWER_ATE_MODE_CTRL = 6,

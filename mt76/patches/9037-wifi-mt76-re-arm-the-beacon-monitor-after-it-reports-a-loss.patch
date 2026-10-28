@@ -26,17 +26,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -2391,20 +2391,31 @@ static void mt76_beacon_mon_iter(void *d
+@@ -2397,20 +2397,31 @@ static void mt76_beacon_mon_iter(void *d
  		if (mt76_vif_link_phy(mlink) != phy)
  			continue;
  
 -		if (time_after(jiffies,
 -			       READ_ONCE(mlink->beacon_mon_last) +
--			       MT76_BEACON_MON_MAX_MISS * mlink->beacon_mon_interval))
+-			       MT76_BEACON_MON_MAX_MISS * interval))
 -			ieee80211_beacon_loss(vif);
 +		if (!time_after(jiffies,
 +				READ_ONCE(mlink->beacon_mon_last) +
-+				MT76_BEACON_MON_MAX_MISS * mlink->beacon_mon_interval))
++				MT76_BEACON_MON_MAX_MISS * interval))
 +			continue;
 +
 +		WRITE_ONCE(mlink->beacon_mon_last, jiffies);

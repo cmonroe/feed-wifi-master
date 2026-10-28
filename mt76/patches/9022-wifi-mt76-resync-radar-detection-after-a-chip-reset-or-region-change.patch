@@ -61,7 +61,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1378,6 +1378,19 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1379,6 +1379,19 @@ mt7915_mac_full_reset(struct mt7915_dev
  	if (phy2)
  		phy2->omac_mask = 0;
  
@@ -83,7 +83,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7915/main.c
 +++ b/mt7915/main.c
-@@ -1852,7 +1852,7 @@ mt7915_set_radar_background(struct ieee8
+@@ -1840,7 +1840,7 @@ mt7915_set_radar_background(struct ieee8
  
  	mutex_lock(&dev->mt76.mutex);
  
@@ -116,7 +116,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			mt7996_mcu_rdd_background_enable(phy, NULL);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2371,6 +2371,18 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2422,6 +2422,18 @@ mt7996_mac_full_reset(struct mt7996_dev
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  
@@ -137,7 +137,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ieee80211_iterate_active_interfaces_atomic(hw,
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -3281,7 +3281,7 @@ mt7996_set_radar_background(struct ieee8
+@@ -3445,7 +3445,7 @@ mt7996_set_radar_background(struct ieee8
  
  	mutex_lock(&dev->mt76.mutex);
  

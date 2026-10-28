@@ -43,7 +43,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	} else if (os_strcmp(buf, "enable_edmg") == 0) {
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -76,13 +76,18 @@ function iface_remove(cfg)
+@@ -77,13 +77,18 @@ function iface_remove(cfg)
  			wdev_remove(bss.ifname);
  }
  
@@ -65,7 +65,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		let type = i > 0 ? "bss" : "interface";
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1113,6 +1113,7 @@ struct hostapd_config {
+@@ -1117,6 +1117,7 @@ struct hostapd_config {
  	int fragm_threshold;
  	u8 op_class;
  	u8 channel;

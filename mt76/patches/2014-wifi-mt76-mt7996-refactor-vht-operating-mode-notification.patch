@@ -26,7 +26,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2900,9 +2900,13 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -2921,9 +2921,13 @@ void mt7996_mac_sta_rc_work(struct work_
  
  		spin_unlock_bh(&dev->mt76.sta_poll_lock);
  
@@ -45,7 +45,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  						 true);
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -2565,7 +2565,9 @@ int mt7996_mcu_set_fixed_field(struct mt
+@@ -2626,7 +2626,9 @@ int mt7996_mcu_set_fixed_field(struct mt
  	struct mt7996_sta_link *msta_link;
  	struct sta_rec_ra_fixed_uni *ra;
  	struct sta_phy_uni *phy = data;
@@ -55,7 +55,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct sk_buff *skb;
  	int err = -ENODEV;
  	struct tlv *tlv;
-@@ -2580,6 +2582,11 @@ int mt7996_mcu_set_fixed_field(struct mt
+@@ -2641,6 +2643,11 @@ int mt7996_mcu_set_fixed_field(struct mt
  	if (!msta_link)
  		goto error_unlock;
  
@@ -67,7 +67,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	skb = __mt76_connac_mcu_alloc_sta_req(&dev->mt76, mlink,
  					      &msta_link->wcid,
  					      MT7996_STA_UPDATE_MAX_SIZE);
-@@ -2601,19 +2608,35 @@ int mt7996_mcu_set_fixed_field(struct mt
+@@ -2662,19 +2669,35 @@ int mt7996_mcu_set_fixed_field(struct mt
  		if (phy)
  			ra->phy = *phy;
  		break;
@@ -112,7 +112,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	default:
  		break;
  	}
-@@ -2759,9 +2782,11 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
+@@ -2820,9 +2843,11 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
  			     struct mt7996_vif_link *link)
  {
  #define INIT_RCPI 180
@@ -124,7 +124,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct cfg80211_chan_def *chandef;
  	struct sta_rec_ra_uni *ra;
  	enum nl80211_band band;
-@@ -2782,10 +2807,13 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
+@@ -2843,10 +2868,13 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
  	ra->auto_rate = true;
  	ra->phy_mode = mt76_connac_get_phy_mode(mphy, vif, band, link_sta);
  	ra->channel = chandef->chan->hw_value;
@@ -143,7 +143,7 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  		supp_rate &= mask->control[band].legacy;
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -957,6 +957,7 @@ enum {
+@@ -1014,6 +1014,7 @@ enum {
  };
  
  enum {

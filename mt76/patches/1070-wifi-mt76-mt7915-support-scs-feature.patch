@@ -40,7 +40,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  enum mt76_wcid_flags {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1309,6 +1309,7 @@ enum {
+@@ -1311,6 +1311,7 @@ enum {
  	MCU_EXT_CMD_SET_RDD_PATTERN = 0x7d,
  	MCU_EXT_CMD_MWDS_SUPPORT = 0x80,
  	MCU_EXT_CMD_SET_SER_TRIGGER = 0x81,
@@ -60,7 +60,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1413,6 +1413,8 @@ mt7915_mac_full_reset(struct mt7915_dev
+@@ -1414,6 +1414,8 @@ mt7915_mac_full_reset(struct mt7915_dev
  
  	mt76_abort_scan(&dev->mt76);
  
@@ -69,7 +69,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	mutex_lock(&dev->mt76.mutex);
  	for (i = 0; i < 10; i++) {
  		if (!mt7915_mac_restart(dev))
-@@ -1505,6 +1507,7 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1506,6 +1508,7 @@ void mt7915_mac_reset_work(struct work_s
  		set_bit(MT76_RESET, &phy2->mt76->state);
  		cancel_delayed_work_sync(&phy2->mt76->mac_work);
  	}
@@ -77,7 +77,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -1574,6 +1577,10 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1575,6 +1578,10 @@ void mt7915_mac_reset_work(struct work_s
  					     &phy2->mt76->mac_work,
  					     MT7915_WATCHDOG_TIME);
  
@@ -123,7 +123,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		mt76_connac_mcu_set_pm(&dev->mt76, dev->phy.mt76->band_idx, 1);
  		mt7915_mcu_set_mac(dev, dev->phy.mt76->band_idx, false, false);
  	}
-@@ -1919,11 +1932,16 @@ static void
+@@ -1907,11 +1920,16 @@ static void
  mt7915_reconfig_complete(struct ieee80211_hw *hw,
  			 enum ieee80211_reconfig_type reconfig_type)
  {
@@ -142,7 +142,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  const struct ieee80211_ops mt7915_ops = {
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -4848,6 +4848,124 @@ int mt7915_mcu_get_edcca(struct mt7915_p
+@@ -4880,6 +4880,124 @@ int mt7915_mcu_get_edcca(struct mt7915_p
  	return 0;
  }
  

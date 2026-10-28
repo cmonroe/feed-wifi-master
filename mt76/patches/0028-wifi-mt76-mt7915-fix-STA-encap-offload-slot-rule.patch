@@ -55,7 +55,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	mt7915_init_bitrate_mask(vif);
  	memset(&mvif->cap, -1, sizeof(mvif->cap));
-@@ -1895,6 +1909,7 @@ const struct ieee80211_ops mt7915_ops =
+@@ -1882,6 +1896,7 @@ const struct ieee80211_ops mt7915_ops =
  	.sta_statistics = mt7915_sta_statistics,
  	.sta_set_txpwr = mt7915_sta_set_txpwr,
  	.sta_set_4addr = mt7915_sta_set_4addr,

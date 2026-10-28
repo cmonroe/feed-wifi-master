@@ -20,8 +20,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -329,6 +329,16 @@ function iface_supplicant_start(phydev)
- 	});
+@@ -400,6 +400,16 @@ function iface_pending_phy_wait(pending)
+ 	return true;
  }
  
 +function iface_pending_phy_status(pending)
@@ -37,9 +37,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function __iface_pending_next(pending, state, ret, data)
  {
  	let config = pending.config;
-@@ -359,12 +369,15 @@ function __iface_pending_next(pending, s
- 			}
- 		}
+@@ -435,12 +445,15 @@ function __iface_pending_next(pending, s
+ 		if (iface_pending_phy_wait(pending))
+ 			return "phy_check";
  
 -		pending.call("wpa_supplicant", "phy_status", {
 -			phy: phydev.phy,
@@ -57,7 +57,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		let phy_status = data;
  		pending.has_sta_iface = !!(phy_status && phy_status.state);
  		if (phy_status && phy_status.state == "COMPLETED") {
-@@ -2207,8 +2220,14 @@ let main_obj = {
+@@ -2511,8 +2524,14 @@ let main_obj = {
  				return 0;
  
  			let iface = hostapd.interfaces[phy];

@@ -178,7 +178,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return HOSTAPD_CHAN_INVALID;
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -764,6 +764,8 @@ struct hostapd_iface {
+@@ -791,6 +791,8 @@ struct hostapd_iface {
  #ifdef CONFIG_ACS
  	unsigned int acs_num_completed_scans;
  	unsigned int acs_num_retries;

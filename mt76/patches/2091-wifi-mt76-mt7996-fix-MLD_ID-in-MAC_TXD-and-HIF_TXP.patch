@@ -21,12 +21,12 @@ Stability
 
 Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
 ---
- mt7996/mac.c | 44 +++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 37 insertions(+), 7 deletions(-)
+ mt7996/mac.c |   39 +++++++++++++++++++++++++++++++++++----
+ 1 file changed, 35 insertions(+), 4 deletions(-)
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -800,6 +800,31 @@ struct mt76_wcid *mt7996_get_tx_wcid(str
+@@ -806,6 +806,31 @@ struct mt76_wcid *mt7996_get_tx_wcid(str
  	return wcid;
  }
  
@@ -58,7 +58,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  void mt7996_mac_write_txwi(struct mt7996_dev *dev, __le32 *txwi,
  			   struct sk_buff *skb, struct mt76_wcid *wcid,
  			   struct ieee80211_key_conf *key, int pid,
-@@ -820,6 +845,8 @@ void mt7996_mac_write_txwi(struct mt7996
+@@ -826,6 +851,8 @@ void mt7996_mac_write_txwi(struct mt7996
  					 BSS_CHANGED_FILS_DISCOVERY));
  	bool beacon = !!(changed & (BSS_CHANGED_BEACON |
  				    BSS_CHANGED_BEACON_ENABLED)) && (!inband_disc);
@@ -67,7 +67,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  	mvif = vif ? (struct mt7996_vif *)vif->drv_priv : NULL;
  	if (mvif) {
-@@ -855,7 +882,9 @@ void mt7996_mac_write_txwi(struct mt7996
+@@ -861,7 +888,9 @@ void mt7996_mac_write_txwi(struct mt7996
  	      FIELD_PREP(MT_TXD0_Q_IDX, q_idx);
  	txwi[0] = cpu_to_le32(val);
  
@@ -78,32 +78,24 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  	      FIELD_PREP(MT_TXD1_OWN_MAC, omac_idx);
  
  	if (band_idx)
-@@ -964,6 +993,7 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -970,6 +999,7 @@ int mt7996_tx_prepare_skb(struct mt76_de
  	struct mt76_txwi_cache *t;
  	int id, i, pid, nbuf = tx_info->nbuf - 1;
  	bool is_8023 = info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP;
 +	u8 tid = tx_info->skb->priority & IEEE80211_QOS_CTL_TID_MASK;
  	__le32 *ptr = (__le32 *)txwi_ptr;
  	u8 *txwi = (u8 *)txwi_ptr;
- 	u8 link_id;
-@@ -975,14 +1005,11 @@ int mt7996_tx_prepare_skb(struct mt76_de
- 		wcid = &dev->mt76.global_wcid;
+ 	bool host_txd;
+@@ -983,8 +1013,6 @@ int mt7996_tx_prepare_skb(struct mt76_de
  
  	if ((is_8023 || ieee80211_is_data_qos(hdr->frame_control)) && sta && sta->mlo &&
--	    likely(tx_info->skb->protocol != cpu_to_be16(ETH_P_PAE))) {
+ 	    likely(tx_info->skb->protocol != cpu_to_be16(ETH_P_PAE))) {
 -		u8 tid = tx_info->skb->priority & IEEE80211_QOS_CTL_TID_MASK;
 -
-+	    likely(tx_info->skb->protocol != cpu_to_be16(ETH_P_PAE)))
  		link_id = (tid % 2) ? msta->seclink_id : msta->deflink_id;
--	} else {
-+	else
- 		link_id = u32_get_bits(info->control.flags,
- 				       IEEE80211_TX_CTRL_MLO_LINK);
--	}
- 
- 	/* non-MLD frames are LINK_UNSPECIFIED; use the wcid's own link */
- 	if (link_id == IEEE80211_LINK_UNSPECIFIED &&
-@@ -1086,6 +1113,7 @@ int mt7996_tx_prepare_skb(struct mt76_de
+ 	} else if (is_8023) {
+ 		/* mac80211 does not set the MLO link of an 802.3 frame */
+@@ -1102,6 +1130,7 @@ int mt7996_tx_prepare_skb(struct mt76_de
  		tx_info->buf[0].len = MT_TXD_SIZE + mac_txp_size;
  	} else {
  		struct mt76_connac_txp_common *txp;
@@ -111,7 +103,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  		txp = (struct mt76_connac_txp_common *)(txwi + MT_TXD_SIZE);
  		for (i = 0; i < nbuf; i++) {
-@@ -1123,7 +1151,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -1139,7 +1168,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
  		}
  
  		txp->fw.token = cpu_to_le16(id);

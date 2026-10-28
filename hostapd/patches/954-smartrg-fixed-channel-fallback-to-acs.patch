@@ -59,7 +59,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  # configured with the channel parameter. channel and op_class together can
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1115,6 +1115,7 @@ struct hostapd_config {
+@@ -1119,6 +1119,7 @@ struct hostapd_config {
  	u8 op_class;
  	u8 channel;
  	int channel_follow;

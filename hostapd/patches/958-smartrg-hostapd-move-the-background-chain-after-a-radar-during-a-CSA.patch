@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4329,6 +4329,7 @@ int hostapd_disable_iface(struct hostapd
+@@ -5063,6 +5063,7 @@ int hostapd_disable_iface(struct hostapd
  	for (j = 0; j < hapd_iface->num_bss; j++)
  		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
  #endif /* NEED_AP_MLME */
@@ -86,7 +86,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (j = 0; j < hapd_iface->num_bss; j++) {
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -701,6 +701,8 @@ struct hostapd_iface {
+@@ -728,6 +728,8 @@ struct hostapd_iface {
  		unsigned int temp_ch:1;
  		/* CAC started on radar offchain */
  		unsigned int cac_started:1;
@@ -95,7 +95,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	} radar_background;
  
  	u16 hw_flags;
-@@ -924,6 +926,7 @@ void hostapd_channel_list_updated(struct
+@@ -952,6 +954,7 @@ void hostapd_channel_list_updated(struct
  void hostapd_set_state(struct hostapd_iface *iface, enum hostapd_iface_state s);
  const char * hostapd_state_text(enum hostapd_iface_state s);
  int hostapd_csa_in_progress(struct hostapd_iface *iface);

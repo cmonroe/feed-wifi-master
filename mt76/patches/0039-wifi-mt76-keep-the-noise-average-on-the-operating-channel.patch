@@ -24,7 +24,7 @@ Signed-off-by: Colin Whittaker <colin.whittaker@adtran.com>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -680,7 +680,13 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -776,7 +776,13 @@ int mt7996_set_channel(struct mt76_phy *
  	mt7996_mac_cca_stats_reset(phy);
  
  	mt7996_mac_reset_counters(phy);
@@ -36,7 +36,7 @@ Signed-off-by: Colin Whittaker <colin.whittaker@adtran.com>
 +		phy->noise = 0;
 +	else
 +		phy->noise = -mphy->chan_state->noise << 4;
- 	if (!mphy->offchannel)
+ 	if (!mphy->offchannel && phy->offchan_bcn_stopped)
  		mt7996_mac_update_beacons(phy);
  
 --- a/mt7915/main.c

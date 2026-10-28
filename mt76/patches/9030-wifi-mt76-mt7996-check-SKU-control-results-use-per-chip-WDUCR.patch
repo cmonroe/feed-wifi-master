@@ -28,7 +28,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
 +	if (ret)
-+		return ret;
++		goto disable_radio;
  
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_path_en);
@@ -36,7 +36,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						phy->sku_limit_en);
 +	if (ret)
-+		return ret;
++		goto disable_radio;
 +
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_BACKOFF_POWER_LIMIT_CTRL,
  						phy->sku_path_en);

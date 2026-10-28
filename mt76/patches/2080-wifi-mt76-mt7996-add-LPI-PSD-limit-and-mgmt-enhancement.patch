@@ -48,7 +48,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT_CT_INFO_MGMT_FRAME		BIT(2)
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -913,8 +913,13 @@ void mt7996_mac_write_txwi(struct mt7996
+@@ -921,8 +921,13 @@ void mt7996_mac_write_txwi(struct mt7996
  		}
  
  		val = FIELD_PREP(MT_TXD6_TX_RATE, idx) | MT_TXD6_FIXED_BW;
@@ -64,7 +64,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -916,6 +916,7 @@ static u8
+@@ -1021,6 +1021,7 @@ static u8
  mt7996_get_rates_table(struct mt7996_phy *phy, struct ieee80211_bss_conf *conf,
  		       bool beacon, bool mcast)
  {
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct mt7996_dev *dev = phy->dev;
  	struct mt76_vif_link *mvif = mt76_vif_conf_link(&dev->mt76, conf->vif, conf);
  	u16 rate;
-@@ -924,6 +925,9 @@ mt7996_get_rates_table(struct mt7996_phy
+@@ -1029,6 +1030,9 @@ mt7996_get_rates_table(struct mt7996_phy
  	rate = mt76_connac2_mac_tx_rate_val(phy->mt76, conf, beacon, mcast);
  
  	if (beacon) {
@@ -82,7 +82,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		/* odd index for driver, even index for firmware */
  		idx = MT7996_BEACON_RATES_TBL + 2 * phy->mt76->band_idx;
  		if (phy->beacon_rate != rate)
-@@ -1118,7 +1122,7 @@ mt7996_link_info_changed(struct ieee8021
+@@ -1245,7 +1249,7 @@ mt7996_link_info_changed(struct ieee8021
  	if (changed & BSS_CHANGED_TXPOWER &&
  	    info->txpower != phy->txpower) {
  		phy->txpower = info->txpower;
@@ -93,7 +93,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6052,7 +6052,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -6337,7 +6337,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -102,7 +102,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -6521,6 +6521,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6810,6 +6810,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -125,7 +125,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static s8 mt7996_get_power_bound(struct mt7996_phy *phy, s8 txpower)
  {
         struct mt76_phy *mphy = phy->mt76;
-@@ -6532,7 +6548,8 @@ static s8 mt7996_get_power_bound(struct
+@@ -6821,7 +6837,8 @@ static s8 mt7996_get_power_bound(struct
         return txpower;
  }
  
@@ -135,7 +135,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
  #define TX_POWER_LIMIT_TABLE_PATH	1
-@@ -6557,7 +6574,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6846,7 +6863,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
@@ -146,7 +146,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6580,7 +6599,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6869,7 +6888,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	}
  
  	skb_put_data(skb, &req, sizeof(req));
@@ -185,7 +185,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb_put_data(skb, &la->mcs[0], 8); /* HT20 */
  	skb_put_data(skb, &la->mcs[1], 9); /* HT40 */
  
-@@ -6619,8 +6668,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6908,8 +6957,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la->path.cck, 5);
@@ -229,7 +229,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -6637,6 +6719,31 @@ out:
+@@ -6926,6 +7008,31 @@ out:
  	return ret;
  }
  
@@ -263,7 +263,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	__le32 cp_mode;
 --- a/mt7996/mcu.h
 +++ b/mt7996/mcu.h
-@@ -1042,6 +1042,7 @@ enum {
+@@ -1099,6 +1099,7 @@ enum {
  	UNI_BAND_CONFIG_EDCCA_THRESHOLD = 0x06,
  	UNI_BAND_CONFIG_RTS_THRESHOLD = 0x08,
  	UNI_BAND_CONFIG_MAC_ENABLE_CTRL = 0x0c,
@@ -273,7 +273,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -965,7 +965,8 @@ int mt7996_mcu_get_temperature(struct mt
+@@ -991,7 +991,8 @@ int mt7996_mcu_get_temperature(struct mt
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);
  int mt7996_mcu_set_thermal_info_query(struct mt7996_phy *phy);
@@ -310,8 +310,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static const struct nla_policy
  edcca_dump_policy[NUM_MTK_VENDOR_ATTRS_EDCCA_DUMP] = {
  	[MTK_VENDOR_ATTR_EDCCA_DUMP_MODE] = { .type = NLA_U8 },
-@@ -243,6 +251,78 @@ error:
- 	return -EINVAL;
+@@ -178,6 +186,78 @@ mt7996_vendor_edcca_ctrl_dump(struct wip
+ 	return EDCCA_MAX_BW_NUM;
  }
  
 +static int mt7996_vendor_txpower_ctrl(struct wiphy *wiphy,
@@ -389,10 +389,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static const struct wiphy_vendor_command mt7996_vendor_commands[] = {
  	{
  		.info = {
-@@ -269,6 +349,17 @@ static const struct wiphy_vendor_command
+@@ -202,6 +282,17 @@ static const struct wiphy_vendor_command
+ 		.policy = edcca_ctrl_policy,
+ 		.maxattr = MTK_VENDOR_ATTR_EDCCA_CTRL_MAX,
  	},
- 	{
- 		.info = {
++	{
++		.info = {
 +			.vendor_id = MTK_NL80211_VENDOR_ID,
 +			.subcmd = MTK_NL80211_VENDOR_SUBCMD_TXPOWER_CTRL,
 +		},
@@ -402,17 +404,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		.policy = txpower_ctrl_policy,
 +		.maxattr = MTK_VENDOR_ATTR_TXPOWER_CTRL_MAX,
 +	},
-+	{
-+		.info = {
- 			.vendor_id = MTK_NL80211_VENDOR_ID,
- 			.subcmd = MTK_NL80211_VENDOR_SUBCMD_PP_CTRL,
- 		},
+ };
+ 
+ void mt7996_vendor_register(struct mt7996_phy *phy)
 --- a/mt7996/vendor.h
 +++ b/mt7996/vendor.h
-@@ -7,6 +7,21 @@ enum mtk_nl80211_vendor_subcmds {
+@@ -6,6 +6,21 @@
+ enum mtk_nl80211_vendor_subcmds {
  	MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL = 0xc7,
  	MTK_NL80211_VENDOR_SUBCMD_BSS_COLOR_CTRL = 0xca,
- 	MTK_NL80211_VENDOR_SUBCMD_PP_CTRL = 0xcc,
 +	MTK_NL80211_VENDOR_SUBCMD_TXPOWER_CTRL = 0xce,
 +};
 +

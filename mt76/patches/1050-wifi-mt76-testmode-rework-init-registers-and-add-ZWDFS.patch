@@ -42,7 +42,7 @@ Squash of the following MediaTek commits:
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -999,7 +999,8 @@ void mt76_rx(struct mt76_dev *dev, enum
+@@ -994,7 +994,8 @@ void mt76_rx(struct mt76_dev *dev, enum
  	}
  
  #ifdef CONFIG_NL80211_TESTMODE
@@ -92,7 +92,7 @@ Squash of the following MediaTek commits:
  struct mt76_vif_link {
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1314,6 +1314,8 @@ enum {
+@@ -1316,6 +1316,8 @@ enum {
  	MCU_EXT_CMD_OFFCH_SCAN_CTRL = 0x9a,
  	MCU_EXT_CMD_SET_RDD_TH = 0x9d,
  	MCU_EXT_CMD_MURU_CTRL = 0x9f,
@@ -101,7 +101,7 @@ Squash of the following MediaTek commits:
  	MCU_EXT_CMD_SET_SPR = 0xa8,
  	MCU_EXT_CMD_GROUP_PRE_CAL_INFO = 0xab,
  	MCU_EXT_CMD_DPD_PRE_CAL_INFO = 0xac,
-@@ -1321,6 +1323,7 @@ enum {
+@@ -1324,6 +1326,7 @@ enum {
  	MCU_EXT_CMD_EDCCA = 0xba,
  	MCU_EXT_CMD_WF_RF_PIN_CTRL = 0xbd,
  	MCU_EXT_CMD_SWLNA_ACI_CTRL = 0xc0,
@@ -1006,7 +1006,7 @@ Squash of the following MediaTek commits:
  #endif
 --- a/mt7915/mcu.c
 +++ b/mt7915/mcu.c
-@@ -2786,6 +2786,7 @@ mt7915_mcu_background_chain_ctrl(struct
+@@ -2798,6 +2798,7 @@ mt7915_mcu_background_chain_ctrl(struct
  		req.monitor_chan = chandef->chan->hw_value;
  		req.monitor_central_chan =
  			ieee80211_frequency_to_channel(chandef->center_freq1);
@@ -1014,7 +1014,7 @@ Squash of the following MediaTek commits:
  		req.band_idx = phy->mt76->band_idx;
  		req.scan_mode = 2;
  		break;
-@@ -4617,6 +4618,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
+@@ -4649,6 +4650,71 @@ int mt7915_mcu_set_amsdu_algo(struct mt7
  }
  #endif
  

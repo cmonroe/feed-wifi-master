@@ -42,7 +42,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5351,6 +5351,12 @@ static int hostapd_config_fill(struct ho
+@@ -5357,6 +5357,12 @@ static int hostapd_config_fill(struct ho
  			return 1;
  		}
  		conf->dfs_detect_mode = mode;
@@ -69,7 +69,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	conf->disable_mcs15_rx = true;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1369,6 +1369,8 @@ struct hostapd_config {
+@@ -1373,6 +1373,8 @@ struct hostapd_config {
  	s8 edcca_compensation;
  	int *edcca_threshold;
  	u8 dfs_detect_mode;
@@ -80,7 +80,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  enum dfs_mode {
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1460,6 +1460,14 @@ int hostapd_remove_pmkid(struct hostapd_
+@@ -1510,6 +1510,14 @@ int hostapd_remove_pmkid(struct hostapd_
  }
  
  
@@ -95,7 +95,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int hostapd_drv_configure_edcca_enable(struct hostapd_data *hapd,
  				       u8 edcca_enable, s8 edcca_compensation)
  {
-@@ -1486,3 +1494,13 @@ int hostapd_drv_get_edcca(struct hostapd
+@@ -1536,3 +1544,13 @@ int hostapd_drv_get_edcca(struct hostapd
  		return 0;
  	return hapd->driver->get_edcca(hapd->drv_priv, mode, value);
  }
@@ -111,17 +111,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +}
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -162,6 +162,7 @@ int hostapd_drv_configure_edcca_enable(s
+@@ -166,6 +166,7 @@ int hostapd_drv_configure_edcca_enable(s
  int hostapd_drv_configure_edcca_threshold(struct hostapd_data *hapd,
  					  const int *threshold);
  int hostapd_drv_get_edcca(struct hostapd_data *hapd, const u8 mode, u8 *value);
 +int hostapd_drv_txpower_ctrl(struct hostapd_data *hapd);
  
  #include "drivers/driver.h"
- 
+ #include "scs.h"
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3350,6 +3350,10 @@ dfs_offload:
+@@ -4083,6 +4083,10 @@ dfs_offload:
  					   hapd->iconf->edcca_compensation);
  	hostapd_drv_configure_edcca_threshold(hapd,
  					      hapd->iconf->edcca_threshold);
@@ -180,7 +180,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	[MTK_VENDOR_ATTR_EDCCA_CTRL_MODE] = { .type = NLA_U8 },
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5921,6 +5921,16 @@ struct wpa_driver_ops {
+@@ -6054,6 +6054,16 @@ struct wpa_driver_ops {
  	int (*configure_edcca_threshold)(void *priv, const int *threshold);
  	int (*get_edcca)(void *priv, const u8 mode, u8 *value);
  
@@ -214,7 +214,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static struct nl_sock * nl_create_handle(struct nl_cb *cb, const char *dbg)
  {
  	struct nl_sock *handle;
-@@ -17114,6 +17122,55 @@ static void nl80211_stop_peer_measuremen
+@@ -17359,6 +17367,55 @@ static void nl80211_stop_peer_measuremen
  #endif /* CONFIG_PR */
  
  
@@ -270,7 +270,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -17294,6 +17351,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -17543,6 +17600,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.configure_edcca_enable = nl80211_configure_edcca_enable,
  	.configure_edcca_threshold = nl80211_configure_edcca_threshold,
  	.get_edcca = nl80211_get_edcca,
@@ -290,7 +290,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -1542,6 +1542,9 @@ static int wiphy_info_handler(struct nl_
+@@ -1558,6 +1558,9 @@ static int wiphy_info_handler(struct nl_
  				case MTK_NL80211_VENDOR_SUBCMD_EDCCA_CTRL:
  					drv->mtk_edcca_vendor_cmd_avail = 1;
  					break;

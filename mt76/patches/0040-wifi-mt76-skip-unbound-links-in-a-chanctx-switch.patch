@@ -19,7 +19,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/channel.c
 +++ b/channel.c
-@@ -254,8 +254,11 @@ int mt76_switch_vif_chanctx(struct ieee8
+@@ -258,8 +258,11 @@ int mt76_switch_vif_chanctx(struct ieee8
  			need_update[phy->band_idx] = false;
  		}
  

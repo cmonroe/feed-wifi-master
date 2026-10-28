@@ -23,8 +23,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 --- a/src/usr/share/ucode/wifi/hostapd.uc
 +++ b/src/usr/share/ucode/wifi/hostapd.uc
 @@ -14,6 +14,9 @@ import * as fs from 'fs';
- const NL80211_EXT_FEATURE_ENABLE_FTM_RESPONDER = 33;
- const NL80211_EXT_FEATURE_RADAR_BACKGROUND = 61;
+ const NL80211_EXT_FEATURE_ENABLE_FTM_RESPONDER = 32;
+ const NL80211_EXT_FEATURE_RADAR_BACKGROUND = 60;
  
 +/* must match psd_country_list in mt76 mt7996_is_psd_country() */
 +const lpi_psd_countries = [ 'US', 'CA', 'KR', 'BR', 'CL', 'MY' ];

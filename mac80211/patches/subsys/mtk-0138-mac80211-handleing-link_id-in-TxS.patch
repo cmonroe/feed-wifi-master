@@ -14,7 +14,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -9597,6 +9597,7 @@ static inline bool cfg80211_rx_mgmt(stru
+@@ -9994,6 +9994,7 @@ static inline bool cfg80211_rx_mgmt(stru
   * @buf: Management frame (header + body)
   * @len: length of the frame data
   * @ack: Whether frame was acknowledged
@@ -22,7 +22,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
   */
  struct cfg80211_tx_status {
  	u64 cookie;
-@@ -9605,6 +9606,7 @@ struct cfg80211_tx_status {
+@@ -10002,6 +10003,7 @@ struct cfg80211_tx_status {
  	const u8 *buf;
  	size_t len;
  	bool ack;
@@ -30,7 +30,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  };
  
  /**
-@@ -9641,7 +9643,8 @@ static inline void cfg80211_mgmt_tx_stat
+@@ -10038,7 +10040,8 @@ static inline void cfg80211_mgmt_tx_stat
  		.cookie = cookie,
  		.buf = buf,
  		.len = len,
@@ -42,7 +42,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  	cfg80211_mgmt_tx_status_ext(wdev, &status, gfp);
 --- a/include/net/mac80211.h
 +++ b/include/net/mac80211.h
-@@ -1170,6 +1170,7 @@ enum mac80211_tx_control_flags {
+@@ -1178,6 +1178,7 @@ enum mac80211_tx_control_flags {
   */
  enum mac80211_tx_status_flags {
  	IEEE80211_TX_STATUS_ACK_SIGNAL_VALID = BIT(0),
@@ -50,7 +50,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  };
  
  /*
-@@ -1396,7 +1397,7 @@ struct ieee80211_tx_info {
+@@ -1404,7 +1405,7 @@ struct ieee80211_tx_info {
  			u8 ampdu_ack_len;
  			u8 ampdu_len;
  			u8 antenna;
@@ -81,7 +81,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  		if (sdata) {
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -22096,7 +22096,9 @@ static void nl80211_frame_tx_status(stru
+@@ -22896,7 +22896,9 @@ static void nl80211_frame_tx_status(stru
  			       status->tx_tstamp, NL80211_ATTR_PAD)) ||
  	    (status->ack_tstamp &&
  	     nla_put_u64_64bit(msg, NL80211_ATTR_RX_HW_TIMESTAMP,
@@ -92,7 +92,7 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  		goto nla_put_failure;
  
  	genlmsg_end(msg, hdr);
-@@ -22117,7 +22119,8 @@ void cfg80211_control_port_tx_status(str
+@@ -22917,7 +22919,8 @@ void cfg80211_control_port_tx_status(str
  		.cookie = cookie,
  		.buf = buf,
  		.len = len,

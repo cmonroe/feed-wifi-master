@@ -56,7 +56,7 @@ Signed-off-by: Oskar Maroszek <oskar.maroszek@adtran.com>
 ---
 --- a/channel.c
 +++ b/channel.c
-@@ -82,12 +82,17 @@ void mt76_change_chanctx(struct ieee8021
+@@ -82,13 +82,18 @@ void mt76_change_chanctx(struct ieee8021
  {
  	struct mt76_chanctx *ctx = (struct mt76_chanctx *)conf->drv_priv;
  	struct mt76_phy *phy = ctx->phy;
@@ -67,15 +67,16 @@ Signed-off-by: Oskar Maroszek <oskar.maroszek@adtran.com>
 +		return;
  
  	if (!(changed & (IEEE80211_CHANCTX_CHANGE_WIDTH |
- 			 IEEE80211_CHANCTX_CHANGE_RADAR)))
+ 			 IEEE80211_CHANCTX_CHANGE_RADAR |
+ 			 IEEE80211_CHANCTX_CHANGE_PUNCTURING)))
  		return;
  
 +	dev = phy->dev;
 +
- 	if (phy->roc_vif)
- 		mt76_abort_roc(phy);
+ 	if (mt76_phy_scanning(phy))
+ 		mt76_abort_scan(dev);
  
-@@ -110,10 +115,15 @@ int mt76_assign_vif_chanctx(struct ieee8
+@@ -114,10 +119,15 @@ int mt76_assign_vif_chanctx(struct ieee8
  	struct mt76_vif_data *mvif = mlink->mvif;
  	int link_id = link_conf->link_id;
  	struct mt76_phy *phy = ctx->phy;
@@ -92,7 +93,7 @@ Signed-off-by: Oskar Maroszek <oskar.maroszek@adtran.com>
  	if (dev->scan.vif == vif && mt76_phy_scanning(phy))
  		mt76_abort_scan(dev);
  
-@@ -159,7 +169,12 @@ void mt76_unassign_vif_chanctx(struct ie
+@@ -163,7 +173,12 @@ void mt76_unassign_vif_chanctx(struct ie
  	struct mt76_chanctx *ctx = (struct mt76_chanctx *)conf->drv_priv;
  	struct mt76_vif_link *mlink = (struct mt76_vif_link *)vif->drv_priv;
  	struct mt76_phy *phy = ctx->phy;

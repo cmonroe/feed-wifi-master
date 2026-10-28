@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  const DEFAULT_RETRY = 3;
  const DEFAULT_SCRIPT_TIMEOUT = 30 * 1000;
-@@ -392,6 +394,15 @@ function wdev_reset(wdev)
+@@ -401,6 +403,15 @@ function wdev_reset(wdev)
  	delete wdev.retry_setup_failed;
  }
  
@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function update(data)
  {
  	if (is_equal(this.data, data))
-@@ -401,6 +412,7 @@ function update(data)
+@@ -410,6 +421,7 @@ function update(data)
  		this.data = data;
  		this.ifindex_cache = {};
  		delete this.retry_setup_failed;
@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		delete this.delete;
  	}
  
-@@ -485,6 +497,7 @@ function wdev_mark_up(wdev)
+@@ -493,6 +505,7 @@ function wdev_mark_up(wdev)
  	}
  
  	wdev_reset(wdev);
@@ -55,7 +55,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	let netdevs = lsdir("/sys/class/net") ?? [];
  	for (let section, data in wdev.handler_data) {
-@@ -565,6 +578,35 @@ function notify(req)
+@@ -573,6 +586,35 @@ function notify(req)
  		else
  			this.retry = DEFAULT_RETRY;
  		return 0;

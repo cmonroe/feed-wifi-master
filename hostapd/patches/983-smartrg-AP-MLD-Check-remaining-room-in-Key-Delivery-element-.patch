@@ -1,0 +1,61 @@
+From 93ed7afaab40bab6ed0be2d357376465725a9a0c Mon Sep 17 00:00:00 2001
+From: Jouni Malinen <jouni.malinen@oss.qualcomm.com>
+Date: Mon, 24 Aug 2026 14:01:28 +0300
+Subject: [PATCH] AP MLD: Check remaining room in Key Delivery element
+ construction
+
+It is possible for there not to be enough room in the buffer if
+constructing a Key Delivery element for a huge number of links. Verify
+that enough room is present before copying data to the buffer.
+
+Thanks to Nebula Security for reporting the issue.
+
+Signed-off-by: Jouni Malinen <jouni.malinen@oss.qualcomm.com>
+---
+ src/ap/wpa_auth.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+--- a/src/ap/wpa_auth.c
++++ b/src/ap/wpa_auth.c
+@@ -8094,7 +8094,7 @@ u8 * wpa_auth_eid_key_delivery(u8 *eid,
+ 	u8 rsc[WPA_KEY_RSC_LEN] = {0}, *gtk;
+ 	struct wpa_group *gsm = sm->group;
+ 	u8 hdr[2];
+-	u8 *kde, *buf;
++	u8 *kde, *buf, *start = eid, *end = eid + max_len;
+ 	const u8 *ptr;
+ 	size_t slice_len;
+ 	size_t buflen = 1024;
+@@ -8153,6 +8153,8 @@ u8 * wpa_auth_eid_key_delivery(u8 *eid,
+ 	 * handle fragmentation.
+ 	 */
+ 	slice_len = kde_len <= 246 ? kde_len : 246;
++	if (3 + WPA_KEY_RSC_LEN + slice_len > (size_t) (end - eid))
++		goto not_room;
+ 	/* ElementID(0xff)|Length(1B)|ElementID Extn(1B)|RSC(8B)|KDE list */
+ 	*eid++ = WLAN_EID_EXTENSION;
+ 	*eid++ = slice_len + 1 + WPA_KEY_RSC_LEN;
+@@ -8168,6 +8170,8 @@ u8 * wpa_auth_eid_key_delivery(u8 *eid,
+ 
+ 	while (kde_len) {
+ 		slice_len = kde_len <= 255 ? kde_len : 255;
++		if (2 + slice_len > (size_t) (end - eid))
++			goto not_room;
+ 		*eid++ = WLAN_EID_FRAGMENT;
+ 		*eid++ = slice_len;
+ 		os_memcpy(eid, ptr, slice_len);
+@@ -8177,8 +8181,14 @@ u8 * wpa_auth_eid_key_delivery(u8 *eid,
+ 		kde_len -= slice_len;
+ 	}
+ 
++out:
+ 	bin_clear_free(buf, buflen);
+ 	return eid;
++not_room:
++	wpa_printf(MSG_ERROR,
++		   "Not enough room for writing Key Delivery element");
++	eid = start;
++	goto out;
+ }
+ 
+ 

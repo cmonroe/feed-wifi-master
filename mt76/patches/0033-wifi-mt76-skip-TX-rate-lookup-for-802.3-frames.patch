@@ -59,7 +59,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	info->hw_queue |= FIELD_PREP(MT_TX_HW_QUEUE_PHY, phy->band_idx);
  
-@@ -500,7 +517,6 @@ mt76_txq_send_burst(struct mt76_phy *phy
+@@ -521,7 +538,6 @@ mt76_txq_send_burst(struct mt76_phy *phy
  	struct mt76_dev *dev = phy->dev;
  	struct ieee80211_txq *txq = mtxq_to_txq(mtxq);
  	enum mt76_txq_id qid = mt76_txq_get_qid(txq);
@@ -67,7 +67,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct sk_buff *skb;
  	int n_frames = 1;
  	bool stop = false;
-@@ -521,10 +537,7 @@ mt76_txq_send_burst(struct mt76_phy *phy
+@@ -542,10 +558,7 @@ mt76_txq_send_burst(struct mt76_phy *phy
  	if (!skb)
  		return 0;
  
@@ -79,7 +79,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spin_lock(&q->lock);
  	idx = __mt76_tx_queue_skb(phy, qid, skb, wcid, txq->sta, &stop);
-@@ -546,10 +559,7 @@ mt76_txq_send_burst(struct mt76_phy *phy
+@@ -567,10 +580,7 @@ mt76_txq_send_burst(struct mt76_phy *phy
  		if (!skb)
  			break;
  

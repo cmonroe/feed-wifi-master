@@ -23,7 +23,7 @@ WPA-PSK-SHA256, so that they can join an AP that offers only it.
 
 --- a/src/usr/share/ucode/wifi/ap.uc
 +++ b/src/usr/share/ucode/wifi/ap.uc
-@@ -227,10 +227,6 @@ function iface_auth_type(config, band, e
+@@ -237,10 +237,6 @@ function iface_auth_type(config, band, e
  	if (band == '6g' && config.wpa)
  		config.ieee80211w = 2;
  
@@ -34,7 +34,7 @@ WPA-PSK-SHA256, so that they can join an AP that offers only it.
  	if (config.auth_type == 'psk-sae-compat') {
  		if (band != '6g') {
  			set_default(config, 'ieee80211w', 0);
-@@ -253,6 +249,13 @@ function iface_auth_type(config, band, e
+@@ -263,6 +259,13 @@ function iface_auth_type(config, band, e
  	if ((config.mbo || config.ocv) && (config.wpa & 2) && !config.ieee80211w)
  		config.ieee80211w = 1;
  
@@ -48,7 +48,7 @@ WPA-PSK-SHA256, so that they can join an AP that offers only it.
  	if (config.auth_type == 'owe') {
  		set_default(config, 'owe_groups', '19 20 21');
  		set_default(config, 'owe_ptk_workaround', 1);
-@@ -774,6 +777,13 @@ export function generate(interface, data
+@@ -787,6 +790,13 @@ export function generate(interface, data
  	iface_interworking(config);
  
  	iface.wpa_key_mgmt(config, data.config.band);

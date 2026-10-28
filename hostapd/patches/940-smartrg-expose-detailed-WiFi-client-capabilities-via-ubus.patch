@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6184,6 +6184,14 @@ skip_wpa_ies:
+@@ -6290,6 +6290,14 @@ skip_wpa_ies:
  		hostapd_wfa_capab(hapd, sta, elems->wfa_capab,
  				  elems->wfa_capab + elems->wfa_capab_len);
  
@@ -54,7 +54,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		struct wpa_state_machine *sm = sta->wpa_sm;
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -602,6 +602,8 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -647,6 +647,8 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->t_c_url);
  	wpabuf_free(sta->hs20_deauth_req);
  	os_free(sta->hs20_session_info_url);
@@ -65,8 +65,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	sae_clear_data(sta->sae);
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -351,6 +351,9 @@ struct sta_info {
- 	bool link_removal_tx;
+@@ -378,6 +378,9 @@ struct sta_info {
+ 	bool neg_ttlm_assoc_reject;
  #endif /* CONFIG_IEEE80211BE */
  
 +	struct wpabuf *vendors_ie;
@@ -77,7 +77,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -1283,6 +1283,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
+@@ -1294,6 +1294,33 @@ struct wpabuf * ieee802_11_vendor_ie_con
  }
  
  
@@ -113,7 +113,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u16 fc, type, stype;
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -237,6 +237,7 @@ ParseRes ieee802_11_parse_link_assoc_res
+@@ -240,6 +240,7 @@ ParseRes ieee802_11_parse_link_assoc_res
  int ieee802_11_ie_count(const u8 *ies, size_t ies_len);
  struct wpabuf * ieee802_11_vendor_ie_concat(const u8 *ies, size_t ies_len,
  					    u32 oui_type);
@@ -131,10 +131,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "common/hw_features_common.h"
  #include "hostapd.h"
  #include "neighbor_db.h"
-@@ -26,6 +27,19 @@
- #include "airtime_policy.h"
- #include "hw_features.h"
+@@ -28,6 +29,19 @@
  #include "base64.h"
+ #include "robust_av.h"
+ #include "scs.h"
 +#include <stdlib.h>
 +
 +#define MCS_NSS_MAP_BASE		7
@@ -151,7 +151,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static struct ubus_context *ctx;
  static struct blob_buf b;
-@@ -234,71 +248,721 @@ hostapd_bss_reload(struct ubus_context *
+@@ -271,71 +285,721 @@ hostapd_bss_reload(struct ubus_context *
  
  
  static void
@@ -219,11 +219,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		{ "vht_link_adaptation_unsol_mfg", VHT_CAP_VHT_LINK_ADAPTATION_VHT_UNSOL_MFB },
 +		{ "rx_antenna_pattern", VHT_CAP_RX_ANTENNA_PATTERN },
 +		{ "tx_antenna_pattern", VHT_CAP_TX_ANTENNA_PATTERN }
- 	};
- 
--	for (i = 0; i < ARRAY_SIZE(vht_capas); i++)
--		blobmsg_add_u8(&b, vht_capas[i].name,
--				!!(vhtc->vht_capabilities_info & vht_capas[i].flag));
++	};
++
 +	static const struct {
 +		const char *name;
 +		uint32_t mask;
@@ -237,8 +234,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		{ "max_ampdu_length_exponent", VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX, VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX_SHIFT },
 +		{ "extended_nss_bw", VHT_CAP_EXTENDED_NSS_BW_SUPPORT_MASK, VHT_CAP_EXTENDED_NSS_BW_SHIFT },
 +	};
- 
--	supported_mcs = blobmsg_open_table(&b, "mcs_map");
++
 +	uint32_t cap_info = vhtc->vht_capabilities_info;
 +	void *mcs_table, *map;
 +
@@ -255,20 +251,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	}
 +
 +	mcs_table = blobmsg_open_table(&b, "mcs_map");
- 
--	/* RX map */
- 	map = blobmsg_open_table(&b, "rx");
--	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map));
++
++	map = blobmsg_open_table(&b, "rx");
 +	mcs_nss_map_add(le_to_host16(vhtc->vht_supported_mcs_set.rx_map), WLAN_STA_VHT);
- 	blobmsg_close_table(&b, map);
- 
--	/* TX map */
- 	map = blobmsg_open_table(&b, "tx");
--	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map));
++	blobmsg_close_table(&b, map);
++
++	map = blobmsg_open_table(&b, "tx");
 +	mcs_nss_map_add(le_to_host16(vhtc->vht_supported_mcs_set.tx_map), WLAN_STA_VHT);
- 	blobmsg_close_table(&b, map);
- 
--	blobmsg_close_table(&b, supported_mcs);
++	blobmsg_close_table(&b, map);
++
 +	blobmsg_close_table(&b, mcs_table);
 +}
 +
@@ -315,13 +306,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +
 +	if (table_name)
 +		blobmsg_close_table(&b, table);
- }
- 
- static void
--hostapd_parse_capab_blobmsg(struct sta_info *sta)
++}
++
++static void
 +ht_mcs_map_add(uint8_t *mcs_bitmask, uint8_t nss, bool ueqm)
- {
--	void *r, *v;
++{
 +	static const ht_mcs_t ht_mcs[] = {
 +		{ "1ss",  0,  7 },
 +		{ "2ss",  8, 15 },
@@ -601,8 +590,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +				HE_PHYCAP_CHANNEL_WIDTH_SET_80PLUS80MHZ_IN_5G));
 +	else
 +		only_20mhz = !(chwidth & HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_IN_2G);
- 
--	v = blobmsg_open_table(&b, "capabilities");
++
 +	ptr = ehtc->optional;
 +	mcs_table = blobmsg_open_table(&b, "supported_mcs_set");
 +
@@ -681,8 +669,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		{ "he_dynamic_sm_pwr_save", 45, 1 },
 +		{ "punctured_sounding", 46, 1 },
 +		{ "ht_vht_trig_frame_rx",47, 1 }
-+	};
-+
+ 	};
+ 
+-	for (i = 0; i < ARRAY_SIZE(vht_capas); i++)
+-		blobmsg_add_u8(&b, vht_capas[i].name,
+-				!!(vhtc->vht_capabilities_info & vht_capas[i].flag));
 +	static const struct bitfield_descriptor phy_capas[] = {
 +		// { "reserved", 0, 1 },
 +		{ "channel_width_set", 1, 7 }, // following 7 bits present channel_width_set field
@@ -750,7 +741,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		{ "he_me_ppdu_w_more_ru_rx_max_n_he_ltf", 80, 1 }
 +		// { "reserved", 81, 7 },
 +	};
-+
+ 
+-	supported_mcs = blobmsg_open_table(&b, "mcs_map");
 +	capab_table_add("mac_capabilities", mac_capas, ARRAY_SIZE(mac_capas),
 +			(uint8_t *)&hec->he_mac_capab_info, filter_false);
 +	capab_table_add("phy_capabilities", phy_capas, ARRAY_SIZE(phy_capas),
@@ -760,24 +752,32 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		return;
 +
 +	mcs_table = blobmsg_open_table(&b, "mcs_map");
-+
-+	map = blobmsg_open_table(&b, "rx");
+ 
+-	/* RX map */
+ 	map = blobmsg_open_table(&b, "rx");
+-	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.rx_map));
 +	mcs_nss_map_add(le_to_host16(hec->he_basic_supported_mcs_set.rx_map), WLAN_STA_HE);
-+	blobmsg_close_table(&b, map);
-+
-+	map = blobmsg_open_table(&b, "tx");
+ 	blobmsg_close_table(&b, map);
+ 
+-	/* TX map */
+ 	map = blobmsg_open_table(&b, "tx");
+-	hostapd_parse_vht_map_blobmsg(le_to_host16(vhtc->vht_supported_mcs_set.tx_map));
 +	mcs_nss_map_add(le_to_host16(hec->he_basic_supported_mcs_set.tx_map), WLAN_STA_HE);
-+	blobmsg_close_table(&b, map);
-+
+ 	blobmsg_close_table(&b, map);
+ 
+-	blobmsg_close_table(&b, supported_mcs);
 +	blobmsg_close_table(&b, mcs_table);
-+}
-+
-+static void
+ }
+ 
+ static void
+-hostapd_parse_capab_blobmsg(struct sta_info *sta)
 +sta_capab_add(struct sta_info *sta, int freq, bool filter_false,
 +	      struct ieee802_11_elems *elems)
-+{
+ {
+-	void *r, *v;
 +	void *table, *capab;
-+
+ 
+-	v = blobmsg_open_table(&b, "capabilities");
 +	capab = blobmsg_open_table(&b, "capabilities");
  
  	if (sta->vht_capabilities) {
@@ -887,7 +887,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	void *r = blobmsg_open_array(&b, "supported_rates");
 +	u8 *rates;
 +	int i;
-+
+ 
+-	blobmsg_close_table(&b, v);
 +	rates = len > 0 ? os_malloc(len) : NULL;
 +	if (!rates)
 +		goto out;
@@ -898,14 +899,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	for (i = 0; i < len; i++)
 +		blobmsg_add_u32(&b, "", rates[i] >> 1);
 +	os_free(rates);
- 
--	blobmsg_close_table(&b, v);
++
 +out:
 +	blobmsg_close_array(&b, r);
  }
  
  static void
-@@ -362,7 +1026,8 @@ hostapd_ubus_sta_mld_add(struct hostapd_
+@@ -399,7 +1063,8 @@ hostapd_ubus_sta_mld_add(struct hostapd_
  
  /* A non-AP MLD is listed once, with the station of its association link. */
  static void
@@ -915,7 +915,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct hostap_sta_driver_data sta_driver_data;
  	struct sta_info *sta;
-@@ -377,42 +1042,67 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -414,42 +1079,67 @@ hostapd_bss_clients_add(struct hostapd_d
  		{ "authorized", WLAN_STA_AUTHORIZED },
  		{ "preauth", WLAN_STA_PREAUTH },
  		{ "wds", WLAN_STA_WDS },
@@ -986,7 +986,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  		blobmsg_close_array(&b, r);
  
-@@ -423,8 +1113,8 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -460,8 +1150,8 @@ hostapd_bss_clients_add(struct hostapd_d
  			blobmsg_add_string_buffer(&b);
  #endif
  
@@ -997,7 +997,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			r = blobmsg_open_table(&b, "bytes");
  			blobmsg_add_u64(&b, "rx", sta_driver_data.rx_bytes);
  			blobmsg_add_u64(&b, "tx", sta_driver_data.tx_bytes);
-@@ -438,14 +1128,14 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -475,14 +1165,14 @@ hostapd_bss_clients_add(struct hostapd_d
  			blobmsg_add_u32(&b, "tx", sta_driver_data.tx_packets);
  			blobmsg_close_table(&b, r);
  			r = blobmsg_open_table(&b, "rate");
@@ -1014,7 +1014,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_ubus_sta_mld_add(hapd, sta);
  
  		blobmsg_close_table(&b, c);
-@@ -453,25 +1143,28 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -490,25 +1180,28 @@ hostapd_bss_clients_add(struct hostapd_d
  }
  
  static int
@@ -1048,7 +1048,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	blobmsg_close_array(&b, list);
  	ubus_send_reply(ctx, req, b.head);
  
-@@ -479,6 +1172,22 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -516,6 +1209,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -1071,7 +1071,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -2249,6 +2958,7 @@ hostapd_bss_get_sta_ies(struct ubus_cont
+@@ -2712,6 +3421,7 @@ hostapd_bss_ttlm_advertise(struct ubus_c
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),
@@ -1081,7 +1081,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -46,6 +46,9 @@ static u16 ieee80211_eht_ppet_size(u16 p
+@@ -50,6 +50,9 @@ static u16 ieee80211_eht_ppet_size(u16 p
  	return sz;
  }
  

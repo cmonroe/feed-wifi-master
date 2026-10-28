@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT76_N_WCIDS 1088
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -1282,11 +1282,247 @@ static const struct file_operations fops
+@@ -1283,11 +1283,247 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
@@ -287,7 +287,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #endif
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -327,6 +327,7 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
+@@ -334,6 +334,7 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
  	int idx;
  	u8 hw_aggr = false;
  	struct mt7996_sta *msta = NULL;
@@ -295,7 +295,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	hw_aggr = status->aggr;
  	memset(status, 0, sizeof(*status));
-@@ -361,8 +362,6 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
+@@ -368,8 +369,6 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
  	status->wcid = mt7996_rx_get_wcid(dev, idx, band_idx);
  
  	if (status->wcid) {
@@ -304,7 +304,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		msta_link = container_of(status->wcid, struct mt7996_sta_link,
  					 wcid);
  		msta = msta_link->sta;
-@@ -482,12 +481,33 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
+@@ -489,12 +488,33 @@ mt7996_mac_fill_rx(struct mt7996_dev *de
  
  		v3 = le32_to_cpu(rxv[3]);
  
@@ -341,7 +341,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			rxd += 24;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1303,6 +1303,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
+@@ -1392,6 +1392,7 @@ mt7996_mac_sta_init_link(struct mt7996_d
  	for (i = 0; i < IEEE80211_MAX_CHAINS; ++i)
  		ewma_avg_signal_init(msta_link->chain_signal_avg + i);
  	ewma_avg_signal_init(&msta_link->signal_avg);

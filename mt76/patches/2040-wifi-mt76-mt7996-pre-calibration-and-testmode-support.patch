@@ -117,7 +117,7 @@ Squash of the following MediaTek commits:
  #define MT_SKB_HEAD_LEN		256
 --- a/mt76_connac_mcu.h
 +++ b/mt76_connac_mcu.h
-@@ -1100,9 +1100,11 @@ enum {
+@@ -1102,9 +1102,11 @@ enum {
  	MCU_UNI_EVENT_ROC = 0x27,
  	MCU_UNI_EVENT_MBMC = 0x28,
  	MCU_UNI_EVENT_TX_DONE = 0x2d,
@@ -129,7 +129,7 @@ Squash of the following MediaTek commits:
  	MCU_UNI_EVENT_NAN = 0x56,
  	MCU_UNI_EVENT_WED_RRO = 0x57,
  	MCU_UNI_EVENT_PER_STA_INFO = 0x6d,
-@@ -1369,6 +1371,7 @@ enum {
+@@ -1372,6 +1374,7 @@ enum {
  	MCU_UNI_CMD_FIXED_RATE_TABLE = 0x40,
  	MCU_UNI_CMD_RSSI_MONITOR = 0x41,
  	MCU_UNI_CMD_TESTMODE_CTRL = 0x46,
@@ -462,7 +462,7 @@ Squash of the following MediaTek commits:
  struct mt7996_sta {
  	struct mt7996_sta_link deflink; /* must be first */
  	struct mt7996_sta_link __rcu *link[IEEE80211_MLD_MAX_NUM_LINKS];
-@@ -605,6 +619,13 @@ struct mt7996_dev {
+@@ -607,6 +621,13 @@ struct mt7996_dev {
  	struct dentry *debugfs_dir;
  	struct rchan *relay_fwlog;
  
@@ -476,7 +476,7 @@ Squash of the following MediaTek commits:
  	struct {
  		u16 table_mask;
  		u8 n_agrt;
-@@ -815,6 +836,7 @@ int mt7996_vif_link_add(struct mt76_phy
+@@ -836,6 +857,7 @@ int mt7996_vif_link_add(struct mt76_phy
  void mt7996_vif_link_remove(struct mt76_phy *mphy, struct ieee80211_vif *vif,
  			    struct ieee80211_bss_conf *link_conf,
  			    struct mt76_vif_link *mlink);
@@ -484,18 +484,18 @@ Squash of the following MediaTek commits:
  int mt7996_eeprom_init(struct mt7996_dev *dev);
  int mt7996_eeprom_parse_hw_cap(struct mt7996_dev *dev, struct mt7996_phy *phy);
  int mt7996_eeprom_get_target_power(struct mt7996_dev *dev,
-@@ -1101,6 +1123,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -1128,6 +1150,8 @@ int mt7996_mtk_init_debugfs(struct mt799
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);
 +int mt7996_mcu_apply_group_cal(struct mt7996_dev *dev);
 +int mt7996_mcu_apply_tx_dpd(struct mt7996_phy *phy);
- int mt7996_mcu_set_scs(struct mt7996_phy *phy, u8 enable);
+ int mt7996_mcu_set_carrier_sense(struct mt7996_phy *phy, u8 enable);
  void mt7996_mcu_scs_sta_poll(struct work_struct *work);
  
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1345,6 +1345,12 @@ static int mt7996_init_hardware(struct m
+@@ -1348,6 +1348,12 @@ static int mt7996_init_hardware(struct m
  	if (ret < 0)
  		return ret;
  
@@ -510,9 +510,9 @@ Squash of the following MediaTek commits:
  	if (idx)
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -688,6 +688,12 @@ int mt7996_set_channel(struct mt76_phy *
- 	if (mphy->offchannel)
- 		mt7996_mac_update_beacons(phy);
+@@ -784,6 +784,12 @@ int mt7996_set_channel(struct mt76_phy *
+ 	if (ret)
+ 		goto out;
  
 +	if (phy->dev->eeprom_mode == EEPROM_MODE_FLASH) {
 +		ret = mt7996_mcu_apply_tx_dpd(phy);
@@ -525,7 +525,7 @@ Squash of the following MediaTek commits:
  		goto out;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -5004,6 +5004,202 @@ int mt7996_mcu_get_efuse_free_block(stru
+@@ -5281,6 +5281,202 @@ int mt7996_mcu_get_efuse_free_block(stru
  	return 0;
  }
  
