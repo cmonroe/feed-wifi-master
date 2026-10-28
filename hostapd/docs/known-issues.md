@@ -87,11 +87,22 @@ setting.
   So the option fits only a BSS without SAE. The default of the wifi scripts
   is such a rule (`ft_psk_local_default()` in `ap.uc`); the explicit 0 of
   `servicevlans.sh` overrides it.
+- The 0 comes from the uci defaults of intellifi. OWRT-6801 set the option
+  to 1 in 2021, and OWRT-7263 set it to 0 in 2023 "to better support WPA3".
+  The commit gives no other reason; an FT-SAE station needs the pull, which
+  fits that subject. SDG-3585 copied the 0 into
+  `servicevlans.sh`. The rule of `ap.uc` now chooses the value by
+  authentication type, so the explicit 0 is no longer needed.
+- A fix must delete the option, not only remove the command that sets it.
+  `servicevlans.sh reload` runs at each boot, and the `'0'` stays in
+  `/etc/config/wireless` of each upgraded unit until the script deletes it.
+- The hub copies the servicevlans config to its satellites, and
+  `servicevlans.sh` on each unit writes the wireless option from it. During a rollout, an AP with 1 stores no PMK-R0, so an AP with
+  0 that pulls from it gets no key, and the station falls back to a full
+  association. Not checked: whether the cloud or a CDT sets the option.
 
 ### What is not known
 
-- Why `servicevlans.sh` sets the option to 0. The history of the script
-  gives no reason.
 - What a client does that does not repeat its FT request.
 - How often a roam in the field is a first contact of two APs.
 
