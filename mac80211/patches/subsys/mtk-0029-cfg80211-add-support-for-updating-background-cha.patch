@@ -58,7 +58,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  };
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1419,6 +1419,18 @@ void cfg80211_stop_radar_detection(struc
+@@ -1427,6 +1427,18 @@ void cfg80211_stop_radar_detection(struc
  	}
  }
  

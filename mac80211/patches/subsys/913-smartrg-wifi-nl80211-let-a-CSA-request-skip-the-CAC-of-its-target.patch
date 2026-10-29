@@ -130,7 +130,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			    bool cac_ongoing)
 --- a/net/wireless/core.h
 +++ b/net/wireless/core.h
-@@ -501,6 +501,23 @@ void cfg80211_count_radar_event(struct w
+@@ -507,6 +507,23 @@ void cfg80211_count_radar_event(struct w
  void cfg80211_set_dfs_concurrent(struct wiphy *wiphy,
  				 const struct cfg80211_chan_def *chandef);
  

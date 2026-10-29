@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* netlink port which started critical protocol (0 means not started) */
  	u32 crit_proto_nlportid;
-@@ -538,6 +541,15 @@ cfg80211_start_background_radar_detectio
+@@ -544,6 +547,15 @@ cfg80211_start_background_radar_detectio
  
  void cfg80211_stop_radar_detection(struct wireless_dev *wdev);
  void cfg80211_stop_background_radar_detection(struct wireless_dev *wdev);
@@ -53,7 +53,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1439,6 +1439,58 @@ void cfg80211_stop_background_radar_dete
+@@ -1447,6 +1447,58 @@ void cfg80211_stop_background_radar_dete
  	rdev->background_radar_wdev = NULL;
  }
  
@@ -178,7 +178,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		if (found)
  			return true;
-@@ -2149,7 +2158,8 @@ static bool cfg80211_sta_subchan_in_use(
+@@ -2152,7 +2161,8 @@ static bool cfg80211_sta_subchan_in_use(
  		return true;
  
  	return cfg80211_is_wiphy_oper_chan(wiphy, chan) ||
