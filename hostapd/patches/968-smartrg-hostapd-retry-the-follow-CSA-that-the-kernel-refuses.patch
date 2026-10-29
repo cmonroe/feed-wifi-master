@@ -3,40 +3,57 @@ Date: Fri, 09 Oct 2026 13:23:12 -0700
 Subject: [PATCH] hostapd: retry the follow CSA that the kernel refuses
 
 When a station on the radio follows a channel switch of its AP,
-apsta_state starts the same switch on the APs of the radio.
-mac80211 refuses an AP switch with -EBUSY while a scan or a
-remain-on-channel runs on the radio. The station has already
-reserved the new channel, so it drops its link at its switch time
-when the APs do not reserve the channel too.
+apsta_state starts the same switch on the APs of the radio. The
+kernel refuses an AP switch while a scan or a remain-on-channel runs
+on the radio. The kernel also refuses the switch of an AP that waits
+for the end of a CAC. The station has already reserved the new
+channel. At its switch time, the kernel drops the station if an AP
+still holds the old channel.
 
-apsta_state now tries the switch again every 50 ms until the
-station switches. Each retry lowers the count by the beacons that
-passed and by the one in progress, so that the APs finish no later
-than the station. When the APs finish late, the first beacon of
-the uplink on the new channel has no CSA element, and mac80211
-aborts the switch of the station.
+apsta_state tries the switch again every 50 ms until shortly before
+the switch time of the station. Each retry lowers the count by the
+beacons that passed and by the one in progress. If the APs finish
+late, mac80211 aborts the switch of the station: the first uplink
+beacon on the new channel has no CSA element. If the APs still
+refuse then, they stop, so that the station switches alone and
+keeps its link. The margin of the stop covers one retry interval and
+the notification delay, so that the old channel is free when the
+station switches.
 
-The switch_channel binding stops at the first BSS that fails, and a
-BSS that already switches refuses a second request. A repeated
-request therefore skips the BSSes that switch to the requested
-frequency, and the binding reports success when every running BSS
-switches to it. A repeated request then completes a switch that the
-kernel refused for some BSSes.
+wpa_supplicant also reports the end of the switch of the station,
+and apsta_state then starts the stopped APs on the new channel. An
+AP that switched with the station keeps running, because its channel
+does not change. An AP whose own switch is still in progress waits
+for its own event, which can come after the update. The stop of an
+AP clears its channel switch state, because the kernel ends that
+switch without an event. The next start then sends no stale CSA
+element.
+
+The switch_channel binding skips a BSS that already switches to the
+requested frequency, because such a BSS refuses a repeated request.
+A repeated request then completes a switch that the kernel refused
+for some BSSes. The binding reports success when every running BSS
+switches to the requested frequency.
 
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- openwrt/files/hostapd.uc |  105 +++++++++++++++++++++++++++++++++++++++++------
- src/ap/ucode.c           |   29 ++++++++++++
- 2 files changed, 120 insertions(+), 14 deletions(-)
+ openwrt/files/hostapd.uc        |  139 +++++++++++++++++++++++++++++++++++-----
+ openwrt/files/wpa_supplicant.uc |    8 +-
+ src/ap/ucode.c                  |   38 ++++++++++
+ wpa_supplicant/ucode.c          |    4 -
+ 4 files changed, 166 insertions(+), 23 deletions(-)
 
 --- a/openwrt/files/hostapd.uc
 +++ b/openwrt/files/hostapd.uc
-@@ -567,6 +567,17 @@ function iface_link_reload_cancel(name)
+@@ -567,6 +567,29 @@ function iface_link_reload_cancel(name)
  	delete hostapd.data.link_reload[name];
  }
  
 +const APSTA_CSA_RETRY_MS = 50;
++// One retry interval plus the delay of the station notification and of the
++// stop: the old channel must be free when the station switches.
++const APSTA_CSA_STOP_MARGIN_MS = 100;
 +
 +function apsta_csa_retry_cancel(phy)
 +{
@@ -47,10 +64,19 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	}
 +}
 +
++function apsta_iface_stop(phy, iface)
++{
++	delete hostapd.data.apsta_freq[phy];
++	hostapd.data.apsta_stopped[phy] = true;
++	hostapd.data.configuring = phy;
++	iface.stop();
++	delete hostapd.data.configuring;
++}
++
  function iface_restart(phydev, config, old_config)
  {
  	let phy = phydev.name;
-@@ -574,6 +585,7 @@ function iface_restart(phydev, config, o
+@@ -574,6 +597,7 @@ function iface_restart(phydev, config, o
  
  	csa_timer_cancel(phy);
  	iface_link_reload_cancel(phy);
@@ -58,7 +84,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (pending)
  		pending.abort();
-@@ -1088,6 +1100,82 @@ function iface_csa_check(name)
+@@ -1088,6 +1112,90 @@ function iface_csa_check(name)
  		iface_restart(phydev, config, config);
  }
  
@@ -84,12 +110,17 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 + * The kernel refuses an AP channel switch while a scan or a remain-on-channel
 + * runs on the radio. The station has already reserved the new channel, and it
 + * drops its link at its own switch time unless the APs reserve the channel
-+ * before then. So try again until that time.
++ * before then. So try again until shortly before that time.
 + *
 + * The APs must also finish no later than the station. In a late swap, the
 + * first beacon of the uplink on the new channel carries no CSA element, and
 + * mac80211 then aborts the switch of the station. So each retry lowers the
 + * count by the beacons that passed and by the one in progress.
++ *
++ * An AP that still holds the old channel at the switch time of the station
++ * makes that switch fail, so the APs stop instead, early enough to free the
++ * channel. A retry in that margin would be a late swap anyway. The update at
++ * the end of the switch of the station starts the APs on the new channel.
 + */
 +function apsta_csa_retry(phy, config, freq_info)
 +{
@@ -109,12 +140,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		let elapsed = monotonic_ms() - start;
 +		let iface = hostapd.interfaces[phy];
 +
-+		if (elapsed >= count * beacon_ms || !iface ||
-+		    hostapd.data.apsta_freq[phy] != freq) {
++		if (!iface || hostapd.data.apsta_freq[phy] != freq) {
 +			apsta_csa_retry_cancel(phy);
-+			if (hostapd.data.apsta_freq[phy] == freq)
-+				delete hostapd.data.apsta_freq[phy];
-+			hostapd.printf(`Channel switch to ${freq} on phy ${phy} still refused after ${attempts} retries`);
++			return;
++		}
++
++		if (elapsed + APSTA_CSA_STOP_MARGIN_MS >= count * beacon_ms) {
++			apsta_csa_retry_cancel(phy);
++			hostapd.printf(`Channel switch to ${freq} on phy ${phy} still refused after ${attempts} retries, stopping the AP so that the station can switch`);
++			apsta_iface_stop(phy, iface);
 +			return;
 +		}
 +
@@ -141,7 +175,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  function iface_channel_switch(name, config)
  {
  	let radio = config.radio;
-@@ -1140,17 +1228,8 @@ function iface_channel_switch(name, conf
+@@ -1140,17 +1248,8 @@ function iface_channel_switch(name, conf
  	hostapd.data.csa_timer ??= {};
  	csa_timer_cancel(name);
  
@@ -161,16 +195,23 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	return true;
  }
-@@ -2435,6 +2514,8 @@ let main_obj = {
+@@ -2435,12 +2534,10 @@ let main_obj = {
  			if (!iface)
  				return 0;
  
 +			apsta_csa_retry_cancel(phy);
 +
  			if (!req.args.up) {
- 				delete hostapd.data.apsta_freq[phy];
- 				hostapd.data.apsta_stopped[phy] = true;
-@@ -2500,7 +2581,7 @@ let main_obj = {
+-				delete hostapd.data.apsta_freq[phy];
+-				hostapd.data.apsta_stopped[phy] = true;
+-				hostapd.data.configuring = phy;
+-				iface.stop();
+-				delete hostapd.data.configuring;
++				apsta_iface_stop(phy, iface);
+ 				return 0;
+ 			}
+ 
+@@ -2500,7 +2597,7 @@ let main_obj = {
  				if (req.args.csa) {
  					freq_info.csa_count = req.args.csa_count ?? 10;
  					if (!iface.switch_channel(freq_info))
@@ -179,9 +220,41 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  					delete hostapd.data.apsta_stopped[phy];
  					return 0;
+@@ -2516,6 +2613,14 @@ let main_obj = {
+ 				return 0;
+ 
+ 			/*
++			 * An AP that switches with the station gets the end of its
++			 * own switch as a separate event, which can come after this
++			 * update.
++			 */
++			if (iface.csa_in_progress())
++				return 0;
++
++			/*
+ 			 * Starting a parked iface goes through a disable/enable
+ 			 * cycle whose DFS->DISABLED transition must not be
+ 			 * reported as a setup failure.
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -927,8 +927,33 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -750,8 +750,15 @@ uc_hostapd_iface_stop(uc_vm_t *vm, size_
+ 	if (iface->state != HAPD_IFACE_ENABLED)
+ 		uc_hostapd_disable_iface(iface);
+ 
+-	for (i = 0; i < iface->num_bss; i++)
++	for (i = 0; i < iface->num_bss; i++) {
++#ifdef NEED_AP_MLME
++		/* the kernel ends a channel switch without an event when it
++		 * stops the BSS
++		 */
++		hostapd_cleanup_cs_params(iface->bss[i]);
++#endif /* NEED_AP_MLME */
+ 		hostapd_bss_stop_ap(iface->bss[i]);
++	}
+ 
+ 	/* TRIGGER_ACS reports a channel for a running AP only */
+ 	hostapd_manual_acs_end(iface);
+@@ -927,8 +934,33 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  
  	/* mac80211 completes the switch only if every BSS of the radio
  	 * takes part */
@@ -217,3 +290,43 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	return ucv_boolean_new(!ret);
  }
+--- a/openwrt/files/wpa_supplicant.uc
++++ b/openwrt/files/wpa_supplicant.uc
+@@ -1202,11 +1202,13 @@ function iface_hostapd_notify(ifname, if
+ 	}
+ }
+ 
+-function iface_channel_switch(ifname, iface, info)
++// At the end of the switch, the update starts the APs that stopped so that
++// the station could switch.
++function iface_channel_switch(ifname, iface, info, done)
+ {
+ 	let msg = {
+ 		up: true,
+-		csa: true,
++		csa: !done,
+ 		csa_count: info.csa_count ? info.csa_count - 1 : 0,
+ 		frequency: info.frequency,
+ 		sec_chan_offset: info.sec_chan_offset,
+@@ -1392,6 +1394,8 @@ return {
+ 	event: function(ifname, iface, ev, info) {
+ 		if (ev == "CH_SWITCH_STARTED" || ev == "LINK_CH_SWITCH_STARTED")
+ 			iface_channel_switch(ifname, iface, info);
++		else if (ev == "CH_SWITCH" || ev == "LINK_CH_SWITCH")
++			iface_channel_switch(ifname, iface, info, true);
+ 	},
+ 	wps_credentials: function(ifname, iface, cred) {
+ 		cred.ifname = ifname;
+--- a/wpa_supplicant/ucode.c
++++ b/wpa_supplicant/ucode.c
+@@ -140,7 +140,9 @@ void wpas_ucode_event(struct wpa_supplic
+ 	uc_value_t *val;
+ 
+ 	if (event != EVENT_CH_SWITCH_STARTED &&
+-	    event != EVENT_LINK_CH_SWITCH_STARTED)
++	    event != EVENT_LINK_CH_SWITCH_STARTED &&
++	    event != EVENT_CH_SWITCH &&
++	    event != EVENT_LINK_CH_SWITCH)
+ 		return;
+ 
+ 	val = wpa_ucode_registry_get(iface_registry, wpa_s->ucode.idx);

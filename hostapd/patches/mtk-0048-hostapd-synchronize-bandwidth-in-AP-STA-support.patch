@@ -49,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (iface->state != HAPD_IFACE_ENABLED)
  		uc_hostapd_disable_iface(iface);
  
-@@ -771,8 +774,21 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+@@ -778,8 +781,21 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  	if (!iface)
  		return NULL;
  
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (ucv_type(info) != UC_OBJECT)
  		return NULL;
-@@ -786,27 +802,40 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+@@ -793,27 +809,40 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  		}								\
  	} while(0)
  
@@ -125,7 +125,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	intval = ucv_int64_get(ucv_object_get(info, "frequency", NULL));
  	if (!errno)
-@@ -840,6 +869,15 @@ out:
+@@ -847,6 +876,15 @@ out:
  		return ucv_boolean_new(true);
  	}
  
@@ -141,7 +141,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
  
-@@ -885,10 +923,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -892,10 +930,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  		return ucv_boolean_new(false);
  	}
  
@@ -158,7 +158,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		csa.freq_params.sec_channel_offset = intval;
  
  	csa.freq_params.ht_enabled = conf->ieee80211n;
-@@ -917,13 +959,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -924,13 +966,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  		break;
  	}
  
@@ -273,8 +273,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	int center_freq1, bw320_offset = 1;
  
  	if (event != EVENT_CH_SWITCH_STARTED &&
- 	    event != EVENT_LINK_CH_SWITCH_STARTED)
-@@ -153,14 +164,44 @@ void wpas_ucode_event(struct wpa_supplic
+ 	    event != EVENT_LINK_CH_SWITCH_STARTED &&
+@@ -155,14 +166,44 @@ void wpas_ucode_event(struct wpa_supplic
  	uc_value_push(ucv_string_new(wpa_s->ifname));
  	uc_value_push(ucv_get(val));
  	uc_value_push(ucv_string_new(event_to_string(event)));
@@ -321,7 +321,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (event == EVENT_LINK_CH_SWITCH_STARTED)
  		ucv_object_add(val, "link_id", ucv_int64_new(data->ch_switch.link_id));
  
-@@ -616,7 +657,7 @@ out:
+@@ -618,7 +659,7 @@ out:
  }
  
  static void
@@ -330,7 +330,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	int sec_chan = 0;
  	const u8 *ie;
-@@ -638,6 +679,124 @@ uc_wpas_iface_status_bss(uc_value_t *ret
+@@ -640,6 +681,124 @@ uc_wpas_iface_status_bss(uc_value_t *ret
  	ucv_object_add(ret, "frequency", ucv_int64_new(bss->freq));
  }
  
@@ -455,7 +455,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
  uc_wpas_iface_status_multi_ap(uc_vm_t *vm, uc_value_t *ret, struct wpa_supplicant *wpa_s)
  {
-@@ -659,7 +818,6 @@ static uc_value_t *
+@@ -661,7 +820,6 @@ static uc_value_t *
  uc_wpas_iface_status(uc_vm_t *vm, size_t nargs)
  {
  	struct wpa_supplicant *wpa_s = uc_fn_thisval("wpas.iface");
@@ -463,7 +463,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	uc_value_t *ret;
  
  	if (!wpa_s)
-@@ -669,31 +827,10 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -671,31 +829,10 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  
  	ucv_object_add(ret, "state", ucv_string_new(wpa_supplicant_state_txt(wpa_s->wpa_state)));
  
@@ -536,7 +536,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  function iface_add(phy, config, phy_status, start_disabled)
-@@ -2510,6 +2515,8 @@ let main_obj = {
+@@ -2526,6 +2531,8 @@ let main_obj = {
  			up: true,
  			frequency: 0,
  			sec_chan_offset: 0,
@@ -545,7 +545,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			csa: true,
  			csa_count: 0,
  			no_link: true,
-@@ -2519,6 +2526,9 @@ let main_obj = {
+@@ -2535,6 +2542,9 @@ let main_obj = {
  			if (req.args.up == null || !phy)
  				return libubus.STATUS_INVALID_ARGUMENT;
  
@@ -555,7 +555,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			let config = hostapd.data.config[phy];
  			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)
  				return 0;
-@@ -2597,6 +2607,8 @@ let main_obj = {
+@@ -2609,6 +2619,8 @@ let main_obj = {
  				if (!freq_info)
  					return fail();
  
@@ -584,7 +584,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  		break;
  	default:
-@@ -1210,6 +1214,8 @@ function iface_channel_switch(ifname, if
+@@ -1212,6 +1216,8 @@ function iface_channel_switch(ifname, if
  		csa_count: info.csa_count ? info.csa_count - 1 : 0,
  		frequency: info.frequency,
  		sec_chan_offset: info.sec_chan_offset,
