@@ -1,0 +1,92 @@
+From: Louis Kotze <loukot@gmail.com>
+Date: Fri, 14 Aug 2026 11:22:42 +0200
+Subject: [PATCH] Revert "MLD: Scan the channels of missing links for the ML probe"
+
+This reverts commit 517b0d7cc8412afa202a0f97b68c32b4ac5b44af.
+
+Adding the channels of the missing links to the ML probe scan required
+the association link's BSSID to be dropped from the scan parameters, so
+that the affiliated APs on the other channels would respond to the Probe
+Request frames. cfg80211 then uses the wildcard BSSID for the scan, and
+mac80211 sets both Address 1 and Address 3 of the Probe Request frame to
+the broadcast address. IEEE Std 802.11be-2024, 35.3.4.2 (Use of
+multi-link probe request and response) requires a multi-link probe
+request to be sent either with the Address 1 field set to the broadcast
+address and the Address 3 field set to the BSSID of an AP, or with both
+the Address 1 and Address 3 fields set to the BSSID of an AP. A
+broadcast Address 3 is neither of those.
+
+In addition, the Probe Request Multi-Link element is built once for the
+association link and is then included on every channel that the scan
+visits. The requested APs are the APs affiliated with the same AP MLD as
+the AP identified in the Address 1 or Address 3 field or in the AP MLD
+ID subfield, so with no AP identified by address, an AP MLD that is not
+the intended target resolves the requested link IDs against itself and
+responds with per-STA profiles of its own affiliated APs.
+
+Only a single BSSID can be specified per scan request, so the channels of
+the missing links cannot be visited with the correct Address 3 within one
+scan. Refreshing those links needs a separate scan request per link
+instead, which will be handled in a follow-up change.
+
+The remaining part of the series is not affected. An affiliated link with
+a scan entry that is too old for association is still treated as missing
+and is left out of the association request, so association no longer
+fails in the kernel with "Error fetching BSS for link". Links that the AP
+MLD reports in the ML probe response are still refreshed on the
+association link's channel.
+
+Reported-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
+Signed-off-by: Louis Kotze <loukot@gmail.com>
+---
+
+--- a/wpa_supplicant/events.c
++++ b/wpa_supplicant/events.c
+@@ -1949,7 +1949,6 @@ static int wpa_supplicant_connect_ml_mis
+ {
+ 	int *freqs;
+ 	u16 missing_links = 0, removed_links, usable_links;
+-	int link_id;
+
+ 	if (!((wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_MLO) &&
+ 	      (wpa_s->drv_flags & WPA_DRIVER_FLAGS_SME)))
+@@ -1980,21 +1979,6 @@ static int wpa_supplicant_connect_ml_mis
+ 	freqs[0] = selected->freq;
+ 	freqs[1] = 0;
+
+-	/*
+-	 * Also visit the channels of the missing links. The ML probe request
+-	 * on the association link's channel is sufficient when the AP MLD
+-	 * responds to it with complete per-STA profiles, but not all APs do
+-	 * so. Scanning the channels of the missing links allows the
+-	 * information to be updated from the Beacon or Probe Response frames
+-	 * of the affiliated APs themselves.
+-	 */
+-	for_each_link(missing_links, link_id) {
+-		int freq = selected->mld_links[link_id].freq;
+-
+-		if (freq)
+-			int_array_add_unique(&freqs, freq);
+-	}
+-
+ 	wpa_s->manual_scan_passive = 0;
+ 	wpa_s->manual_scan_use_id = 0;
+ 	wpa_s->manual_scan_only_new = 0;
+--- a/wpa_supplicant/scan.c
++++ b/wpa_supplicant/scan.c
+@@ -1497,14 +1497,7 @@ ssid_list_set:
+ 		}
+ 	} else if (!is_zero_ether_addr(wpa_s->ml_probe_bssid)) {
+ 		wpa_printf(MSG_DEBUG, "Scanning for ML probe request");
+-		/*
+-		 * When the scan visits the channels of the missing links in
+-		 * addition to the association link's channel, use the wildcard
+-		 * BSSID so that the affiliated APs on those channels respond
+-		 * to the probe requests, too.
+-		 */
+-		if (!params.freqs || !params.freqs[0] || !params.freqs[1])
+-			params.bssid = wpa_s->ml_probe_bssid;
++		params.bssid = wpa_s->ml_probe_bssid;
+ 		params.min_probe_req_content = true;
+ 	}
+

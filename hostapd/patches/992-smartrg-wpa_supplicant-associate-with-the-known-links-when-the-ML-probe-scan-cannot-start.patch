@@ -1,0 +1,62 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 28 Oct 2026 20:47:00 -0700
+Subject: [PATCH] wpa_supplicant: associate with the known links when the ML probe scan cannot start
+
+wpa_supplicant_connect_ml_missing() requests an ML probe scan before
+the association with an AP MLD whose affiliated links are missing from
+the scan results. That scan is a manual scan request, and
+wpas_trigger_scan_cb() does not retry a manual scan that the driver
+refuses. The station then stays in SCANNING, and nothing requests
+another scan while it is not connected. A radio that several
+interfaces share refuses the scan with EBUSY while another interface
+scans on it, for example an AP in ACS right after a radio restart.
+
+Associate with the links that the scan results describe when the ML
+probe scan cannot start, as after an ML probe request that the AP MLD
+does not answer. The links that stay missing are left out of the
+association.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ wpa_supplicant/events.c           |    2 +-
+ wpa_supplicant/scan.c             |    7 +++++++
+ wpa_supplicant/wpa_supplicant_i.h |    1 +
+ 3 files changed, 9 insertions(+), 1 deletion(-)
+
+--- a/wpa_supplicant/events.c
++++ b/wpa_supplicant/events.c
+@@ -1924,7 +1924,7 @@ static void wpa_supplicant_scan_abort_re
+ }
+
+
+-static bool ml_link_probe_scan(struct wpa_supplicant *wpa_s)
++bool ml_link_probe_scan(struct wpa_supplicant *wpa_s)
+ {
+ 	if (!wpa_s->ml_connect_probe_ssid || !wpa_s->ml_connect_probe_bss)
+ 		return false;
+--- a/wpa_supplicant/scan.c
++++ b/wpa_supplicant/scan.c
+@@ -267,6 +267,13 @@ static void wpas_trigger_scan_cb(struct
+ 			/* Restore scan_req since we will try to scan again */
+ 			wpa_s->scan_req = wpa_s->last_scan_req;
+ 			wpa_supplicant_req_scan(wpa_s, 1, 0);
++		} else if (!wpa_s->disconnected && ml_link_probe_scan(wpa_s)) {
++			/*
++			 * The ML probe request could not be sent, so the
++			 * association proceeds with the links that the scan
++			 * results already describe, as after an ML probe
++			 * request that the AP MLD did not answer.
++			 */
+ 		} else if (wpa_s->scan_res_handler) {
+ 			/* Clear the scan_res_handler */
+ 			wpa_s->scan_res_handler = NULL;
+--- a/wpa_supplicant/wpa_supplicant_i.h
++++ b/wpa_supplicant/wpa_supplicant_i.h
+@@ -2032,6 +2032,7 @@ void wpa_supplicant_mark_disassoc(struct
+ int wpa_supplicant_connect(struct wpa_supplicant *wpa_s,
+ 			   struct wpa_bss *selected,
+ 			   struct wpa_ssid *ssid);
++bool ml_link_probe_scan(struct wpa_supplicant *wpa_s);
+ void wpa_supplicant_stop_countermeasures(void *eloop_ctx, void *sock_ctx);
+ void wpa_supplicant_delayed_mic_error_report(void *eloop_ctx, void *sock_ctx);
+ void wnm_bss_keep_alive_deinit(struct wpa_supplicant *wpa_s);
