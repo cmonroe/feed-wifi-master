@@ -5,7 +5,7 @@ Subject: [PATCH] wifi: mac80211: add STA-assisted DFS state update
 An extender runs a STA and an AP on the same DFS channel. The root AP
 of the STA already did the CAC and runs radar detection there.
 Without help, the extender AP starts its own CAC after each switch
-to a DFS channel.
+to a DFS channel and after each restart.
 
 The STA marks the channels of its BSS and of a CSA target available;
 the target keeps that state until the switch completes. When the STA
@@ -13,13 +13,17 @@ leaves, an available 20 MHz channel becomes usable again, unless the
 CSA target, an AP or the background chain covers it. The CSA target
 check comes from mtk-openwrt-feeds 2df62b873dd2,
 0023-mtk-mac80211-add-sta-assisted-DFS-state-update-mecha.patch
-("mtk: mac80211: add sta-assisted DFS state update mechanism"). Each
-BSS channel that changes gets its own event, because hostapd applies
-an event to every channel of its chandef. An AP on the band and radio
-of the channel gets each event, because only the hostapd instance of
-that interface handles it. A local radar event, not a background one
-in atomic context, keeps channels that the STA covers available,
-because the root AP saw no radar.
+("mtk: mac80211: add sta-assisted DFS state update mechanism"). The
+pre-CAC expiry counts an associated STA as a user of its BSS
+channels, because the root AP still runs radar detection there. Only
+the expiry makes this test, so that the STA does not keep its own
+channels available at disassociation or CSA. Each BSS channel that
+changes gets its own event, because hostapd applies an event to every
+channel of its chandef. An AP on the band and radio of the channel
+gets each event, because only the hostapd instance of that interface
+handles it. A local radar event, not a background one in atomic
+context, keeps channels that the STA covers available, because the
+root AP saw no radar.
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
@@ -30,11 +34,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  net/mac80211/chan.c          |   13 ++
  net/mac80211/mlme.c          |   16 ++
  net/wireless/ap.c            |    3 
- net/wireless/chan.c          |  239 ++++++++++++++++++++++++++++++++++++++++---
+ net/wireless/chan.c          |  242 ++++++++++++++++++++++++++++++++++++++++---
  net/wireless/core.h          |    5 
  net/wireless/mlme.c          |    5 
  net/wireless/nl80211.c       |    3 
- 9 files changed, 297 insertions(+), 19 deletions(-)
+ 9 files changed, 300 insertions(+), 19 deletions(-)
 
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
@@ -183,7 +187,16 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			  struct ieee80211_channel *chan,
  			  bool primary_only)
  {
-@@ -1340,7 +1332,8 @@ bool cfg80211_any_wiphy_oper_chan(struct
+@@ -1334,13 +1326,17 @@ bool cfg80211_any_wiphy_oper_chan(struct
+ 
+ 		if (found)
+ 			return true;
++
++		if (cfg80211_dfs_sta_present(&rdev->wiphy, chan))
++			return true;
+ 	}
+ 
+ 	return false;
  }
  
  void cfg80211_update_last_available(struct wiphy *wiphy,
@@ -193,7 +206,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct ieee80211_channel *c;
  	int width;
-@@ -1357,7 +1350,7 @@ void cfg80211_update_last_available(stru
+@@ -1357,7 +1353,7 @@ void cfg80211_update_last_available(stru
  		if (!c)
  			return;
  
@@ -202,7 +215,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  }
  
-@@ -1948,6 +1941,224 @@ bool cfg80211_any_usable_channels(struct
+@@ -1948,6 +1944,224 @@ bool cfg80211_any_usable_channels(struct
  }
  EXPORT_SYMBOL(cfg80211_any_usable_channels);
  
