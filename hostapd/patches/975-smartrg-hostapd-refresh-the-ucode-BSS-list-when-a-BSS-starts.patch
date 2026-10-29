@@ -30,7 +30,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			goto free;
  
  		for (size_t k = 0; k < i; k++)
-@@ -1591,6 +1591,19 @@ void hostapd_ucode_forget_bss(struct hos
+@@ -1598,6 +1598,19 @@ void hostapd_ucode_forget_bss(struct hos
  	hapd->ucode.idx = 0;
  }
  
@@ -50,7 +50,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void hostapd_ucode_bss_cb(struct hostapd_data *hapd, const char *type)
  {
  	uc_value_t *val;
-@@ -1599,6 +1612,12 @@ void hostapd_ucode_bss_cb(struct hostapd
+@@ -1606,6 +1619,12 @@ void hostapd_ucode_bss_cb(struct hostapd
  		return;
  
  	val = hostapd_ucode_bss_get_uval(hapd);

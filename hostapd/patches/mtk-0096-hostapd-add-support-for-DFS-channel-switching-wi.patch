@@ -257,7 +257,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  #else /* NEED_AP_MLME */
  	return -1;
-@@ -4469,9 +4547,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
+@@ -4479,9 +4557,9 @@ hostapd_ctrl_iface_set_offchan_ctrl(stru
  	else
  		return -1;
  
@@ -403,7 +403,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  }
  
-@@ -2120,7 +2130,8 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -2176,7 +2186,8 @@ int hostapd_dfs_start_cac(struct hostapd
  		/* This is called when the driver indicates that an offloaded
  		 * DFS has started CAC. radar_detected might be set for previous
  		 * DFS channel. Clear it for this new CAC process. */
@@ -413,7 +413,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		iface->cac_started = 1;
  
  		/* Clear radar_detected in case it is for the previous
-@@ -2188,14 +2199,15 @@ int hostapd_handle_dfs_offload(struct ho
+@@ -2244,14 +2255,15 @@ int hostapd_handle_dfs_offload(struct ho
  }
  
  
@@ -433,7 +433,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (!iface->conf->ieee80211h || !mode ||
  	    mode->mode != HOSTAPD_MODE_IEEE80211A)
-@@ -2228,18 +2240,164 @@ int hostapd_is_dfs_overlap(struct hostap
+@@ -2284,18 +2296,164 @@ int hostapd_is_dfs_overlap(struct hostap
  		if (!(chan->flag & HOSTAPD_CHAN_RADAR))
  			continue;
  
@@ -610,7 +610,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/src/ap/dfs.h
 +++ b/src/ap/dfs.h
-@@ -40,17 +40,23 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -44,17 +44,23 @@ int hostapd_dfs_start_cac(struct hostapd
  			  int ht_enabled, int chan_offset, int chan_width,
  			  int cf1, int cf2);
  int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
@@ -653,7 +653,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return 1;
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -6426,6 +6426,8 @@ int hostapd_force_channel_switch(struct
+@@ -6434,6 +6434,8 @@ int hostapd_force_channel_switch(struct
  		return ret;
  	}
  

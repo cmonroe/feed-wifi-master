@@ -27,8 +27,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +++ b/wpa_supplicant/events.c
 @@ -1924,7 +1924,7 @@ static void wpa_supplicant_scan_abort_re
  }
-
-
+ 
+ 
 -static bool ml_link_probe_scan(struct wpa_supplicant *wpa_s)
 +bool ml_link_probe_scan(struct wpa_supplicant *wpa_s)
  {

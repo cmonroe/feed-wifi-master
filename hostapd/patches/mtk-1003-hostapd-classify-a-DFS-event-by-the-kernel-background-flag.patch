@@ -21,13 +21,13 @@ replacement in place.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- src/ap/dfs.c                       |   54 +++++++++++++++++++++----------------
+ src/ap/dfs.c                       |   55 ++++++++++++++++++++++--------------
  src/ap/dfs.h                       |    6 ++--
- src/ap/drv_callbacks.c             |    8 ++---
+ src/ap/drv_callbacks.c             |    8 +++--
  src/drivers/driver.h               |    2 +
  src/drivers/driver_nl80211_event.c |    2 +
- wpa_supplicant/ap.c                |   11 ++++---
- 6 files changed, 50 insertions(+), 33 deletions(-)
+ wpa_supplicant/ap.c                |   11 +++++--
+ 6 files changed, 51 insertions(+), 33 deletions(-)
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
@@ -126,7 +126,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	default:
  		return false;
  	}
-@@ -1950,8 +1957,10 @@ static bool dfs_detect_mode_skip(struct
+@@ -2005,8 +2012,10 @@ void hostapd_dfs_detect_mode_clear(struc
  
  int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
  			       int ht_enabled, int chan_offset, int chan_width,
@@ -138,12 +138,23 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
  			DFS_EVENT_RADAR_DETECTED
-@@ -1991,17 +2000,18 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -2041,8 +2050,10 @@ int hostapd_dfs_radar_detected(struct ho
+ 						 chan_offset, chan_width,
+ 						 cf1, cf2);
+ 
++	chain = hostapd_dfs_is_background_event(iface, background);
++
+ 	/* a held chain keeps its channel available in the table as well */
+-	if (dfs_detect_mode_skip(iface, freq))
++	if (dfs_detect_mode_skip(iface, chain))
+ 		return 0;
+ 
+ 	/* mark radar frequency as invalid */
+@@ -2050,14 +2061,14 @@ int hostapd_dfs_radar_detected(struct ho
  			   cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE))
  		return 0;
  
 -	if (!hostapd_dfs_is_background_event(iface, freq)) {
-+	chain = hostapd_dfs_is_background_event(iface, background);
 +	if (!chain) {
  		/* Skip if reported radar event not overlapped our channels */
  		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
@@ -151,16 +162,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			return 0;
  	}
  
--	if (dfs_detect_mode_skip(iface, freq))
-+	if (dfs_detect_mode_skip(iface, chain))
- 		return 0;
- 
 -	if (hostapd_dfs_background_start_channel_switch(iface, freq)) {
 +	if (hostapd_dfs_background_start_channel_switch(iface, chain)) {
  		/* Radar detected while operating, switch the channel. */
  		return hostapd_dfs_start_channel_switch(iface);
  	}
-@@ -2141,9 +2151,10 @@ static void dfs_chain_half_adopt(struct
+@@ -2197,9 +2208,10 @@ static void dfs_chain_half_adopt(struct
  
  int hostapd_dfs_start_cac(struct hostapd_data *hapd, int freq,
  			  int ht_enabled, int chan_offset, int chan_width,
@@ -172,7 +179,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
-@@ -2153,7 +2164,8 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -2209,7 +2221,8 @@ int hostapd_dfs_start_cac(struct hostapd
  	}
  
  	dfs_chain_half_adopt(iface, freq, chan_width, cf1);
@@ -182,7 +189,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		iface->radar_background.cac_started = 1;
  	} else {
  		/* This is called when the driver indicates that an offloaded
-@@ -2178,9 +2190,7 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -2234,9 +2247,7 @@ int hostapd_dfs_start_cac(struct hostapd
  		freq, (freq - 5000) / 5, chan_offset,
  		channel_width_to_string(chan_width),
  		(cf1 - 5000) / 5, cf2 ? (cf2 - 5000) / 5 : 0,
@@ -195,7 +202,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
 --- a/src/ap/dfs.h
 +++ b/src/ap/dfs.h
-@@ -20,14 +20,14 @@ void hostapd_dfs_chain_drop(struct hosta
+@@ -24,14 +24,14 @@ void hostapd_dfs_detect_mode_clear(struc
  
  int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
  			     int ht_enabled, int chan_offset, int chan_width,
@@ -212,7 +219,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int hostapd_dfs_nop_finished(struct hostapd_iface *iface, int freq,
  			     int ht_enabled,
  			     int chan_offset, int chan_width, int cf1, int cf2);
-@@ -38,7 +38,7 @@ int hostapd_is_dfs_required(struct hosta
+@@ -42,7 +42,7 @@ int hostapd_is_dfs_required(struct hosta
  int hostapd_is_dfs_chan_available(struct hostapd_iface *iface);
  int hostapd_dfs_start_cac(struct hostapd_data *hapd, int freq,
  			  int ht_enabled, int chan_offset, int chan_width,

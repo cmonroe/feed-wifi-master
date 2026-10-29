@@ -30,7 +30,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4424,6 +4424,93 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
+@@ -4434,6 +4434,93 @@ hostapd_ctrl_iface_set_dfs_detect_mode(s
  }
  
  
@@ -124,7 +124,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -5086,6 +5173,8 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -5096,6 +5183,8 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "DFS_DETECT_MODE ", 16) == 0) {
  		reply_len = hostapd_ctrl_iface_set_dfs_detect_mode(hapd, buf + 16,
  								   reply, reply_size);
@@ -205,7 +205,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int hostapd_handle_dfs(struct hostapd_iface *iface);
  void hostapd_dfs_chain_drop(struct hostapd_iface *iface);
  
-@@ -33,5 +39,15 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -37,5 +43,15 @@ int hostapd_dfs_start_cac(struct hostapd
  int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
  int hostapd_is_dfs_overlap(struct hostapd_iface *iface, enum chan_width width,
  			   int center_freq);

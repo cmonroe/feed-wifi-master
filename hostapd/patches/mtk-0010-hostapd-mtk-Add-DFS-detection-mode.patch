@@ -5,24 +5,34 @@ Subject: [PATCH 10/28] hostapd: mtk: Add DFS detection mode
 
 Add DFS detection modes to test the radar detection rate. In a detect
 mode, the chain that saw the radar stays on its channel: mode 1 holds
-the AP channel, mode 2 the background chain, mode 3 both.
+the AP channel, mode 2 the background chain, mode 3 both. The mode
+applies after hostapd knows which chain saw the radar, so the other
+chain acts on its radar as usual. In mode 2, a radar on the AP channel
+still moves the AP. A held chain keeps its channel available in the
+hostapd channel table, because the kernel sends no end of the
+non-occupancy period for a channel it did not mark.
 
-The mode applies after hostapd knows which chain saw the radar, so
-the other chain acts on its radar as usual. In mode 2, a radar on the
-AP channel still moves the AP. In mode 1, a radar on the AP channel
-does not move the AP onto the background chain. The configuration
-file and the DFS_DETECT_MODE command refuse a value that is not a
-whole number from 0 to 3, and the previous mode stays.
+The kernel keeps a DFS state of its own and refuses every beacon
+update on a channel it marked unavailable, so hostapd writes the mode
+to the detect mode test file of cfg80211 in debugfs as well. The
+write happens at the DFS_DETECT_MODE command and at each start of an
+interface that runs DFS, with the configured value. Such an interface
+writes zero when it stops, so a restart does not leave a stale mode.
+A kernel without the file is accepted, and a failed write fails the
+command. The configuration file and the command refuse a value that
+is not a whole number from 0 to 3, and the previous mode stays.
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- hostapd/config_file.c | 12 ++++++++++++
- hostapd/ctrl_iface.c  | 25 +++++++++++++++++++++++++
- src/ap/ap_config.h    | 13 +++++++++++++
- src/ap/dfs.c          | 19 +++++++++++++++++++
- 4 files changed, 69 insertions(+)
+ hostapd/config_file.c |   12 ++++++++
+ hostapd/ctrl_iface.c  |   35 +++++++++++++++++++++++
+ src/ap/ap_config.h    |   13 ++++++++
+ src/ap/dfs.c          |   75 +++++++++++++++++++++++++++++++++++++++++++++++++
+ src/ap/dfs.h          |    4 +++
+ src/ap/hostapd.c      |    8 +++++
+ 6 files changed, 147 insertions(+)
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
@@ -47,7 +57,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4402,6 +4402,28 @@ static int hostapd_ctrl_afc_send_request
+@@ -4402,6 +4402,38 @@ static int hostapd_ctrl_afc_send_request
  #endif /* CONFIG_AFC */
  
  
@@ -69,6 +79,16 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	}
 +	hapd->iconf->dfs_detect_mode = dfs_detect_mode;
 +
++	if (hostapd_is_dfs_required(hapd->iface) <= 0) {
++		wpa_printf(MSG_INFO,
++			   "DFS: %s runs no DFS, the detect mode stays in hostapd",
++			   hapd->conf->iface);
++		return os_snprintf(buf, buflen, "OK\n");
++	}
++
++	if (hostapd_dfs_detect_mode_apply(hapd->iface, dfs_detect_mode))
++		return -1;
++
 +	return os_snprintf(buf, buflen, "OK\n");
 +}
 +
@@ -76,7 +96,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -5061,6 +5083,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -5061,6 +5093,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "GET_EDCCA ", 10) == 0) {
  		reply_len = hostapd_ctrl_iface_get_edcca(hapd, buf+10, reply,
  							  reply_size);
@@ -110,7 +130,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  enum edcca_mode {
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1780,6 +1780,22 @@ static int dfs_follow_radar_detected(str
+@@ -1780,6 +1780,77 @@ static int dfs_follow_radar_detected(str
  }
  
  
@@ -130,16 +150,116 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +}
 +
 +
++/*
++ * The kernel keeps its own DFS state and refuses a beacon update on a
++ * channel it marked unavailable, so a held chain needs the same mode
++ * in the kernel. The file comes from the DFS test files of cfg80211.
++ */
++int hostapd_dfs_detect_mode_apply(struct hostapd_iface *iface,
++				  unsigned int mode)
++{
++	const char *phy = hostapd_drv_get_radio_name(iface->bss[0]);
++	char path[128];
++	FILE *f;
++	int ret = 0;
++
++	if (!phy) {
++		wpa_printf(MSG_ERROR,
++			   "DFS: no radio name for the detect mode file");
++		return -1;
++	}
++
++	os_snprintf(path, sizeof(path),
++		    "/sys/kernel/debug/ieee80211/%s/dfs_detect_mode", phy);
++	f = fopen(path, "w");
++	if (!f) {
++		if (errno == ENOENT) {
++			wpa_printf(MSG_INFO,
++				   "DFS: %s: the kernel has no detect mode file",
++				   path);
++			return 0;
++		}
++		wpa_printf(MSG_ERROR, "DFS: %s: %s", path, strerror(errno));
++		return -1;
++	}
++
++	if (fprintf(f, "%u\n", mode) < 0)
++		ret = -1;
++	if (fclose(f))
++		ret = -1;
++	if (ret)
++		wpa_printf(MSG_ERROR, "DFS: %s: %s", path, strerror(errno));
++
++	return ret;
++}
++
++
++void hostapd_dfs_detect_mode_clear(struct hostapd_iface *iface)
++{
++	/* a mesh setup that fails before its config reaches the deinit */
++	if (!iface->conf || !iface->conf->dfs_detect_mode || !iface->bss ||
++	    hostapd_is_dfs_required(iface) <= 0)
++		return;
++
++	hostapd_dfs_detect_mode_apply(iface, 0);
++}
++
++
  int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
  			       int ht_enabled, int chan_offset, int chan_width,
  			       int cf1, int cf2)
-@@ -1830,6 +1846,9 @@ int hostapd_dfs_radar_detected(struct ho
- 			return 0;
- 	}
+@@ -1818,6 +1889,10 @@ int hostapd_dfs_radar_detected(struct ho
+ 						 chan_offset, chan_width,
+ 						 cf1, cf2);
  
++	/* a held chain keeps its channel available in the table as well */
 +	if (dfs_detect_mode_skip(iface, freq))
 +		return 0;
 +
- 	if (hostapd_dfs_background_start_channel_switch(iface, freq)) {
- 		/* Radar detected while operating, switch the channel. */
- 		return hostapd_dfs_start_channel_switch(iface);
+ 	/* mark radar frequency as invalid */
+ 	if (!set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
+ 			   cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE))
+--- a/src/ap/dfs.h
++++ b/src/ap/dfs.h
+@@ -12,6 +12,10 @@
+ int hostapd_handle_dfs(struct hostapd_iface *iface);
+ void hostapd_dfs_chain_drop(struct hostapd_iface *iface);
+ 
++int hostapd_dfs_detect_mode_apply(struct hostapd_iface *iface,
++				  unsigned int mode);
++void hostapd_dfs_detect_mode_clear(struct hostapd_iface *iface);
++
+ int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
+ 			     int ht_enabled, int chan_offset, int chan_width,
+ 			     int cf1, int cf2);
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -3887,6 +3887,9 @@ static int hostapd_setup_interface_compl
+ 		} else if (!(iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD)) {
+ 			/* Handle DFS only if it is not offloaded to the driver
+ 			 */
++			if (hostapd_is_dfs_required(iface) > 0)
++				hostapd_dfs_detect_mode_apply(
++					iface, iface->conf->dfs_detect_mode);
+ 			/* Check DFS */
+ 			res = hostapd_handle_dfs(iface);
+ 			if (res <= 0) {
+@@ -4343,6 +4346,10 @@ void hostapd_interface_deinit(struct hos
+ 	}
+ #endif /* CONFIG_FST */
+ 
++#ifdef NEED_AP_MLME
++	hostapd_dfs_detect_mode_clear(iface);
++#endif /* NEED_AP_MLME */
++
+ 	for (j = (int) iface->num_bss - 1; j >= 0; j--) {
+ 		if (!iface->bss)
+ 			break;
+@@ -5075,6 +5082,7 @@ int hostapd_disable_iface(struct hostapd
+ 		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
+ 	/* the netdev goes down and ends the chain; no drv gets that report */
+ 	hostapd_dfs_chain_drop(hapd_iface);
++	hostapd_dfs_detect_mode_clear(hapd_iface);
+ #endif /* NEED_AP_MLME */
+ 	hapd_iface->radar_background.update_after_csa = 0;
+ 
