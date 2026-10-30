@@ -1,0 +1,139 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Wed, 21 Oct 2026 16:09:00 -0700
+Subject: [PATCH] hostapd: log the origin and reason of each disconnect
+
+The disconnect notifications on ubus carry the reason code and the
+origin, but syslog shows only AP-STA-DISCONNECTED, without either. A
+log of the unit cannot tell why a station left.
+
+Log one line at INFO where the cause of a disconnect is stored:
+"disconnect origin=<ap|sta> frame=<deauth|disassoc|auth> reason=<n>".
+The line also covers a station that was never authorized, for example
+after a 4-way handshake timeout, which gives no AP-STA-DISCONNECTED. A
+new authentication that ends an association logs frame=auth and no
+reason, because it carries no reason code. A removal of a station
+whose association already ended does not log, for example the prune
+of a stale entry in another BSS after the station moved. As for the
+notifications, only the association link of an AP MLD logs, so a
+disconnect gives one line.
+---
+ src/ap/ieee802_11.c |    2 ++
+ src/ap/sta_info.c   |   35 +++++++++++++++++++++++++++++++++++
+ src/ap/sta_info.h   |    2 ++
+ 3 files changed, 39 insertions(+)
+
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -8530,6 +8530,7 @@ static void hostapd_deauth_sta(struct ho
+ 
+ 	ap_sta_set_disconnect_cause(sta, le_to_host16(mgmt->u.deauth.reason_code),
+ 				    false);
++	ap_sta_disconnect_log(hapd, sta, "deauth");
+ 	ap_sta_set_authorized(hapd, sta, 0);
+ 	sta->last_seq_ctrl = WLAN_INVALID_MGMT_SEQ;
+ 	sta->flags &= ~(WLAN_STA_AUTH | WLAN_STA_ASSOC |
+@@ -8557,6 +8558,7 @@ static void hostapd_disassoc_sta(struct
+ 	ap_sta_set_disconnect_cause(sta,
+ 				    le_to_host16(mgmt->u.disassoc.reason_code),
+ 				    false);
++	ap_sta_disconnect_log(hapd, sta, "disassoc");
+ 	ap_sta_set_authorized(hapd, sta, 0);
+ 	sta->last_seq_ctrl = WLAN_INVALID_MGMT_SEQ;
+ 	sta->flags &= ~(WLAN_STA_ASSOC | WLAN_STA_ASSOC_REQ_OK);
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -1012,6 +1012,7 @@ skip_poll:
+ 			WLAN_REASON_DISASSOC_DUE_TO_INACTIVITY :
+ 			WLAN_REASON_PREV_AUTH_NOT_VALID;
+ 		ap_sta_set_disconnect_cause(sta, reason, true);
++		ap_sta_disconnect_log(hapd, sta, "disassoc");
+ 		ap_sta_set_authorized(hapd, sta, 0);
+ 		sta->flags &= ~WLAN_STA_ASSOC;
+ 		hostapd_set_sta_flags(hapd, sta);
+@@ -1077,6 +1078,7 @@ static void ap_handle_session_timer(void
+ 	sta->acct_terminate_cause =
+ 		RADIUS_ACCT_TERMINATE_CAUSE_SESSION_TIMEOUT;
+ 	ap_sta_set_disconnect_cause(sta, WLAN_REASON_PREV_AUTH_NOT_VALID, true);
++	ap_sta_disconnect_log(hapd, sta, "deauth");
+ 	ap_free_sta(hapd, sta);
+ }
+ 
+@@ -1380,6 +1382,7 @@ static void ap_sta_handle_disassociate(s
+ 		   hapd->conf->iface, MAC2STR(sta->addr));
+ 
+ 	ap_sta_set_disconnect_cause(sta, reason, true);
++	ap_sta_disconnect_log(hapd, sta, "disassoc");
+ 
+ 	if (hapd->iface->current_mode &&
+ 	    hapd->iface->current_mode->mode == HOSTAPD_MODE_IEEE80211AD) {
+@@ -1429,6 +1432,7 @@ static void ap_sta_handle_deauthenticate
+ 		   hapd->conf->iface, MAC2STR(sta->addr));
+ 
+ 	ap_sta_set_disconnect_cause(sta, reason, true);
++	ap_sta_disconnect_log(hapd, sta, "deauth");
+ 
+ 	sta->flags &= ~(WLAN_STA_AUTH | WLAN_STA_ASSOC | WLAN_STA_ASSOC_REQ_OK);
+ 
+@@ -1448,6 +1452,7 @@ static void ap_sta_handle_disconnect(str
+ 	/* WPA_DEAUTH can clear the authorized flag through the WPA state
+ 	 * machine, before ap_sta_disconnect_common() */
+ 	ap_sta_set_disconnect_cause(sta, reason, true);
++	ap_sta_disconnect_log(hapd, sta, "deauth");
+ 
+ 	sta->flags &= ~(WLAN_STA_AUTH | WLAN_STA_ASSOC);
+ 	wpa_auth_sm_event(sta->wpa_sm, WPA_DEAUTH);
+@@ -2108,6 +2113,35 @@ void ap_sta_set_disconnect_cause(struct
+ }
+ 
+ 
++/* `frame`: the frame that ended the association; "auth" for a new
++ * authentication while associated, which carries no reason code */
++void ap_sta_disconnect_log(struct hostapd_data *hapd, struct sta_info *sta,
++			   const char *frame)
++{
++	const char *origin =
++		sta->disconnect_origin == STA_DISCONNECT_LOCAL ? "ap" : "sta";
++
++	/* As for the notifications, the association link speaks for an MLD */
++	if (hostapd_sta_is_link_sta(hapd, sta))
++		return;
++
++	/* Some removals also run for a STA whose association already ended,
++	 * for example the prune of a stale entry in another BSS */
++	if (!(sta->flags & WLAN_STA_ASSOC))
++		return;
++
++	if (sta->disconnect_reason)
++		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE80211,
++			       HOSTAPD_LEVEL_INFO,
++			       "disconnect origin=%s frame=%s reason=%u",
++			       origin, frame, sta->disconnect_reason);
++	else
++		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE80211,
++			       HOSTAPD_LEVEL_INFO,
++			       "disconnect origin=%s frame=%s", origin, frame);
++}
++
++
+ bool ap_sta_set_authorized_flag(struct hostapd_data *hapd, struct sta_info *sta,
+ 				int authorized)
+ {
+@@ -2567,6 +2601,7 @@ int ap_sta_re_add(struct hostapd_data *h
+ 	 * that association with this authentication, which carries no reason
+ 	 * code; for any other STA this cause is never reported */
+ 	ap_sta_set_disconnect_cause(sta, 0, false);
++	ap_sta_disconnect_log(hapd, sta, "auth");
+ 
+ #ifdef CONFIG_IEEE80211BE
+ 	if (ap_sta_is_mld(hapd, sta)) {
+--- a/src/ap/sta_info.h
++++ b/src/ap/sta_info.h
+@@ -510,6 +510,8 @@ void ap_sta_disconnect(struct hostapd_da
+ 
+ void ap_sta_clear_assoc_req(struct sta_info *sta);
+ void ap_sta_set_disconnect_cause(struct sta_info *sta, u16 reason, bool local);
++void ap_sta_disconnect_log(struct hostapd_data *hapd, struct sta_info *sta,
++			   const char *frame);
+ bool ap_sta_set_authorized_flag(struct hostapd_data *hapd, struct sta_info *sta,
+ 				int authorized);
+ void ap_sta_set_authorized_event(struct hostapd_data *hapd,

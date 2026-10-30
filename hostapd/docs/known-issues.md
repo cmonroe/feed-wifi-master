@@ -333,6 +333,8 @@ Found in the review of SDG-10058 on 2026-10-19, from the code.
   - The stop of a BSS: `hostapd_bss_deinit_no_free()` frees the stations
     first, then sends the broadcast deauthentication with reason 3.
     `broadcast_deauth` is 1 by default.
+- Patch 994 logs its disconnect line where the cause is stored, so these
+  removals give no syslog line either.
 - `deauthenticate` and `disassociate` of the control interface with
   `tx=0` send no frame, so no `reason` is correct there.
 
@@ -343,3 +345,41 @@ Found in the review of SDG-10058 on 2026-10-19, from the code.
 - Give `hostapd_free_stas()` a reason parameter, and pass it from each
   caller. The callers are upstream code, so each one adds a hunk that a
   later update of hostapd can conflict with.
+
+## An AP-Initiated Disconnect Leaves the Link Station of an AP MLD
+
+**Severity:** low. The station rejoins, and a later authentication removes the
+entry. Seen on 2026-10-30 on an SDG-8733v with an SDG-8734v MLO station, with
+SmartOS 26.11.0.101 r37973. Only the disconnect by the AP is affected.
+
+### What happens
+
+- `ap_sta_ml_disconnect()` looks for the link stations in
+  `interfaces->iface[i]->bss[0]`. The AP MLD `w56gM` is a later BSS of its
+  radios, so `hostapd_is_ml_partner()` never matches, and only the association
+  link is handled.
+- The link station keeps `WLAN_STA_ASSOC` until the next authentication.
+- A second `del_client` in that time acts on the stale entry.
+- If the MLD authenticates again at once, `ap_sta_re_add()` runs on that entry
+  and patch 994 logs `disconnect origin=sta frame=auth`, about 0.2 s after the
+  correct line of the disconnect.
+- A disconnect by the station is not affected: `for_each_mld_link()` finds
+  every link.
+
+### What would close it
+
+- Walk the links in `ap_sta_ml_disconnect()` with `for_each_mld_link()`.
+
+## Some Authentications Give No Disconnect Line
+
+**Severity:** low. The notification still reports the end of the association.
+Found in the review of SDG-10058 on 2026-10-30, from the code.
+
+- `handle_auth()` skips `ap_sta_re_add()` for an authorized MFP station, so a
+  new authentication of such a station logs no `frame=auth` line. Its later
+  `disassoc` has no `reason` and no `local`.
+- An MLD without MFP that authenticates again on a link that is not its
+  association link: patch 994 logs nothing, because the line belongs to the
+  association link. The `disassoc` still has `local` false.
+- A new Association Request of a still associated MLD also reaches
+  `ap_sta_re_add()`, so the line reads `frame=auth`.
