@@ -248,3 +248,68 @@ on 2026-10-25.
 
 - A limit for each BSS on the lines of rejected answers per second, in
   addition to the count for each MAC address.
+
+## wpa_supplicant Logs a 4addr Failure at Each Reconfiguration of an MLO Station
+
+**Severity:** low. The station works. Seen on 2026-10-29 and 2026-10-30 on an
+SDG-8734v satellite with SmartOS 26.11.0.101, smartrg-master of 2026-10-29.
+The cause is not investigated.
+
+### What happens
+
+- At each "Set MLD interface w56g-Client radio <n> config", wpa_supplicant
+  logs `nl80211: Failed to enable/disable 4addr`.
+- `iw dev w56g-Client info` shows `4addr: on`, and the controller creates
+  the WDS interface of the satellite as usual. Data flows.
+
+### What is not known
+
+- The error code, and whether the call goes to a link or to the MLD netdev.
+- Whether the call fails because the netdev is up, or a member of a bridge,
+  at that time.
+
+### If it matters later
+
+- A debug log of wpa_supplicant around `nl80211_set_4addr_mode()` gives the
+  error code and the netdev.
+
+## A Failed BSS Add of an AP MLD Can Remove a Link of the First BSS
+
+**Severity:** low. The trigger that was found no longer reaches the fault on
+smartrg-master of 2026-10-29. Found in SDG-12890 on 2026-10-29: hostapd on
+an SDG-8734v satellite
+with SmartOS 26.11.0.101 r37733 crashed with SIGSEGV in
+`hostapd_wpa_event()` after `Could not set interface w56gM flags (UP)` and
+`Failed to add BSS`.
+
+### What happens
+
+- `setup_interface()` gives the driver instance of `bss[0]` to every BSS.
+- When `hostapd_if_add()` fails for a later BSS of an AP MLD before the
+  driver sets `*drv_priv`, the BSS keeps the instance of `bss[0]`, with
+  `interface_added` cleared.
+- `hostapd_free_hapd_data()` then calls `hostapd_if_link_remove()` through
+  that instance. This removes a link of `bss[0]` and clears its link
+  context. The next MLD interface event of `bss[0]` reaches
+  `hostapd_wpa_event()` with no context, and hostapd crashes.
+- Patch 198 undoes the later failure points of the add, where `*drv_priv`
+  already points at the new BSS. It does not cover a failure to set the
+  interface up.
+- Upstream hostap has the same failure path. It came with df34c2ced34f
+  ("AP MLD: De-initialize/disable link BSS properly").
+
+### The trigger that was found
+
+- `mld_set_config()` removed the AP MLD while the setup of a radio was still
+  waiting for wpa_supplicant. The setup then added a BSS for the removed
+  MLD interface.
+- On smartrg-master of 2026-10-29 the radio restarts only after
+  wpa_supplicant answers, when the AP MLD is already gone. The same
+  sequence no longer reaches the failed add.
+
+### If it matters later
+
+- Clear `hapd->drv_priv` after the failed add in `hostapd_setup_bss()`. The
+  patch is in the closed pull request
+  https://github.com/Adtran-SOS/internal-feed-wifi-master/pull/51 (patch
+  991, renamed 993 in the test), in upstream form.
