@@ -1,0 +1,163 @@
+From: Piotr Kubik <piotr.kubik@adtran.com>
+Date: Thu, 30 Oct 2026 20:35:00 +0100
+Subject: [PATCH] hostapd: add an MLD again once its address is free
+
+An MLD config that arrives while a per-band BSS still holds the MLD
+address, for example after a switch from per-band Multi-AP APs to an
+AP MLD, gets "conflict" from netifd. mld_add_bss() then leaves the MLD
+without a netdev, and only a later MLD config adds it. A radio whose
+config arrives in that time leaves out the links of the MLD, and
+nothing adds them when the MLD comes, so the AP MLD stays down.
+
+netifd frees the address when it handles the address sync or prune of
+the removed BSSes. After each answer to such a request, retry the MLDs
+without a netdev, from the event loop, because libubus can deliver the
+answer inside a synchronous ubus call. When a waiting MLD is added by
+a later MLD config, reload the radios that left out its links.
+
+The retry needs the completion callback of macaddr_sync_defer() from
+wifi-scripts; with an older wifi-scripts the retry does not run. The
+retry logs only an add that succeeds, because an address that stays
+taken would log at each answer.
+---
+--- a/openwrt/files/hostapd.uc
++++ b/openwrt/files/hostapd.uc
+@@ -332,12 +332,30 @@ function iface_macaddr_options(config)
+ 	};
+ }
+ 
++// A sync or a prune frees the addresses of removed BSSes when netifd handles
++// it. An MLD that asked for one of them before is still waiting.
++let mld_pending_retry;
++
++// libubus can run the answer from inside a synchronous ubus call, so retry
++// from the event loop; one retry serves every answer until then.
++function mld_retry_schedule()
++{
++	if (hostapd.data.mld_retry)
++		return;
++
++	hostapd.data.mld_retry = uloop.timer(0, () => {
++		delete hostapd.data.mld_retry;
++		mld_pending_retry();
++	});
++}
++
+ function iface_macaddr_prune(name, config)
+ {
+ 	let names = map(config?.bss ?? [], (bss) => bss_macaddr_name(name, bss));
+ 
+ 	macaddr_sync_defer(ubus, "hostapd", name, macaddr_keep(names),
+-			   iface_macaddr_options(config ?? {}));
++			   iface_macaddr_options(config ?? {}),
++			   mld_retry_schedule);
+ }
+ 
+ function iface_macaddr_sync(phydev, config)
+@@ -348,7 +366,8 @@ function iface_macaddr_sync(phydev, conf
+ 		list[bss_macaddr_name(phydev.name, bss)] = bss_macaddr_entry(phydev, bss);
+ 
+ 	macaddr_sync_defer(ubus, "hostapd", phydev.name, list,
+-			   iface_macaddr_options(config));
++			   iface_macaddr_options(config),
++			   mld_retry_schedule);
+ }
+ 
+ function iface_supplicant_start(phydev)
+@@ -2176,7 +2195,7 @@ function mld_radio_mask(radios)
+ 	return radio_mask;
+ }
+ 
+-function mld_macaddr_get(phydev, name, config, prev)
++function mld_macaddr_get(phydev, name, config, prev, quiet)
+ {
+ 	let ret = phydev.macaddr_get(ubus, "hostapd", name, {
+ 		group: "mld",
+@@ -2189,18 +2208,20 @@ function mld_macaddr_get(phydev, name, c
+ 		return ret.macaddr;
+ 
+ 	let addr = ret.transport ? (config.macaddr ?? prev) : null;
+-	hostapd.printf(`No MAC address from netifd for MLD ${name}: ${ret.error}${addr ? ", using " + addr : ""}`);
++	if (!quiet)
++		hostapd.printf(`No MAC address from netifd for MLD ${name}: ${ret.error}${addr ? ", using " + addr : ""}`);
+ 
+ 	return addr;
+ }
+ 
+-function mld_add_bss(name, data, phy_list, prev)
++function mld_add_bss(name, data, phy_list, prev, quiet)
+ {
+ 	let config = data.config;
+ 	if (!config.phy)
+ 		return;
+ 
+-	hostapd.printf(`Add MLD interface ${name}`);
++	if (!quiet)
++		hostapd.printf(`Add MLD interface ${name}`);
+ 	wdev_remove(name);
+ 	let phydev = phy_list[config.phy];
+ 	if (!phydev) {
+@@ -2211,7 +2232,7 @@ function mld_add_bss(name, data, phy_lis
+ 		phy_list[config.phy] = phydev;
+ 	}
+ 
+-	data.macaddr = mld_macaddr_get(phydev, name, config, prev?.macaddr);
++	data.macaddr = mld_macaddr_get(phydev, name, config, prev?.macaddr, quiet);
+ 	if (!data.macaddr)
+ 		return;
+ 
+@@ -2263,6 +2284,40 @@ function mld_reload_interface(name)
+ 	iface_set_config(name, config);
+ }
+ 
++// A radio leaves out the links of an MLD that has no netdev when its config
++// arrives (iface_check_mld()), and nothing adds them when the MLD comes later.
++function mld_skipped_reload(mld_name)
++{
++	for (let name, config in hostapd.data.config) {
++		if (!config)
++			continue;
++		if (index(map(config.orig_bss ?? [], (bss) => bss.ifname), mld_name) < 0)
++			continue;
++		if (index(map(config.bss ?? [], (bss) => bss.ifname), mld_name) >= 0)
++			continue;
++		mld_reload_interface(name);
++	}
++}
++
++// An MLD gets no netdev while another BSS holds its address. Add it once
++// that address is free.
++mld_pending_retry = function() {
++	let phy_list = {};
++
++	for (let name, data in hostapd.data.mld) {
++		if (data.ifname)
++			continue;
++
++		// An address that stays taken would log at each answer.
++		mld_add_bss(name, data, phy_list, null, true);
++		if (!data.ifname)
++			continue;
++
++		hostapd.printf(`MLD interface ${name} added after its address was freed`);
++		mld_skipped_reload(name);
++	}
++};
++
+ function mld_prev_set(new_mld, prev_mld)
+ {
+ 	let news = {};
+@@ -2401,8 +2456,12 @@ function mld_set_config(config)
+ 		if (!data.ifname)
+ 			mld_add_bss(name, data, phy_list, prev_mld[data.prev_name ?? name]);
+ 
+-	if (!new_config)
++	if (!new_config) {
++		for (let name, data in new_mld)
++			if (data.ifname && prev_mld[name] && !prev_mld[name].ifname)
++				mld_skipped_reload(name);
+ 		return;
++	}
+ 
+ 	hostapd.printf(`Reload all interfaces`);
+ 	for (let name in hostapd.data.config)

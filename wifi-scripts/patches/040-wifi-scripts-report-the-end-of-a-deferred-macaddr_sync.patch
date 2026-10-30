@@ -1,0 +1,24 @@
+From: Piotr Kubik <piotr.kubik@adtran.com>
+Date: Thu, 30 Oct 2026 20:30:00 +0100
+Subject: [PATCH] wifi-scripts: report the end of a deferred macaddr_sync
+
+hostapd releases the addresses of removed BSSes with a deferred
+macaddr_sync. An address that a new BSS needs is free only after
+netifd answers, so the caller needs that answer. Pass an optional
+completion callback to ubus.defer().
+---
+--- a/src/usr/share/hostap/common.uc
++++ b/src/usr/share/hostap/common.uc
+@@ -250,10 +250,10 @@ function macaddr_sync(ubus, owner, group
+ 			 macaddr_sync_args(owner, group, list, options));
+ }
+ 
+-function macaddr_sync_defer(ubus, owner, group, list, options)
++function macaddr_sync_defer(ubus, owner, group, list, options, cb)
+ {
+ 	ubus.defer("network.wireless", "macaddr_sync",
+-		   macaddr_sync_args(owner, group, list, options));
++		   macaddr_sync_args(owner, group, list, options), cb);
+ }
+ 
+ function macaddr_sync_entry(phy, radio, macaddr, data)
