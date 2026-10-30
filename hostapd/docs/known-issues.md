@@ -313,3 +313,33 @@ with SmartOS 26.11.0.101 r37733 crashed with SIGSEGV in
   patch is in the closed pull request
   https://github.com/Adtran-SOS/internal-feed-wifi-master/pull/51 (patch
   991, renamed 993 in the test), in upstream form.
+
+## Some Removals by the AP Report No Reason Code
+
+**Severity:** low. The `disassoc` notification still names the AP as the
+side that ended the association (`local` true). Only `reason` is missing.
+Found in the review of SDG-10058 on 2026-10-19, from the code.
+
+### What happens
+
+- Patch 993 adds `reason` to `disassoc`. A removal stores the cause on the
+  station before the authorized flag clears, and the notification gives it.
+- These removals free the station with `ap_free_sta()` and store no cause.
+  Their `disassoc` has `local` true and no `reason`, although hostapd sends
+  a reason code to the station:
+  - `ieee80211_tkip_countermeasures_start()`, reason 14.
+  - `del_client` on ubus with the broadcast address, through
+    `hostapd_free_stas()`: the reason of the request.
+  - The stop of a BSS: `hostapd_bss_deinit_no_free()` frees the stations
+    first, then sends the broadcast deauthentication with reason 3.
+    `broadcast_deauth` is 1 by default.
+- `deauthenticate` and `disassociate` of the control interface with
+  `tx=0` send no frame, so no `reason` is correct there.
+
+### What would close it
+
+- Store the cause before `ap_free_sta()` in
+  `ieee80211_tkip_countermeasures_start()`.
+- Give `hostapd_free_stas()` a reason parameter, and pass it from each
+  caller. The callers are upstream code, so each one adds a hunk that a
+  later update of hostapd can conflict with.

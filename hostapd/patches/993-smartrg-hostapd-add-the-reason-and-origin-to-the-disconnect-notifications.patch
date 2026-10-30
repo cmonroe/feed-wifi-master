@@ -1,0 +1,369 @@
+From: Koral Ilgun <koral.ilgun@smartrg.com>
+Date: Mon, 19 Oct 2026 12:03:06 -0700
+Subject: [PATCH] hostapd: add the reason and origin to the disconnect notifications
+
+The disassoc, deauth and local-deauth notifications name only the
+station, so a subscriber cannot tell whether the station or the AP
+ended the association, or why. hostapd also sends disassoc each time
+a station loses its authorized flag, and for a removal by the AP that
+happens before the reason is stored.
+
+Add "reason", the IEEE 802.11 reason code, and "local", true when the
+AP ended the association. A received frame gives its own reason code
+and local false. A removal by the AP gives local true, and the reason
+code where the code that removes the STA has one; the stop of a BSS,
+for example, has none. A STA that authenticates again while it is
+associated ends the association without a reason code, so its
+disassoc has local false and no reason. The STA keeps the cause from
+before the flag clears, because the WPA state machine, which the
+links of an AP MLD share, can clear the flag before the disconnect
+code continues. A disassoc whose cause is not known, for example
+after an 802.1X unauthorize, keeps its old form. As for the other
+station notifications, only the association link of an AP MLD sends
+them. The existing fields stay, so every subscriber keeps working.
+---
+ src/ap/drv_callbacks.c |    9 ++++--
+ src/ap/ieee802_11.c    |   22 +++++++++++++--
+ src/ap/sta_info.c      |   57 ++++++++++++++++++++++++++++++++++-----
+ src/ap/sta_info.h      |   11 +++++++
+ src/ap/ubus.c          |   32 +++++++++++++++++++++
+ src/ap/ubus.h          |   18 ++++++++++++
+ 6 files changed, 139 insertions(+), 10 deletions(-)
+
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -8528,6 +8528,8 @@ static void hostapd_deauth_sta(struct ho
+ 		"deauthentication: STA=" MACSTR " reason_code=%d",
+ 		MAC2STR(mgmt->sa), le_to_host16(mgmt->u.deauth.reason_code));
+ 
++	ap_sta_set_disconnect_cause(sta, le_to_host16(mgmt->u.deauth.reason_code),
++				    false);
+ 	ap_sta_set_authorized(hapd, sta, 0);
+ 	sta->last_seq_ctrl = WLAN_INVALID_MGMT_SEQ;
+ 	sta->flags &= ~(WLAN_STA_AUTH | WLAN_STA_ASSOC |
+@@ -8552,6 +8554,9 @@ static void hostapd_disassoc_sta(struct
+ 		"disassocation: STA=" MACSTR " reason_code=%d",
+ 		MAC2STR(mgmt->sa), le_to_host16(mgmt->u.disassoc.reason_code));
+ 
++	ap_sta_set_disconnect_cause(sta,
++				    le_to_host16(mgmt->u.disassoc.reason_code),
++				    false);
+ 	ap_sta_set_authorized(hapd, sta, 0);
+ 	sta->last_seq_ctrl = WLAN_INVALID_MGMT_SEQ;
+ 	sta->flags &= ~(WLAN_STA_ASSOC | WLAN_STA_ASSOC_REQ_OK);
+@@ -8616,6 +8621,15 @@ static bool hostapd_ml_handle_disconnect
+ 	if (!assoc_sta)
+ 		return false;
+ 
++	/* The links share the WPA state machine of the association link, so
++	 * the WPA event of a link can clear the authorized flag of assoc_sta
++	 * before the loop reaches it */
++	ap_sta_set_disconnect_cause(assoc_sta,
++				    le_to_host16(disassoc ?
++						 mgmt->u.disassoc.reason_code :
++						 mgmt->u.deauth.reason_code),
++				    false);
++
+ 	for_each_mld_link(tmp_hapd, assoc_hapd) {
+ 		if (tmp_hapd == assoc_hapd)
+ 			continue;
+@@ -8662,7 +8676,9 @@ static void handle_disassoc(struct hosta
+ 			   (unsigned long) len);
+ 		return;
+ 	}
+-	hostapd_ubus_notify(hapd, "disassoc", mgmt->sa);
++	hostapd_ubus_notify_disconnect(hapd, "disassoc", mgmt->sa,
++				       le_to_host16(mgmt->u.disassoc.reason_code),
++				       false);
+ 
+ 	sta = ap_get_sta(hapd, mgmt->sa);
+ 	if (!sta) {
+@@ -8694,7 +8710,9 @@ static void handle_deauth(struct hostapd
+ 	/* Clear the PTKSA cache entries for PASN */
+ 	ptksa_cache_flush(hapd->ptksa, mgmt->sa, WPA_CIPHER_NONE);
+ 
+-	hostapd_ubus_notify(hapd, "deauth", mgmt->sa);
++	hostapd_ubus_notify_disconnect(hapd, "deauth", mgmt->sa,
++				       le_to_host16(mgmt->u.deauth.reason_code),
++				       false);
+ 
+ 	sta = ap_get_sta(hapd, mgmt->sa);
+ 	if (!sta) {
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -440,6 +440,10 @@ void ap_free_sta(struct hostapd_data *ha
+ 
+ 	accounting_sta_stop(hapd, sta);
+ 
++	/* The AP drops a STA that is still authorized here, for example at
++	 * the teardown of the BSS, and has no reason code for it */
++	if (sta->disconnect_origin == STA_DISCONNECT_UNKNOWN)
++		sta->disconnect_origin = STA_DISCONNECT_LOCAL;
+ 	/* just in case */
+ 	ap_sta_set_authorized(hapd, sta, 0);
+ 	hostapd_set_sta_flags(hapd, sta);
+@@ -868,7 +872,8 @@ void ap_handle_timer(void *eloop_ctx, vo
+ 		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE80211,
+ 			       HOSTAPD_LEVEL_INFO, "deauthenticated due to "
+ 			       "local deauth request");
+-		hostapd_ubus_notify_sta(hapd, "local-deauth", sta);
++		hostapd_ubus_notify_sta_disconnect(hapd, "local-deauth", sta,
++						   sta->deauth_reason, true);
+ 		ap_free_sta(hapd, sta);
+ 		return;
+ 	}
+@@ -1003,6 +1008,10 @@ skip_poll:
+ 		break;
+ 	case STA_DISASSOC:
+ 	case STA_DISASSOC_FROM_CLI:
++		reason = (sta->timeout_next == STA_DISASSOC) ?
++			WLAN_REASON_DISASSOC_DUE_TO_INACTIVITY :
++			WLAN_REASON_PREV_AUTH_NOT_VALID;
++		ap_sta_set_disconnect_cause(sta, reason, true);
+ 		ap_sta_set_authorized(hapd, sta, 0);
+ 		sta->flags &= ~WLAN_STA_ASSOC;
+ 		hostapd_set_sta_flags(hapd, sta);
+@@ -1015,9 +1024,6 @@ skip_poll:
+ 		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE80211,
+ 			       HOSTAPD_LEVEL_INFO, "disassociated due to "
+ 			       "inactivity");
+-		reason = (sta->timeout_next == STA_DISASSOC) ?
+-			WLAN_REASON_DISASSOC_DUE_TO_INACTIVITY :
+-			WLAN_REASON_PREV_AUTH_NOT_VALID;
+ 		sta->timeout_next = STA_DEAUTH;
+ 		wpa_printf(MSG_DEBUG, "%s: register ap_handle_timer timeout "
+ 			   "for " MACSTR " (%d seconds - AP_DEAUTH_DELAY)",
+@@ -1070,6 +1076,7 @@ static void ap_handle_session_timer(void
+ 		       "session timeout");
+ 	sta->acct_terminate_cause =
+ 		RADIUS_ACCT_TERMINATE_CAUSE_SESSION_TIMEOUT;
++	ap_sta_set_disconnect_cause(sta, WLAN_REASON_PREV_AUTH_NOT_VALID, true);
+ 	ap_free_sta(hapd, sta);
+ }
+ 
+@@ -1372,6 +1379,8 @@ static void ap_sta_handle_disassociate(s
+ 	wpa_printf(MSG_DEBUG, "%s: disassociate STA " MACSTR,
+ 		   hapd->conf->iface, MAC2STR(sta->addr));
+ 
++	ap_sta_set_disconnect_cause(sta, reason, true);
++
+ 	if (hapd->iface->current_mode &&
+ 	    hapd->iface->current_mode->mode == HOSTAPD_MODE_IEEE80211AD) {
+ 		/* Skip deauthentication in DMG/IEEE 802.11ad */
+@@ -1419,6 +1428,8 @@ static void ap_sta_handle_deauthenticate
+ 	wpa_printf(MSG_DEBUG, "%s: deauthenticate STA " MACSTR,
+ 		   hapd->conf->iface, MAC2STR(sta->addr));
+ 
++	ap_sta_set_disconnect_cause(sta, reason, true);
++
+ 	sta->flags &= ~(WLAN_STA_AUTH | WLAN_STA_ASSOC | WLAN_STA_ASSOC_REQ_OK);
+ 
+ 	sta->timeout_next = STA_REMOVE;
+@@ -1434,6 +1445,10 @@ static void ap_sta_handle_disconnect(str
+ 	wpa_printf(MSG_DEBUG, "%s: disconnect STA " MACSTR,
+ 		   hapd->conf->iface, MAC2STR(sta->addr));
+ 
++	/* WPA_DEAUTH can clear the authorized flag through the WPA state
++	 * machine, before ap_sta_disconnect_common() */
++	ap_sta_set_disconnect_cause(sta, reason, true);
++
+ 	sta->flags &= ~(WLAN_STA_AUTH | WLAN_STA_ASSOC);
+ 	wpa_auth_sm_event(sta->wpa_sm, WPA_DEAUTH);
+ 	ieee802_1x_notify_port_enabled(sta->eapol_sm, 0);
+@@ -1473,6 +1488,11 @@ static bool ap_sta_ml_disconnect(struct
+ 		return false;
+ 	interfaces = assoc_hapd->iface->interfaces;
+ 
++	/* The WPA_DEAUTH of a link can clear the authorized flag of assoc_sta,
++	 * whose WPA state machine the links share, before the loop reaches
++	 * it */
++	ap_sta_set_disconnect_cause(assoc_sta, reason, true);
++
+ 	for (link_id = 0; link_id < MAX_NUM_MLD_LINKS; link_id++) {
+ 		if (!assoc_sta->mld_info.links[link_id].valid)
+ 			continue;
+@@ -2080,6 +2100,14 @@ void ap_sta_clear_assoc_req(struct sta_i
+ }
+ 
+ 
++void ap_sta_set_disconnect_cause(struct sta_info *sta, u16 reason, bool local)
++{
++	sta->disconnect_reason = reason;
++	sta->disconnect_origin = local ? STA_DISCONNECT_LOCAL :
++		STA_DISCONNECT_PEER;
++}
++
++
+ bool ap_sta_set_authorized_flag(struct hostapd_data *hapd, struct sta_info *sta,
+ 				int authorized)
+ {
+@@ -2089,8 +2117,13 @@ bool ap_sta_set_authorized_flag(struct h
+ 	if (authorized) {
+ 		sta->flags |= WLAN_STA_AUTHORIZED;
+ 		ap_sta_clear_assoc_req(sta);
+-	} else
++		/* A cause stored in an earlier session, or for a STA that was
++		 * not authorized, must not reach the end of this session */
++		sta->disconnect_reason = 0;
++		sta->disconnect_origin = STA_DISCONNECT_UNKNOWN;
++	} else {
+ 		sta->flags &= ~WLAN_STA_AUTHORIZED;
++	}
+ 
+ 	return true;
+ }
+@@ -2203,7 +2236,12 @@ void ap_sta_set_authorized_event(struct
+ 					  dpp_pkhash_buf, vlanid_buf, alg_buf);
+ 	} else {
+ 		wpa_msg(hapd->msg_ctx, MSG_INFO, AP_STA_DISCONNECTED "%s", buf);
+-		hostapd_ubus_notify_sta(hapd, "disassoc", sta);
++		if (sta->disconnect_origin == STA_DISCONNECT_UNKNOWN)
++			hostapd_ubus_notify_sta(hapd, "disassoc", sta);
++		else
++			hostapd_ubus_notify_sta_disconnect(
++				hapd, "disassoc", sta, sta->disconnect_reason,
++				sta->disconnect_origin == STA_DISCONNECT_LOCAL);
+ 
+ 		if (hapd->msg_ctx_parent &&
+ 		    hapd->msg_ctx_parent != hapd->msg_ctx)
+@@ -2441,6 +2479,8 @@ static void ap_sta_remove_link_sta(struc
+ 			    !ether_addr_equal(tmp_sta->addr, sta->addr))
+ 				continue;
+ 
++			tmp_sta->disconnect_reason = sta->disconnect_reason;
++			tmp_sta->disconnect_origin = sta->disconnect_origin;
+ 			ap_free_sta(tmp_hapd, tmp_sta);
+ 			break;
+ 		}
+@@ -2523,6 +2563,11 @@ int ap_sta_re_add(struct hostapd_data *h
+ 	 * completed association.
+ 	 */
+ 
++	/* Runs at every authentication. A STA that is still associated ends
++	 * that association with this authentication, which carries no reason
++	 * code; for any other STA this cause is never reported */
++	ap_sta_set_disconnect_cause(sta, 0, false);
++
+ #ifdef CONFIG_IEEE80211BE
+ 	if (ap_sta_is_mld(hapd, sta)) {
+ 		u8 mld_link_id = hapd->mld_link_id;
+--- a/src/ap/sta_info.h
++++ b/src/ap/sta_info.h
+@@ -196,6 +196,16 @@ struct sta_info {
+ 	u16 deauth_reason;
+ 	u16 disassoc_reason;
+ 
++	/* The cause that the ubus disassoc notification gives when the
++	 * authorized flag clears. The flag clears before deauth_reason and
++	 * disassoc_reason are stored, and also when the STA ended the
++	 * association. */
++	u16 disconnect_reason;
++	enum {
++		STA_DISCONNECT_UNKNOWN = 0, STA_DISCONNECT_LOCAL,
++		STA_DISCONNECT_PEER
++	} disconnect_origin;
++
+ 	/* IEEE 802.1X related data */
+ 	struct eapol_state_machine *eapol_sm;
+ 
+@@ -499,6 +509,7 @@ void ap_sta_disconnect(struct hostapd_da
+ 		       const u8 *addr, u16 reason);
+ 
+ void ap_sta_clear_assoc_req(struct sta_info *sta);
++void ap_sta_set_disconnect_cause(struct sta_info *sta, u16 reason, bool local);
+ bool ap_sta_set_authorized_flag(struct hostapd_data *hapd, struct sta_info *sta,
+ 				int authorized);
+ void ap_sta_set_authorized_event(struct hostapd_data *hapd,
+--- a/src/ap/ubus.c
++++ b/src/ap/ubus.c
+@@ -3931,6 +3931,38 @@ void hostapd_ubus_notify_sta(struct host
+ 	hostapd_ubus_notify(hapd, type, sta->addr);
+ }
+ 
++/* `reason` 0: no reason code; `local`: the AP ended the association */
++void hostapd_ubus_notify_disconnect(struct hostapd_data *hapd, const char *type,
++				    const u8 *addr, u16 reason, bool local)
++{
++	struct ubus_object *obj = hostapd_ubus_notify_obj(hapd);
++
++	if (!obj->has_subscribers)
++		return;
++
++	if (!addr)
++		return;
++
++	blob_buf_init(&b, 0);
++	blobmsg_add_macaddr(&b, "address", addr);
++	blobmsg_add_string(&b, "ifname", hapd->conf->iface);
++	if (reason)
++		blobmsg_add_u32(&b, "reason", reason);
++	blobmsg_add_u8(&b, "local", local);
++
++	ubus_notify(ctx, obj, type, b.head, -1);
++}
++
++void hostapd_ubus_notify_sta_disconnect(struct hostapd_data *hapd,
++					const char *type, struct sta_info *sta,
++					u16 reason, bool local)
++{
++	if (hostapd_sta_is_link_sta(hapd, sta))
++		return;
++
++	hostapd_ubus_notify_disconnect(hapd, type, sta->addr, reason, local);
++}
++
+ /* `frame`: the body of the frame that rsn_error names */
+ void hostapd_ubus_notify_key_mismatch(struct hostapd_data *hapd, const u8 *addr,
+ 				      enum hostapd_ubus_rsn_error rsn_error,
+--- a/src/ap/ubus.h
++++ b/src/ap/ubus.h
+@@ -86,6 +86,11 @@ void hostapd_ubus_handle_link_measuremen
+ void hostapd_ubus_notify(struct hostapd_data *hapd, const char *type, const u8 *mac);
+ void hostapd_ubus_notify_sta(struct hostapd_data *hapd, const char *type,
+ 			     struct sta_info *sta);
++void hostapd_ubus_notify_disconnect(struct hostapd_data *hapd, const char *type,
++				    const u8 *addr, u16 reason, bool local);
++void hostapd_ubus_notify_sta_disconnect(struct hostapd_data *hapd,
++					const char *type, struct sta_info *sta,
++					u16 reason, bool local);
+ void hostapd_ubus_notify_key_mismatch(struct hostapd_data *hapd, const u8 *addr,
+ 				      enum hostapd_ubus_rsn_error rsn_error,
+ 				      const u8 *frame, size_t len);
+@@ -182,6 +187,19 @@ hostapd_ubus_notify_sta(struct hostapd_d
+ {
+ }
+ 
++static inline void
++hostapd_ubus_notify_disconnect(struct hostapd_data *hapd, const char *type,
++			       const u8 *addr, u16 reason, bool local)
++{
++}
++
++static inline void
++hostapd_ubus_notify_sta_disconnect(struct hostapd_data *hapd,
++				   const char *type, struct sta_info *sta,
++				   u16 reason, bool local)
++{
++}
++
+ static inline void
+ hostapd_ubus_notify_key_mismatch(struct hostapd_data *hapd, const u8 *addr,
+ 				 enum hostapd_ubus_rsn_error rsn_error,
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -1077,8 +1077,13 @@ void hostapd_notif_disassoc_mld(struct h
+ 			continue;
+ 
+ 		tmp_sta = ap_get_sta(tmp_hapd, addr);
+-		if (tmp_sta)
+-			ap_free_sta(tmp_hapd, tmp_sta);
++		if (!tmp_sta)
++			continue;
++
++		/* The driver does not say which side ended the association;
++		 * ap_free_sta() would report the AP */
++		ap_sta_set_authorized(tmp_hapd, tmp_sta, 0);
++		ap_free_sta(tmp_hapd, tmp_sta);
+ 	}
+ 
+ 	/* Remove STA in assoc link */
