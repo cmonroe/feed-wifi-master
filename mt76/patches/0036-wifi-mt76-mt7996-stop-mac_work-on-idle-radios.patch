@@ -49,7 +49,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt7996_unregister_thermal(&dev->phy);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2570,6 +2570,9 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2567,6 +2567,9 @@ void mt7996_mac_reset_work(struct work_s
  	dev = container_of(work, struct mt7996_dev, reset_work);
  	hw = mt76_hw(dev);
  
@@ -59,7 +59,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* chip full reset */
  	if (dev->recovery.restart) {
  		/* disable WA/WM WDT */
-@@ -2798,6 +2801,16 @@ void mt7996_reset(struct mt7996_dev *dev
+@@ -2795,6 +2798,16 @@ void mt7996_reset(struct mt7996_dev *dev
  	if (!dev->recovery.hw_init_done)
  		return;
  
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (dev->recovery.hw_full_reset)
  		return;
  
-@@ -3048,6 +3061,13 @@ void mt7996_mac_work(struct work_struct
+@@ -3045,6 +3058,13 @@ void mt7996_mac_work(struct work_struct
  					       mac_work.work);
  	phy = mphy->priv;
  

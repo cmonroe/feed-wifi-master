@@ -97,7 +97,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt76_put_vif_phy_link(struct mt76_phy *phy, struct ieee80211_vif *vif,
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2767,6 +2767,12 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2764,6 +2764,12 @@ void mt7996_mac_reset_work(struct work_s
  
  	mutex_unlock(&dev->mt76.mutex);
  

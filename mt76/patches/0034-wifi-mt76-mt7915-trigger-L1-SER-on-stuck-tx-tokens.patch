@@ -32,10 +32,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/debugfs.c
 +++ b/debugfs.c
-@@ -116,6 +116,8 @@ mt76_register_debugfs_fops(struct mt76_p
- 	debugfs_create_bool("led_active_low", 0600, dir, &phy->leds.al);
+@@ -117,6 +117,8 @@ mt76_register_debugfs_fops(struct mt76_p
  	debugfs_create_u32("regidx", 0600, dir, &dev->debugfs_reg);
  	debugfs_create_file_unsafe("regval", 0600, dir, dev, fops);
+ 	debugfs_create_u16("token_reserve", 0600, dir, &dev->token_reserve);
 +	debugfs_create_u32("token_timeout", 0600, dir, &dev->token_timeout);
 +	debugfs_create_bool("token_ser", 0600, dir, &dev->token_ser);
  	debugfs_create_file_unsafe("napi_threaded", 0600, dir, dev,
@@ -43,10 +43,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	debugfs_create_blob("eeprom", 0400, dir, &dev->eeprom);
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -758,6 +758,10 @@ mt76_alloc_device(struct device *pdev, u
+@@ -760,6 +760,10 @@ mt76_alloc_device(struct device *pdev, u
+ 	INIT_LIST_HEAD(&dev->txwi_cache);
  	INIT_LIST_HEAD(&dev->rxwi_cache);
  	dev->token_size = dev->drv->token_size;
- 	dev->token_threshold = dev->token_size;
 +	dev->token_timeout = MT76_TOKEN_TIMEOUT_DEFAULT;
 +	dev->token_ser = true;
 +	dev->token_check_next = jiffies;
@@ -71,7 +71,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 @@ -999,6 +1004,10 @@ struct mt76_dev {
  	u16 token_start;
  	u16 token_size;
- 	u16 token_threshold;
+ 	u16 token_reserve;
 +	u32 token_timeout;
 +	bool token_ser;
 +	unsigned long token_check_next;
@@ -154,7 +154,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "mt76.h"
  
  static int
-@@ -1100,6 +1101,203 @@ mt76_token_release(struct mt76_dev *dev,
+@@ -1133,6 +1134,203 @@ mt76_token_release(struct mt76_dev *dev,
  }
  EXPORT_SYMBOL_GPL(mt76_token_release);
  

@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt7996_unregister_thermal(&dev->phy);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2546,6 +2546,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2543,6 +2543,7 @@ void mt7996_mac_reset_work(struct work_s
  		set_bit(MT76_RESET, &phy->mt76->state);
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
  	}
@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -2674,6 +2675,12 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2671,6 +2672,12 @@ void mt7996_mac_reset_work(struct work_s
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);

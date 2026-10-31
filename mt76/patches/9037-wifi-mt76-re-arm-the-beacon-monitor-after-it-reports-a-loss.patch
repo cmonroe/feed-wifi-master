@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -2397,20 +2397,31 @@ static void mt76_beacon_mon_iter(void *d
+@@ -2399,20 +2399,31 @@ static void mt76_beacon_mon_iter(void *d
  		if (mt76_vif_link_phy(mlink) != phy)
  			continue;
  

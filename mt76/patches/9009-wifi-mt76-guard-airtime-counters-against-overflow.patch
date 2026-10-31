@@ -418,7 +418,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT7996_RESET_TIMEOUT		(30 * HZ)
  
  #define MT7996_TX_RING_SIZE		2048
-@@ -512,6 +514,7 @@ struct mt7996_phy {
+@@ -514,6 +516,7 @@ struct mt7996_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -464,7 +464,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		mphy->mac_work_count = 0;
 --- a/mac80211.c
 +++ b/mac80211.c
-@@ -739,6 +739,7 @@ mt76_alloc_device(struct device *pdev, u
+@@ -742,6 +742,7 @@ mt76_alloc_device(struct device *pdev, u
  	INIT_LIST_HEAD(&dev->wcid_list);
  	INIT_LIST_HEAD(&dev->sta_poll_list);
  	spin_lock_init(&dev->sta_poll_lock);

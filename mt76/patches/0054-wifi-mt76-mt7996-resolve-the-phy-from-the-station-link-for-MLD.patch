@@ -59,7 +59,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  		.data = data,
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -709,6 +709,25 @@ mt7996_vif_link_phy(struct mt7996_vif_li
+@@ -711,6 +711,25 @@ mt7996_vif_link_phy(struct mt7996_vif_li
  	return mphy->priv;
  }
  

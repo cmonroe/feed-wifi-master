@@ -375,7 +375,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		txwi[6] |= cpu_to_le32(val);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -508,6 +508,7 @@ struct mt7996_phy {
+@@ -510,6 +510,7 @@ struct mt7996_phy {
  	u32 rx_ampdu_ts;
  	u32 ampdu_ref;
  	int txpower;
@@ -383,7 +383,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
-@@ -991,6 +992,7 @@ int mt7996_mcu_get_temperature(struct mt
+@@ -993,6 +994,7 @@ int mt7996_mcu_get_temperature(struct mt
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);
  int mt7996_mcu_set_thermal_info_query(struct mt7996_phy *phy);

@@ -490,7 +490,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -3108,14 +2908,49 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -3105,14 +2905,49 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -540,7 +540,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	/* reset, reconfig and channel set queue this work without a test
  	 * of the radio state, and removal must not run it again
-@@ -3124,18 +2959,30 @@ void mt7996_mac_work(struct work_struct
+@@ -3121,18 +2956,30 @@ void mt7996_mac_work(struct work_struct
  	    test_bit(MT76_REMOVED, &mphy->dev->phy.state))
  		return;
  
@@ -578,7 +578,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		}
  
  		if (!phy->dev->recovery.restart &&
-@@ -3143,10 +2990,10 @@ void mt7996_mac_work(struct work_struct
+@@ -3140,10 +2987,10 @@ void mt7996_mac_work(struct work_struct
  			mt7996_mac_token_check(phy);
  	}
  
@@ -1291,7 +1291,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -146,6 +146,8 @@
+@@ -148,6 +148,8 @@
  #define MT7996_RRO_MSDU_PG_CR_CNT	8
  #define MT7996_RRO_MSDU_PG_SIZE_PER_CR	0x10000
  
@@ -1300,7 +1300,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  struct mt7996_vif;
  struct mt7996_sta;
  struct mt7996_dfs_pulse;
-@@ -295,11 +297,20 @@ struct mt7996_sta_link {
+@@ -297,11 +299,20 @@ struct mt7996_sta_link {
  	bool connected;
  
  	struct list_head rc_list;
@@ -1322,7 +1322,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	unsigned long changed;
  
  	struct mt76_connac_sta_key_conf bip;
-@@ -928,7 +939,9 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+@@ -930,7 +941,9 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
  int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
  void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
  void mt7996_mcu_exit(struct mt7996_dev *dev);

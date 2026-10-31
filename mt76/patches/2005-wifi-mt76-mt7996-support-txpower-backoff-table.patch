@@ -480,7 +480,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  int mt7996_mcu_cp_support(struct mt7996_dev *dev, u8 mode)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -470,6 +470,9 @@ struct mt7996_phy {
+@@ -472,6 +472,9 @@ struct mt7996_phy {
  	bool counter_reset;
  	bool rdd_tx_paused;
  	bool offchan_bcn_stopped;
