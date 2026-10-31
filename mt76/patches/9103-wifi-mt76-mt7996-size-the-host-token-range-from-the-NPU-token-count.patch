@@ -1,0 +1,74 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Fri, 30 Oct 2026 21:13:47 -0700
+Subject: [PATCH] wifi: mt76: mt7996: size the host token range from the NPU
+ token count
+
+An NPU tx token is an index into the tx-pkt reserved memory region,
+2 KiB per token, so the count the driver hands the NPU firmware must
+match a reservation the driver cannot see. The NPU driver reads the
+count from the device tree, checks it against the reservation and
+exports it; the host token range starts above that count. A device
+tree without the count falls back to the compile-time count.
+
+A TX free event carries a 15-bit MSDU ID with the top value reserved,
+so a host token ID of 32767 or above never returns and aliases to a
+lower ID. The host pool shrinks until every host token ID fits, with
+a warning that names both counts, because the device tree sets the
+NPU count per board. A count that leaves no host token fails the NPU
+setup. WED keeps its own token layout: it is a different offload
+engine with its own buffers and is not used on the AN7581.
+
+Based-on-work-by: monish.v <monish.v>
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/npu.c |   21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
+
+--- a/mt7996/npu.c
++++ b/mt7996/npu.c
+@@ -7,6 +7,7 @@
+ #include <linux/soc/airoha/airoha_offload.h>
+ 
+ #include "mt7996.h"
++#include "mac.h"
+ 
+ static int mt7992_npu_txrx_offload_init(struct mt7996_dev *dev,
+ 					struct airoha_npu *npu)
+@@ -200,6 +201,7 @@ static int mt7996_npu_txrx_offload_init(
+ static int mt7996_npu_offload_init(struct mt7996_dev *dev,
+ 				   struct airoha_npu *npu)
+ {
++	u32 token_size = npu->tx_token_num ?: MT7996_HW_TOKEN_SIZE;
+ 	u32 val;
+ 	int err;
+ 
+@@ -229,12 +231,27 @@ static int mt7996_npu_offload_init(struc
+ 	if (err)
+ 		return err;
+ 
++	/* a 15-bit MSDU ID in the TX free event; the top value is reserved */
++	if (token_size >= MT_TXFREE_INFO_MSDU_ID) {
++		dev_err(dev->mt76.dev,
++			"%u NPU tx tokens leave no host tx token ID\n", token_size);
++		return -EINVAL;
++	}
++
+ 	err = mt76_npu_send_msg(npu, 0, WLAN_FUNC_SET_WAIT_TOKEN_ID_SIZE,
+-				MT7996_HW_TOKEN_SIZE, GFP_KERNEL);
++				token_size, GFP_KERNEL);
+ 	if (err)
+ 		return err;
+ 
+-	dev->mt76.token_start = MT7996_HW_TOKEN_SIZE;
++	spin_lock_bh(&dev->mt76.token_lock);
++	dev->mt76.token_start = token_size;
++	if (token_size + dev->mt76.token_size > MT_TXFREE_INFO_MSDU_ID) {
++		dev->mt76.token_size = MT_TXFREE_INFO_MSDU_ID - token_size;
++		dev_warn(dev->mt76.dev,
++			 "%u NPU tx tokens leave %u host tx tokens\n",
++			 token_size, dev->mt76.token_size);
++	}
++	spin_unlock_bh(&dev->mt76.token_lock);
+ 
+ 	return 0;
+ }
