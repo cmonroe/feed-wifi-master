@@ -57,10 +57,26 @@ node of the other family.
   Its full associations happened within one family too.
 - No Android phone used FT over the DS, so that case stays open.
 
+Later on the same day, on the same mesh, after the tests of SDG-13132, the
+iPhone 13 Pro joined the SSID again with a new private address. It had used
+SAE on this SSID during those tests. Ten steer rounds per setting:
+
+- Default settings: the iPhone did a full association in 10 of 10 roams,
+  also in the 4 roams between two WiFi 6 nodes, whose RSNEs are the same. So
+  the RSNE difference does not cause this.
+- `ieee80211w=1` on the 2.4 and 5 GHz BSSes of every node, with
+  `wpa_key_mgmt=WPA-PSK FT-PSK` set through `hostapd_bss_options`: the
+  iPhone used FT in 10 of 10 roams, 8 of them over the DS.
+- The Pixel 3a answered fewer BSS transition requests with PMF on every
+  node: 6 of 9 with the default settings, 2 of 10 with `ieee80211w=1`. It
+  rebooted once, and it went to sleep at the end, so the counts are weak.
+
 ### What is not known
 
 - Whether an Android client that uses FT over the DS fails between the two
   families, as wpa_supplicant does.
+- Why the iPhone 13 Pro used FT in one session and not in the other, with
+  the same default settings.
 
 ### If it matters later
 
@@ -68,7 +84,9 @@ node of the other family.
   node. One value for the whole mesh gives one RSNE again: 0 gives the form
   of 26.9.0.101, without beacon protection on EHT.
 - By the code, the value 1 on all nodes gives the three AKMs and
-  `beacon_prot=1` on WiFi 6 nodes too (`iface_mfp()`). Not tested.
+  `beacon_prot=1` on WiFi 6 nodes too (`iface_mfp()`). Not tested with
+  the three AKMs; the test above removed WPA-PSK-SHA256 through
+  `hostapd_bss_options`.
 
 ## A `wifi up` During a Setup of the Same Radio Can Leave the 5 GHz AP Down
 
