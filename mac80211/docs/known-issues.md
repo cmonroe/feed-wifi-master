@@ -48,6 +48,16 @@ and the hostapd retry in 1 of 8 normal switches.
   uplink. Not tested.
 - How often it happens in the field.
 
+### Not reproduced on 26.11.0.101
+
+On 2026-11-02, the SDG-8732v follower of an SDG-8712v hub, SmartOS 26.11.0.101
+r37973 with patches 917 and 919 and the hostapd patch 960, followed 30 CSA
+rounds of the hub's 5 GHz backhaul between channels 149 and 161 (80 MHz,
+`bcn_count` 5, 50 s apart). After each round, the frequency of
+`wpa_cli status` matched the channel of the station and of the APs. A ping
+from the satellite to the hub every 0.5 s lost none of 3282 packets. Without a
+late swap, the effect of the wrong state could not be measured.
+
 ## A Second Channel Switch Can Free a Context That a Link Still Uses
 
 **Severity:** low. Since patch 919
