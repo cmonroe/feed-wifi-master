@@ -230,7 +230,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				 int center_freq, int center_freq2);
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2377,7 +2377,7 @@ static void hostapd_event_dfs_radar_dete
+@@ -2382,7 +2382,7 @@ static void hostapd_event_dfs_radar_dete
  	wpa_printf(MSG_DEBUG, "DFS radar detected on %d MHz", radar->freq);
  	hostapd_dfs_radar_detected(hapd->iface, radar->freq, radar->ht_enabled,
  				   radar->chan_offset, radar->chan_width,
@@ -239,7 +239,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2397,7 +2397,7 @@ static void hostapd_event_dfs_cac_finish
+@@ -2402,7 +2402,7 @@ static void hostapd_event_dfs_cac_finish
  	wpa_printf(MSG_DEBUG, "DFS CAC finished on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(hapd->iface, 1, radar->freq, radar->ht_enabled,
  				 radar->chan_offset, radar->chan_width,
@@ -248,7 +248,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  
-@@ -2407,7 +2407,7 @@ static void hostapd_event_dfs_cac_aborte
+@@ -2412,7 +2412,7 @@ static void hostapd_event_dfs_cac_aborte
  	wpa_printf(MSG_DEBUG, "DFS CAC aborted on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(hapd->iface, 0, radar->freq, radar->ht_enabled,
  				 radar->chan_offset, radar->chan_width,
@@ -257,7 +257,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* an aborted post-CSA CAC ends the switch without a switch event */
  	if (!hostapd_csa_in_progress(hapd->iface))
-@@ -2431,7 +2431,7 @@ static void hostapd_event_dfs_cac_starte
+@@ -2436,7 +2436,7 @@ static void hostapd_event_dfs_cac_starte
  	wpa_printf(MSG_DEBUG, "DFS offload CAC started on %d MHz", radar->freq);
  	hostapd_dfs_start_cac(hapd, radar->freq, radar->ht_enabled,
  			      radar->chan_offset, radar->chan_width,
