@@ -67,9 +67,10 @@ SAE on this SSID during those tests. Ten steer rounds per setting:
 - `ieee80211w=1` on the 2.4 and 5 GHz BSSes of every node, with
   `wpa_key_mgmt=WPA-PSK FT-PSK` set through `hostapd_bss_options`: the
   iPhone used FT in 10 of 10 roams, 8 of them over the DS.
-- The Pixel 3a answered fewer BSS transition requests with PMF on every
-  node: 6 of 9 with the default settings, 2 of 10 with `ieee80211w=1`. It
-  rebooted once, and it went to sleep at the end, so the counts are weak.
+- The Pixel 3a answered the BSS transition requests in both settings. In a
+  repeat with its screen on, it answered 8 of 10 with the default settings
+  and 9 of 9 with `ieee80211w=1`. A first pair of runs gave 6 of 9 and 2 of
+  10, but the phone rebooted in one run and went to sleep in the other.
 
 ### What is not known
 
