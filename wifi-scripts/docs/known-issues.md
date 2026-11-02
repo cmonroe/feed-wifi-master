@@ -42,10 +42,25 @@ satellites (SDG-8632, SDG-8614, SDG-8610, 854-v6). The SSID had
 - Over the air, the same station roamed between the two families 15 of 15
   times, with and without PMF.
 
+### Phones
+
+On 2026-11-02, SmartOS 26.11.0.101 r37973, on a mesh with three WiFi 7
+satellites (SDG-8712v, SDG-8733A, SDG-P72v-Plus) and three WiFi 6 satellites
+(SDG-8632, SDG-8610, 841-t6). The 5 GHz RSNEs of the two families differed
+only in the capabilities. BSS transition requests steered each phone to a
+node of the other family.
+
+- An iPhone 13 Pro roamed between the families 4 times with FT over the DS,
+  each in 50 to 70 ms, and 2 times with FT over the air. None failed, and
+  none fell back to a full association.
+- A Pixel 3a used FT over the air: 4 of 4 roams between the families worked.
+  Its full associations happened within one family too.
+- No Android phone used FT over the DS, so that case stays open.
+
 ### What is not known
 
-- How phones and other clients take two RSNEs under one SSID. Not tested.
-- Whether an iPhone or an iPad still uses FT between the two families.
+- Whether an Android client that uses FT over the DS fails between the two
+  families, as wpa_supplicant does.
 
 ### If it matters later
 
