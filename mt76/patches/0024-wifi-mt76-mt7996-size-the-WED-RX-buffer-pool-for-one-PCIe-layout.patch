@@ -1,0 +1,41 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Sun, 01 Nov 2026 12:30:39 -0800
+Subject: [PATCH] wifi: mt76: mt7996: size the WED RX buffer pool for one
+ PCIe layout
+
+The WED RX pool takes 32768 buffers on a board with a second PCIe
+function and 24576 on a board without one. That is 64 MiB against
+48 MiB of page memory, plus a token object per buffer. The WED posts
+three RX rings from the pool, and the reorder windows hold the rest.
+The demand therefore follows the stations and the loss on the air,
+not the PCIe layout.
+
+One size of 24576 serves both layouts. A unit with the second PCIe
+function keeps its free count far above the posted rings under a
+saturating load.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mmio.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/mt7996/mmio.c
++++ b/mt7996/mmio.c
+@@ -17,6 +17,8 @@
+ static bool wed_enable;
+ module_param(wed_enable, bool, 0644);
+ 
++#define MT7996_WED_RX_NPKT	24576
++
+ #define INVALID_REG_ADDR	0xffffffff
+ 
+ static const struct __base mt7996_reg_base[] = {
+@@ -567,7 +569,7 @@ int mt7996_mmio_wed_init(struct mt7996_d
+ 					MT7996_RXQ_MSDU_PG_BAND0 * MT_RING_SIZE;
+ 
+ 		wed->wlan.rx_nbuf = 65536;
+-		wed->wlan.rx_npkt = dev->hif2 ? 32768 : 24576;
++		wed->wlan.rx_npkt = MT7996_WED_RX_NPKT;
+ 		wed->wlan.rx_size = SKB_WITH_OVERHEAD(MT_RX_BUF_SIZE);
+ 
+ 		wed->wlan.rx_tbit[0] = ffs(MT_INT_RX_DONE_BAND0) - 1;
