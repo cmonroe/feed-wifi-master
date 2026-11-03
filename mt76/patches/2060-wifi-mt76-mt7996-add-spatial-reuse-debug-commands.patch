@@ -81,7 +81,7 @@ environment can SR Tx or not.
  	u8 user_edcca_threshold[EDCCA_MAX_BW_NUM];
  
  	struct mt7996_scs_ctrl scs_ctrl;
-@@ -1181,6 +1186,8 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
+@@ -1182,6 +1187,8 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);

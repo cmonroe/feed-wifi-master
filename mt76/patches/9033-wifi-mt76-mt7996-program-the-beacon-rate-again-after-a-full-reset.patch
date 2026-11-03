@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2426,6 +2426,8 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2427,6 +2427,8 @@ mt7996_mac_full_reset(struct mt7996_dev
  		phy->omac_mask = 0;
  		phy->rxfilter |= MT_WF_RFCR_DROP_OTHER_UC;
  		phy->csa_quiet_links = 0;

@@ -65,8 +65,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #ifdef CONFIG_NL80211_TESTMODE
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1138,7 +1138,7 @@ static int mt7996_wed_rro_init(struct mt
- 	u32 val = FIELD_PREP(WED_RRO_ADDR_SIGNATURE_MASK, 0xff);
+@@ -1179,7 +1179,7 @@ static int mt7996_wed_rro_init(struct mt
+ {
  	struct mt7996_wed_rro_addr *addr;
  	void *ptr;
 -	int i;
@@ -74,8 +74,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (!mt7996_has_hwrro(dev))
  		return 0;
-@@ -1177,10 +1177,17 @@ static int mt7996_wed_rro_init(struct mt
- 		}
+@@ -1208,10 +1208,17 @@ static int mt7996_wed_rro_init(struct mt
+ 		dev->wed_rro.addr_elem[i].ptr = ptr;
  
  		if (is_mt7996(&dev->mt76) &&
 -		    mt76_npu_device_active(&dev->mt76))
@@ -93,9 +93,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  #ifdef CONFIG_NET_MEDIATEK_SOC_WED
  		if (mtk_wed_device_active(&dev->mt76.mmio.wed) &&
-@@ -1242,9 +1249,16 @@ static int mt7996_wed_rro_init(struct mt
- 		addr++;
- 	}
+@@ -1265,9 +1272,16 @@ static int mt7996_wed_rro_init(struct mt
+ 
+ 	dev->wed_rro.session.ptr = ptr;
  
 -	if (is_mt7996(&dev->mt76) && mt76_npu_device_active(&dev->mt76))
 +	if (is_mt7996(&dev->mt76) && mt76_npu_device_active(&dev->mt76)) {
@@ -109,8 +109,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  					dev->wed_rro.session.phy_addr, 0, 0);
 +	}
  
+ 	mt7996_rro_tables_init(dev);
  	mt7996_rro_hw_init(dev);
- 
 --- a/mt7996/npu.c
 +++ b/mt7996/npu.c
 @@ -556,6 +556,15 @@ int __mt7996_npu_hw_init(struct mt7996_d
