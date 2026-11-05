@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -2008,6 +2008,10 @@ void mt7996_unregister_device(struct mt7
+@@ -2052,6 +2052,10 @@ void mt7996_unregister_device(struct mt7
  	cancel_work_sync(&dev->rc_work);
  	mt7996_for_each_phy(dev, phy)
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt7996_unregister_thermal(&dev->phy);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2544,6 +2544,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2670,6 +2670,7 @@ void mt7996_mac_reset_work(struct work_s
  		set_bit(MT76_RESET, &phy->mt76->state);
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
  	}
@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -2672,6 +2673,12 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2776,6 +2777,12 @@ void mt7996_mac_reset_work(struct work_s
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -128,7 +128,6 @@ static void mt7996_stop_phy(struct mt799
+@@ -139,7 +139,6 @@ static void mt7996_stop_phy(struct mt799
  	dev = phy->dev;
  
  	cancel_delayed_work_sync(&phy->mt76->mac_work);
@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6737,10 +6737,17 @@ void mt7996_mcu_scs_sta_poll(struct work
+@@ -6781,10 +6781,17 @@ void mt7996_mcu_scs_sta_poll(struct work
  		    !phy->scs_ctrl.scs_enable)
  			continue;
  
@@ -91,7 +91,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (mt7996_mcu_set_scs_stats(phy))
  			dev_err(dev->mt76.dev, "Failed to send scs mcu cmd\n");
  		phy->scs_ctrl.sta_min_rssi = 0;
-@@ -6772,7 +6779,8 @@ int mt7996_mcu_set_carrier_sense(struct
+@@ -6816,7 +6823,8 @@ int mt7996_mcu_set_carrier_sense(struct
  
  	phy->scs_ctrl.scs_enable = enable;
  

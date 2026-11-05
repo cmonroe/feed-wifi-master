@@ -271,7 +271,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return is_mt7915(&dev->mt76) ? MT7915_EEPROM_SIZE : MT7916_EEPROM_SIZE;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -1594,7 +1594,9 @@ mt7996_link_sta_info_show(struct seq_fil
+@@ -1645,7 +1645,9 @@ mt7996_link_sta_info_show(struct seq_fil
  		   stats->tx_mpdus ? stats->tx_failed * 1000 / stats->tx_mpdus / 10 : 0,
  		   stats->tx_mpdus ? stats->tx_failed * 1000 / stats->tx_mpdus % 10 : 0);
  	seq_printf(file, "\t\tMPDU Retries: %u\n", stats->tx_retries);
@@ -282,7 +282,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	seq_printf(file, "\t\tNumber of non-AQL packets: %u (Max: %u)\n",
  		   atomic_read(&wcid->non_aql_packets), MT_MAX_NON_AQL_PKT);
  	seq_printf(file, "\tRX:\n");
-@@ -1605,7 +1607,9 @@ mt7996_link_sta_info_show(struct seq_fil
+@@ -1656,7 +1658,9 @@ mt7996_link_sta_info_show(struct seq_fil
  	seq_printf(file, "\t\tMPDU FCS Errors: %u (PER: %u.%u%%)\n", stats->rx_fcs_err,
  		   stats->rx_mpdus ? stats->rx_fcs_err * 1000 / stats->rx_mpdus / 10 : 0,
  		   stats->rx_mpdus ? stats->rx_fcs_err * 1000 / stats->rx_mpdus % 10 : 0);
@@ -295,7 +295,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (flag = 0; flag < NUM_MT76_WCID_FLAGS; flag++) {
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -2732,11 +2732,15 @@ static void mt7996_link_sta_statistics(s
+@@ -2757,11 +2757,15 @@ static void mt7996_link_sta_statistics(s
  	link_sinfo->fcs_err_count = stats->rx_fcs_err;
  	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_FCS_ERROR_COUNT);
  
@@ -317,7 +317,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -854,6 +854,7 @@ static void
+@@ -869,6 +869,7 @@ static void
  mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
  {
  	struct mt7996_mcu_all_sta_info_event *res;
@@ -325,7 +325,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u32 elem_size;
  	u16 sta_num;
  	u16 i;
-@@ -900,6 +901,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -915,6 +916,10 @@ mt7996_mcu_rx_all_sta_info_event(struct
  	if (sta_num > (skb->len - sizeof(*res)) / elem_size)
  		sta_num = (skb->len - sizeof(*res)) / elem_size;
  
@@ -336,7 +336,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < sta_num; i++) {
  		u8 ac;
  		bool v1;
-@@ -907,7 +912,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -922,7 +927,7 @@ mt7996_mcu_rx_all_sta_info_event(struct
  		struct mt76_wcid *wcid;
  		struct mt76_phy *mphy;
  		struct ieee80211_sta *sta;
@@ -345,7 +345,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		    tx_packets, rx_packets;
  
  		switch (le16_to_cpu(res->tag)) {
-@@ -977,13 +982,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -992,13 +997,17 @@ mt7996_mcu_rx_all_sta_info_event(struct
  
  			for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ++ac) {
  				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
@@ -368,7 +368,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			}
  			break;
  		case UNI_ALL_STA_RX_MPDU_COUNT:
-@@ -5577,6 +5586,7 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5621,6 +5630,7 @@ int mt7996_mcu_get_chan_mib_info(struct
  	struct mt7996_dev *dev = phy->dev;
  	struct mt7996_mcu_mib *res;
  	struct sk_buff *skb;
@@ -376,7 +376,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i, ret;
  
  	for (i = 0; i < IDX_NUM; i++) {
-@@ -5602,16 +5612,20 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -5646,16 +5656,20 @@ int mt7996_mcu_get_chan_mib_info(struct
  		goto out;
  
  #define __res_u64(s) le64_to_cpu(res[s].data)
@@ -416,9 +416,9 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +/* one all-station request period, see mt7996_mac_work() */
 +#define MT7996_AIRTIME_MARGIN		(5 * MT7996_WATCHDOG_TIME)
  #define MT7996_RESET_TIMEOUT		(30 * HZ)
- 
- #define MT7996_TX_RING_SIZE		2048
-@@ -514,6 +516,7 @@ struct mt7996_phy {
+ #define MT7996_CHIP_POWER_OFF_DELAY	(30 * HZ)
+ #define MT7996_CHIP_POWER_OFF_BOOT_DELAY	(120 * HZ)
+@@ -517,6 +519,7 @@ struct mt7996_phy {
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
@@ -513,7 +513,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -457,6 +457,7 @@ mt7996_init_wiphy_band(struct ieee80211_
+@@ -495,6 +495,7 @@ mt7996_init_wiphy_band(struct ieee80211_
  	phy->beacon_rate = -1;
  	phy->bss_txpower = INT_MIN;
  	phy->rxfilter = MT_WF_RFCR_DROP_OTHER_UC;

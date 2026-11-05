@@ -18,13 +18,13 @@ tables follow when mac80211 restores the channel context.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7996/init.c |   34 ++++++++++++++++++++++++++++++++++
+ mt7996/init.c |   29 +++++++++++++++++++++++++++++
  mt7996/mac.c  |   12 ++++++++++++
- 2 files changed, 46 insertions(+)
+ 2 files changed, 41 insertions(+)
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -499,6 +499,29 @@ void mt7996_apply_edcca_limits(struct mt
+@@ -530,6 +530,29 @@ void mt7996_apply_edcca_limits(struct mt
  			 "failed to set EDCCA threshold: %d\n", ret);
  }
  
@@ -54,27 +54,22 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
  mt7996_regd_notifier(struct wiphy *wiphy,
  		     struct regulatory_request *request)
-@@ -529,6 +552,17 @@ mt7996_regd_notifier(struct wiphy *wiphy
- 		mutex_unlock(&dev->mt76.mutex);
- 		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
+@@ -564,6 +587,12 @@ mt7996_regd_notifier(struct wiphy *wiphy
+ 
+ 		mt7996_apply_edcca_limits(phy);
  		mt7996_dfs_init_radar_detector(phy);
 +
 +		/* psd_limit of the LPI command depends on the country, and the
 +		 * device tree selects the power limits by country and region
 +		 */
-+		if (!changed)
-+			continue;
-+
-+		mutex_lock(&dev->mt76.mutex);
-+		if (test_bit(MT76_STATE_RUNNING, &phy->mt76->state))
++		if (changed && test_bit(MT76_STATE_RUNNING, &phy->mt76->state))
 +			mt7996_regd_txpower_update(phy);
-+		mutex_unlock(&dev->mt76.mutex);
  	}
+ 	mutex_unlock(&dev->mt76.mutex);
  }
- 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2318,6 +2318,18 @@ mt7996_mac_restart(struct mt7996_dev *de
+@@ -2429,6 +2429,18 @@ mt7996_mac_restart(struct mt7996_dev *de
  		ret = mt7996_run(phy);
  		if (ret)
  			goto out;

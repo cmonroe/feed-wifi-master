@@ -18,14 +18,14 @@ the region, which a full reset or a country change replaces.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- eeprom.c        |   54 ++++++++++++++++++++++++++++++++++++++
+ eeprom.c        |   54 +++++++++++++++++++++++++++++++++++++++
  mt76.h          |    8 +++++
- mt7996/init.c   |   79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/init.c   |   77 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  mt7996/mac.c    |    4 ++
- mt7996/main.c   |   18 +++++-------
+ mt7996/main.c   |   18 +++++--------
  mt7996/mt7996.h |    3 ++
  mt7996/vendor.c |   10 ++++++-
- 7 files changed, 164 insertions(+), 12 deletions(-)
+ 7 files changed, 162 insertions(+), 12 deletions(-)
 
 --- a/eeprom.c
 +++ b/eeprom.c
@@ -116,7 +116,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -423,6 +423,82 @@ void mt7996_init_txpower(struct mt7996_p
+@@ -454,6 +454,82 @@ void mt7996_init_txpower(struct mt7996_p
  		__mt7996_init_txpower(phy, &phy->mt76->sband_6g.sband);
  }
  
@@ -199,21 +199,18 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
  mt7996_regd_notifier(struct wiphy *wiphy,
  		     struct regulatory_request *request)
-@@ -438,7 +514,10 @@ mt7996_regd_notifier(struct wiphy *wiphy
+@@ -477,6 +553,7 @@ mt7996_regd_notifier(struct wiphy *wiphy
  		if (dev->mt76.region == NL80211_DFS_UNSET)
  			mt7996_mcu_rdd_background_enable(phy, NULL);
  
-+		mutex_lock(&dev->mt76.mutex);
- 		mt7996_init_txpower(phy);
 +		mt7996_apply_edcca_limits(phy);
-+		mutex_unlock(&dev->mt76.mutex);
- 		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
  		mt7996_dfs_init_radar_detector(phy);
  	}
+ 	mutex_unlock(&dev->mt76.mutex);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2301,8 +2301,10 @@ mt7996_mac_restart(struct mt7996_dev *de
- 		goto out;
+@@ -2383,8 +2383,10 @@ __mt7996_mac_restart_hw(struct mt7996_de
+ 		return ret;
  
  	mt7996_mac_init(dev);
 -	mt7996_for_each_phy(dev, phy)
@@ -223,10 +220,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	}
  	ret = mt7996_txbf_init(dev);
  	if (ret)
- 		goto out;
+ 		return ret;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -67,12 +67,15 @@ int mt7996_run(struct mt7996_phy *phy)
+@@ -68,12 +68,15 @@ int mt7996_run(struct mt7996_phy *phy)
  	if (ret)
  		goto disable_radio;
  
@@ -245,7 +242,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	set_bit(MT76_STATE_RUNNING, &phy->mt76->state);
  
-@@ -826,14 +829,9 @@ int mt7996_set_channel(struct mt76_phy *
+@@ -846,14 +849,9 @@ int mt7996_set_channel(struct mt76_phy *
  	mt7996_mac_cca_stats_reset(phy);
  
  	mt7996_mac_reset_counters(phy);
@@ -264,7 +261,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	 */
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -535,6 +535,8 @@ struct mt7996_phy {
+@@ -544,6 +544,8 @@ struct mt7996_phy {
  #endif
  
  	u8 user_edcca_threshold[EDCCA_MAX_BW_NUM];
@@ -273,14 +270,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct mt7996_scs_ctrl scs_ctrl;
  };
-@@ -901,6 +903,7 @@ void mt7996_dma_start(struct mt7996_dev
+@@ -920,6 +922,7 @@ void mt7996_dma_start(struct mt7996_dev
  int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
  			  int n_desc, int ring_base, struct mtk_wed_device *wed);
  void mt7996_init_txpower(struct mt7996_phy *phy);
 +void mt7996_apply_edcca_limits(struct mt7996_phy *phy);
+ void mt7996_led_apply(struct mt7996_phy *phy);
  int mt7996_txbf_init(struct mt7996_dev *dev);
  void mt7996_reset(struct mt7996_dev *dev);
- int mt7996_run(struct mt7996_phy *phy);
 --- a/mt7996/vendor.c
 +++ b/mt7996/vendor.c
 @@ -107,7 +107,15 @@ static int mt7996_vendor_edcca_ctrl(stru

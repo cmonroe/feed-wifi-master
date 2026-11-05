@@ -26,7 +26,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
 
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -143,34 +143,46 @@ static ssize_t mt7996_thermal_temp_store
+@@ -146,34 +146,46 @@ static ssize_t mt7996_thermal_temp_store
  	if (ret < 0)
  		return ret;
  
@@ -92,7 +92,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	&sensor_dev_attr_temp1_input.dev_attr.attr,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1020,24 +1020,23 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -1035,24 +1035,23 @@ mt7996_mcu_rx_all_sta_info_event(struct
  }
  
  static void
@@ -125,7 +125,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  		return;
  
  	if (n->band_idx > MT_BAND2)
-@@ -1048,7 +1047,10 @@ mt7996_mcu_rx_thermal_notify(struct mt79
+@@ -1063,7 +1062,10 @@ mt7996_mcu_rx_thermal_notify(struct mt79
  		return;
  
  	phy = (struct mt7996_phy *)mphy->priv;
@@ -137,7 +137,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  }
  
  static void
-@@ -1074,9 +1076,6 @@ mt7996_mcu_rx_unsolicited_event(struct m
+@@ -1089,9 +1091,6 @@ mt7996_mcu_rx_unsolicited_event(struct m
  	case MCU_EVENT_EXT:
  		mt7996_mcu_rx_ext_event(dev, skb);
  		break;
@@ -147,7 +147,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	default:
  		break;
  	}
-@@ -1251,6 +1250,9 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -1266,6 +1265,9 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_WED_RRO:
  		mt7996_mcu_wed_rro_event(dev, skb);
  		break;
@@ -157,7 +157,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	case MCU_UNI_EVENT_PS_SYNC:
  		mt7996_mcu_rx_ps_sync(dev, skb);
  		break;
-@@ -5488,12 +5490,14 @@ int mt7996_mcu_set_thermal_throttling(st
+@@ -5532,12 +5534,14 @@ int mt7996_mcu_set_thermal_throttling(st
  	for (level = 0; level < 4; level++) {
  		req.ctrl.duty.duty_level = level;
  		req.ctrl.duty.duty_cycle = state;
@@ -173,7 +173,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	}
  
  	return 0;
-@@ -5537,6 +5541,29 @@ int mt7996_mcu_set_thermal_protect(struc
+@@ -5581,6 +5585,29 @@ int mt7996_mcu_set_thermal_protect(struc
  
  	return mt76_mcu_send_msg(&phy->dev->mt76, MCU_WM_UNI_CMD(THERMAL),
  				 &req, sizeof(req), false);
@@ -238,7 +238,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  struct tx_power_ctrl {
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -458,6 +458,7 @@ struct mt7996_phy {
+@@ -461,6 +461,7 @@ struct mt7996_phy {
  	u8 cdev_state;
  	u8 throttle_state;
  	u32 throttle_temp[2]; /* 0: critical high, 1: maximum */
@@ -246,7 +246,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
  	u32 rxfilter;
  	u64 omac_mask;
-@@ -923,6 +924,7 @@ int mt7996_mcu_get_chan_mib_info(struct
+@@ -943,6 +944,7 @@ int mt7996_mcu_get_chan_mib_info(struct
  int mt7996_mcu_get_temperature(struct mt7996_phy *phy);
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);

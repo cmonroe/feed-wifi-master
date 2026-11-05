@@ -40,7 +40,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			continue;
  		}
  
-@@ -3063,7 +3061,6 @@ void mt7996_mac_work(struct work_struct
+@@ -3449,7 +3447,6 @@ void mt7996_mac_work(struct work_struct
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TXRX_MSDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_RX_MPDU_COUNT);
  				mt7996_mcu_get_all_sta_info(mdev, UNI_ALL_STA_TX_STAT);
@@ -50,7 +50,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				break;
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1012,16 +1012,6 @@ mt7996_mcu_rx_all_sta_info_event(struct
+@@ -1027,16 +1027,6 @@ mt7996_mcu_rx_all_sta_info_event(struct
  				break;
  
  			wcid->stats.tx_mpdus += le32_to_cpu(res->tx_mpdu_stat[i].total);

@@ -43,7 +43,7 @@ environment can SR Tx or not.
  
  int mt7996_run(struct mt7996_phy *phy)
  {
-@@ -44,6 +47,9 @@ int mt7996_run(struct mt7996_phy *phy)
+@@ -45,6 +48,9 @@ int mt7996_run(struct mt7996_phy *phy)
  		goto disable_radio;
  
  #ifdef CONFIG_MTK_DEBUG
@@ -55,7 +55,7 @@ environment can SR Tx or not.
  
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -1256,6 +1256,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
+@@ -1271,6 +1271,11 @@ mt7996_mcu_uni_rx_unsolicited_event(stru
  	case MCU_UNI_EVENT_PS_SYNC:
  		mt7996_mcu_rx_ps_sync(dev, skb);
  		break;
@@ -69,7 +69,7 @@ environment can SR Tx or not.
  	}
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -525,6 +525,11 @@ struct mt7996_phy {
+@@ -534,6 +534,11 @@ struct mt7996_phy {
  	bool sku_limit_en;
  	bool sku_path_en;
  
@@ -81,7 +81,7 @@ environment can SR Tx or not.
  	u8 user_edcca_threshold[EDCCA_MAX_BW_NUM];
  
  	struct mt7996_scs_ctrl scs_ctrl;
-@@ -1182,6 +1187,8 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
+@@ -1230,6 +1235,8 @@ int mt7996_mcu_edcca_threshold_ctrl(stru
  #ifdef CONFIG_MTK_DEBUG
  int mt7996_mtk_init_debugfs(struct mt7996_dev *dev, struct dentry *dir);
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);

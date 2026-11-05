@@ -1,0 +1,980 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 02 Nov 2026 17:10:00 -0800
+Subject: [PATCH] wifi: mt76: mt7996: power chip off while no interface is up
+
+With all radios disabled, firmware runs, the host keeps driver own
+and WFDMA stays enabled, so a board draws more power than after
+module removal. The driver powers the chip off 30 seconds after the
+last interface goes down, or 120 seconds after probe if no interface
+comes up. The delays cover a wifi reload with a radio setup retry and
+the radio start of netifd after modules load. Power-off pauses the
+WED PCIe poll and stops WED, because a poll of a chip under firmware
+own times out. Power-on runs in the mac80211 start callback with the
+hardware restart of full reset, while mac80211, rings, NAPI and WED
+attachment stay in place.
+
+While the chip is off, MCU commands, chip reads of other tasks and a
+debugfs full recovery request fail with -ENODEV. Only WFDMA, TOP and
+PCIe MAC registers stay accessible, because the safety of WFSYS
+access is unknown. The driver tries a refused or failed power-off
+again after 30 seconds, up to six attempts, because a stale reset bit
+refuses every attempt. A failed power-off queues a full reset,
+because firmware state is unknown, and a failed power-on leaves the
+chip off. The reset work drops a recovery request under the device
+mutex, because power-on reloads firmware and judges its restart by
+the reset bit. LED, cooling and temperature limit settings made while
+the chip is off apply at power-on or radio start, but the driver
+drops an RTS threshold.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/debugfs.c |   53 +++++++++
+ mt7996/init.c    |   77 +++++++++++---
+ mt7996/mac.c     |  301 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ mt7996/main.c    |   42 +++++++
+ mt7996/mcu.c     |   26 ++++
+ mt7996/mmio.c    |   53 +++++++++
+ mt7996/mt7996.h  |   35 ++++++
+ 7 files changed, 568 insertions(+), 19 deletions(-)
+
+--- a/mt7996/debugfs.c
++++ b/mt7996/debugfs.c
+@@ -100,9 +100,18 @@ mt7996_sys_recovery_set(struct file *fil
+ 
+ 	/* enable full chip reset */
+ 	case UNI_CMD_SER_SET_RECOVER_FULL:
++		/* the power transitions hold the mutex, and a request for a
++		 * chip that is off would leave its WDT bits in the state
++		 */
++		mutex_lock(&dev->mt76.mutex);
++		if (mt7996_chip_is_off(dev)) {
++			mutex_unlock(&dev->mt76.mutex);
++			return -ENODEV;
++		}
+ 		mt76_set(dev, MT_WFDMA0_MCU_HOST_INT_ENA, MT_MCU_CMD_WDT_MASK);
+ 		dev->recovery.state |= MT_MCU_CMD_WDT_MASK;
+ 		mt7996_reset(dev);
++		mutex_unlock(&dev->mt76.mutex);
+ 		break;
+ 
+ 	/* WARNING: trigger firmware crash */
+@@ -128,6 +137,9 @@ mt7996_sys_recovery_get(struct file *fil
+ 	ssize_t ret;
+ 	static const size_t bufsz = 1024;
+ 
++	if (mt7996_chip_is_off(dev))
++		return -ENODEV;
++
+ 	buff = kmalloc(bufsz, GFP_KERNEL);
+ 	if (!buff)
+ 		return -ENOMEM;
+@@ -580,6 +592,9 @@ mt7996_tx_stats_show(struct seq_file *fi
+ 	struct mt7996_dev *dev = file->private;
+ 	struct mt7996_phy *phy = &dev->phy;
+ 
++	if (mt7996_chip_is_off(dev))
++		return -ENODEV;
++
+ 	mutex_lock(&dev->mt76.mutex);
+ 
+ 	mt7996_tx_stats_show_phy(file, phy);
+@@ -832,6 +847,9 @@ mt7996_hw_queues_show(struct seq_file *s
+ {
+ 	struct mt7996_dev *dev = s->private;
+ 
++	if (mt7996_chip_is_off(dev))
++		return -ENODEV;
++
+ 	seq_puts(s, "PLE page info:\n");
+ 	mt7996_freepg_show(s, mt76_rr(dev, MT_PLE_FREEPG_CNT),
+ 			   mt76_rr(dev, MT_PLE_FREEPG_HEAD_TAIL));
+@@ -1012,6 +1030,39 @@ out:
+ 	return 0;
+ }
+ 
++static int
++mt7996_reg_get(void *data, u64 *val)
++{
++	struct mt76_dev *mdev = data;
++	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
++	u32 reg = READ_ONCE(mdev->debugfs_reg);
++
++	if (!mt7996_reg_is_accessible(dev, reg))
++		return -ENODEV;
++
++	*val = mt76_rr(dev, reg);
++	return 0;
++}
++
++static int
++mt7996_reg_set(void *data, u64 val)
++{
++	struct mt76_dev *mdev = data;
++	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
++
++	/* a write to a window that stays accessible can change the ownership
++	 * or the DMA state behind the driver
++	 */
++	if (mt7996_chip_is_off(dev))
++		return -ENODEV;
++
++	mt76_wr(dev, mdev->debugfs_reg, val);
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(fops_regval, mt7996_reg_get, mt7996_reg_set,
++			 "0x%08llx\n");
++
+ /* The index of RF registers use the generic regidx, combined with two parts:
+  * WF selection [31:24] and offset [23:0].
+  */
+@@ -1082,7 +1133,7 @@ int mt7996_init_debugfs(struct mt7996_de
+ {
+ 	struct dentry *dir;
+ 
+-	dir = mt76_register_debugfs_fops(&dev->mphy, NULL);
++	dir = mt76_register_debugfs_fops(&dev->mphy, &fops_regval);
+ 
+ 	debugfs_create_file("hw-queues", 0400, dir, dev,
+ 			    &mt7996_hw_queues_fops);
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -115,6 +115,9 @@ static ssize_t mt7996_thermal_temp_show(
+ 
+ 	switch (i) {
+ 	case 0:
++		if (mt7996_chip_is_off(phy->dev))
++			return -ENODEV;
++
+ 		temperature = mt7996_mcu_get_temperature(phy);
+ 		if (temperature < 0)
+ 			return temperature;
+@@ -207,7 +210,7 @@ mt7996_thermal_set_cur_throttle_state(st
+ {
+ 	struct mt7996_phy *phy = cdev->devdata;
+ 	u8 throttling = MT7996_THERMAL_THROTTLE_MAX - state;
+-	int ret;
++	int ret = 0;
+ 
+ 	if (state > MT7996_CDEV_THROTTLE_MAX) {
+ 		dev_err(phy->dev->mt76.dev,
+@@ -220,14 +223,17 @@ mt7996_thermal_set_cur_throttle_state(st
+ 
+ 	/* cooling_device convention: 0 = no cooling, more = more cooling
+ 	 * mcu convention: 1 = max cooling, more = less cooling
++	 *
++	 * mt7996_run() sends the state that is stored while the chip is off
+ 	 */
+-	ret = mt7996_mcu_set_thermal_throttling(phy, throttling);
+-	if (ret)
+-		return ret;
+-
+-	phy->cdev_state = state;
++	mutex_lock(&phy->dev->mt76.mutex);
++	if (!mt7996_chip_is_off(phy->dev))
++		ret = mt7996_mcu_set_thermal_throttling(phy, throttling);
++	if (!ret)
++		phy->cdev_state = state;
++	mutex_unlock(&phy->dev->mt76.mutex);
+ 
+-	return 0;
++	return ret;
+ }
+ 
+ static const struct thermal_cooling_device_ops mt7996_thermal_ops = {
+@@ -289,15 +295,16 @@ static int mt7996_thermal_init(struct mt
+ 	return 0;
+ }
+ 
+-static void mt7996_led_set_config(struct led_classdev *led_cdev,
+-				  u8 delay_on, u8 delay_off)
++void mt7996_led_apply(struct mt7996_phy *phy)
+ {
+-	struct mt7996_dev *dev;
+-	struct mt76_phy *mphy;
++	struct mt76_phy *mphy = phy->mt76;
++	struct mt7996_dev *dev = phy->dev;
++	u8 delay_on = phy->led.delay_on;
++	u8 delay_off = phy->led.delay_off;
+ 	u32 val;
+ 
+-	mphy = container_of(led_cdev, struct mt76_phy, leds.cdev);
+-	dev = container_of(mphy->dev, struct mt7996_dev, mt76);
++	if (!phy->led.valid)
++		return;
+ 
+ 	/* select TX blink mode, 2: only data frames */
+ 	mt76_rmw_field(dev, MT_TMAC_TCR0(mphy->band_idx), MT_TMAC_TCR0_TX_BLINK, 2);
+@@ -327,6 +334,30 @@ static void mt7996_led_set_config(struct
+ 	mt76_clear(dev, MT_LED_CTRL(mphy->band_idx), MT_LED_CTRL_KICK);
+ }
+ 
++static void mt7996_led_set_config(struct led_classdev *led_cdev,
++				  u8 delay_on, u8 delay_off)
++{
++	struct mt76_phy *mphy;
++	struct mt7996_phy *phy;
++
++	mphy = container_of(led_cdev, struct mt76_phy, leds.cdev);
++	phy = mphy->priv;
++
++	/* the power on applies the stored state; the barrier orders the
++	 * store before the test, as the power on orders its bit clear
++	 * before its read of the state
++	 */
++	phy->led.delay_on = delay_on;
++	phy->led.delay_off = delay_off;
++	phy->led.valid = true;
++	smp_mb();
++
++	if (mt7996_chip_is_off(phy->dev))
++		return;
++
++	mt7996_led_apply(phy);
++}
++
+ static int mt7996_led_set_blink(struct led_classdev *led_cdev,
+ 				unsigned long *delay_on,
+ 				unsigned long *delay_off)
+@@ -405,14 +436,21 @@ mt7996_regd_notifier(struct wiphy *wiphy
+ 	memcpy(dev->mt76.alpha2, request->alpha2, sizeof(dev->mt76.alpha2));
+ 	dev->mt76.region = request->dfs_region;
+ 
++	mutex_lock(&dev->mt76.mutex);
+ 	mt7996_for_each_phy(dev, phy) {
++		mt7996_init_txpower(phy);
++		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
++
++		/* the first channel set after the power on starts the detector */
++		if (mt7996_chip_is_off(dev))
++			continue;
++
+ 		if (dev->mt76.region == NL80211_DFS_UNSET)
+ 			mt7996_mcu_rdd_background_enable(phy, NULL);
+ 
+-		mt7996_init_txpower(phy);
+-		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
+ 		mt7996_dfs_init_radar_detector(phy);
+ 	}
++	mutex_unlock(&dev->mt76.mutex);
+ }
+ 
+ static void
+@@ -819,6 +857,12 @@ static void mt7996_init_work(struct work
+ 
+ 	if (!is_mt7990(&dev->mt76))
+ 		mt7996_mcu_set_dup_wtbl(dev);
++
++	/* a radio that is disabled at boot never starts, and netifd starts
++	 * the enabled ones after the modules load
++	 */
++	queue_delayed_work(dev->mt76.wq, &dev->power.work,
++			   MT7996_CHIP_POWER_OFF_BOOT_DELAY);
+ }
+ 
+ void mt7996_wfsys_reset(struct mt7996_dev *dev)
+@@ -1805,6 +1849,7 @@ int mt7996_register_device(struct mt7996
+ 	init_waitqueue_head(&dev->reset_wait);
+ 	INIT_WORK(&dev->reset_work, mt7996_mac_reset_work);
+ 	INIT_WORK(&dev->dump_work, mt7996_mac_dump_work);
++	INIT_DELAYED_WORK(&dev->power.work, mt7996_chip_power_off_work);
+ 	mutex_init(&dev->dump_mutex);
+ 
+ 	ret = mt7996_init_hardware(dev);
+@@ -1853,6 +1898,7 @@ int mt7996_register_device(struct mt7996
+ 
+ error:
+ 	cancel_work_sync(&dev->init_work);
++	disable_delayed_work_sync(&dev->power.work);
+ 
+ 	return ret;
+ }
+@@ -1880,6 +1926,7 @@ void mt7996_unregister_device(struct mt7
+ 	mt7996_unregister_thermal(&dev->phy);
+ 	mt7996_coredump_unregister(dev);
+ 	mt76_unregister_device(&dev->mt76);
++	disable_delayed_work_sync(&dev->power.work);
+ 	mt7996_wed_rro_free(dev);
+ 	for (i = 0; i < ARRAY_SIZE(dev->mt76.napi); i++) {
+ 		if (dev->mt76.napi[i].dev)
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2686,6 +2686,7 @@ void mt7996_mac_reset_work(struct work_s
+ 	struct ieee80211_hw *hw;
+ 	struct mt7996_dev *dev;
+ 	struct mt7996_phy *phy;
++	bool off;
+ 	int i;
+ 
+ 	dev = container_of(work, struct mt7996_dev, reset_work);
+@@ -2694,6 +2695,22 @@ void mt7996_mac_reset_work(struct work_s
+ 	if (test_bit(MT76_REMOVED, &dev->mphy.state))
+ 		return;
+ 
++	/* the power on reloads the firmware and restarts the hardware, and
++	 * under the mutex it judges that restart by the reset bit
++	 */
++	mutex_lock(&dev->mt76.mutex);
++	off = mt7996_chip_is_off(dev);
++	if (off) {
++		dev->recovery.restart = false;
++		dev->recovery.state = MT_MCU_CMD_NORMAL_STATE;
++		clear_bit(MT76_MCU_RESET, &dev->mphy.state);
++		mt7996_for_each_phy(dev, phy)
++			clear_bit(MT76_RESET, &phy->mt76->state);
++	}
++	mutex_unlock(&dev->mt76.mutex);
++	if (off)
++		return;
++
+ 	/* chip full reset */
+ 	if (dev->recovery.restart) {
+ 		/* disable WA/WM WDT */
+@@ -2865,6 +2882,288 @@ void mt7996_mac_reset_work(struct work_s
+ 		 wiphy_name(dev->mt76.hw->wiphy));
+ }
+ 
++static void
++mt7996_chip_quiesce(struct mt7996_dev *dev)
++{
++	struct mt76_dev *mdev = &dev->mt76;
++	int i;
++
++	WRITE_ONCE(dev->power.quiesced, true);
++
++	tasklet_disable(&mdev->irq_tasklet);
++	tasklet_enable(&mdev->irq_tasklet);
++
++	/* a balanced disable waits for a poll in flight; the NAPIs stay
++	 * enabled because the removal path disables each one without a check
++	 */
++	for (i = 0; i < ARRAY_SIZE(mdev->napi); i++) {
++		if (!mdev->napi[i].dev)
++			continue;
++
++		napi_disable(&mdev->napi[i]);
++		napi_enable(&mdev->napi[i]);
++	}
++	napi_disable(&mdev->tx_napi);
++	napi_enable(&mdev->tx_napi);
++
++	/* a drained NPU poll enables its interrupt again */
++	mt76_npu_disable_irqs(mdev);
++
++	dev->power.irqmask = mdev->mmio.irqmask;
++	mt7996_irq_disable(dev, ~0);
++	if (dev->hif2)
++		mt76_wr(dev, MT_INT1_MASK_CSR, 0);
++
++	if (dev_is_pci(mdev->dev)) {
++		mt76_wr(dev, MT_PCIE_MAC_INT_ENABLE, 0);
++		if (dev->hif2)
++			mt76_wr(dev, MT_PCIE1_MAC_INT_ENABLE, 0);
++	}
++
++	if (mtk_wed_device_active(&mdev->mmio.wed_hif2))
++		mtk_wed_device_irq_set_mask(&mdev->mmio.wed_hif2, 0);
++}
++
++static void
++mt7996_chip_stop(struct mt7996_dev *dev)
++{
++	struct mt76_dev *mdev = &dev->mt76;
++
++	/* the WED PCIe poll of the chip runs until it is paused, and a poll
++	 * of a chip under firmware own times out; the quiesce needs no
++	 * interrupt
++	 */
++	mt7996_wed_poll_set(dev, false);
++	mt7996_chip_quiesce(dev);
++
++	mt7996_wed_stop(dev);
++	mt7996_dma_stop(dev);
++	skb_queue_purge(&mdev->mcu.res_q);
++	clear_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state);
++}
++
++static bool
++mt7996_chip_power_off_allowed(struct mt7996_dev *dev)
++{
++	struct mt7996_phy *phy;
++
++	if (dev->recovery.restart || dev->recovery.hw_full_reset ||
++	    test_bit(MT76_MCU_RESET, &dev->mphy.state) ||
++	    test_bit(MT76_STATE_WED_RESET, &dev->mphy.state))
++		return false;
++
++	mt7996_for_each_phy(dev, phy) {
++		if (test_bit(MT76_STATE_RUNNING, &phy->mt76->state))
++			return false;
++	}
++
++	return true;
++}
++
++static int
++mt7996_chip_power_off(struct mt7996_dev *dev)
++{
++	struct mt76_dev *mdev = &dev->mt76;
++	int ret;
++
++	lockdep_assert_held(&mdev->mutex);
++
++	if (!mt7996_chip_power_off_allowed(dev))
++		return -EBUSY;
++
++	WRITE_ONCE(dev->power.owner, current);
++	set_bit(MT76_STATE_POWER_OFF, &dev->mphy.state);
++
++	/* an ethernet reset that set its bit before the fence closed has
++	 * sent its SER trigger, or sends it before the fence is visible
++	 */
++	smp_mb__after_atomic();
++	if (test_bit(MT76_STATE_WED_RESET, &dev->mphy.state)) {
++		clear_bit(MT76_STATE_POWER_OFF, &dev->mphy.state);
++		WRITE_ONCE(dev->power.owner, NULL);
++		return -EBUSY;
++	}
++
++	/* a register access that passed the fence completes before the
++	 * firmware own hand-over
++	 */
++	synchronize_rcu();
++
++	ret = __mt7996_npu_hw_stop(dev);
++	if (ret)
++		goto fail;
++
++	/* interrupts stay enabled, so that a command of another task that
++	 * holds the MCU mutex completes before the power off command
++	 */
++	ret = mt7996_mcu_power_off(dev);
++	if (ret)
++		goto fail;
++
++	mt7996_chip_stop(dev);
++	WRITE_ONCE(dev->power.owner, NULL);
++
++	dev_info(mdev->dev, "chip powered off\n");
++
++	return 0;
++
++fail:
++	clear_bit(MT76_STATE_POWER_OFF, &dev->mphy.state);
++	WRITE_ONCE(dev->power.owner, NULL);
++	dev_err(mdev->dev, "chip power off failed: %d\n", ret);
++
++	/* the firmware and the NPU state are unknown after a failed command */
++	dev->recovery.restart = true;
++	queue_work(mdev->wq, &dev->reset_work);
++
++	return ret;
++}
++
++static int
++__mt7996_chip_power_on(struct mt7996_dev *dev)
++{
++	struct mt76_dev *mdev = &dev->mt76;
++	int i, ret;
++
++	/* under firmware own the chip answers no register read, and the
++	 * restart starts with reads
++	 */
++	ret = mt7996_mcu_driver_own(dev);
++	if (ret)
++		return ret;
++
++	dev->recovery.hw_full_reset = true;
++	mt76_set_irq_mask(mdev, 0, ~0, dev->power.irqmask);
++	WRITE_ONCE(dev->power.quiesced, false);
++
++	for (i = 0; i < 3; i++) {
++		ret = mt7996_mac_restart(dev);
++		if (!ret)
++			break;
++	}
++	dev->recovery.hw_full_reset = false;
++
++	if (ret) {
++		/* the firmware may run after a partial restart, and the removal
++		 * path skips the power off of a chip that is marked off; the
++		 * reset bit of a timed out command blocks the power off command
++		 */
++		clear_bit(MT76_MCU_RESET, &dev->mphy.state);
++		if (mt7996_mcu_power_off(dev))
++			dev_err(mdev->dev, "no firmware power off after the failed power on\n");
++		mt7996_chip_stop(dev);
++		return ret;
++	}
++
++	/* no vif or station exists, and the global wcid keeps index 0,
++	 * because an allocation without the mask reset of the full reset
++	 * would move it
++	 */
++	mt7996_mac_restart_state_reset(dev);
++
++	/* an LED change while the chip is off only stores its state; the
++	 * barrier pairs with the one of the LED callback
++	 */
++	clear_bit(MT76_STATE_POWER_OFF, &dev->mphy.state);
++	smp_mb__after_atomic();
++	mt7996_led_apply(&dev->phy);
++
++	return 0;
++}
++
++int mt7996_chip_power_on(struct mt7996_dev *dev)
++{
++	struct mt76_dev *mdev = &dev->mt76;
++	int ret;
++
++	lockdep_assert_held(&mdev->mutex);
++
++	if (!mt7996_chip_is_off(dev))
++		return 0;
++
++	WRITE_ONCE(dev->power.owner, current);
++	ret = __mt7996_chip_power_on(dev);
++	WRITE_ONCE(dev->power.owner, NULL);
++
++	if (ret)
++		dev_err(mdev->dev, "chip power on failed: %d\n", ret);
++	else
++		dev_info(mdev->dev, "chip powered on\n");
++
++	return ret;
++}
++
++static bool
++mt7996_chip_power_off_wanted(struct mt7996_dev *dev)
++{
++	return !dev->power.started && !mt7996_chip_is_off(dev) &&
++	       !test_bit(MT76_REMOVED, &dev->mphy.state) &&
++	       dev->power.retries < MT7996_CHIP_POWER_OFF_RETRY_LIMIT;
++}
++
++static void
++mt7996_chip_power_off_try(struct mt7996_dev *dev)
++{
++	int ret;
++
++	if (!mt7996_chip_power_off_wanted(dev))
++		return;
++
++	ret = mt7996_chip_power_off(dev);
++	if (!ret) {
++		dev->power.retries = 0;
++		return;
++	}
++
++	/* a stale reset bit refuses every try, and a firmware that fails
++	 * the power off would otherwise run a full reset without end
++	 */
++	if (++dev->power.retries == MT7996_CHIP_POWER_OFF_RETRY_LIMIT) {
++		dev_warn(dev->mt76.dev, "chip power off gave up after %u tries\n",
++			 dev->power.retries);
++		return;
++	}
++
++	queue_delayed_work(dev->mt76.wq, &dev->power.work,
++			   MT7996_CHIP_POWER_OFF_DELAY);
++}
++
++void mt7996_chip_power_off_work(struct work_struct *work)
++{
++	struct mt7996_dev *dev = container_of(work, struct mt7996_dev,
++					      power.work.work);
++	struct ieee80211_hw *hw = mt76_hw(dev);
++	struct mt7996_phy *phy;
++	bool wanted;
++
++	/* the cancels take the mutex, and a refused power off would leave
++	 * the cancelled work of a running radio unqueued
++	 */
++	mutex_lock(&dev->mt76.mutex);
++	wanted = mt7996_chip_power_off_wanted(dev);
++	mutex_unlock(&dev->mt76.mutex);
++	if (!wanted)
++		return;
++
++	mt7996_for_each_phy(dev, phy)
++		cancel_delayed_work_sync(&phy->mt76->mac_work);
++	cancel_work_sync(&dev->rc_work);
++	cancel_work_sync(&dev->wed_rro.work);
++
++	mutex_lock(&dev->mt76.mutex);
++
++	mt7996_chip_power_off_try(dev);
++
++	/* a refused power off leaves the phys that run without mac_work */
++	mt7996_for_each_phy(dev, phy) {
++		if (test_bit(MT76_STATE_RUNNING, &phy->mt76->state))
++			ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
++						     MT7996_WATCHDOG_TIME);
++	}
++
++	mutex_unlock(&dev->mt76.mutex);
++}
++
+ /* firmware coredump */
+ void mt7996_mac_dump_work(struct work_struct *work)
+ {
+@@ -2952,7 +3251,7 @@ void mt7996_reset(struct mt7996_dev *dev
+ 		return;
+ 	}
+ 
+-	if (dev->recovery.hw_full_reset)
++	if (dev->recovery.hw_full_reset || mt7996_chip_is_off(dev))
+ 		return;
+ 
+ 	/* wm/wa exception: do full recovery */
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -229,6 +229,15 @@ mt7996_mcu_parse_response(struct mt76_de
+ 		dev_err(mdev->dev, "Message %08x (seq %d) timeout\n",
+ 			cmd, seq);
+ 
++		/* a power transition handles its own failure, and the full
++		 * reset would race with it
++		 */
++		if (mt7996_chip_is_off(dev)) {
++			if (READ_ONCE(dev->power.owner) == current)
++				set_bit(MT76_MCU_RESET, &dev->mphy.state);
++			return -ETIMEDOUT;
++		}
++
+ 		if (!test_and_set_bit(MT76_MCU_RESET, &dev->mphy.state)) {
+ 			dev->recovery.restart = true;
+ 			wake_up(&dev->mt76.mcu.wait);
+@@ -385,6 +394,12 @@ mt7996_mcu_send_message(struct mt76_dev
+ 	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
+ 	enum mt76_mcuq_id qid = MT_MCUQ_WM;
+ 
++	/* only the task that powers the chip off or on talks to it */
++	if (mt7996_chip_is_fenced(dev)) {
++		dev_kfree_skb(skb);
++		return -ENODEV;
++	}
++
+ 	if (cmd == MCU_CMD(FW_SCATTER))
+ 		qid = MT_MCUQ_FWDL;
+ 	else if (test_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state) && mt7996_has_wa(dev))
+@@ -4299,6 +4314,17 @@ int mt7996_mcu_power_off(struct mt7996_d
+ 	return 0;
+ }
+ 
++int mt7996_mcu_driver_own(struct mt7996_dev *dev)
++{
++	int ret;
++
++	ret = mt7996_driver_own(dev, 0);
++	if (ret || !dev->hif2)
++		return ret;
++
++	return mt7996_driver_own(dev, 1);
++}
++
+ void mt7996_mcu_exit(struct mt7996_dev *dev)
+ {
+ 	if (!mt7996_chip_is_off(dev) && mt7996_mcu_power_off(dev))
+--- a/mt7996/mmio.c
++++ b/mt7996/mmio.c
+@@ -405,11 +405,45 @@ void mt7996_memcpy_fromio(struct mt7996_
+ 	spin_unlock_bh(&dev->reg_lock);
+ }
+ 
++static bool mt7996_reg_in_allowed_window(u32 offset)
++{
++	/* the WFDMA and conn_host_csr_top (LPCR, MISC) windows of the
++	 * register map stay accessible after the firmware power off
++	 */
++	if (offset >= 0xd0000 && offset < 0xf0000)
++		return true;
++
++	return (offset & ~0xfff) == MT_PCIE_MAC_BASE ||
++	       (offset & ~0xfff) == MT_PCIE1_MAC_BASE;
++}
++
++bool mt7996_reg_is_accessible(struct mt7996_dev *dev, u32 offset)
++{
++	return !mt7996_chip_is_off(dev) ||
++	       mt7996_reg_in_allowed_window(offset);
++}
++
++static bool mt7996_reg_is_fenced(struct mt7996_dev *dev, u32 offset)
++{
++	if (!mt7996_chip_is_fenced(dev) ||
++	    mt7996_reg_in_allowed_window(offset))
++		return false;
++
++	WARN_ONCE(1, "mt7996: register 0x%08x accessed while the chip is off\n",
++		  offset);
++
++	return true;
++}
++
+ static u32 mt7996_rr(struct mt76_dev *mdev, u32 offset)
+ {
+ 	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
+ 	u32 addr = __mt7996_reg_addr(dev, offset), val;
+ 
++	guard(rcu)();
++	if (mt7996_reg_is_fenced(dev, offset))
++		return 0;
++
+ 	if (addr != INVALID_REG_ADDR)
+ 		return dev->bus_ops->rr(mdev, addr);
+ 
+@@ -425,6 +459,10 @@ static void mt7996_wr(struct mt76_dev *m
+ 	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
+ 	u32 addr = __mt7996_reg_addr(dev, offset);
+ 
++	guard(rcu)();
++	if (mt7996_reg_is_fenced(dev, offset))
++		return;
++
+ 	if (addr != INVALID_REG_ADDR) {
+ 		dev->bus_ops->wr(mdev, addr, val);
+ 		return;
+@@ -440,6 +478,10 @@ static u32 mt7996_rmw(struct mt76_dev *m
+ 	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
+ 	u32 addr = __mt7996_reg_addr(dev, offset);
+ 
++	guard(rcu)();
++	if (mt7996_reg_is_fenced(dev, offset))
++		return 0;
++
+ 	if (addr != INVALID_REG_ADDR)
+ 		return dev->bus_ops->rmw(mdev, addr, mask, val);
+ 
+@@ -729,8 +771,13 @@ static void mt7996_rx_poll_complete(stru
+ 				    enum mt76_rxq_id q)
+ {
+ 	if (q == MT_RXQ_NPU0 || q == MT_RXQ_NPU1) {
++		struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev,
++						      mt76);
+ 		struct airoha_npu *npu;
+ 
++		if (READ_ONCE(dev->power.quiesced))
++			return;
++
+ 		npu = rcu_dereference(mdev->mmio.npu);
+ 		if (npu)
+ 			airoha_npu_wlan_enable_irq(npu, q - MT_RXQ_NPU0);
+@@ -750,6 +797,9 @@ static void mt7996_irq_tasklet(struct ta
+ 	struct mtk_wed_device *wed_hif2 = &dev->mt76.mmio.wed_hif2;
+ 	u32 i, intr, mask, intr1 = 0;
+ 
++	if (READ_ONCE(dev->power.quiesced))
++		return;
++
+ 	if (dev->hif2 && mtk_wed_device_active(wed_hif2)) {
+ 		mtk_wed_device_irq_set_mask(wed_hif2, 0);
+ 		intr1 = mtk_wed_device_irq_get(wed_hif2,
+@@ -829,6 +879,9 @@ irqreturn_t mt7996_irq_handler(int irq,
+ 	if (!test_bit(MT76_STATE_INITIALIZED, &dev->mphy.state))
+ 		return IRQ_NONE;
+ 
++	if (READ_ONCE(dev->power.quiesced))
++		return IRQ_HANDLED;
++
+ 	tasklet_schedule(&dev->mt76.irq_tasklet);
+ 
+ 	return IRQ_HANDLED;
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -21,6 +21,9 @@
+ 
+ #define MT7996_WATCHDOG_TIME		(HZ / 10)
+ #define MT7996_RESET_TIMEOUT		(30 * HZ)
++#define MT7996_CHIP_POWER_OFF_DELAY	(30 * HZ)
++#define MT7996_CHIP_POWER_OFF_BOOT_DELAY	(120 * HZ)
++#define MT7996_CHIP_POWER_OFF_RETRY_LIMIT	6
+ 
+ #define MT7996_TX_RING_SIZE		2048
+ #define MT7996_TX_MCU_RING_SIZE		256
+@@ -468,6 +471,12 @@ struct mt7996_phy {
+ 	u16 orig_chainmask;
+ 	u16 orig_antenna_mask;
+ 
++	struct {
++		u8 delay_on;
++		u8 delay_off;
++		bool valid;
++	} led;
++
+ 	bool has_aux_rx;
+ 	bool counter_reset;
+ 	bool rdd_tx_paused;
+@@ -519,6 +528,15 @@ struct mt7996_dev {
+ 		bool restart:1;
+ 	} recovery;
+ 
++	struct {
++		struct delayed_work work;
++		struct task_struct *owner;
++		bool started;
++		bool quiesced;
++		u32 irqmask;
++		unsigned int retries;
++	} power;
++
+ 	/* protects coredump data */
+ 	struct mutex dump_mutex;
+ #ifdef CONFIG_DEV_COREDUMP
+@@ -816,6 +834,7 @@ void mt7996_dma_start(struct mt7996_dev
+ int mt7996_init_tx_queues(struct mt7996_phy *phy, int idx,
+ 			  int n_desc, int ring_base, struct mtk_wed_device *wed);
+ void mt7996_init_txpower(struct mt7996_phy *phy);
++void mt7996_led_apply(struct mt7996_phy *phy);
+ int mt7996_txbf_init(struct mt7996_dev *dev);
+ void mt7996_reset(struct mt7996_dev *dev);
+ int mt7996_run(struct mt7996_phy *phy);
+@@ -931,6 +950,7 @@ int mt7996_mcu_fw_dbg_ctrl(struct mt7996
+ int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
+ void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
+ int mt7996_mcu_power_off(struct mt7996_dev *dev);
++int mt7996_mcu_driver_own(struct mt7996_dev *dev);
+ void mt7996_mcu_exit(struct mt7996_dev *dev);
+ int mt7996_mcu_get_all_sta_info(struct mt7996_phy *phy, u16 tag);
+ int mt7996_mcu_wed_rro_reset_sessions(struct mt7996_dev *dev, u16 id);
+@@ -959,6 +979,12 @@ static inline bool mt7996_chip_is_off(st
+ 	return test_bit(MT76_STATE_POWER_OFF, &dev->mphy.state);
+ }
+ 
++static inline bool mt7996_chip_is_fenced(struct mt7996_dev *dev)
++{
++	return mt7996_chip_is_off(dev) &&
++	       READ_ONCE(dev->power.owner) != current;
++}
++
+ static inline u8 mt7996_max_interface_num(struct mt7996_dev *dev)
+ {
+ 	return min(MT7996_MAX_INTERFACES * (1 + mt7996_band_valid(dev, MT_BAND1) +
+@@ -981,6 +1007,12 @@ static inline void mt7996_irq_enable(str
+ 	else
+ 		mt76_set_irq_mask(&dev->mt76, 0, 0, mask);
+ 
++	/* the software mask stays complete for the power on, but only the
++	 * tasklet writes it to the hardware
++	 */
++	if (READ_ONCE(dev->power.quiesced))
++		return;
++
+ 	tasklet_schedule(&dev->mt76.irq_tasklet);
+ }
+ 
+@@ -994,6 +1026,7 @@ static inline void mt7996_irq_disable(st
+ 
+ void mt7996_memcpy_fromio(struct mt7996_dev *dev, void *buf, u32 offset,
+ 			  size_t len);
++bool mt7996_reg_is_accessible(struct mt7996_dev *dev, u32 offset);
+ 
+ static inline u16 mt7996_rx_chainmask(struct mt7996_phy *phy)
+ {
+@@ -1033,6 +1066,8 @@ void mt7996_mac_update_beacons(struct mt
+ void mt7996_mac_set_coverage_class(struct mt7996_phy *phy);
+ void mt7996_mac_work(struct work_struct *work);
+ void mt7996_mac_reset_work(struct work_struct *work);
++int mt7996_chip_power_on(struct mt7996_dev *dev);
++void mt7996_chip_power_off_work(struct work_struct *work);
+ void mt7996_mac_dump_work(struct work_struct *work);
+ void mt7996_mac_sta_rc_work(struct work_struct *work);
+ void mt7996_mac_update_stats(struct mt7996_phy *phy);
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -26,7 +26,8 @@ int mt7996_run(struct mt7996_phy *phy)
+ 	if (ret)
+ 		goto disable_radio;
+ 
+-	ret = mt7996_mcu_set_thermal_throttling(phy, MT7996_THERMAL_THROTTLE_MAX);
++	ret = mt7996_mcu_set_thermal_throttling(phy, MT7996_THERMAL_THROTTLE_MAX -
++						     phy->cdev_state);
+ 	if (ret)
+ 		goto disable_radio;
+ 
+@@ -63,18 +64,28 @@ static int mt7996_start(struct ieee80211
+ 	int ret;
+ 
+ 	flush_work(&dev->init_work);
++	cancel_delayed_work_sync(&dev->power.work);
+ 
+ 	clear_bit(MT76_RESTART, &dev->mphy.state);
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+-	ret = mt7996_mcu_set_hdr_trans(dev, true);
++	ret = mt7996_chip_power_on(dev);
++	if (!ret)
++		ret = mt7996_mcu_set_hdr_trans(dev, true);
+ 	if (!ret && !is_mt7996(&dev->mt76)) {
+ 		u8 queue = mt76_connac_lmac_mapping(IEEE80211_AC_VI);
+ 
+ 		ret = mt7996_mcu_cp_support(dev, queue);
+ 	}
++	if (!ret)
++		dev->power.started = true;
+ 	mutex_unlock(&dev->mt76.mutex);
+ 
++	/* mac80211 calls no stop after a failed start */
++	if (ret)
++		queue_delayed_work(dev->mt76.wq, &dev->power.work,
++				   MT7996_CHIP_POWER_OFF_DELAY);
++
+ 	return ret;
+ }
+ 
+@@ -106,6 +117,15 @@ static void mt7996_stop(struct ieee80211
+ 
+ 	mt7996_for_each_phy(dev, phy)
+ 		cancel_delayed_work_sync(&phy->mt76->mac_work);
++
++	mutex_lock(&dev->mt76.mutex);
++	dev->power.started = false;
++	dev->power.retries = 0;
++	mutex_unlock(&dev->mt76.mutex);
++
++	if (!test_bit(MT76_REMOVED, &dev->mphy.state))
++		queue_delayed_work(dev->mt76.wq, &dev->power.work,
++				   MT7996_CHIP_POWER_OFF_DELAY);
+ }
+ 
+ static inline int get_free_idx(u64 mask, u8 start, u8 end)
+@@ -2206,6 +2226,10 @@ static int mt7996_set_rts_threshold(stru
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+ 
++	/* mt7996_run() sets the default threshold after the power on */
++	if (mt7996_chip_is_off(dev))
++		goto out;
++
+ 	for (i = 0; i < hw->wiphy->n_radio; i++) {
+ 		struct mt7996_phy *phy = dev->radio_phy[i];
+ 
+@@ -2214,6 +2238,7 @@ static int mt7996_set_rts_threshold(stru
+ 			break;
+ 	}
+ 
++out:
+ 	mutex_unlock(&dev->mt76.mutex);
+ 
+ 	return ret;
+@@ -3111,6 +3136,19 @@ mt7996_set_radar_background(struct ieee8
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+ 
++	/* a chip that is off runs no detector, so a stop clears only the
++	 * driver state
++	 */
++	if (mt7996_chip_is_off(dev)) {
++		if (chandef) {
++			ret = -ENODEV;
++			goto out;
++		}
++
++		ret = 0;
++		goto update_phy;
++	}
++
+ 	if (dev->mt76.region == NL80211_DFS_UNSET)
+ 		goto out;
+ 

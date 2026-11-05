@@ -1,0 +1,97 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 02 Nov 2026 19:05:00 -0800
+Subject: [PATCH] wifi: mt76: mt7996: adapt vendor features to chip power-off
+
+Vendor extensions reach the chip outside mac80211 interface
+callbacks, so chip power-off must handle them too.
+
+Full reset and power-on share a hardware restart. That restart
+uploads group calibration data again before EEPROM data, as probe
+does, because firmware reload drops it. Power-off cancels the SCS
+poll with other periodic work. Debug files that dump many registers
+return -ENODEV while the chip is off, instead of a dump of zeros from
+blocked register reads.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mac.c         |    8 ++++++++
+ mt7996/mtk_debugfs.c |   16 ++++++++++++++++
+ 2 files changed, 24 insertions(+)
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2379,6 +2379,13 @@ __mt7996_mac_restart_hw(struct mt7996_de
+ 				     MT_INT_TX_RX_DONE_EXT);
+ 	}
+ 
++	/* the firmware reload drops the group calibration data */
++	if (dev->eeprom_mode == EEPROM_MODE_FLASH) {
++		ret = mt7996_mcu_apply_group_cal(dev);
++		if (ret)
++			return ret;
++	}
++
+ 	/* set the necessary init items */
+ 	ret = mt7996_mcu_set_eeprom(dev);
+ 	if (ret)
+@@ -3068,6 +3075,7 @@ void mt7996_chip_power_off_work(struct w
+ 		cancel_delayed_work_sync(&phy->mt76->mac_work);
+ 	cancel_work_sync(&dev->rc_work);
+ 	cancel_work_sync(&dev->wed_rro.work);
++	cancel_delayed_work_sync(&dev->scs_work);
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+ 
+--- a/mt7996/mtk_debugfs.c
++++ b/mt7996/mtk_debugfs.c
+@@ -22,6 +22,9 @@ mt7996_agginfo_read_per_band(struct seq_
+ 	u32 value, idx, row_idx, col_idx, start_range, agg_rang_sel[16], burst_cnt[16], band_offset = 0;
+ 	u8 partial_str[16] = {}, full_str[64] = {};
+ 
++	if (mt7996_chip_is_off(dev))
++		return -ENODEV;
++
+ 	switch (band_idx) {
+ 	case 0:
+ 		band_offset = 0;
+@@ -232,6 +235,9 @@ static int mt7996_amsdu_result_read(stru
+ 	u32 ple_stat[HW_MSDU_NUM_MAX] = {0}, total_amsdu = 0;
+ 	u8 i;
+ 
++	if (mt7996_chip_is_off(dev))
++		return -ENODEV;
++
+ 	for (i = 0; i < HW_MSDU_NUM_MAX; i++)
+ 		ple_stat[i] = mt76_rr(dev, HW_MSDU_CNT_ADDR + i * 0x04);
+ 
+@@ -621,6 +627,10 @@ mt7996_show_dma_info(struct seq_file *s,
+ static int mt7996_trinfo_read(struct seq_file *s, void *data)
+ {
+ 	struct mt7996_dev *dev = dev_get_drvdata(s->private);
++
++	if (mt7996_chip_is_off(dev))
++		return -ENODEV;
++
+ 	mt7996_show_dma_info(s, dev);
+ 	return 0;
+ }
+@@ -644,6 +654,9 @@ static int mt7996_mibinfo_read_per_band(
+ 	u32 ampdu_cnt[3];
+ 	u64 per;
+ 
++	if (mt7996_chip_is_off(dev))
++		return -ENODEV;
++
+ 	switch (band_idx) {
+ 	case 0:
+ 		band_offset = 0;
+@@ -2252,6 +2265,9 @@ static int mt7996_wtbl_read(struct seq_f
+ 	u8 uwtbl[UWTBL_LEN_IN_DW * 4] = {0};
+ 	int x;
+ 
++	if (mt7996_chip_is_off(dev))
++		return -ENODEV;
++
+ 	mt7996_wtbl_read_raw(dev, dev->wlan_idx, WTBL_TYPE_LMAC, 0,
+ 				 LWTBL_LEN_IN_DW, lwtbl);
+ 	seq_printf(s, "Dump WTBL info of WLAN_IDX:%d\n", dev->wlan_idx);

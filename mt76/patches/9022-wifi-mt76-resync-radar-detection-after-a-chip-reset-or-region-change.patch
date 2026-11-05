@@ -94,7 +94,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (dev->rdd2_phy && dev->rdd2_phy != phy) {
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -506,10 +506,19 @@ mt7996_regd_notifier(struct wiphy *wiphy
+@@ -537,10 +537,19 @@ mt7996_regd_notifier(struct wiphy *wiphy
  	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
  	struct mt7996_dev *dev = mt7996_hw_dev(hw);
  	struct mt7996_phy *phy;
@@ -111,12 +111,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	if (changed && dev->rdd2_phy)
 +		cfg80211_background_cac_abort(wiphy);
 +
+ 	mutex_lock(&dev->mt76.mutex);
  	mt7996_for_each_phy(dev, phy) {
- 		if (dev->mt76.region == NL80211_DFS_UNSET)
- 			mt7996_mcu_rdd_background_enable(phy, NULL);
+ 		mt7996_init_txpower(phy);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2420,6 +2420,18 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2455,6 +2455,18 @@ mt7996_mac_restart_state_reset(struct mt
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  
@@ -124,7 +124,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	 * arms it again, so cfg80211 must stop treating it as monitoring
 +	 */
 +	if (dev->rdd2_phy)
-+		cfg80211_background_cac_abort(hw->wiphy);
++		cfg80211_background_cac_abort(mt76_hw(dev)->wiphy);
 +
 +	/* the reloaded firmware runs no radar detector, and the first
 +	 * channel set after the restart skips a state that looks current
@@ -132,14 +132,14 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	mt7996_for_each_phy(dev, phy)
 +		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
 +
- 	ieee80211_iterate_stations_atomic(hw, mt7996_mac_reset_sta_iter, dev);
- 	mt76_reset_device(&dev->mt76);
- 	ieee80211_iterate_active_interfaces_atomic(hw,
+ 	spin_lock_bh(&dev->wed_rro.lock);
+ 	list_splice_init(&dev->wed_rro.poll_list, &list);
+ 	spin_unlock_bh(&dev->wed_rro.lock);
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -3445,7 +3445,7 @@ mt7996_set_radar_background(struct ieee8
- 
- 	mutex_lock(&dev->mt76.mutex);
+@@ -3483,7 +3483,7 @@ mt7996_set_radar_background(struct ieee8
+ 		goto update_phy;
+ 	}
  
 -	if (dev->mt76.region == NL80211_DFS_UNSET)
 +	if (chandef && dev->mt76.region == NL80211_DFS_UNSET)

@@ -33,7 +33,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	MCU_UNI_CMD_TXPOWER = 0x2b,
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -1822,6 +1822,7 @@ int mt7996_register_device(struct mt7996
+@@ -1866,6 +1866,7 @@ int mt7996_register_device(struct mt7996
  	dev->mt76.phy.priv = &dev->phy;
  	INIT_WORK(&dev->rc_work, mt7996_mac_sta_rc_work);
  	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7996_mac_work);
@@ -43,7 +43,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2348,6 +2348,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2480,6 +2480,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  		set_bit(MT76_RESET, &phy->mt76->state);
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
  	}
@@ -53,7 +53,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -39,6 +39,10 @@ int mt7996_run(struct mt7996_phy *phy)
+@@ -40,6 +40,10 @@ int mt7996_run(struct mt7996_phy *phy)
  	if (ret)
  		goto disable_radio;
  
@@ -64,7 +64,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #ifdef CONFIG_MTK_DEBUG
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);
-@@ -59,6 +63,8 @@ int mt7996_run(struct mt7996_phy *phy)
+@@ -60,6 +64,8 @@ int mt7996_run(struct mt7996_phy *phy)
  	ieee80211_queue_delayed_work(dev->mphy.hw, &phy->mt76->mac_work,
  				     MT7996_WATCHDOG_TIME);
  
@@ -73,7 +73,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	if (!phy->counter_reset) {
  		mt7996_mac_reset_counters(phy);
  		phy->counter_reset = true;
-@@ -103,6 +109,7 @@ static void mt7996_stop_phy(struct mt799
+@@ -114,6 +120,7 @@ static void mt7996_stop_phy(struct mt799
  	dev = phy->dev;
  
  	cancel_delayed_work_sync(&phy->mt76->mac_work);
@@ -81,7 +81,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wiphy_delayed_work_cancel(phy->mt76->hw->wiphy,
  				  &phy->mt76->assoc_chan_work);
  
-@@ -3548,6 +3555,8 @@ mt7996_reconfig_complete(struct ieee8021
+@@ -3586,6 +3593,8 @@ mt7996_reconfig_complete(struct ieee8021
  	mt7996_for_each_phy(dev, phy)
  		ieee80211_queue_delayed_work(hw, &phy->mt76->mac_work,
  					     MT7996_WATCHDOG_TIME);
@@ -92,7 +92,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  static int
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6437,6 +6437,122 @@ int mt7996_mcu_set_sniffer_mode(struct m
+@@ -6481,6 +6481,122 @@ int mt7996_mcu_set_sniffer_mode(struct m
  				 sizeof(req), true);
  }
  
@@ -232,7 +232,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define MT7996_PATCH_AES_KEY		GENMASK(7, 0)
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -397,6 +397,16 @@ struct mt7996_hif {
+@@ -400,6 +400,16 @@ struct mt7996_hif {
  	enum pcie_link_width width;
  };
  
@@ -249,7 +249,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  #define WED_RRO_ADDR_SIGNATURE_MASK	GENMASK(31, 24)
  #define WED_RRO_ADDR_COUNT_MASK		GENMASK(14, 4)
  #define WED_RRO_ADDR_HEAD_HIGH_MASK	GENMASK(3, 0)
-@@ -487,6 +497,8 @@ struct mt7996_phy {
+@@ -496,6 +506,8 @@ struct mt7996_phy {
  
  	bool sku_limit_en;
  	bool sku_path_en;
@@ -258,7 +258,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  };
  
  struct mt7996_dev {
-@@ -522,6 +534,7 @@ struct mt7996_dev {
+@@ -531,6 +543,7 @@ struct mt7996_dev {
  	struct work_struct rc_work;
  	struct work_struct dump_work;
  	struct work_struct reset_work;
@@ -266,7 +266,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -1118,6 +1131,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -1166,6 +1179,8 @@ int mt7996_mtk_init_debugfs(struct mt799
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);

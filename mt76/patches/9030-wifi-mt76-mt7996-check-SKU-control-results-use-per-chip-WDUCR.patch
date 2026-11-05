@@ -23,7 +23,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -55,12 +55,17 @@ int mt7996_run(struct mt7996_phy *phy)
+@@ -56,12 +56,17 @@ int mt7996_run(struct mt7996_phy *phy)
  
  	ret = mt7996_mcu_set_tx_power_ctrl(phy, UNI_TXPOWER_SKU_POWER_LIMIT_CTRL,
  						dev->dbg.sku_disable ? 0 : phy->sku_limit_en);

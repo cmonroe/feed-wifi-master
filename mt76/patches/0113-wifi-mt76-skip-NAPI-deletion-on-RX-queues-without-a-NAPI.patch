@@ -1,0 +1,33 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 02 Nov 2026 16:36:21 -0800
+Subject: [PATCH] wifi: mt76: skip NAPI deletion on RX queues without a NAPI
+
+While WED is active, WED RRO queues have no NAPI: DMA init skips
+them, and mt7996 adds their NAPIs only without WED. DMA cleanup
+deletes the NAPI of every RX queue. Deletion of a NAPI takes the
+netdev lock through its device pointer, and that pointer is NULL for
+a NAPI that the driver never added. A driver unbind or module removal
+on a WED board with hardware RRO therefore dereferences a NULL
+pointer.
+
+DMA cleanup deletes only the NAPIs that a driver added.
+
+Fixes: d0217732f96e ("wifi: mt76: Do not always enable NAPIs for WED RRO queues")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ dma.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/dma.c
++++ b/dma.c
+@@ -1217,7 +1217,9 @@ void mt76_dma_cleanup(struct mt76_dev *d
+ 	mt76_for_each_q_rx(dev, i) {
+ 		struct mt76_queue *q = &dev->q_rx[i];
+ 
+-		netif_napi_del(&dev->napi[i]);
++		/* the WED RRO queues have no NAPI while WED is active */
++		if (dev->napi[i].dev)
++			netif_napi_del(&dev->napi[i]);
+ 		mt76_dma_rx_cleanup(dev, q);
+ 
+ 		page_pool_destroy(q->page_pool);

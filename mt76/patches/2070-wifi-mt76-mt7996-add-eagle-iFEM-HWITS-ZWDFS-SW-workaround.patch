@@ -19,7 +19,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1253,6 +1253,30 @@ out:
+@@ -1273,6 +1273,30 @@ out:
  }
  
  static int
@@ -50,7 +50,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  mt7996_post_channel_switch(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  			   struct ieee80211_bss_conf *link_conf)
  {
-@@ -3236,21 +3260,104 @@ mt7996_twt_teardown_request(struct ieee8
+@@ -3261,21 +3285,104 @@ mt7996_twt_teardown_request(struct ieee8
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -161,7 +161,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  
  	mutex_lock(&dev->mt76.mutex);
  
-@@ -3263,13 +3370,14 @@ mt7996_set_radar_background(struct ieee8
+@@ -3301,13 +3408,14 @@ mt7996_set_radar_background(struct ieee8
  		goto out;
  	}
  
@@ -178,7 +178,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  		ret = mt7996_mcu_rdd_background_enable(phy, NULL);
  		if (ret)
  			goto out;
-@@ -3278,7 +3386,9 @@ mt7996_set_radar_background(struct ieee8
+@@ -3316,7 +3424,9 @@ mt7996_set_radar_background(struct ieee8
  			goto update_phy;
  	}
  
@@ -189,7 +189,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	if (ret)
  		goto out;
  
-@@ -3669,6 +3779,7 @@ const struct ieee80211_ops mt7996_ops =
+@@ -3707,6 +3817,7 @@ const struct ieee80211_ops mt7996_ops =
  	.cancel_remain_on_channel = mt76_cancel_remain_on_channel,
  	.release_buffered_frames = mt76_release_buffered_frames,
  	.get_txpower = mt7996_get_txpower,
@@ -199,7 +199,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	.get_stats = mt7996_get_stats,
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -619,6 +619,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
+@@ -634,6 +634,7 @@ mt7996_mcu_rx_radar_detected(struct mt79
  	}
  
  	if (r->rdd_idx == MT_RDD_IDX_BACKGROUND) {
@@ -209,7 +209,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  						GFP_ATOMIC);
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -631,6 +631,8 @@ struct mt7996_dev {
+@@ -649,6 +649,8 @@ struct mt7996_dev {
  
  	dma_addr_t npu_txd_addr[2 * MT7996_NPU_TXD_SIZE];
  
