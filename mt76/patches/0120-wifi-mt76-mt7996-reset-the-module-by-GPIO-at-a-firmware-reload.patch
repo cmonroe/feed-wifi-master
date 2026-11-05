@@ -1,0 +1,589 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 04 Nov 2026 13:10:32 -0800
+Subject: [PATCH] wifi: mt76: mt7996: reset the module by GPIO at a firmware reload
+
+A full chip reset and a power-on after idle power-off reset only the
+WiFi subsystem before they load firmware again. Some modules then
+answer init commands, but their first channel set times out, and a
+full reset repeats without end.
+
+Each firmware reload first resets the module through the reset GPIO
+of its PCIe controller; without it, a reload keeps the WFSYS reset
+only. The driver looks up that reset at run time, because the module
+must also load on a kernel without it. The driver stores config space
+of both PCI functions at probe, because a function that does not
+answer has no config to save. While a link is down, the driver fences
+register access, keeps TX in reset and refuses MCU commands, and the
+core skips its ring accesses. After the last failed try, the driver
+marks the chip off, so that the next start resets the module and
+starts its radios again. A chip that refuses driver own at power-on
+gets a module reset, because register reads work after that reset.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ dma.c           |   36 ++++++++++-----
+ mcu.c           |    2 
+ mt76.h          |    5 ++
+ mt7996/init.c   |   27 ++++++++---
+ mt7996/mac.c    |   72 +++++++++++++++++++++++++++---
+ mt7996/mmio.c   |   13 +++++
+ mt7996/mt7996.h |    4 +
+ mt7996/pci.c    |  131 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ npu.c           |    3 -
+ 9 files changed, 262 insertions(+), 31 deletions(-)
+
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -343,16 +343,16 @@ static void mt7996_led_set_config(struct
+ 	mphy = container_of(led_cdev, struct mt76_phy, leds.cdev);
+ 	phy = mphy->priv;
+ 
+-	/* the power on applies the stored state; the barrier orders the
+-	 * store before the test, as the power on orders its bit clear
+-	 * before its read of the state
++	/* the power on, or the full reset after a module reset, applies the
++	 * stored state; the barrier orders the store before the tests, as
++	 * each of them orders its state change before its read of the state
+ 	 */
+ 	phy->led.delay_on = delay_on;
+ 	phy->led.delay_off = delay_off;
+ 	phy->led.valid = true;
+ 	smp_mb();
+ 
+-	if (mt7996_chip_is_off(phy->dev))
++	if (mt7996_chip_is_off(phy->dev) || mt76_bus_is_hung(&phy->dev->mt76))
+ 		return;
+ 
+ 	mt7996_led_apply(phy);
+@@ -1352,15 +1352,21 @@ static int mt7996_variant_fem_init(struc
+ 	return 0;
+ }
+ 
++void mt7996_afe_init(struct mt7996_dev *dev)
++{
++	if (!is_mt7992(&dev->mt76))
++		return;
++
++	mt76_rmw(dev, MT_AFE_CTL_BAND_PLL_03(MT_BAND0), MT_AFE_CTL_BAND_PLL_03_MSB_EN, 0);
++	mt76_rmw(dev, MT_AFE_CTL_BAND_PLL_03(MT_BAND1), MT_AFE_CTL_BAND_PLL_03_MSB_EN, 0);
++}
++
+ static int mt7996_init_hardware(struct mt7996_dev *dev)
+ {
+ 	int ret, idx;
+ 
+ 	mt76_wr(dev, MT_INT_SOURCE_CSR, ~0);
+-	if (is_mt7992(&dev->mt76)) {
+-		mt76_rmw(dev, MT_AFE_CTL_BAND_PLL_03(MT_BAND0), MT_AFE_CTL_BAND_PLL_03_MSB_EN, 0);
+-		mt76_rmw(dev, MT_AFE_CTL_BAND_PLL_03(MT_BAND1), MT_AFE_CTL_BAND_PLL_03_MSB_EN, 0);
+-	}
++	mt7996_afe_init(dev);
+ 
+ 	INIT_WORK(&dev->init_work, mt7996_init_work);
+ 	INIT_WORK(&dev->wed_rro.work, mt7996_wed_rro_work);
+@@ -1934,6 +1940,11 @@ void mt7996_unregister_device(struct mt7
+ 	}
+ 	mt7996_mcu_exit(dev);
+ 	mt7996_tx_token_put(dev);
++	/* the cleanup writes ring registers outside the register fence; the
++	 * reset work is cancelled, so no later reset takes the link down
++	 */
++	if (mt76_bus_is_hung(&dev->mt76))
++		mt7996_pci_chip_reset(dev);
+ 	mt7996_dma_cleanup(dev);
+ 	if (mt7996_has_hwrro(dev) &&
+ 	    !mtk_wed_device_active(&dev->mt76.mmio.wed))
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2444,6 +2444,18 @@ __mt7996_mac_restart_hw(struct mt7996_de
+ 	mt7996_tx_token_put(dev);
+ 	idr_init(&dev->mt76.token);
+ 
++	/* the queue flush of the DMA reset writes ring registers outside the
++	 * register fence, so the link must be up again before it runs
++	 */
++	ret = mt7996_pci_chip_reset(dev);
++	if (ret && ret != -EOPNOTSUPP) {
++		/* a poll reads ring registers outside the register fence, and
++		 * the next try disables the NAPIs again
++		 */
++		mt7996_napi_enable(dev, false);
++		return ret;
++	}
++
+ 	mt7996_dma_reset(dev, true);
+ 
+ 	/* each MCU command holds its ring entry until the TX NAPI returns it */
+@@ -2464,6 +2476,8 @@ __mt7996_mac_restart_hw(struct mt7996_de
+ 			mt76_wr(dev, MT_PCIE1_MAC_INT_ENABLE, 0xff);
+ 	}
+ 
++	mt7996_afe_init(dev);
++
+ 	/* load firmware */
+ 	ret = mt7996_mcu_init_firmware(dev);
+ 	if (ret)
+@@ -2539,6 +2553,23 @@ __mt7996_mac_restart_hw(struct mt7996_de
+ 	return 0;
+ }
+ 
++static void mt7996_chip_mark_off(struct mt7996_dev *dev);
++
++/* the TX path kicks rings outside the register fence, so the phys of a
++ * chip without a link stay in reset
++ */
++static void
++mt7996_phy_reset_clear(struct mt7996_dev *dev)
++{
++	struct mt7996_phy *phy;
++
++	if (mt76_bus_is_hung(&dev->mt76))
++		return;
++
++	mt7996_for_each_phy(dev, phy)
++		clear_bit(MT76_RESET, &phy->mt76->state);
++}
++
+ static int
+ mt7996_mac_restart(struct mt7996_dev *dev)
+ {
+@@ -2560,8 +2591,7 @@ mt7996_mac_restart(struct mt7996_dev *de
+ 
+ out:
+ 	/* reset done */
+-	mt7996_for_each_phy(dev, phy)
+-		clear_bit(MT76_RESET, &phy->mt76->state);
++	mt7996_phy_reset_clear(dev);
+ 
+ 	mt76_worker_enable(&dev->mt76.tx_worker);
+ 	return ret;
+@@ -2680,6 +2710,18 @@ mt7996_mac_full_reset(struct mt7996_dev
+ 	dev->mt76.global_wcid.idx = i;
+ 	dev->recovery.hw_full_reset = false;
+ 
++	/* the restart of mac80211 then powers the chip on, and that power-on
++	 * resets the module again; with a link, an LED change during the
++	 * module reset only stored its state, and the barrier pairs with the
++	 * one of the LED callback
++	 */
++	if (mt76_bus_is_hung(&dev->mt76)) {
++		mt7996_chip_mark_off(dev);
++	} else {
++		smp_mb();
++		mt7996_led_apply(&dev->phy);
++	}
++
+ 	mutex_unlock(&dev->mt76.mutex);
+ 
+ 	ieee80211_wake_queues(mt76_hw(dev));
+@@ -2710,8 +2752,7 @@ void mt7996_mac_reset_work(struct work_s
+ 		dev->recovery.restart = false;
+ 		dev->recovery.state = MT_MCU_CMD_NORMAL_STATE;
+ 		clear_bit(MT76_MCU_RESET, &dev->mphy.state);
+-		mt7996_for_each_phy(dev, phy)
+-			clear_bit(MT76_RESET, &phy->mt76->state);
++		mt7996_phy_reset_clear(dev);
+ 	}
+ 	mutex_unlock(&dev->mt76.mutex);
+ 	if (off)
+@@ -2966,6 +3007,16 @@ mt7996_chip_stop(struct mt7996_dev *dev)
+ 	clear_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state);
+ }
+ 
++static void
++mt7996_chip_mark_off(struct mt7996_dev *dev)
++{
++	lockdep_assert_held(&dev->mt76.mutex);
++
++	set_bit(MT76_STATE_POWER_OFF, &dev->mphy.state);
++	mt7996_chip_stop(dev);
++	dev_err(dev->mt76.dev, "chip marked off, the next start resets the module\n");
++}
++
+ static bool
+ mt7996_chip_power_off_allowed(struct mt7996_dev *dev)
+ {
+@@ -3050,16 +3101,20 @@ __mt7996_chip_power_on(struct mt7996_dev
+ 	int i, ret;
+ 
+ 	/* under firmware own the chip answers no register read, and the
+-	 * restart starts with reads
++	 * restart starts with reads; a chip that refuses driver own answers
++	 * reads after a module reset, and the firmware load takes driver own
+ 	 */
+ 	ret = mt7996_mcu_driver_own(dev);
+-	if (ret)
++	if (ret && mt7996_pci_chip_reset(dev))
+ 		return ret;
+ 
+ 	dev->recovery.hw_full_reset = true;
+ 	mt76_set_irq_mask(mdev, 0, ~0, dev->power.irqmask);
+ 	WRITE_ONCE(dev->power.quiesced, false);
+ 
++	/* a chip marked off by a failed full reset keeps its running phys,
++	 * and only the restart starts their radios again
++	 */
+ 	for (i = 0; i < 3; i++) {
+ 		ret = mt7996_mac_restart(dev);
+ 		if (!ret)
+@@ -3070,10 +3125,11 @@ __mt7996_chip_power_on(struct mt7996_dev
+ 	if (ret) {
+ 		/* the firmware may run after a partial restart, and the removal
+ 		 * path skips the power off of a chip that is marked off; the
+-		 * reset bit of a timed out command blocks the power off command
++		 * reset bit of a timed out command blocks the power off command,
++		 * and a hung bus refuses it
+ 		 */
+ 		clear_bit(MT76_MCU_RESET, &dev->mphy.state);
+-		if (mt7996_mcu_power_off(dev))
++		if (!mt76_bus_is_hung(mdev) && mt7996_mcu_power_off(dev))
+ 			dev_err(mdev->dev, "no firmware power off after the failed power on\n");
+ 		mt7996_chip_stop(dev);
+ 		return ret;
+--- a/mt7996/mmio.c
++++ b/mt7996/mmio.c
+@@ -419,12 +419,25 @@ static bool mt7996_reg_in_allowed_window
+ 
+ bool mt7996_reg_is_accessible(struct mt7996_dev *dev, u32 offset)
+ {
++	if (mt76_bus_is_hung(&dev->mt76))
++		return false;
++
+ 	return !mt7996_chip_is_off(dev) ||
+ 	       mt7996_reg_in_allowed_window(offset);
+ }
+ 
+ static bool mt7996_reg_is_fenced(struct mt7996_dev *dev, u32 offset)
+ {
++	/* no owner exception: an interrupt on the owner's CPU runs as the
++	 * owner, and the module reset itself needs no register access
++	 */
++	if (mt76_bus_is_hung(&dev->mt76)) {
++		dev_warn_once(dev->mt76.dev,
++			      "register 0x%08x accessed while the PCIe link is down\n",
++			      offset);
++		return true;
++	}
++
+ 	if (!mt7996_chip_is_fenced(dev) ||
+ 	    mt7996_reg_in_allowed_window(offset))
+ 		return false;
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -495,6 +495,8 @@ struct mt7996_dev {
+ 	struct mac_address radio_addrs[MT7996_MAX_RADIOS];
+ 
+ 	struct mt7996_hif *hif2;
++	struct pci_saved_state *pci_state[2];
++	bool module_reset_absent;
+ 	struct mt7996_reg_desc reg;
+ 	u8 q_id[MT7996_MAX_QUEUE];
+ 	u32 q_int_mask[MT7996_MAX_QUEUE];
+@@ -810,6 +812,8 @@ struct mt7996_dev *mt7996_mmio_probe(str
+ void mt7996_rro_tables_init(struct mt7996_dev *dev);
+ void mt7996_rro_hw_init(struct mt7996_dev *dev);
+ void mt7996_wfsys_reset(struct mt7996_dev *dev);
++void mt7996_afe_init(struct mt7996_dev *dev);
++int mt7996_pci_chip_reset(struct mt7996_dev *dev);
+ irqreturn_t mt7996_irq_handler(int irq, void *dev_instance);
+ u64 __mt7996_get_tsf(struct ieee80211_hw *hw, struct mt7996_vif_link *link);
+ int mt7996_register_device(struct mt7996_dev *dev);
+--- a/mt7996/pci.c
++++ b/mt7996/pci.c
+@@ -102,6 +102,129 @@ static int mt7996_pci_hif2_probe(struct
+ 	return 0;
+ }
+ 
++/* the cascade kernel defines this export; a lookup at run time lets the
++ * module load on a kernel without it
++ */
++int mtk_pcie_wifi_module_reset(struct pci_dev **pdevs, unsigned int count);
++
++static unsigned int mt7996_pci_devs_get(struct mt7996_dev *dev,
++					struct pci_dev **pdevs)
++{
++	unsigned int count = 0;
++
++	pdevs[count++] = to_pci_dev(dev->mt76.dev);
++	if (dev->hif2)
++		pdevs[count++] = to_pci_dev(dev->hif2->dev);
++
++	return count;
++}
++
++static void mt7996_pci_state_release(void *state)
++{
++	kfree(state);
++}
++
++/* a module reset clears the config space of each function, and a function
++ * that does not answer cannot give its config later
++ */
++static int mt7996_pci_state_store(struct mt7996_dev *dev)
++{
++	struct pci_dev *pdevs[ARRAY_SIZE(dev->pci_state)];
++	unsigned int i, count;
++
++	count = mt7996_pci_devs_get(dev, pdevs);
++	for (i = 0; i < count; i++) {
++		struct pci_saved_state *state;
++		int ret;
++
++		if (pci_save_state(pdevs[i]))
++			return -ENOMEM;
++
++		state = pci_store_saved_state(pdevs[i]);
++		if (!state)
++			return -ENOMEM;
++
++		ret = devm_add_action_or_reset(dev->mt76.dev,
++					       mt7996_pci_state_release, state);
++		if (ret)
++			return ret;
++
++		dev->pci_state[i] = state;
++	}
++
++	return 0;
++}
++
++static int mt7996_pci_chip_reset_absent(struct mt7996_dev *dev, int ret)
++{
++	dev_info(dev->mt76.dev, "no WiFi module reset (%d), WFSYS reset only\n",
++		 ret);
++	dev->module_reset_absent = true;
++
++	return -EOPNOTSUPP;
++}
++
++int mt7996_pci_chip_reset(struct mt7996_dev *dev)
++{
++	int (*module_reset)(struct pci_dev **pdevs, unsigned int count);
++	bool hung = atomic_read(&dev->mt76.bus_hung);
++	struct pci_dev *pdevs[ARRAY_SIZE(dev->pci_state)];
++	unsigned int i, count;
++	int ret = 0;
++
++	if (dev->module_reset_absent || !dev_is_pci(dev->mt76.dev))
++		return -EOPNOTSUPP;
++
++	module_reset = symbol_get(mtk_pcie_wifi_module_reset);
++	if (!module_reset)
++		return mt7996_pci_chip_reset_absent(dev, -ENOENT);
++
++	count = mt7996_pci_devs_get(dev, pdevs);
++	for (i = 0; i < count && !ret; i++)
++		ret = pci_load_saved_state(pdevs[i], dev->pci_state[i]);
++	if (ret) {
++		symbol_put(mtk_pcie_wifi_module_reset);
++		return mt7996_pci_chip_reset_absent(dev, ret);
++	}
++
++	/* the link goes down, and the core refuses MCU commands while the
++	 * bus is hung
++	 */
++	atomic_set(&dev->mt76.bus_hung, true);
++	synchronize_rcu();
++
++	ret = module_reset(pdevs, count);
++	symbol_put(mtk_pcie_wifi_module_reset);
++
++	switch (ret) {
++	case 0:
++		break;
++	case -ENODEV:
++	case -EOPNOTSUPP:
++	case -EINVAL:
++		/* the export returns these before it touches the hardware */
++		atomic_set(&dev->mt76.bus_hung, false);
++		return mt7996_pci_chip_reset_absent(dev, ret);
++	case -EBUSY:
++		/* another config access lock holds the root port, and the link
++		 * keeps its state
++		 */
++		atomic_set(&dev->mt76.bus_hung, hung);
++		dev_warn(dev->mt76.dev, "WiFi module reset busy\n");
++		return ret;
++	default:
++		/* the link may stay down, so no access may reach the chip
++		 * until a later reset succeeds
++		 */
++		dev_err(dev->mt76.dev, "WiFi module reset failed: %d\n", ret);
++		return ret;
++	}
++
++	atomic_set(&dev->mt76.bus_hung, false);
++
++	return 0;
++}
++
+ static int mt7996_pci_probe(struct pci_dev *pdev,
+ 			    const struct pci_device_id *id)
+ {
+@@ -198,6 +321,10 @@ static int mt7996_pci_probe(struct pci_d
+ 		mt76_wr(dev, MT_PCIE1_MAC_INT_ENABLE, 0xff);
+ 	}
+ 
++	ret = mt7996_pci_state_store(dev);
++	if (ret)
++		goto free_hif2_irq;
++
+ 	ret = mt7996_register_device(dev);
+ 	if (ret)
+ 		goto free_hif2_irq;
+@@ -238,13 +365,15 @@ static void mt7996_hif_remove(struct pci
+ 
+ static void mt7996_pci_remove(struct pci_dev *pdev)
+ {
++	struct mt7996_hif *hif2;
+ 	struct mt76_dev *mdev;
+ 	struct mt7996_dev *dev;
+ 
+ 	mdev = pci_get_drvdata(pdev);
+ 	dev = container_of(mdev, struct mt7996_dev, mt76);
+-	mt7996_put_hif2(dev->hif2);
++	hif2 = dev->hif2;
+ 	mt7996_unregister_device(dev);
++	mt7996_put_hif2(hif2);
+ }
+ 
+ struct pci_driver mt7996_hif_driver = {
+--- a/dma.c
++++ b/dma.c
+@@ -191,9 +191,15 @@ mt76_dma_queue_magic_cnt_init(struct mt7
+  * corrupting q->head/q->tail.
+  */
+ static int
+-mt76_dma_read_dma_idx(struct mt76_queue *q, int fallback)
++mt76_dma_read_dma_idx(struct mt76_dev *dev, struct mt76_queue *q,
++		      int fallback)
+ {
+-	u32 idx = Q_READ(q, dma_idx);
++	u32 idx;
++
++	if (mt76_bus_is_hung(dev))
++		return fallback;
++
++	idx = Q_READ(q, dma_idx);
+ 
+ 	return idx < q->ndesc ? idx : fallback;
+ }
+@@ -201,6 +207,12 @@ mt76_dma_read_dma_idx(struct mt76_queue
+ static void
+ mt76_dma_sync_idx(struct mt76_dev *dev, struct mt76_queue *q)
+ {
++	if (mt76_bus_is_hung(dev)) {
++		q->head = 0;
++		q->tail = 0;
++		return;
++	}
++
+ 	if ((q->flags & MT_QFLAG_WED_RRO_EN) &&
+ 	    (!is_mt7992(dev) || !mt76_npu_device_active(dev)))
+ 		Q_WRITE(q, ring_size, MT_DMA_RRO_EN | q->ndesc);
+@@ -214,7 +226,7 @@ mt76_dma_sync_idx(struct mt76_dev *dev,
+ 
+ 	Q_WRITE(q, desc_base, q->desc_dma);
+ 
+-	q->head = mt76_dma_read_dma_idx(q, 0);
++	q->head = mt76_dma_read_dma_idx(dev, q, 0);
+ 	q->tail = q->head;
+ }
+ 
+@@ -234,10 +246,10 @@ void mt76_dma_queue_reset(struct mt76_de
+ 	}
+ 
+ 	mt76_dma_queue_magic_cnt_init(dev, q);
+-	if (reset_idx) {
+-		if (mt76_queue_is_emi(q))
+-			*q->emi_cpu_idx = 0;
+-		else
++	if (reset_idx && mt76_queue_is_emi(q))
++		*q->emi_cpu_idx = 0;
++	if (reset_idx && !mt76_bus_is_hung(dev)) {
++		if (!mt76_queue_is_emi(q))
+ 			Q_WRITE(q, cpu_idx, 0);
+ 		Q_WRITE(q, dma_idx, 0);
+ 	}
+@@ -415,7 +427,7 @@ mt76_dma_kick_queue(struct mt76_dev *dev
+ 	wmb();
+ 	if (mt76_queue_is_emi(q))
+ 		*q->emi_cpu_idx = cpu_to_le16(q->head);
+-	else
++	else if (!mt76_bus_is_hung(dev))
+ 		Q_WRITE(q, cpu_idx, q->head);
+ }
+ 
+@@ -432,7 +444,7 @@ mt76_dma_tx_cleanup(struct mt76_dev *dev
+ 	if (flush)
+ 		last = -1;
+ 	else
+-		last = mt76_dma_read_dma_idx(q, -1);
++		last = mt76_dma_read_dma_idx(dev, q, -1);
+ 
+ 	while (q->queued > 0 && q->tail != last) {
+ 		mt76_dma_tx_cleanup_idx(dev, q, q->tail, &entry);
+@@ -445,7 +457,7 @@ mt76_dma_tx_cleanup(struct mt76_dev *dev
+ 		}
+ 
+ 		if (!flush && q->tail == last)
+-			last = mt76_dma_read_dma_idx(q, -1);
++			last = mt76_dma_read_dma_idx(dev, q, -1);
+ 	}
+ 	spin_unlock_bh(&q->cleanup_lock);
+ 
+@@ -1011,7 +1023,7 @@ mt76_dma_rx_process(struct mt76_dev *dev
+ 	if ((q->flags & MT_QFLAG_WED_RRO_EN) ||
+ 	    (IS_ENABLED(CONFIG_NET_MEDIATEK_SOC_WED) &&
+ 	     mt76_queue_is_wed_tx_free(q))) {
+-		dma_idx = mt76_dma_read_dma_idx(q, q->tail);
++		dma_idx = mt76_dma_read_dma_idx(dev, q, q->tail);
+ 		check_ddone = true;
+ 	}
+ 
+@@ -1021,7 +1033,7 @@ mt76_dma_rx_process(struct mt76_dev *dev
+ 
+ 		if (check_ddone) {
+ 			if (q->tail == dma_idx)
+-				dma_idx = mt76_dma_read_dma_idx(q, q->tail);
++				dma_idx = mt76_dma_read_dma_idx(dev, q, q->tail);
+ 
+ 			if (q->tail == dma_idx)
+ 				break;
+--- a/mcu.c
++++ b/mcu.c
+@@ -83,7 +83,7 @@ int mt76_mcu_skb_send_and_get_msg(struct
+ 
+ 	mutex_lock(&dev->mcu.mutex);
+ 
+-	if ((mt76_is_mmio(dev) && atomic_read(&dev->bus_hung)) ||
++	if (mt76_bus_is_hung(dev) ||
+ 	    (mt76_is_sdio(dev) && test_bit(MT76_RESET, &dev->phy.state) &&
+ 	    atomic_read(&dev->bus_hung))) {
+ 		orig_skb = skb;
+--- a/mt76.h
++++ b/mt76.h
+@@ -1970,6 +1970,11 @@ int mt76s_wr_rp(struct mt76_dev *dev, u3
+ int mt76s_rd_rp(struct mt76_dev *dev, u32 base,
+ 		struct mt76_reg_pair *data, int len);
+ 
++static inline bool mt76_bus_is_hung(struct mt76_dev *dev)
++{
++	return mt76_is_mmio(dev) && atomic_read(&dev->bus_hung);
++}
++
+ struct sk_buff *
+ __mt76_mcu_msg_alloc(struct mt76_dev *dev, const void *data,
+ 		     int len, int data_len, gfp_t gfp);
+--- a/npu.c
++++ b/npu.c
+@@ -122,7 +122,8 @@ static struct sk_buff *mt76_npu_dequeue(
+ 	}
+ 	q->tail = index;
+ 	q->queued -= i;
+-	Q_WRITE(q, dma_idx, q->tail);
++	if (!mt76_bus_is_hung(dev))
++		Q_WRITE(q, dma_idx, q->tail);
+ 
+ 	return skb;
+ }

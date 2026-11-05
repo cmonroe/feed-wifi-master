@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/dma.c
 +++ b/dma.c
-@@ -855,6 +855,18 @@ mt76_dma_alloc_queue(struct mt76_dev *de
+@@ -867,6 +867,18 @@ mt76_dma_alloc_queue(struct mt76_dev *de
  	if (!q->desc)
  		return -ENOMEM;
  

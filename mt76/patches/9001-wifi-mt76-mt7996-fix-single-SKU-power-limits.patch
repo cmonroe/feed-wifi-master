@@ -383,7 +383,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	struct mt76_mib_stats mib;
  	struct mt76_channel_state state_ts;
-@@ -1015,6 +1016,7 @@ int mt7996_mcu_get_temperature(struct mt
+@@ -1019,6 +1020,7 @@ int mt7996_mcu_get_temperature(struct mt
  int mt7996_mcu_set_thermal_throttling(struct mt7996_phy *phy, u8 state);
  int mt7996_mcu_set_thermal_protect(struct mt7996_phy *phy, bool enable);
  int mt7996_mcu_set_thermal_info_query(struct mt7996_phy *phy);

@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2468,6 +2468,8 @@ mt7996_mac_restart_state_reset(struct mt
+@@ -2498,6 +2498,8 @@ mt7996_mac_restart_state_reset(struct mt
  		phy->omac_mask = 0;
  		phy->rxfilter |= MT_WF_RFCR_DROP_OTHER_UC;
  		phy->csa_quiet_links = 0;

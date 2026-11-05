@@ -155,7 +155,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	tx_info->skb = NULL;
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -3712,11 +3712,9 @@ mt7996_net_fill_forward_path(struct ieee
+@@ -3730,11 +3730,9 @@ mt7996_net_fill_forward_path(struct ieee
  		path->mtk_wdma.wdma_idx = wed->wdma_idx;
  	else
  #endif
@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	path->mtk_wdma.wcid = msta_link->wcid.idx;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -792,6 +792,16 @@ mt7996_band_valid(struct mt7996_dev *dev
+@@ -801,6 +801,16 @@ mt7996_band_valid(struct mt7996_dev *dev
  	return band <= MT_BAND2;
  }
  
@@ -191,7 +191,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/npu.c
 +++ b/npu.c
-@@ -144,17 +144,30 @@ void mt76_npu_check_ppe(struct mt76_dev
+@@ -145,17 +145,30 @@ void mt76_npu_check_ppe(struct mt76_dev
  
  	hash = FIELD_GET(NPU_RX_DMA_FOE_ID_MASK, info);
  	skb_set_hash(skb, hash, PKT_HASH_TYPE_L4);

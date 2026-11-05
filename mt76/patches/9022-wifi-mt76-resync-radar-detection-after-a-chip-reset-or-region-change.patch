@@ -116,7 +116,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		mt7996_init_txpower(phy);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2461,6 +2461,18 @@ mt7996_mac_restart_state_reset(struct mt
+@@ -2491,6 +2491,18 @@ mt7996_mac_restart_state_reset(struct mt
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
  

@@ -150,7 +150,7 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  	};
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -510,8 +510,6 @@ struct mt7996_dev {
+@@ -512,8 +512,6 @@ struct mt7996_dev {
  	struct cfg80211_chan_def rdd2_chandef;
  	struct mt7996_phy *rdd2_phy;
  
