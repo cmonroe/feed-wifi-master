@@ -2,31 +2,54 @@ From: Chad Monroe <chad@monroe.io>
 Date: Mon, 28 Sep 2026 13:50:00 -0700
 Subject: [PATCH] wifi: mt76: mt7996: trigger L1 SER on stuck TX tokens
 
-Stuck TX tokens on mt7996 need an L1 SER from the driver, and the
-firmware appeared to ignore the trigger unless a SER enable word was
-written first.
+Stuck TX tokens on mt7996 need an L1 SER from the driver. Firmware
+appears to ignore the trigger unless the driver writes a SER enable
+word first.
 
-The hook sends the request from the shared token check. It writes the
-SER enable word before the trigger on MT7996 and MT7992; the offsets
-and the value come from the field workaround, and MT7990 has no known
-offset, so the driver warns once and sends the trigger anyway. The
-request carries only the trigger, because a SER mask command replaces
-the whole recovery mask of the firmware. The MAC work runs the check
-on the token cadence of the core, so it runs once per device and not
-once per band.
+The hook sends the request from the shared token check, which runs
+once per device and not once per band. It writes a SER enable word
+before each trigger on MT7996 and MT7992, with offsets and a value
+from a field workaround. MT7990 has no known offset, so the driver
+warns once and still sends a trigger. A request sends only a trigger,
+because a SER mask command replaces the firmware recovery mask. The
+driver gives the check a hardware power-save bit of each station, so
+that it tells a sleeping station from a leak. The TX path copies
+frame control into its token record for the stale token log.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7996/mac.c  |   29 +++++++++++++++++++++++++++++
- mt7996/regs.h |    8 ++++++++
- 2 files changed, 37 insertions(+)
+ mt7996/mac.c    |   42 ++++++++++++++++++++++++++++++++++++++++++
+ mt7996/mmio.c   |    1 +
+ mt7996/mt7996.h |    1 +
+ mt7996/regs.h   |    9 +++++++++
+ 4 files changed, 53 insertions(+)
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2960,6 +2960,31 @@ void mt7996_mac_update_stats(struct mt79
+@@ -1104,6 +1104,7 @@ int mt7996_tx_prepare_skb(struct mt76_de
+ 	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
+ 	t->skb = tx_info->skb;
+ 	t->wcid = wcid->idx;
++	t->fc = is_8023 ? 0 : hdr->frame_control;
+ 	t->jiffies = jiffies;
+ 
+ 	id = mt76_token_consume(mdev, &t, wcid->phy_idx);
+@@ -2960,6 +2961,43 @@ void mt7996_mac_update_stats(struct mt79
  	}
  }
  
++bool mt7996_wcid_ps_get(struct mt76_dev *mdev, u16 idx)
++{
++	struct mt7996_dev *dev = container_of(mdev, struct mt7996_dev, mt76);
++	u32 addr;
++
++	/* every other WTBL group select runs under the device mutex */
++	lockdep_assert_held(&mdev->mutex);
++	addr = mt7996_mac_wtbl_lmac_addr(dev, idx, 5);
++
++	return !!(mt76_rr(dev, addr) & MT_WTBL_LMAC_DW5_PSM);
++}
++
 +static void mt7996_mac_token_check(struct mt7996_phy *phy)
 +{
 +	struct mt7996_dev *dev = phy->dev;
@@ -55,7 +78,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  void mt7996_mac_sta_rc_work(struct work_struct *work)
  {
  	struct mt7996_dev *dev = container_of(work, struct mt7996_dev, rc_work);
-@@ -3033,6 +3058,10 @@ void mt7996_mac_work(struct work_struct
+@@ -3033,6 +3071,10 @@ void mt7996_mac_work(struct work_struct
  			mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_ADM_STAT);
  			mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_MSDU_COUNT);
  		}
@@ -68,7 +91,15 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mutex_unlock(&mphy->dev->mutex);
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
-@@ -715,6 +715,14 @@ enum offs_rev {
+@@ -378,6 +378,7 @@ enum offs_rev {
+ #define MT_WTBL_LMAC_OFFS(_id, _dw)		(MT_WTBL_BASE | \
+ 						 FIELD_PREP(MT_WTBL_LMAC_ID, _id) | \
+ 						 FIELD_PREP(MT_WTBL_LMAC_DW, _dw))
++#define MT_WTBL_LMAC_DW5_PSM			BIT(30)
+ 
+ /* AGG: band 0(0x820e2000), band 1(0x820f2000), band 2(0x830e2000) */
+ #define MT_WF_AGG_BASE(_band)			__BASE(WF_AGG_BASE, (_band))
+@@ -715,6 +716,14 @@ enum offs_rev {
  #define MT_SWDEF_LAMC_WISR7_BN1_STATS		MT_SWDEF(0x068)
  #define MT_SWDEF_LAMC_WISR7_BN2_STATS		MT_SWDEF(0x06c)
  
@@ -83,3 +114,23 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /* LED */
  #define MT_LED_TOP_BASE				0x18013000
  #define MT_LED_PHYS(_n)				(MT_LED_TOP_BASE + (_n))
+--- a/mt7996/mmio.c
++++ b/mt7996/mmio.c
+@@ -854,6 +854,7 @@ struct mt7996_dev *mt7996_mmio_probe(str
+ 		.rx_skb = mt7996_queue_rx_skb,
+ 		.rx_check = mt7996_rx_check,
+ 		.rx_poll_complete = mt7996_rx_poll_complete,
++		.wcid_ps_get = mt7996_wcid_ps_get,
+ 		.rx_rro_ind_process = mt7996_rro_rx_process,
+ 		.rx_rro_add_msdu_page = mt7996_rro_msdu_page_add,
+ 		.update_survey = mt7996_update_channel,
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -987,6 +987,7 @@ static inline bool mt7996_has_ext_eeprom
+ void mt7996_mac_init(struct mt7996_dev *dev);
+ u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw);
+ bool mt7996_mac_wtbl_update(struct mt7996_dev *dev, int idx, u32 mask);
++bool mt7996_wcid_ps_get(struct mt76_dev *mdev, u16 idx);
+ void mt7996_mac_reset_counters(struct mt7996_phy *phy);
+ void mt7996_mac_cca_stats_reset(struct mt7996_phy *phy);
+ void mt7996_mac_enable_nf(struct mt7996_dev *dev, u8 band);

@@ -299,7 +299,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		if (dev->mt76.napi[i].dev)
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2686,6 +2686,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2687,6 +2687,7 @@ void mt7996_mac_reset_work(struct work_s
  	struct ieee80211_hw *hw;
  	struct mt7996_dev *dev;
  	struct mt7996_phy *phy;
@@ -307,7 +307,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	dev = container_of(work, struct mt7996_dev, reset_work);
-@@ -2694,6 +2695,22 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2695,6 +2696,22 @@ void mt7996_mac_reset_work(struct work_s
  	if (test_bit(MT76_REMOVED, &dev->mphy.state))
  		return;
  
@@ -330,7 +330,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* chip full reset */
  	if (dev->recovery.restart) {
  		/* disable WA/WM WDT */
-@@ -2865,6 +2882,288 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2866,6 +2883,288 @@ void mt7996_mac_reset_work(struct work_s
  		 wiphy_name(dev->mt76.hw->wiphy));
  }
  
@@ -619,7 +619,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /* firmware coredump */
  void mt7996_mac_dump_work(struct work_struct *work)
  {
-@@ -2952,7 +3251,7 @@ void mt7996_reset(struct mt7996_dev *dev
+@@ -2953,7 +3252,7 @@ void mt7996_reset(struct mt7996_dev *dev
  		return;
  	}
  
@@ -872,7 +872,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static inline u16 mt7996_rx_chainmask(struct mt7996_phy *phy)
  {
-@@ -1033,6 +1066,8 @@ void mt7996_mac_update_beacons(struct mt
+@@ -1034,6 +1067,8 @@ void mt7996_mac_update_beacons(struct mt
  void mt7996_mac_set_coverage_class(struct mt7996_phy *phy);
  void mt7996_mac_work(struct work_struct *work);
  void mt7996_mac_reset_work(struct work_struct *work);

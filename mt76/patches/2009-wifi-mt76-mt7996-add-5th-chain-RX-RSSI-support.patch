@@ -26,7 +26,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -394,6 +394,8 @@ enum mt76_wcid_flags {
+@@ -395,6 +395,8 @@ enum mt76_wcid_flags {
  	MT_WCID_FLAG_4ADDR,
  	MT_WCID_FLAG_HDR_TRANS,
  	MT_WCID_FLAG_TDLS_PEER,

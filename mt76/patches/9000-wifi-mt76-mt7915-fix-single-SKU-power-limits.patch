@@ -323,7 +323,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		.info = {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -979,6 +979,8 @@ struct mt76_phy {
+@@ -983,6 +983,8 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -332,7 +332,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	u8 antenna_mask;
  	u16 chainmask;
  
-@@ -1117,8 +1119,6 @@ struct mt76_dev {
+@@ -1121,8 +1123,6 @@ struct mt76_dev {
  		bool aborted;
  	} scan;
  
@@ -341,7 +341,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool mgmt_pwr_enhance;
  
  #ifdef CONFIG_NL80211_TESTMODE
-@@ -1242,6 +1242,11 @@ struct mt76_mib_stats {
+@@ -1246,6 +1246,11 @@ struct mt76_mib_stats {
  	u32 ul_hetrig_4mu_cnt;
  };
  
@@ -472,7 +472,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7915_mcu_init(struct mt7915_dev *dev);
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1361,16 +1361,23 @@ mt7915_mac_restart(struct mt7915_dev *de
+@@ -1376,16 +1376,23 @@ mt7915_mac_restart(struct mt7915_dev *de
  	run_ext = ext_phy &&
  		  test_and_clear_bit(MT76_STATE_RUNNING, &ext_phy->state);
  

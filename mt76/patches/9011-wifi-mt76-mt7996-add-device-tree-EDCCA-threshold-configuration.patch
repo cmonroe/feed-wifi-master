@@ -92,7 +92,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1264,6 +1264,11 @@ struct mt76_power_limits {
+@@ -1268,6 +1268,11 @@ struct mt76_power_limits {
  	} path;
  };
  
@@ -104,7 +104,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_ethtool_worker_info {
  	u64 *data;
  	int idx;
-@@ -2170,6 +2175,9 @@ s8 mt76_get_rate_power_limits(struct mt7
+@@ -2174,6 +2179,9 @@ s8 mt76_get_rate_power_limits(struct mt7
  			      struct ieee80211_channel *chan,
  			      struct mt76_power_limits *dest,
  			      s8 target_power);
@@ -209,7 +209,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mutex_unlock(&dev->mt76.mutex);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2388,8 +2388,10 @@ __mt7996_mac_restart_hw(struct mt7996_de
+@@ -2389,8 +2389,10 @@ __mt7996_mac_restart_hw(struct mt7996_de
  		return ret;
  
  	mt7996_mac_init(dev);

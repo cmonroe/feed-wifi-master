@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2384,6 +2384,13 @@ __mt7996_mac_restart_hw(struct mt7996_de
+@@ -2385,6 +2385,13 @@ __mt7996_mac_restart_hw(struct mt7996_de
  				     MT_INT_TX_RX_DONE_EXT);
  	}
  
@@ -34,7 +34,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* set the necessary init items */
  	ret = mt7996_mcu_set_eeprom(dev);
  	if (ret)
-@@ -3091,6 +3098,7 @@ void mt7996_chip_power_off_work(struct w
+@@ -3092,6 +3099,7 @@ void mt7996_chip_power_off_work(struct w
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
  	cancel_work_sync(&dev->rc_work);
  	cancel_work_sync(&dev->wed_rro.work);

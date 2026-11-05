@@ -95,7 +95,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  		link_id = (tid % 2) ? msta->seclink_id : msta->deflink_id;
  	} else if (is_8023) {
  		/* mac80211 does not set the MLO link of an 802.3 frame */
-@@ -1102,6 +1130,7 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -1103,6 +1131,7 @@ int mt7996_tx_prepare_skb(struct mt76_de
  		tx_info->buf[0].len = MT_TXD_SIZE + mac_txp_size;
  	} else {
  		struct mt76_connac_txp_common *txp;
@@ -103,7 +103,7 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  
  		txp = (struct mt76_connac_txp_common *)(txwi + MT_TXD_SIZE);
  		for (i = 0; i < nbuf; i++) {
-@@ -1139,7 +1168,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
+@@ -1140,7 +1169,9 @@ int mt7996_tx_prepare_skb(struct mt76_de
  		}
  
  		txp->fw.token = cpu_to_le16(id);

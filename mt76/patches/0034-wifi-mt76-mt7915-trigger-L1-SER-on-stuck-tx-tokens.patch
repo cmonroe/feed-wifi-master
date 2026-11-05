@@ -2,33 +2,37 @@ From: Chad Monroe <chad@monroe.io>
 Date: Mon, 28 Sep 2026 13:40:00 -0700
 Subject: [PATCH] wifi: mt76: mt7915: trigger L1 SER on stuck TX tokens
 
-A TX token that the firmware never returns stays in the host token
-table until a reset, and enough of them block transmission for every
-station on the band.
+A TX token that firmware never returns stays in the host token table
+until a reset. Enough of them block transmission for every station on
+a band. Age alone does not mark such a token, because firmware holds
+the frames of a sleeping station until it wakes or leaves. A client
+that roams away without a deauth postpones its removal past the
+normal age. On MT7986, the host flag of a station does not show power
+save, because firmware reports only a wake.
 
-The driver checks the token table every 10 s and requests an L1 SER
-for the band of the oldest token older than 420 s, because hostapd
-removes an inactive station after 300 s and the frames of a sleeping
-station hold tokens until then. The mt7915 TX path stamps each token
-before it enters the table, because the check reads that stamp. The
-walk reads the table under RCU without a lock, so it never stalls TX
-or TX-free handling, and no new walk starts once removal begins. The
-debugfs knobs token_timeout and token_ser, present on every driver,
-set the age and turn the SER off for a log-only run. A PLE hang SER
-from the severe check arms the same hold-off, so one fault does not
-produce two L1 requests. The request carries only the trigger,
-because a SER mask command replaces the whole recovery mask of the
-firmware. The deadlines are correct on 64-bit jiffies; a 32-bit
-device with every radio stopped for 2^31 jiffies would need a reinit.
+The driver checks its token table every 10 s and requests an L1 SER
+for the band of its oldest token older than 420 s. A token of a
+station whose hardware table entry shows power save counts only after
+twice that age. The check runs under RCU without a lock, so it never
+stalls TX, and its deadlines assume 64-bit jiffies. Two debugfs files
+set the normal age, which scales the other, and turn SER off for a
+log-only run. A PLE hang SER arms the check hold-off, and a request
+sends only the trigger, because a SER mask command replaces the
+firmware recovery mask. Each stale token line names queue and frame
+control from the token record, because the scan must not read a frame
+without the token lock.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- debugfs.c    |    2 
- mac80211.c   |    4 +
- mt76.h       |   12 +++
- mt7915/mac.c |   25 ++++++-
- tx.c         |  198 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 239 insertions(+), 2 deletions(-)
+ debugfs.c       |    2
+ mac80211.c      |    4 +
+ mt76.h          |   16 ++++
+ mt7915/mac.c    |   40 +++++++++-
+ mt7915/mmio.c   |    1 
+ mt7915/mt7915.h |    1 
+ mt7915/regs.h   |    1 
+ tx.c            |  215 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 8 files changed, 278 insertions(+), 2 deletions(-)
 
 --- a/debugfs.c
 +++ b/debugfs.c
@@ -56,19 +60,37 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < ARRAY_SIZE(dev->q_rx); i++)
 --- a/mt76.h
 +++ b/mt76.h
-@@ -34,6 +34,11 @@
+@@ -34,6 +34,12 @@
  
  #define MT76_TOKEN_FREE_THR	64
  
 +#define MT76_TOKEN_TIMEOUT_DEFAULT	420
 +#define MT76_TOKEN_TIMEOUT_MAX		86400
++#define MT76_TOKEN_PS_TIMEOUT_MULT	2
 +#define MT76_TOKEN_CHECK_INTERVAL	(10 * HZ)
 +#define MT76_TOKEN_STALE_LOG_MAX	8
 +
  #define MT76_WED_WDS_MIN	256
  #define MT76_WED_WDS_MAX	272
  
-@@ -999,6 +1004,10 @@ struct mt76_dev {
+@@ -464,6 +470,7 @@ struct mt76_txwi_cache {
+ 	/* station band for the per-band reserve; phy_idx is the queue band */
+ 	u8 token_phy_idx;
+ 	u16 wcid;
++	__le16 fc;
+ 	unsigned long jiffies;
+ };
+ 
+@@ -588,6 +595,8 @@ struct mt76_driver_ops {
+ 	void (*sta_ps)(struct mt76_dev *dev, struct ieee80211_sta *sta,
+ 		       bool ps);
+ 
++	bool (*wcid_ps_get)(struct mt76_dev *dev, u16 idx);
++
+ 	int (*sta_add)(struct mt76_dev *dev, struct ieee80211_vif *vif,
+ 		       struct ieee80211_sta *sta);
+ 
+@@ -999,6 +1008,10 @@ struct mt76_dev {
  	u16 token_start;
  	u16 token_size;
  	u16 token_reserve;
@@ -79,7 +101,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spinlock_t rx_token_lock;
  	struct idr rx_token;
-@@ -2098,6 +2107,9 @@ struct mt76_txwi_cache *
+@@ -2098,6 +2111,9 @@ struct mt76_txwi_cache *
  mt76_token_release(struct mt76_dev *dev, int token, bool *wake);
  int mt76_token_consume(struct mt76_dev *dev, struct mt76_txwi_cache **ptxwi,
  		       u8 phy_idx);
@@ -91,15 +113,37 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt76_rx_token_consume(struct mt76_dev *dev, void *ptr,
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -751,6 +751,7 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -87,6 +87,19 @@ u32 mt7915_mac_wtbl_lmac_addr(struct mt7
+ 	return MT_WTBL_LMAC_OFFS(wcid, dw);
+ }
+ 
++bool mt7915_wcid_ps_get(struct mt76_dev *mdev, u16 idx)
++{
++	struct mt7915_dev *dev = container_of(mdev, struct mt7915_dev, mt76);
++	u32 val;
++
++	/* the station poll selects the WTBL group under the same lock */
++	spin_lock_bh(&mdev->sta_poll_lock);
++	val = mt76_rr(dev, mt7915_mac_wtbl_lmac_addr(dev, idx, 5));
++	spin_unlock_bh(&mdev->sta_poll_lock);
++
++	return !!(val & MT_WTBL_LMAC_DW5_PSM);
++}
++
+ static void mt7915_mac_sta_poll(struct mt7915_dev *dev)
+ {
+ 	static const u8 ac_to_tid[] = {
+@@ -751,6 +764,9 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	t = (struct mt76_txwi_cache *)(txwi + mdev->drv->txwi_size);
  	t->skb = tx_info->skb;
  	t->wcid = wcid->idx;
++	t->fc = (info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP) ? 0 :
++		hdr->frame_control;
 +	t->jiffies = jiffies;
  
  	id = mt76_token_consume(mdev, &t, wcid->phy_idx);
  	if (id < 0)
-@@ -1930,6 +1931,24 @@ void mt7915_mac_update_stats(struct mt79
+@@ -1930,6 +1946,24 @@ void mt7915_mac_update_stats(struct mt79
  	}
  }
  
@@ -124,7 +168,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void mt7915_mac_severe_check(struct mt7915_phy *phy)
  {
  	struct mt7915_dev *dev = phy->dev;
-@@ -1960,8 +1979,9 @@ static void mt7915_mac_severe_check(stru
+@@ -1960,8 +1994,9 @@ static void mt7915_mac_severe_check(stru
  		dev_warn(dev->mt76.dev,
  			 "band%d: PLE error 0x%x detected, triggering L1 SER\n",
  			 phy->mt76->band_idx, ple_err);
@@ -136,7 +180,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  	dev->ple1_sts = ple_err;
  }
-@@ -2019,6 +2039,7 @@ void mt7915_mac_work(struct work_struct
+@@ -2019,6 +2054,7 @@ void mt7915_mac_work(struct work_struct
  
  		mt7915_mac_update_stats(phy);
  		mt7915_mac_severe_check(phy);
@@ -154,7 +198,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "mt76.h"
  
  static int
-@@ -1133,6 +1134,203 @@ mt76_token_release(struct mt76_dev *dev,
+@@ -1133,6 +1134,220 @@ mt76_token_release(struct mt76_dev *dev,
  }
  EXPORT_SYMBOL_GPL(mt76_token_release);
  
@@ -204,8 +248,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	u32 age_ms;
 +	u16 id;
 +	u16 wcid;
++	u16 qid;
++	u16 fc;
 +	u8 band;
 +	bool slot;
++	bool ps;
 +};
 +
 +static void
@@ -281,9 +328,21 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	entry.age_ms = jiffies_to_msecs(scan->now - stamp);
 +	entry.id = id;
 +	entry.wcid = wcid;
++	entry.qid = READ_ONCE(t->qid);
++	entry.fc = le16_to_cpu(READ_ONCE(t->fc));
 +	entry.band = mt76_token_band(dev, READ_ONCE(t->token_phy_idx));
 +	entry.slot = wcid < ARRAY_SIZE(dev->wcid) &&
 +		     rcu_access_pointer(dev->wcid[wcid]);
++
++	/* the firmware holds the frames of a sleeping station until it
++	 * wakes or leaves, so their tokens age without a fault
++	 */
++	entry.ps = entry.slot && dev->drv->wcid_ps_get &&
++		   dev->drv->wcid_ps_get(dev, wcid);
++	if (entry.ps &&
++	    !time_after(scan->now,
++			stamp + scan->tmo * MT76_TOKEN_PS_TIMEOUT_MULT))
++		return 0;
 +
 +	scan->count[entry.band]++;
 +	scan->total++;
@@ -346,10 +405,12 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	     NULL);
 +	for (i = 0; i < scan.n; i++)
 +		dev_info(dev->dev,
-+			 "band%u: stale token %u wcid %u age %u ms wcid slot %s\n",
++			 "band%u: stale token %u wcid %u age %u ms wcid slot %s qid %u fc 0x%04x%s\n",
 +			 scan.stale[i].band, scan.stale[i].id,
 +			 scan.stale[i].wcid, scan.stale[i].age_ms,
-+			 scan.stale[i].slot ? "occupied" : "empty");
++			 scan.stale[i].slot ? "occupied" : "empty",
++			 scan.stale[i].qid, scan.stale[i].fc,
++			 scan.stale[i].ps ? " sleeping" : "");
 +
 +	return ser ? scan.oldest : -1;
 +}
@@ -358,3 +419,33 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  struct mt76_txwi_cache *
  mt76_rx_token_release(struct mt76_dev *dev, int token)
  {
+--- a/mt7915/mmio.c
++++ b/mt7915/mmio.c
+@@ -932,6 +932,7 @@ struct mt7915_dev *mt7915_mmio_probe(str
+ 		.rx_skb = mt7915_queue_rx_skb,
+ 		.rx_check = mt7915_rx_check,
+ 		.rx_poll_complete = mt7915_rx_poll_complete,
++		.wcid_ps_get = mt7915_wcid_ps_get,
+ 		.sta_add = mt7915_mac_sta_add,
+ 		.sta_event = mt7915_mac_sta_event,
+ 		.sta_remove = mt7915_mac_sta_remove,
+--- a/mt7915/mt7915.h
++++ b/mt7915/mt7915.h
+@@ -616,6 +616,7 @@ void mt7915_memcpy_fromio(struct mt7915_
+ 
+ void mt7915_mac_init(struct mt7915_dev *dev);
+ u32 mt7915_mac_wtbl_lmac_addr(struct mt7915_dev *dev, u16 wcid, u8 dw);
++bool mt7915_wcid_ps_get(struct mt76_dev *mdev, u16 idx);
+ bool mt7915_mac_wtbl_update(struct mt7915_dev *dev, int idx, u32 mask);
+ void mt7915_mac_reset_counters(struct mt7915_phy *phy);
+ void mt7915_mac_cca_stats_reset(struct mt7915_phy *phy);
+--- a/mt7915/regs.h
++++ b/mt7915/regs.h
+@@ -475,6 +475,7 @@ enum offs_rev {
+ #define MT_WTBL_LMAC_OFFS(_id, _dw)	(MT_WTBL_BASE | \
+ 					 FIELD_PREP(MT_WTBL_LMAC_ID, _id) | \
+ 					 FIELD_PREP(MT_WTBL_LMAC_DW, _dw))
++#define MT_WTBL_LMAC_DW5_PSM		BIT(30)
+ 
+ /* AGG: band 0(0x820e2000), band 1(0x820f2000) */
+ #define MT_WF_AGG_BASE(_band)		((_band) ? 0x820f2000 : 0x820e2000)

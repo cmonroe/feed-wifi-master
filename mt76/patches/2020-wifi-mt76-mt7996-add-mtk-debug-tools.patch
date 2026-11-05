@@ -285,7 +285,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool vow_atf_en;
  };
  
-@@ -1150,6 +1162,12 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1151,6 +1163,12 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  
@@ -5673,7 +5673,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt7996/regs.h
 +++ b/mt7996/regs.h
-@@ -807,24 +807,29 @@ enum offs_rev {
+@@ -808,24 +808,29 @@ enum offs_rev {
  						 ((_wf) << 16) + (ofs))
  #define MT_WF_PHYRX_CSD_IRPI(_band, _wf)	MT_WF_PHYRX_CSD(_band, _wf, 0x1000)
  

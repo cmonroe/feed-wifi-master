@@ -24,7 +24,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -111,8 +111,11 @@ static void mt7915_mac_sta_poll(struct m
+@@ -124,8 +124,11 @@ static void mt7915_mac_sta_poll(struct m
  		msta = list_first_entry(&sta_poll_list,
  					struct mt7915_sta, wcid.poll_list);
  		list_del_init(&msta->wcid.poll_list);
@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		idx = msta->wcid.idx;
  
  		/* get signal strength of resp frames (CTS/BA/ACK) */
-@@ -128,6 +131,7 @@ static void mt7915_mac_sta_poll(struct m
+@@ -141,6 +144,7 @@ static void mt7915_mac_sta_poll(struct m
  			mt76_rx_signal(msta->vif->phy->mt76->antenna_mask, rssi);
  
  		ewma_avg_signal_add(&msta->avg_ack_signal, -msta->ack_signal);

@@ -368,7 +368,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 --- a/mt76.h
 +++ b/mt76.h
-@@ -939,6 +939,8 @@ struct mt76_phy {
+@@ -943,6 +943,8 @@ struct mt76_phy {
  	u8 macaddr[ETH_ALEN];
  
  	int txpower_cur;
@@ -467,7 +467,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static void
 --- a/mt7915/mt7915.h
 +++ b/mt7915/mt7915.h
-@@ -726,6 +726,7 @@ int mt7915_mmio_wed_init(struct mt7915_d
+@@ -727,6 +727,7 @@ int mt7915_mmio_wed_init(struct mt7915_d
  void mt7915_vendor_register(struct mt7915_phy *phy);
  #endif
  
@@ -487,7 +487,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  				    mt7915_show_eeprom_mode);
 --- a/mt7915/regs.h
 +++ b/mt7915/regs.h
-@@ -1217,6 +1217,10 @@ enum offs_rev {
+@@ -1218,6 +1218,10 @@ enum offs_rev {
  #define MT_WF_IRPI_NSS(phy, nss)	MT_WF_IRPI(0x6000 + ((phy) << 20) + ((nss) << 16))
  #define MT_WF_IRPI_NSS_MT7916(phy, nss)	MT_WF_IRPI(0x1000 + ((phy) << 20) + ((nss) << 16))
  
@@ -498,7 +498,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT_WF_IPI_RESET			0x831a3008
  
  /* PHY */
-@@ -1233,10 +1237,6 @@ enum offs_rev {
+@@ -1234,10 +1238,6 @@ enum offs_rev {
  #define MT_WF_PHY_RXTD12_IRPI_SW_CLR_ONLY	BIT(18)
  #define MT_WF_PHY_RXTD12_IRPI_SW_CLR		BIT(29)
  

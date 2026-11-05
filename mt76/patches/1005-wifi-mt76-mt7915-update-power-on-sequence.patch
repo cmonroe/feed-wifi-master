@@ -31,7 +31,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  enum {
 --- a/mt7915/regs.h
 +++ b/mt7915/regs.h
-@@ -782,6 +782,7 @@ enum offs_rev {
+@@ -783,6 +783,7 @@ enum offs_rev {
  #define MT_TOP_RGU_SYSRAM_PDN		(MT_TOP_RGU_BASE + 0x050)
  #define MT_TOP_RGU_SYSRAM_SLP		(MT_TOP_RGU_BASE + 0x054)
  #define MT_TOP_WFSYS_PWR		(MT_TOP_RGU_BASE + 0x010)
@@ -39,7 +39,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT_TOP_PWR_EN_MASK		BIT(7)
  #define MT_TOP_PWR_ACK_MASK		BIT(6)
  #define MT_TOP_PWR_KEY_MASK		GENMASK(31, 16)
-@@ -893,6 +894,7 @@ enum offs_rev {
+@@ -894,6 +895,7 @@ enum offs_rev {
  #define MT_ADIE_SLP_CTRL(_band, ofs)	(MT_ADIE_SLP_CTRL_BASE(_band) + (ofs))
  
  #define MT_ADIE_SLP_CTRL_CK0(_band)	MT_ADIE_SLP_CTRL(_band, 0x120)
@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  /* ADIE */
  #define MT_ADIE_CHIP_ID			0x02c
-@@ -946,6 +948,7 @@ enum offs_rev {
+@@ -947,6 +949,7 @@ enum offs_rev {
  #define MT_ADIE_XTAL_TRIM1_40M_OSC	0x399
  #define MT_ADIE_WRI_CK_SEL		0x4ac
  #define MT_ADIE_RG_STRAP_PIN_IN		0x4fc

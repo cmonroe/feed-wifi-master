@@ -46,7 +46,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mt7915_unregister_thermal(&dev->phy);
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -1487,6 +1487,9 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1502,6 +1502,9 @@ void mt7915_mac_reset_work(struct work_s
  	int i;
  
  	dev = container_of(work, struct mt7915_dev, reset_work);
@@ -56,7 +56,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	ext_phy = dev->mt76.phys[MT_BAND1];
  	phy2 = ext_phy ? ext_phy->priv : NULL;
  
-@@ -1676,6 +1679,16 @@ void mt7915_reset(struct mt7915_dev *dev
+@@ -1691,6 +1694,16 @@ void mt7915_reset(struct mt7915_dev *dev
  	if (!dev->recovery.hw_init_done)
  		return;
  
@@ -73,7 +73,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	if (dev->recovery.hw_full_reset)
  		return;
  
-@@ -2031,6 +2044,13 @@ void mt7915_mac_work(struct work_struct
+@@ -2046,6 +2059,13 @@ void mt7915_mac_work(struct work_struct
  					       mac_work.work);
  	phy = mphy->priv;
  

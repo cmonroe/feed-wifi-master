@@ -23,7 +23,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
 
 --- a/mt76.h
 +++ b/mt76.h
-@@ -346,6 +346,7 @@ enum mt76_phy_type {
+@@ -347,6 +347,7 @@ enum mt76_phy_type {
  	MT_PHY_TYPE_HT_GF,
  	MT_PHY_TYPE_VHT,
  	MT_PHY_TYPE_HE_REMAP,
@@ -31,7 +31,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	MT_PHY_TYPE_HE_SU = 8,
  	MT_PHY_TYPE_HE_EXT_SU,
  	MT_PHY_TYPE_HE_TB,
-@@ -354,6 +355,7 @@ enum mt76_phy_type {
+@@ -355,6 +356,7 @@ enum mt76_phy_type {
  	MT_PHY_TYPE_EHT_TRIG,
  	MT_PHY_TYPE_EHT_MU,
  	__MT_PHY_TYPE_MAX,
@@ -39,7 +39,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  };
  
  struct mt76_sta_stats {
-@@ -362,16 +364,27 @@ struct mt76_sta_stats {
+@@ -363,16 +365,27 @@ struct mt76_sta_stats {
  	u64 tx_nss[4];		/* 1, 2, 3, 4 */
  	u64 tx_mcs[16];		/* mcs idx */
  	u64 tx_bytes;
@@ -67,7 +67,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	u64 last_rx_bytes;
  };
  
-@@ -406,6 +419,8 @@ struct mt76_wcid {
+@@ -407,6 +420,8 @@ struct mt76_wcid {
  	int inactive_count;
  
  	struct rate_info rate;
@@ -76,7 +76,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	unsigned long ampdu_state;
  
  	u16 idx;
-@@ -1490,6 +1505,22 @@ static inline int mt76_decr(int val, int
+@@ -1494,6 +1509,22 @@ static inline int mt76_decr(int val, int
  
  u8 mt76_ac_to_hwq(u8 ac);
  
@@ -268,7 +268,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  /* The HW does not translate the mac header to 802.3 for mesh point */
  static int mt7996_reverse_frag0_hdr_trans(struct sk_buff *skb, u16 hdr_gap)
  {
-@@ -1483,8 +1370,6 @@ next:
+@@ -1484,8 +1371,6 @@ next:
  		}
  	}
  
@@ -277,7 +277,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	if (wake)
  		mt76_set_tx_blocked(&dev->mt76, false);
  
-@@ -1498,25 +1383,25 @@ next:
+@@ -1499,25 +1384,25 @@ next:
  
  static bool
  mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
@@ -312,7 +312,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		skb = mt76_tx_status_skb_get(mdev, wcid, pid, &list);
  		if (skb) {
  			info = IEEE80211_SKB_CB(skb);
-@@ -1529,120 +1414,33 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
+@@ -1530,120 +1415,33 @@ mt7996_mac_add_txs_skb(struct mt7996_dev
  
  			info->status.rates[0].idx = -1;
  		}
@@ -451,7 +451,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	mt76_tx_status_unlock(mdev, &list);
  
  	return !!skb;
-@@ -1650,13 +1448,13 @@ out:
+@@ -1651,13 +1449,13 @@ out:
  
  static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
  {
@@ -468,7 +468,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	pid = le32_get_bits(txs_data[3], MT_TXS3_PID);
  
  	if (pid < MT_PACKET_ID_NO_SKB)
-@@ -1668,14 +1466,16 @@ static void mt7996_mac_add_txs(struct mt
+@@ -1669,14 +1467,16 @@ static void mt7996_mac_add_txs(struct mt
  	if (!wcid)
  		goto out;
  
@@ -490,7 +490,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -3515,14 +3315,49 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -3528,14 +3328,49 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -540,7 +540,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	/* reset, reconfig and channel set queue this work without a test
  	 * of the radio state, and removal must not run it again
-@@ -3531,18 +3366,30 @@ void mt7996_mac_work(struct work_struct
+@@ -3544,18 +3379,30 @@ void mt7996_mac_work(struct work_struct
  	    test_bit(MT76_REMOVED, &mphy->dev->phy.state))
  		return;
  
@@ -578,7 +578,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		}
  
  		if (!phy->dev->recovery.restart &&
-@@ -3550,10 +3397,10 @@ void mt7996_mac_work(struct work_struct
+@@ -3563,10 +3410,10 @@ void mt7996_mac_work(struct work_struct
  			mt7996_mac_token_check(phy);
  	}
  

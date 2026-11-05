@@ -256,7 +256,7 @@ Squash of the following MediaTek commits:
  	if (dev->relay_fwlog)
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -267,6 +267,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+@@ -280,6 +280,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  	__le16 fc = 0;
  	int idx;
  
@@ -267,7 +267,7 @@ Squash of the following MediaTek commits:
  	memset(status, 0, sizeof(*status));
  
  	if ((rxd1 & MT_RXD1_NORMAL_BAND_IDX) && !phy->mt76->band_idx) {
-@@ -447,6 +451,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
+@@ -460,6 +464,10 @@ mt7915_mac_fill_rx(struct mt7915_dev *de
  	}
  
  	hdr_gap = (u8 *)rxd - skb->data + 2 * remove_pad;
@@ -278,7 +278,7 @@ Squash of the following MediaTek commits:
  	if (hdr_trans && ieee80211_has_morefrags(fc)) {
  		struct ieee80211_vif *vif;
  		int err;
-@@ -775,6 +783,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
+@@ -790,6 +798,12 @@ int mt7915_tx_prepare_skb(struct mt76_de
  	tx_info->buf[1].skip_unmap = true;
  	tx_info->nbuf = MT_CT_DMA_BUF_NUM;
  
@@ -291,7 +291,7 @@ Squash of the following MediaTek commits:
  	return 0;
  }
  
-@@ -1477,6 +1491,9 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1492,6 +1506,9 @@ void mt7915_mac_reset_work(struct work_s
  	if (!(READ_ONCE(dev->recovery.state) & MT_MCU_CMD_STOP_DMA))
  		return;
  
@@ -301,7 +301,7 @@ Squash of the following MediaTek commits:
  	ieee80211_stop_queues(mt76_hw(dev));
  	if (ext_phy)
  		ieee80211_stop_queues(ext_phy->hw);
-@@ -1557,6 +1574,9 @@ void mt7915_mac_reset_work(struct work_s
+@@ -1572,6 +1589,9 @@ void mt7915_mac_reset_work(struct work_s
  		ieee80211_queue_delayed_work(ext_phy->hw,
  					     &phy2->mt76->mac_work,
  					     MT7915_WATCHDOG_TIME);
@@ -311,7 +311,7 @@ Squash of the following MediaTek commits:
  }
  
  /* firmware coredump */
-@@ -1631,6 +1651,9 @@ skip_coredump:
+@@ -1646,6 +1666,9 @@ skip_coredump:
  
  void mt7915_reset(struct mt7915_dev *dev)
  {
@@ -521,7 +521,7 @@ Squash of the following MediaTek commits:
  	u32 adie_type;
  };
  
-@@ -678,4 +714,27 @@ void mt7915_sta_add_debugfs(struct ieee8
+@@ -679,4 +715,27 @@ void mt7915_sta_add_debugfs(struct ieee8
  int mt7915_mmio_wed_init(struct mt7915_dev *dev, void *pdev_ptr,
  			 bool pci, int *irq);
  
@@ -6026,7 +6026,7 @@ Squash of the following MediaTek commits:
  }
 --- a/mt76.h
 +++ b/mt76.h
-@@ -982,6 +982,9 @@ struct mt76_dev {
+@@ -986,6 +986,9 @@ struct mt76_dev {
  	struct device *dma_dev;
  
  	struct mt76_mcu mcu;

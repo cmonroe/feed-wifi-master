@@ -34,7 +34,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	case MT_PHY_TYPE_HE_EXT_SU:
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -90,7 +90,6 @@ u32 mt7915_mac_wtbl_lmac_addr(struct mt7
+@@ -103,7 +103,6 @@ bool mt7915_wcid_ps_get(struct mt76_dev
  static void mt7915_mac_sta_poll(struct mt7915_dev *dev)
  {
  	struct mt7915_sta *msta;
@@ -42,7 +42,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	LIST_HEAD(sta_poll_list);
  
  	spin_lock_bh(&dev->mt76.sta_poll_lock);
-@@ -103,7 +102,6 @@ static void mt7915_mac_sta_poll(struct m
+@@ -116,7 +115,6 @@ static void mt7915_mac_sta_poll(struct m
  		u32 addr, val;
  		u16 idx;
  		s8 rssi[4];
@@ -50,7 +50,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  		spin_lock_bh(&dev->mt76.sta_poll_lock);
  		if (list_empty(&sta_poll_list)) {
-@@ -116,22 +114,6 @@ static void mt7915_mac_sta_poll(struct m
+@@ -129,22 +127,6 @@ static void mt7915_mac_sta_poll(struct m
  		spin_unlock_bh(&dev->mt76.sta_poll_lock);
  
  		idx = msta->wcid.idx;

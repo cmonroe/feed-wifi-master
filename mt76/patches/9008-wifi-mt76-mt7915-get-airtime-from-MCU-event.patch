@@ -57,7 +57,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	MCU_UNI_CMD_BSS_INFO_UPDATE = 0x02,
 --- a/mt7915/mac.c
 +++ b/mt7915/mac.c
-@@ -89,18 +89,9 @@ u32 mt7915_mac_wtbl_lmac_addr(struct mt7
+@@ -102,18 +102,9 @@ bool mt7915_wcid_ps_get(struct mt76_dev
  
  static void mt7915_mac_sta_poll(struct mt7915_dev *dev)
  {
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	spin_lock_bh(&dev->mt76.sta_poll_lock);
  	list_splice_init(&dev->mt76.sta_poll_list, &sta_poll_list);
-@@ -109,7 +100,6 @@ static void mt7915_mac_sta_poll(struct m
+@@ -122,7 +113,6 @@ static void mt7915_mac_sta_poll(struct m
  	rcu_read_lock();
  
  	while (true) {
@@ -84,7 +84,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		u32 addr, val;
  		u16 idx;
  		s8 rssi[4];
-@@ -126,57 +116,6 @@ static void mt7915_mac_sta_poll(struct m
+@@ -139,57 +129,6 @@ static void mt7915_mac_sta_poll(struct m
  		spin_unlock_bh(&dev->mt76.sta_poll_lock);
  
  		idx = msta->wcid.idx;
@@ -142,7 +142,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		rate = &msta->wcid.rate;
  
  		switch (rate->bw) {
-@@ -2052,6 +1991,7 @@ void mt7915_mac_work(struct work_struct
+@@ -2067,6 +2006,7 @@ void mt7915_mac_work(struct work_struct
  {
  	struct mt7915_phy *phy;
  	struct mt76_phy *mphy;
@@ -150,7 +150,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	mphy = (struct mt76_phy *)container_of(work, struct mt76_phy,
  					       mac_work.work);
-@@ -2064,6 +2004,8 @@ void mt7915_mac_work(struct work_struct
+@@ -2079,6 +2019,8 @@ void mt7915_mac_work(struct work_struct
  	    test_bit(MT76_REMOVED, &mphy->dev->phy.state))
  		return;
  
@@ -159,7 +159,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	mutex_lock(&mphy->dev->mutex);
  
  	mt76_update_survey(mphy);
-@@ -2076,6 +2018,8 @@ void mt7915_mac_work(struct work_struct
+@@ -2091,6 +2033,8 @@ void mt7915_mac_work(struct work_struct
  
  		if (phy->dev->muru_debug)
  			mt7915_mcu_muru_debug_get(phy);

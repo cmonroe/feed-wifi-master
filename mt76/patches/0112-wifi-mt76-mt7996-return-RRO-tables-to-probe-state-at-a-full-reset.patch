@@ -131,7 +131,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return mt7996_dma_rro_init(dev);
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2398,6 +2398,7 @@ mt7996_mac_restart(struct mt7996_dev *de
+@@ -2399,6 +2399,7 @@ mt7996_mac_restart(struct mt7996_dev *de
  		u32 wed_irq_mask = dev->mt76.mmio.irqmask |
  				   MT_INT_TX_DONE_BAND2;
  
