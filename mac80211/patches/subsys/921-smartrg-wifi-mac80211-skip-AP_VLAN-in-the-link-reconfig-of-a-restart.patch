@@ -1,0 +1,32 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 03 Nov 2026 19:37:53 -0800
+Subject: [PATCH] wifi: mac80211: skip AP_VLAN in the link reconfig of a restart
+
+An AP_VLAN of an MLD AP holds the links of its AP. A hardware
+restart therefore passes the VLAN to the driver op for a link
+change. mac80211 never adds an AP_VLAN to the driver, so the op
+fails its in-driver check with a warning.
+
+A hardware restart skips an AP_VLAN in the link reconfig, as it does
+when it adds interfaces to the driver. The VLAN needs no driver call,
+because it takes its links and its channel context from its AP.
+
+Fixes: 90233b0ad215 ("wifi: mac80211: Create separate links for VLAN interfaces")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ net/mac80211/util.c |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/net/mac80211/util.c
++++ b/net/mac80211/util.c
+@@ -2074,6 +2074,10 @@ int ieee80211_reconfig(struct ieee80211_
+ 		if (!ieee80211_sdata_running(sdata))
+ 			continue;
+ 
++		/* an AP_VLAN is never in the driver; its links follow its AP */
++		if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
++			continue;
++
+ 		if (ieee80211_vif_is_mld(&sdata->vif)) {
+ 			struct ieee80211_bss_conf *old[IEEE80211_MLD_MAX_NUM_LINKS] = {
+ 				[0] = &sdata->vif.bss_conf,
