@@ -490,7 +490,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  out:
  	rcu_read_unlock();
  }
-@@ -3492,14 +3292,49 @@ void mt7996_mac_sta_rc_work(struct work_
+@@ -3515,14 +3315,49 @@ void mt7996_mac_sta_rc_work(struct work_
  	mutex_unlock(&dev->mt76.mutex);
  }
  
@@ -540,7 +540,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  
  	/* reset, reconfig and channel set queue this work without a test
  	 * of the radio state, and removal must not run it again
-@@ -3508,18 +3343,30 @@ void mt7996_mac_work(struct work_struct
+@@ -3531,18 +3366,30 @@ void mt7996_mac_work(struct work_struct
  	    test_bit(MT76_REMOVED, &mphy->dev->phy.state))
  		return;
  
@@ -578,7 +578,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  		}
  
  		if (!phy->dev->recovery.restart &&
-@@ -3527,10 +3374,10 @@ void mt7996_mac_work(struct work_struct
+@@ -3550,10 +3397,10 @@ void mt7996_mac_work(struct work_struct
  			mt7996_mac_token_check(phy);
  	}
  
@@ -1322,7 +1322,7 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  	unsigned long changed;
  
  	struct mt76_connac_sta_key_conf bip;
-@@ -953,7 +964,9 @@ void mt7996_mcu_rx_event(struct mt7996_d
+@@ -954,7 +965,9 @@ void mt7996_mcu_rx_event(struct mt7996_d
  int mt7996_mcu_power_off(struct mt7996_dev *dev);
  int mt7996_mcu_driver_own(struct mt7996_dev *dev);
  void mt7996_mcu_exit(struct mt7996_dev *dev);

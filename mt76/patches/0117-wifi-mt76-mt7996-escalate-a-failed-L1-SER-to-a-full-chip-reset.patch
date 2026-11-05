@@ -1,0 +1,152 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Tue, 03 Nov 2026 19:45:50 -0800
+Subject: [PATCH] wifi: mt76: mt7996: escalate a failed L1 SER to a full chip reset
+
+When the firmware reports no reset state, the L1 flow waits twice for
+the full timeout. It then restarts DMA and sends commands to a
+firmware that answers nothing. Only a later command timeout starts the
+full chip reset.
+
+On a missing reset state, the driver hands over to a full chip reset
+at once. It keeps the reset bits set, so that no command waits for
+the firmware. A timeout log includes the chip command register,
+because its value shows if the host lost an event or the firmware
+sent none. A separate counter records each hand-over, and the WM
+counter counts only resets with a WM watchdog bit. The recovery state
+file gets a larger buffer, because its output with the counters does
+not fit in 1024 bytes.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/debugfs.c |    7 ++++---
+ mt7996/mac.c     |   55 +++++++++++++++++++++++++++++++++++++++----------------
+ mt7996/mt7996.h  |    1 +
+ 3 files changed, 44 insertions(+), 19 deletions(-)
+
+--- a/mt7996/debugfs.c
++++ b/mt7996/debugfs.c
+@@ -135,7 +135,7 @@ mt7996_sys_recovery_get(struct file *fil
+ 	char *buff;
+ 	int desc = 0;
+ 	ssize_t ret;
+-	static const size_t bufsz = 1024;
++	static const size_t bufsz = 2048;
+ 
+ 	if (mt7996_chip_is_off(dev))
+ 		return -ENODEV;
+@@ -208,9 +208,10 @@ mt7996_sys_recovery_get(struct file *fil
+ 			  "::E  R , SER_LMAC_WISR7_B2 = 0x%08x\n",
+ 			  mt76_rr(dev, MT_SWDEF_LAMC_WISR7_BN2_STATS));
+ 	desc += scnprintf(buff + desc, bufsz - desc,
+-			  "\nSYS_RESET_COUNT: WM %d, WA %d\n",
++			  "\nSYS_RESET_COUNT: WM %d, WA %d, L1 FAIL %u\n",
+ 			  dev->recovery.wm_reset_count,
+-			  dev->recovery.wa_reset_count);
++			  dev->recovery.wa_reset_count,
++			  dev->recovery.l1_fail_count);
+ 
+ 	ret = simple_read_from_buffer(user_buf, count, ppos, buff, desc);
+ 	kfree(buff);
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2232,7 +2232,12 @@ mt7996_wait_reset_state(struct mt7996_de
+ 				 (READ_ONCE(dev->recovery.state) & state),
+ 				 MT7996_RESET_TIMEOUT);
+ 
+-	WARN(!ret, "Timeout waiting for MCU reset state %x\n", state);
++	if (!ret)
++		dev_err(dev->mt76.dev,
++			"%s: no MCU reset state %x (state %08x, MT_MCU_CMD %08x)\n",
++			wiphy_name(dev->mt76.hw->wiphy), state,
++			READ_ONCE(dev->recovery.state),
++			mt76_rr(dev, MT_MCU_CMD));
+ 	return ret;
+ }
+ 
+@@ -2719,7 +2724,7 @@ void mt7996_mac_reset_work(struct work_s
+ 
+ 		if (READ_ONCE(dev->recovery.state) & MT_MCU_CMD_WA_WDT)
+ 			dev->recovery.wa_reset_count++;
+-		else
++		else if (READ_ONCE(dev->recovery.state) & MT_MCU_CMD_WM_WDT)
+ 			dev->recovery.wm_reset_count++;
+ 
+ 		mt7996_mac_full_reset(dev);
+@@ -2790,28 +2795,31 @@ void mt7996_mac_reset_work(struct work_s
+ 	dev_info(dev->mt76.dev,"%s L1 SER dma stop done",
+ 		 wiphy_name(dev->mt76.hw->wiphy));
+ 
+-	if (mt7996_wait_reset_state(dev, MT_MCU_CMD_RESET_DONE)) {
+-		mt7996_dma_reset(dev, false);
++	if (!mt7996_wait_reset_state(dev, MT_MCU_CMD_RESET_DONE))
++		goto l1_failed;
+ 
+-		dev_info(dev->mt76.dev,"%s L1 SER dma reset done",
+-			wiphy_name(dev->mt76.hw->wiphy));
++	mt7996_dma_reset(dev, false);
+ 
+-		mt7996_tx_token_put(dev);
++	dev_info(dev->mt76.dev,"%s L1 SER dma reset done",
++		wiphy_name(dev->mt76.hw->wiphy));
+ 
+-		dev_info(dev->mt76.dev,"%s L1 SER token put done",
+-			wiphy_name(dev->mt76.hw->wiphy));
++	mt7996_tx_token_put(dev);
+ 
+-		idr_init(&dev->mt76.token);
++	dev_info(dev->mt76.dev,"%s L1 SER token put done",
++		wiphy_name(dev->mt76.hw->wiphy));
+ 
+-		dev_info(dev->mt76.dev,"%s L1 SER idr init done",
+-			wiphy_name(dev->mt76.hw->wiphy));
++	idr_init(&dev->mt76.token);
+ 
+-		mt76_wr(dev, MT_MCU_INT_EVENT, MT_MCU_INT_EVENT_DMA_INIT);
+-		mt7996_wait_reset_state(dev, MT_MCU_CMD_RECOVERY_DONE);
+-	}
++	dev_info(dev->mt76.dev,"%s L1 SER idr init done",
++		wiphy_name(dev->mt76.hw->wiphy));
++
++	mt76_wr(dev, MT_MCU_INT_EVENT, MT_MCU_INT_EVENT_DMA_INIT);
++	if (!mt7996_wait_reset_state(dev, MT_MCU_CMD_RECOVERY_DONE))
++		goto l1_failed;
+ 
+ 	mt76_wr(dev, MT_MCU_INT_EVENT, MT_MCU_INT_EVENT_RESET_DONE);
+-	mt7996_wait_reset_state(dev, MT_MCU_CMD_NORMAL_STATE);
++	if (!mt7996_wait_reset_state(dev, MT_MCU_CMD_NORMAL_STATE))
++		goto l1_failed;
+ 
+ 	/* enable DMA Rx/Tx and interrupt */
+ 	mt7996_dma_start(dev, false, false);
+@@ -2880,6 +2888,21 @@ void mt7996_mac_reset_work(struct work_s
+ 					     MT7996_WATCHDOG_TIME);
+ 	dev_info(dev->mt76.dev,"==== %s L1 SER recovery completed ====",
+ 		 wiphy_name(dev->mt76.hw->wiphy));
++	return;
++
++l1_failed:
++	dev_err(dev->mt76.dev, "%s: L1 SER failed, chip full reset\n",
++		wiphy_name(dev->mt76.hw->wiphy));
++
++	dev->recovery.l1_fail_count++;
++	dev->recovery.restart = true;
++
++	/* the full reset disables them again and needs them enabled */
++	mt7996_napi_enable(dev, false);
++	mt76_worker_enable(&dev->mt76.tx_worker);
++
++	mutex_unlock(&dev->mt76.mutex);
++	queue_work(dev->mt76.wq, &dev->reset_work);
+ }
+ 
+ static void
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -523,6 +523,7 @@ struct mt7996_dev {
+ 		u32 state;
+ 		u32 wa_reset_count;
+ 		u32 wm_reset_count;
++		u32 l1_fail_count;
+ 		bool hw_full_reset:1;
+ 		bool hw_init_done:1;
+ 		bool restart:1;

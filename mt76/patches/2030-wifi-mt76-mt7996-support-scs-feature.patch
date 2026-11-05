@@ -43,7 +43,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2480,6 +2480,7 @@ mt7996_mac_full_reset(struct mt7996_dev
+@@ -2485,6 +2485,7 @@ mt7996_mac_full_reset(struct mt7996_dev
  		set_bit(MT76_RESET, &phy->mt76->state);
  		cancel_delayed_work_sync(&phy->mt76->mac_work);
  	}
@@ -266,7 +266,7 @@ Signed-off-by: Howard Hsu <howard-yh.hsu@mediatek.com>
  	wait_queue_head_t reset_wait;
  	struct {
  		u32 state;
-@@ -1166,6 +1179,8 @@ int mt7996_mtk_init_debugfs(struct mt799
+@@ -1167,6 +1180,8 @@ int mt7996_mtk_init_debugfs(struct mt799
  int mt7996_mcu_muru_dbg_info(struct mt7996_dev *dev, u16 item, u8 val);
  #endif
  int mt7996_mcu_get_tx_power_info(struct mt7996_phy *phy, u8 category, void *event);

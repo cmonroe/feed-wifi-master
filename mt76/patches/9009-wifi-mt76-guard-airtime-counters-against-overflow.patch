@@ -271,7 +271,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return is_mt7915(&dev->mt76) ? MT7915_EEPROM_SIZE : MT7916_EEPROM_SIZE;
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -1645,7 +1645,9 @@ mt7996_link_sta_info_show(struct seq_fil
+@@ -1646,7 +1646,9 @@ mt7996_link_sta_info_show(struct seq_fil
  		   stats->tx_mpdus ? stats->tx_failed * 1000 / stats->tx_mpdus / 10 : 0,
  		   stats->tx_mpdus ? stats->tx_failed * 1000 / stats->tx_mpdus % 10 : 0);
  	seq_printf(file, "\t\tMPDU Retries: %u\n", stats->tx_retries);
@@ -282,7 +282,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	seq_printf(file, "\t\tNumber of non-AQL packets: %u (Max: %u)\n",
  		   atomic_read(&wcid->non_aql_packets), MT_MAX_NON_AQL_PKT);
  	seq_printf(file, "\tRX:\n");
-@@ -1656,7 +1658,9 @@ mt7996_link_sta_info_show(struct seq_fil
+@@ -1657,7 +1659,9 @@ mt7996_link_sta_info_show(struct seq_fil
  	seq_printf(file, "\t\tMPDU FCS Errors: %u (PER: %u.%u%%)\n", stats->rx_fcs_err,
  		   stats->rx_mpdus ? stats->rx_fcs_err * 1000 / stats->rx_mpdus / 10 : 0,
  		   stats->rx_mpdus ? stats->rx_fcs_err * 1000 / stats->rx_mpdus % 10 : 0);

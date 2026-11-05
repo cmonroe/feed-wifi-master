@@ -172,7 +172,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	path->mtk_wdma.wcid = msta_link->wcid.idx;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -791,6 +791,16 @@ mt7996_band_valid(struct mt7996_dev *dev
+@@ -792,6 +792,16 @@ mt7996_band_valid(struct mt7996_dev *dev
  	return band <= MT_BAND2;
  }
  

@@ -38,7 +38,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	wiphy->txq_memory_limit = 32 << 20; /* 32 MiB */
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -2449,6 +2449,8 @@ mt7996_mac_restart_state_reset(struct mt
+@@ -2454,6 +2454,8 @@ mt7996_mac_restart_state_reset(struct mt
  	mt7996_for_each_phy(dev, phy) {
  		phy->omac_mask = 0;
  		phy->rxfilter |= MT_WF_RFCR_DROP_OTHER_UC;
@@ -47,7 +47,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  	dev->mld_idx_mask = 0;
  	dev->mld_remap_idx_mask = 0;
-@@ -2482,10 +2484,14 @@ static void
+@@ -2487,10 +2489,14 @@ static void
  mt7996_mac_reset_vif_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
  {
  	struct mt76_vif_link *mlink = (struct mt76_vif_link *)vif->drv_priv;
@@ -62,7 +62,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* the reloaded firmware has no BSS for this link until mac80211
  	 * assigns the channel context again, so nothing may resolve a phy
  	 * through it and send BSS commands before that
-@@ -3520,6 +3526,21 @@ static int mt7996_dfs_start_radar_detect
+@@ -3543,6 +3549,21 @@ static int mt7996_dfs_start_radar_detect
  	return err;
  }
  
@@ -84,7 +84,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_dfs_init_radar_detector(struct mt7996_phy *phy)
  {
  	struct mt7996_dev *dev = phy->dev;
-@@ -3543,7 +3564,7 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3566,7 +3587,7 @@ int mt7996_dfs_init_radar_detector(struc
  		if (err < 0)
  			return err;
  
@@ -93,7 +93,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	if (dfs_state == MT_DFS_STATE_CAC)
-@@ -3551,11 +3572,11 @@ int mt7996_dfs_init_radar_detector(struc
+@@ -3574,11 +3595,11 @@ int mt7996_dfs_init_radar_detector(struc
  
  	err = mt7996_mcu_rdd_cmd(dev, RDD_CAC_END, rdd_idx, 0);
  	if (err < 0) {
@@ -107,7 +107,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  
  stop:
-@@ -3564,7 +3585,7 @@ stop:
+@@ -3587,7 +3608,7 @@ stop:
  		return err;
  
  	mt7996_dfs_stop_radar_detector(phy);

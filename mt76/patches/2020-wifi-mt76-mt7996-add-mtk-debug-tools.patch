@@ -51,7 +51,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +mt7996e-y += mtk_debugfs.o mtk_mcu.o
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -325,11 +325,39 @@ mt7996_fw_debug_wm_set(void *data, u64 v
+@@ -326,11 +326,39 @@ mt7996_fw_debug_wm_set(void *data, u64 v
  		DEBUG_SPL,
  		DEBUG_RPT_RX,
  		DEBUG_RPT_RA = 68,
@@ -92,7 +92,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (dev->fw_debug_bin)
  		val = MCU_FW_LOG_RELAY;
-@@ -344,18 +372,21 @@ mt7996_fw_debug_wm_set(void *data, u64 v
+@@ -345,18 +373,21 @@ mt7996_fw_debug_wm_set(void *data, u64 v
  	if (ret)
  		return ret;
  
@@ -120,7 +120,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	return 0;
-@@ -428,6 +459,39 @@ remove_buf_file_cb(struct dentry *f)
+@@ -429,6 +460,39 @@ remove_buf_file_cb(struct dentry *f)
  }
  
  static int
@@ -160,7 +160,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  mt7996_fw_debug_bin_set(void *data, u64 val)
  {
  	static struct rchan_callbacks relay_cb = {
-@@ -435,17 +499,23 @@ mt7996_fw_debug_bin_set(void *data, u64
+@@ -436,17 +500,23 @@ mt7996_fw_debug_bin_set(void *data, u64
  		.remove_buf_file = remove_buf_file_cb,
  	};
  	struct mt7996_dev *dev = data;
@@ -187,7 +187,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return mt7996_fw_debug_wm_set(dev, dev->fw_debug_wm);
  }
  
-@@ -1129,6 +1199,30 @@ static int mt7996_vow_atf_get(void *data
+@@ -1130,6 +1200,30 @@ static int mt7996_vow_atf_get(void *data
  DEFINE_DEBUGFS_ATTRIBUTE(fops_vow_atf, mt7996_vow_atf_get, mt7996_vow_atf_set,
  			 "%lld\n");
  
@@ -218,7 +218,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_init_debugfs(struct mt7996_dev *dev)
  {
  	struct dentry *dir;
-@@ -1165,9 +1259,16 @@ int mt7996_init_debugfs(struct mt7996_de
+@@ -1166,9 +1260,16 @@ int mt7996_init_debugfs(struct mt7996_de
  			    &fops_radar_trigger);
  	debugfs_create_devm_seqfile(dev->mt76.dev, "rdd_monitor", dir,
  				    mt7996_rdd_monitor);
@@ -235,7 +235,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  }
  
-@@ -1179,7 +1280,11 @@ mt7996_debugfs_write_fwlog(struct mt7996
+@@ -1180,7 +1281,11 @@ mt7996_debugfs_write_fwlog(struct mt7996
  	unsigned long flags;
  	void *dest;
  
@@ -247,7 +247,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	dest = relay_reserve(dev->relay_fwlog, hdrlen + len + 4);
  	if (dest) {
  		*(u32 *)dest = hdrlen + len;
-@@ -1212,9 +1317,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
+@@ -1213,9 +1318,6 @@ void mt7996_debugfs_rx_fw_monitor(struct
  		.msg_type = cpu_to_le16(PKT_TYPE_RX_FW_MONITOR),
  	};
  
@@ -259,7 +259,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	hdr.len = *(__le16 *)data;
 --- a/mt7996/mt7996.h
 +++ b/mt7996/mt7996.h
-@@ -607,6 +607,7 @@ struct mt7996_dev {
+@@ -608,6 +608,7 @@ struct mt7996_dev {
  	u8 fw_debug_wa;
  	u8 fw_debug_bin;
  	u16 fw_debug_seq;
@@ -267,7 +267,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	u32 token_debug_idx;
  
-@@ -626,6 +627,17 @@ struct mt7996_dev {
+@@ -627,6 +628,17 @@ struct mt7996_dev {
  		u8 fem:4;
  	} var;
  
@@ -285,7 +285,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	bool vow_atf_en;
  };
  
-@@ -1149,6 +1161,12 @@ int mt7996_mmio_wed_init(struct mt7996_d
+@@ -1150,6 +1162,12 @@ int mt7996_mmio_wed_init(struct mt7996_d
  			 bool hif2, int *irq);
  u32 mt7996_wed_init_buf(void *ptr, dma_addr_t phys, int token_id);
  

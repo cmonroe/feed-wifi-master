@@ -37,7 +37,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #define MT76_N_WCIDS 1088
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -1334,11 +1334,247 @@ static const struct file_operations fops
+@@ -1335,11 +1335,247 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
