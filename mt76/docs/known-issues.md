@@ -7,6 +7,38 @@ becomes its record and the entry leaves this file.
 The entries are in order of severity, most severe first. Put a new entry at
 its rank.
 
+## mt7615 Calibrates Again at Each Return to the Operating Channel in a Scan
+
+**Severity:** low: a 5 GHz scan takes 36 s on an 834-5 whose backhaul
+station is associated. The effect on the backhaul traffic is not measured.
+Seen on an 834-5 satellite with 26.11.0.101, 2026-11-06, during SDG-13169.
+
+### What happens
+
+- mac80211 scans the radio itself, because the mt7615 firmware of the 834-5
+  has no scan offload. While a station interface is associated, mac80211
+  returns to the operating channel after at most 125 ms away
+  (`ieee80211_scan_state_decision()`). On DFS channels this is after each
+  channel.
+- `mt7615_mcu_set_chan_info()` sends `CH_SWITCH_SCAN_BYPASS_DPD` for a scan
+  channel and `CH_SWITCH_NORMAL` for the return. The firmware calibrates on
+  `CH_SWITCH_NORMAL`.
+- A kprobe trace of one scan, with the operating channel 48 at 80 MHz:
+  23 returns of 1073 ms each, 24.7 s of the 35.9 s scan. A change to a scan
+  channel took about 4 ms.
+- The radio probably cannot send during the calibration, so each scan can
+  stop the backhaul 23 times for about 1 s. This is not measured.
+- The mt7915 of an SDG-8610 takes at most 16 ms for each change in the same
+  scan, so it does not have this fault.
+
+### Options
+
+Send a switch reason without calibration for the return from a scan
+channel, if the firmware keeps the calibration of the operating channel
+from before the scan. The firmware documents neither point; measure the
+TX quality on the operating channel after such a scan first. Or scan an
+associated 834-5 radio less often, or with fewer channels in each request.
+
 ## mt7996e Does Not Recover from a Reload of the WiFi Modules
 
 **Severity:** low, a limit for development work only. A unit loads the WiFi
