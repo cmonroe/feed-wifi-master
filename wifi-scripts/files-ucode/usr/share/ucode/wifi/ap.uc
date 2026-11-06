@@ -201,6 +201,36 @@ function iface_setup(config) {
 	]);
 }
 
+// On a mesh controller, every node sends its RADIUS requests through the
+// radsecproxy of the controller, so that one place sees each answer.
+// radsecproxy-config.sh in intellifi writes the proxy of each network;
+// wireless keeps the operator's servers, which the proxy forwards to.
+// The instance has the name that svc_of() there reads with "uci get", which
+// joins a list with spaces.
+function iface_radius_proxy(config) {
+	if (!length(config.auth_server_addr))
+		return;
+
+	const cursor = libuci.cursor();
+	if (cursor.get('intellifi', 'global', 'role') != 'hub')
+		return;
+
+	const proxy = cursor.get_all('radsecproxy', join(' ', config.network ?? []));
+	const secret = cursor.get('intellifi', 'global', 'proxy_secret');
+	if (proxy?.['.type'] != 'instance' || !proxy.address || !proxy.auth_port || !secret)
+		return;
+
+	config.auth_server_addr = [ proxy.address ];
+	config.auth_server_port = int(proxy.auth_port);
+	config.auth_server_shared_secret = secret;
+	if (!length(config.acct_server_addr))
+		return;
+
+	config.acct_server_addr = [ proxy.address ];
+	config.acct_server_port = int(proxy.acct_port);
+	config.acct_server_shared_secret = secret;
+}
+
 function iface_authentication_server(config) {
 	for (let server in config.auth_server_addr) {
 		append('auth_server_addr', server);
@@ -719,6 +749,7 @@ export function generate(interface, data, config, vlans, stas, phy_features) {
 
 	config.start_disabled = data.ap_start_disabled;
 	iface_setup(config);
+	iface_radius_proxy(config);
 
 	config.sae_station_passwords = station_password_count(stas);
 	const link_config = { ...config };
