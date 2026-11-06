@@ -1,0 +1,34 @@
+From: Piotr Kubik <piotr.kubik@adtran.com>
+Date: Thu, 29 Oct 2026 13:40:00 +0100
+Subject: [PATCH] AP MLD: Do not remove a link of bss[0] when a BSS add fails
+
+setup_interface() gives the driver instance of bss[0] to every BSS.
+When hostapd_if_add() fails for a later BSS of an AP MLD, the BSS
+keeps that instance with interface_added cleared. The cleanup then
+treats the BSS as a link of an added interface and calls
+hostapd_if_link_remove() on the driver instance of bss[0]. If bss[0]
+has links, that removes a link of another interface and clears the
+link context of bss[0], so the next MLD interface event of bss[0]
+reaches hostapd_wpa_event() with a NULL context. If bss[0] has no
+links, the driver removes the interface and reports
+EVENT_MLD_INTERFACE_FREED at once, which reached hostapd_wpa_event()
+with a NULL context too. In both cases hostapd crashes.
+
+Clear drv_priv of the BSS when the add fails, as the cleanup does for
+an interface that the driver removed.
+
+Fixes: df34c2ced34f ("AP MLD: De-initialize/disable link BSS properly")
+---
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -2719,6 +2719,10 @@ int hostapd_setup_bss(struct hostapd_dat
+ 			wpa_printf(MSG_ERROR, "Failed to add BSS (BSSID="
+ 				   MACSTR ")", MAC2STR(hapd->own_addr));
+ 			hapd->interface_added = 0;
++			/* drv_priv is still the driver instance of bss[0], which
++			 * setup_interface() gave to every BSS. The cleanup must
++			 * not remove a link or an interface through it. */
++			hapd->drv_priv = NULL;
+ 			return -1;
+ 		}
+ 

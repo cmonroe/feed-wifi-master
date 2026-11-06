@@ -273,47 +273,6 @@ The cause is not investigated.
 - A debug log of wpa_supplicant around `nl80211_set_4addr_mode()` gives the
   error code and the netdev.
 
-## A Failed BSS Add of an AP MLD Can Remove a Link of the First BSS
-
-**Severity:** low. The trigger that was found no longer reaches the fault on
-smartrg-master of 2026-10-29. Found in SDG-12890 on 2026-10-29: hostapd on
-an SDG-8734v satellite
-with SmartOS 26.11.0.101 r37733 crashed with SIGSEGV in
-`hostapd_wpa_event()` after `Could not set interface w56gM flags (UP)` and
-`Failed to add BSS`.
-
-### What happens
-
-- `setup_interface()` gives the driver instance of `bss[0]` to every BSS.
-- When `hostapd_if_add()` fails for a later BSS of an AP MLD before the
-  driver sets `*drv_priv`, the BSS keeps the instance of `bss[0]`, with
-  `interface_added` cleared.
-- `hostapd_free_hapd_data()` then calls `hostapd_if_link_remove()` through
-  that instance. This removes a link of `bss[0]` and clears its link
-  context. The next MLD interface event of `bss[0]` reaches
-  `hostapd_wpa_event()` with no context, and hostapd crashes.
-- Patch 198 undoes the later failure points of the add, where `*drv_priv`
-  already points at the new BSS. It does not cover a failure to set the
-  interface up.
-- Upstream hostap has the same failure path. It came with df34c2ced34f
-  ("AP MLD: De-initialize/disable link BSS properly").
-
-### The trigger that was found
-
-- `mld_set_config()` removed the AP MLD while the setup of a radio was still
-  waiting for wpa_supplicant. The setup then added a BSS for the removed
-  MLD interface.
-- On smartrg-master of 2026-10-29 the radio restarts only after
-  wpa_supplicant answers, when the AP MLD is already gone. The same
-  sequence no longer reaches the failed add.
-
-### If it matters later
-
-- Clear `hapd->drv_priv` after the failed add in `hostapd_setup_bss()`. The
-  patch is in the closed pull request
-  https://github.com/Adtran-SOS/internal-feed-wifi-master/pull/51 (patch
-  991, renamed 993 in the test), in upstream form.
-
 ## Some Removals by the AP Report No Reason Code
 
 **Severity:** low. The `disassoc` notification still names the AP as the

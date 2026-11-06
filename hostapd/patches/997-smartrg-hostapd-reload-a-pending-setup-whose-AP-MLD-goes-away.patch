@@ -1,0 +1,30 @@
+From: Piotr Kubik <piotr.kubik@adtran.com>
+Date: Thu, 29 Oct 2026 13:50:00 +0100
+Subject: [PATCH] hostapd: reload a pending setup whose AP MLD goes away
+
+When an MLD config update removes an AP MLD, mld_set_config()
+reloads each interface that has a BSS of that MLD in hostapd.bss.
+An interface whose setup is still pending has no BSS there yet, so it
+keeps the removed MLD in its config. When the setup continues, it adds
+a BSS for an MLD interface that no longer exists, and the add fails.
+
+Reload a pending setup whose config holds a BSS of the removed MLD as
+well, so that it starts again from the new MLD config.
+---
+--- a/openwrt/files/hostapd.uc
++++ b/openwrt/files/hostapd.uc
+@@ -2435,6 +2435,14 @@ function mld_set_config(config)
+ 				continue;
+ 			reload_iface[iface] = true;
+ 		}
++
++		// A pending setup has no BSS in hostapd.bss yet, and adds the
++		// BSSes of its config after the MLD interface is gone.
++		for (let iface, pending in hostapd.data.pending_config) {
++			if (index(map(pending.config.bss, (b) => b.ifname), name) < 0)
++				continue;
++			reload_iface[iface] = true;
++		}
+ 	}
+ 
+ 	for (let name in reload_iface)
