@@ -20,7 +20,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/dma.c
 +++ b/dma.c
-@@ -1217,7 +1217,9 @@ void mt76_dma_cleanup(struct mt76_dev *d
+@@ -1221,7 +1221,9 @@ void mt76_dma_cleanup(struct mt76_dev *d
  	mt76_for_each_q_rx(dev, i) {
  		struct mt76_queue *q = &dev->q_rx[i];
  

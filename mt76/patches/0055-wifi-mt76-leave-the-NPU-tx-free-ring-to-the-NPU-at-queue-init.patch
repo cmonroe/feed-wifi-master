@@ -1,0 +1,35 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 05 Nov 2026 22:57:33 -0800
+Subject: [PATCH] wifi: mt76: leave the NPU tx free ring to the NPU at queue init
+
+With NPU offload, the NPU owns the tx free ring of the chip: it puts
+its own buffers into that ring and reads each event. Rx queue init
+also fills this ring with host buffers and moves its CPU index. The
+chip then prefetches descriptors that point at host buffers, and
+writes its first events there. No reader takes these events, so
+tokens of the first frames stay allocated.
+
+Skip the fill of this ring, as rx queue reset does.
+
+Fixes: 2bc891cc94e0 ("wifi: mt76: mt7996: Do not schedule RRO and TxFree queues during reset for NPU")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ dma.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+--- a/dma.c
++++ b/dma.c
+@@ -1127,8 +1127,12 @@ static void
+ mt76_dma_rx_queue_init(struct mt76_dev *dev, enum mt76_rxq_id qid,
+ 		       int (*poll)(struct napi_struct *napi, int budget))
+ {
++	struct mt76_queue *q = &dev->q_rx[qid];
++
+ 	netif_napi_add(dev->napi_dev, &dev->napi[qid], poll);
+-	mt76_dma_rx_fill_buf(dev, &dev->q_rx[qid], false);
++	/* The NPU puts its own buffers into its tx free ring */
++	if (!mt76_queue_is_npu_txfree(q))
++		mt76_dma_rx_fill_buf(dev, q, false);
+ 	napi_enable(&dev->napi[qid]);
+ }
+ 
