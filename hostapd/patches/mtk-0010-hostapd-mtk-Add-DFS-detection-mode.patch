@@ -234,7 +234,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			     int cf1, int cf2);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3887,6 +3887,9 @@ static int hostapd_setup_interface_compl
+@@ -3891,6 +3891,9 @@ static int hostapd_setup_interface_compl
  		} else if (!(iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD)) {
  			/* Handle DFS only if it is not offloaded to the driver
  			 */
@@ -244,7 +244,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			/* Check DFS */
  			res = hostapd_handle_dfs(iface);
  			if (res <= 0) {
-@@ -4343,6 +4346,10 @@ void hostapd_interface_deinit(struct hos
+@@ -4347,6 +4350,10 @@ void hostapd_interface_deinit(struct hos
  	}
  #endif /* CONFIG_FST */
  
@@ -255,7 +255,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (j = (int) iface->num_bss - 1; j >= 0; j--) {
  		if (!iface->bss)
  			break;
-@@ -5075,6 +5082,7 @@ int hostapd_disable_iface(struct hostapd
+@@ -5079,6 +5086,7 @@ int hostapd_disable_iface(struct hostapd
  		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
  	/* the netdev goes down and ends the chain; no drv gets that report */
  	hostapd_dfs_chain_drop(hapd_iface);

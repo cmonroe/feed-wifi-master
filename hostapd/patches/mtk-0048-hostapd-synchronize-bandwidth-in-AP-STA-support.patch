@@ -536,7 +536,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  function iface_add(phy, config, phy_status, start_disabled)
-@@ -2589,6 +2594,8 @@ let main_obj = {
+@@ -2597,6 +2602,8 @@ let main_obj = {
  			up: true,
  			frequency: 0,
  			sec_chan_offset: 0,
@@ -545,7 +545,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			csa: true,
  			csa_count: 0,
  			no_link: true,
-@@ -2598,6 +2605,9 @@ let main_obj = {
+@@ -2606,6 +2613,9 @@ let main_obj = {
  			if (req.args.up == null || !phy)
  				return libubus.STATUS_INVALID_ARGUMENT;
  
@@ -555,7 +555,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			let config = hostapd.data.config[phy];
  			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname)
  				return 0;
-@@ -2672,6 +2682,8 @@ let main_obj = {
+@@ -2680,6 +2690,8 @@ let main_obj = {
  				if (!freq_info)
  					return fail();
  

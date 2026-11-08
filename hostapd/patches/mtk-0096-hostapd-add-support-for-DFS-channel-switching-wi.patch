@@ -653,7 +653,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		return 1;
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -6434,6 +6434,8 @@ int hostapd_force_channel_switch(struct
+@@ -6438,6 +6438,8 @@ int hostapd_force_channel_switch(struct
  		return ret;
  	}
  

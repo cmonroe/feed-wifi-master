@@ -370,7 +370,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "scs.h"
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4077,6 +4077,13 @@ dfs_offload:
+@@ -4081,6 +4081,13 @@ dfs_offload:
  	}
  #endif /* CONFIG_MESH */
  
