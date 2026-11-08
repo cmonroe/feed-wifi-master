@@ -1,0 +1,39 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 05 Nov 2026 22:43:12 -0800
+Subject: [PATCH] wifi: mt76: mt7996: keep RTNL across the WED reset wait
+
+An ethernet reset calls the WED reset callback under RTNL. The
+callback requests an L1 recovery, releases RTNL and waits until the
+recovery stops DMA. A task that waits for RTNL, such as a read of
+ethtool statistics, can take it then. That task blocks on the device
+mutex, which the recovery holds, and the recovery waits for the
+ethernet reset, which waits for RTNL. After its limit of 3 seconds,
+the recovery restarts WED. The frame engine reset that follows clears
+the WDMA rings, and stations drop and cannot associate again.
+
+Keep RTNL for the wait. The recovery takes no RTNL, and a task that
+needs both locks waits for RTNL first.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mmio.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+--- a/mt7996/mmio.c
++++ b/mt7996/mmio.c
+@@ -523,12 +523,13 @@ static int mt7996_mmio_wed_reset(struct
+ 	if (ret)
+ 		goto out;
+ 
+-	rtnl_unlock();
++	/* RTNL stays held: a task that takes it during the wait can block on
++	 * the device mutex of the recovery, which waits for the caller
++	 */
+ 	if (!wait_for_completion_timeout(&mdev->mmio.wed_reset, 20 * HZ)) {
+ 		dev_err(mdev->dev, "wed reset timeout\n");
+ 		ret = -ETIMEDOUT;
+ 	}
+-	rtnl_lock();
+ out:
+ 	clear_bit(MT76_STATE_WED_RESET, &mphy->state);
+ 

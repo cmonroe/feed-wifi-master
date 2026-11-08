@@ -72,7 +72,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			dev->recovery.wm_reset_count++;
  
  		mt7996_mac_full_reset(dev);
-@@ -2791,28 +2796,31 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2796,28 +2801,31 @@ void mt7996_mac_reset_work(struct work_s
  	dev_info(dev->mt76.dev,"%s L1 SER dma stop done",
  		 wiphy_name(dev->mt76.hw->wiphy));
  
@@ -118,7 +118,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	/* enable DMA Rx/Tx and interrupt */
  	mt7996_dma_start(dev, false, false);
-@@ -2881,6 +2889,21 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2886,6 +2894,21 @@ void mt7996_mac_reset_work(struct work_s
  					     MT7996_WATCHDOG_TIME);
  	dev_info(dev->mt76.dev,"==== %s L1 SER recovery completed ====",
  		 wiphy_name(dev->mt76.hw->wiphy));

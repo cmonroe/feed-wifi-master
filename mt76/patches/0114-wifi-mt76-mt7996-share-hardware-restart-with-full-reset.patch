@@ -13,10 +13,9 @@ out with an AER report at the root port.
 
 Each restart attempt first stops WED and NPU and pauses the WED poll
 until WED starts again, because a failed attempt leaves both running.
-An L1 recovery stops WED without a pause, because it waits for chip
-interrupts. Each attempt restores duplicate WTBL and NPU
-configuration, and it fails when any restart command times out,
-because MAC init ignores its command results. Full reset programs
+Each attempt restores duplicate WTBL and NPU configuration, and it
+fails when any restart command times out, because MAC init ignores
+its command results. Full reset programs
 hardware RRO without WED, because WFSYS reset clears RRO registers on
 NPU boards. It returns RRO tables to probe state first, because the
 chip holds no session after that reset. Probe initializes MSDU page
@@ -25,13 +24,13 @@ that a DMA reset queued.
 
 Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
- mt7996/dma.c    |   22 ++++
+ mt7996/dma.c    |   22 ++++-
  mt7996/init.c   |    8 -
- mt7996/mac.c    |  247 +++++++++++++++++++++++++++++++++++++-------------------
+ mt7996/mac.c    |  240 ++++++++++++++++++++++++++++++++++++++------------------
  mt7996/mcu.c    |   36 ++++++--
  mt7996/mt7996.h |   19 ++++
- mt7996/npu.c    |   30 ++++--
- 6 files changed, 254 insertions(+), 108 deletions(-)
+ mt7996/npu.c    |   30 ++++---
+ 6 files changed, 253 insertions(+), 102 deletions(-)
 
 --- a/mt7996/dma.c
 +++ b/mt7996/dma.c
@@ -569,21 +568,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	i = mt76_wcid_alloc(dev->mt76.wcid_mask, MT7996_WTBL_STA);
  	dev->mt76.global_wcid.idx = i;
  	dev->recovery.hw_full_reset = false;
-@@ -2624,12 +2738,7 @@ void mt7996_mac_reset_work(struct work_s
- 	dev_info(dev->mt76.dev,"==== %s L1 SER recovery start ====",
- 		 wiphy_name(hw->wiphy));
- 
--	if (mtk_wed_device_active(&dev->mt76.mmio.wed_hif2))
--		mtk_wed_device_stop(&dev->mt76.mmio.wed_hif2);
--
--	if (mtk_wed_device_active(&dev->mt76.mmio.wed))
--		mtk_wed_device_stop(&dev->mt76.mmio.wed);
--
-+	mt7996_wed_stop(dev);
- 	mt7996_npu_hw_stop(dev);
- 	ieee80211_stop_queues(mt76_hw(dev));
- 
-@@ -2655,21 +2764,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2655,21 +2769,7 @@ void mt7996_mac_reset_work(struct work_s
  	dev_info(dev->mt76.dev,"%s L1 SER disable tx_work done",
  		wiphy_name(dev->mt76.hw->wiphy));
  
@@ -606,7 +591,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	dev_info(dev->mt76.dev,"%s L1 SER napi disable done",
  		 wiphy_name(dev->mt76.hw->wiphy));
-@@ -2735,15 +2830,7 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2735,15 +2835,7 @@ void mt7996_mac_reset_work(struct work_s
  		clear_bit(MT76_RESET, &phy->mt76->state);
  
  	mt76_for_each_q_rx(&dev->mt76, i) {

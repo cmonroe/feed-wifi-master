@@ -186,7 +186,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  	mutex_unlock(&dev->mt76.mutex);
  	if (off)
-@@ -2966,6 +3007,16 @@ mt7996_chip_stop(struct mt7996_dev *dev)
+@@ -2971,6 +3012,16 @@ mt7996_chip_stop(struct mt7996_dev *dev)
  	clear_bit(MT76_STATE_MCU_RUNNING, &dev->mphy.state);
  }
  
@@ -203,7 +203,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static bool
  mt7996_chip_power_off_allowed(struct mt7996_dev *dev)
  {
-@@ -3050,16 +3101,20 @@ __mt7996_chip_power_on(struct mt7996_dev
+@@ -3055,16 +3106,20 @@ __mt7996_chip_power_on(struct mt7996_dev
  	int i, ret;
  
  	/* under firmware own the chip answers no register read, and the
@@ -226,7 +226,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < 3; i++) {
  		ret = mt7996_mac_restart(dev);
  		if (!ret)
-@@ -3070,10 +3125,11 @@ __mt7996_chip_power_on(struct mt7996_dev
+@@ -3075,10 +3130,11 @@ __mt7996_chip_power_on(struct mt7996_dev
  	if (ret) {
  		/* the firmware may run after a partial restart, and the removal
  		 * path skips the power off of a chip that is marked off; the

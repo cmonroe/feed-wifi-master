@@ -1,0 +1,42 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Thu, 05 Nov 2026 22:44:22 -0800
+Subject: [PATCH] wifi: mt76: clear the WED reset completions before a reset
+
+An ethernet reset and the L1 recovery signal each other through two
+completions. If one side ends its wait on a timeout, the other side's
+late signal stays in its completion. The next reset then does not
+wait at all. Clear both completions in the reset callback, before it
+publishes the request, so that no signal of that request can be lost.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7915/mmio.c |    4 ++++
+ mt7996/mmio.c |    4 ++++
+ 2 files changed, 8 insertions(+)
+
+--- a/mt7915/mmio.c
++++ b/mt7915/mmio.c
+@@ -609,6 +609,10 @@ static int mt7915_mmio_wed_reset(struct
+ 
+ 	ASSERT_RTNL();
+ 
++	/* a signal that came after a timed-out wait must not end this reset */
++	reinit_completion(&mdev->mmio.wed_reset);
++	reinit_completion(&mdev->mmio.wed_reset_complete);
++
+ 	if (test_and_set_bit(MT76_STATE_WED_RESET, &mphy->state))
+ 		return -EBUSY;
+ 
+--- a/mt7996/mmio.c
++++ b/mt7996/mmio.c
+@@ -515,6 +515,10 @@ static int mt7996_mmio_wed_reset(struct
+ 
+ 	ASSERT_RTNL();
+ 
++	/* a signal that came after a timed-out wait must not end this reset */
++	reinit_completion(&mdev->mmio.wed_reset);
++	reinit_completion(&mdev->mmio.wed_reset_complete);
++
+ 	if (test_and_set_bit(MT76_STATE_WED_RESET, &mphy->state))
+ 		return -EBUSY;
+ 

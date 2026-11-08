@@ -330,7 +330,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	/* chip full reset */
  	if (dev->recovery.restart) {
  		/* disable WA/WM WDT */
-@@ -2866,6 +2883,288 @@ void mt7996_mac_reset_work(struct work_s
+@@ -2871,6 +2888,288 @@ void mt7996_mac_reset_work(struct work_s
  		 wiphy_name(dev->mt76.hw->wiphy));
  }
  
@@ -619,7 +619,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  /* firmware coredump */
  void mt7996_mac_dump_work(struct work_struct *work)
  {
-@@ -2953,7 +3252,7 @@ void mt7996_reset(struct mt7996_dev *dev
+@@ -2958,7 +3257,7 @@ void mt7996_reset(struct mt7996_dev *dev
  		return;
  	}
  
