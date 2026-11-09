@@ -1,0 +1,45 @@
+From: Koral Ilgun <koral.ilgun@adtran.com>
+Date: Mon, 09 Nov 2026 12:12:52 -0800
+Subject: [PATCH] BSS coloring: Cancel the collision timer of a BSS that is not started
+
+hostapd_switch_color() arms the collision timer for bss[0] of an
+interface, also when that BSS is not started.
+hostapd_free_hapd_data() returns early for a BSS that is not started,
+before it cancels the timer. So a BSS that is freed in that state
+leaves the timer behind, and the timer handler then reads the freed
+BSS. This happens when an interface that waits for its country update
+is stopped and its BSSes are removed.
+
+Cancel the timer at the start of hostapd_free_hapd_data(), with the
+other timers that the function cancels for every BSS.
+
+Fixes: 654d2395dddf ("BSS coloring: Handling of collision events and triggering CCA")
+Signed-off-by: Koral Ilgun <koral.ilgun@adtran.com>
+---
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -1526,6 +1526,12 @@ void hostapd_adv_ttlm_event(struct hosta
+ 
+ void hostapd_free_hapd_data(struct hostapd_data *hapd)
+ {
++#ifdef CONFIG_IEEE80211AX
++	/* A color collision event arms this timer also for a BSS that is not
++	 * started, and the BSS can be freed before the timer expires. */
++	eloop_cancel_timeout(hostapd_switch_color_timeout_handler, hapd, NULL);
++#endif /* CONFIG_IEEE80211AX */
++
+ #ifdef CONFIG_IEEE80211BE
+ 	eloop_cancel_timeout(hostapd_link_remove_timeout_handler, hapd, NULL);
+ 	eloop_cancel_timeout(hostapd_link_remove_finish, hapd, NULL);
+@@ -1704,11 +1710,6 @@ void hostapd_free_hapd_data(struct hosta
+ 	}
+ 	eloop_cancel_timeout(auth_sae_process_commit, hapd, NULL);
+ #endif /* CONFIG_SAE */
+-
+-#ifdef CONFIG_IEEE80211AX
+-	eloop_cancel_timeout(hostapd_switch_color_timeout_handler, hapd, NULL);
+-
+-#endif /* CONFIG_IEEE80211AX */
+ }
+ 
+ 

@@ -121,7 +121,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  #include "scs.h"
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4090,6 +4090,10 @@ dfs_offload:
+@@ -4091,6 +4091,10 @@ dfs_offload:
  					   hapd->iconf->edcca_compensation);
  	hostapd_drv_configure_edcca_threshold(hapd,
  					      hapd->iconf->edcca_threshold);
