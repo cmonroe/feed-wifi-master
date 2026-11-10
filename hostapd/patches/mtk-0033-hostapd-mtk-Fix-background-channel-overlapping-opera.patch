@@ -10,18 +10,24 @@ then select that block, and the AP starts there without a CAC. No CAC
 start stops the chain, so hostapd keeps the record, and a later radar
 on the new operating channel matches the chain instead of the AP.
 
-hostapd now drops the record when the AP leaves a radar during its
-CAC for the primary channel of the chain. After the background chain
-search narrows the width, it also refuses the primary channel of the
-AP and of the current chain. Other overlaps stay with the kernel,
-which stops a chain whose primary channel lies in a new CAC block.
+hostapd now drops the record when the AP leaves a radar during its CAC
+for a block that holds a channel of the chain. A test of the primary
+channels is not sufficient: a chain that the search narrowed can lie
+inside the new AP block with a primary channel of its own. Its record
+then stays, and the completion of its CAC moves the AP onto the narrow
+chain without a radar. After the background chain search narrows the
+width, it also refuses the primary channel of the AP and of the
+current chain. Other overlaps stay with the kernel, which stops a
+chain whose primary channel lies in a new CAC block.
 
 Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Co-developed-by: Chad Monroe <chad@monroe.io>
 Signed-off-by: Chad Monroe <chad@monroe.io>
+Co-developed-by: Piotr Kubik <piotr.kubik@adtran.com>
+Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
 ---
- src/ap/dfs.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ src/ap/dfs.c | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
@@ -34,15 +40,50 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	    hostapd_start_dfs_cac(iface, iface->conf->hw_mode,
  				  channel->freq, channel->chan,
  				  iface->conf->ieee80211n,
-@@ -1623,6 +1625,13 @@ static int hostapd_dfs_start_channel_swi
+@@ -1334,6 +1336,31 @@ static bool dfs_background_chandef_conta
+ }
+ 
+ 
++static bool dfs_background_overlaps_ap(struct hostapd_iface *iface)
++{
++	struct hostapd_hw_modes *mode = iface->current_mode;
++	int start_chan_idx, start_chan_idx1, n_chans, n_chans1, i;
++
++	start_chan_idx = dfs_get_start_chan_idx(iface, &start_chan_idx1);
++	if (start_chan_idx < 0)
++		return false;
++
++	n_chans = dfs_get_used_n_chans(iface, &n_chans1);
++	for (i = 0; i < n_chans; i++) {
++		if (dfs_background_chandef_contains(
++			    iface, mode->channels[start_chan_idx + i].freq))
++			return true;
++	}
++	for (i = 0; start_chan_idx1 >= 0 && i < n_chans1; i++) {
++		if (dfs_background_chandef_contains(
++			    iface, mode->channels[start_chan_idx1 + i].freq))
++			return true;
++	}
++
++	return false;
++}
++
++
+ static bool dfs_background_chandef_available(struct hostapd_iface *iface)
+ {
+ 	struct hostapd_hw_modes *mode = iface->current_mode;
+@@ -1623,6 +1650,16 @@ static int hostapd_dfs_start_channel_swi
  	}
  	err = 0;
  
 +	/* A STA can make the chain block available while both CACs run.
 +	 * The AP then starts there without a CAC that would stop the chain.
++	 * A chain that the search narrowed has a primary channel of its
++	 * own, so the test covers the whole AP block.
 +	 */
 +	if (dfs_use_radar_background(iface) &&
-+	    channel->chan == iface->radar_background.channel)
++	    iface->radar_background.channel != -1 &&
++	    dfs_background_overlaps_ap(iface))
 +		hostapd_dfs_chain_drop(iface);
 +
  	hostapd_setup_interface_complete(iface, err);
