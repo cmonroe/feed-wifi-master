@@ -1,0 +1,157 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 11 Nov 2026 10:44:43 -0800
+Subject: [PATCH] wifi: mt76: mt7996: resume TX after radar without a channel switch
+
+The firmware pauses data TX on a band when it reports radar, and it
+reports once per detector start. The driver resumes TX at the next
+channel set, and a set to another channel restarts the detector.
+cfg80211 can keep the channel after a report. A DFS test mode leaves
+channel state as it is, and a station that covers the channel
+overrules local detection. No channel set follows, so data TX stays
+paused and the detector stays silent.
+
+Queue a wiphy work after each report on the operating chain. Wiphy
+works run in queue order. This work queues itself again when it sees
+a new report, so it acts after the radar work of mac80211. If the
+channel is still in service, resume TX and restart the detector.
+After a radar that takes the channel out of service, this work does
+nothing and the pause holds until the channel switch.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/init.c   |    3 ++
+ mt7996/mac.c    |   57 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mt7996/main.c   |    2 +
+ mt7996/mcu.c    |    3 ++
+ mt7996/mt7996.h |    5 ++++
+ 5 files changed, 70 insertions(+)
+
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -893,6 +893,7 @@ static int mt7996_register_phy(struct mt
+ 	mphy->dev->phys[band] = mphy;
+ 
+ 	INIT_DELAYED_WORK(&mphy->mac_work, mt7996_mac_work);
++	wiphy_work_init(&phy->radar_resume_work, mt7996_dfs_radar_resume_work);
+ 
+ 	ret = mt7996_eeprom_parse_hw_cap(dev, phy);
+ 	if (ret)
+@@ -1975,6 +1976,8 @@ int mt7996_register_device(struct mt7996
+ 	dev->mt76.phy.priv = &dev->phy;
+ 	INIT_WORK(&dev->rc_work, mt7996_mac_sta_rc_work);
+ 	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7996_mac_work);
++	wiphy_work_init(&dev->phy.radar_resume_work,
++			mt7996_dfs_radar_resume_work);
+ 	INIT_DELAYED_WORK(&dev->scs_work, mt7996_mcu_scs_sta_poll);
+ 	INIT_LIST_HEAD(&dev->sta_rc_list);
+ 	INIT_LIST_HEAD(&dev->twt_list);
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -3693,6 +3693,63 @@ stop:
+ 	return 0;
+ }
+ 
++/* The firmware pauses data TX at a radar report and reports once for each
++ * detector start. cfg80211 can keep the channel after a report (a DFS
++ * test mode, or a station that covers the channel); no channel set then
++ * follows to resume TX and to start the detector again.
++ */
++void mt7996_dfs_radar_resume_work(struct wiphy *wiphy, struct wiphy_work *work)
++{
++	struct mt7996_phy *phy = container_of(work, struct mt7996_phy,
++					      radar_resume_work);
++	struct mt7996_dev *dev = phy->dev;
++	u32 seq;
++	int err;
++
++	mutex_lock(&dev->mt76.mutex);
++
++	/* wiphy works run in queue order, and a queued work keeps its place:
++	 * queue again behind the radar work that mac80211 queued for this
++	 * report, so its verdict on the channel is in when this work acts
++	 */
++	seq = atomic_read(&phy->radar_report_seq);
++	if (phy->radar_resume_seq != seq) {
++		phy->radar_resume_seq = seq;
++		wiphy_work_queue(wiphy, work);
++		goto out;
++	}
++
++	/* a channel set after the report did both steps already */
++	if (!phy->rdd_tx_paused)
++		goto out;
++
++	/* the channel set that ends each of these states does both steps */
++	if (mt7996_chip_is_off(dev) ||
++	    test_bit(MT76_MCU_RESET, &dev->mphy.state) ||
++	    test_bit(MT76_RESTART, &dev->mphy.state) ||
++	    !test_bit(MT76_STATE_RUNNING, &phy->mt76->state) ||
++	    !phy->mt76->chanctx || phy->mt76->offchannel)
++		goto out;
++
++	/* a channel that cfg80211 took out of service is no longer active */
++	if (!phy->mt76->radar_enabled ||
++	    mt76_phy_dfs_state(phy->mt76) != MT_DFS_STATE_ACTIVE)
++		goto out;
++
++	err = mt7996_mcu_rdd_resume_tx(phy);
++	if (!err) {
++		phy->mt76->dfs_state = MT_DFS_STATE_UNKNOWN;
++		err = mt7996_dfs_init_radar_detector(phy);
++	}
++	if (err)
++		dev_err(dev->mt76.dev,
++			"band %d: no resume after a radar report: %d\n",
++			phy->mt76->band_idx, err);
++
++out:
++	mutex_unlock(&dev->mt76.mutex);
++}
++
+ static int
+ mt7996_mac_twt_duration_align(int duration)
+ {
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -154,6 +154,8 @@ static void mt7996_stop_phy(struct mt799
+ 	clear_bit(MT76_STATE_RUNNING, &phy->mt76->state);
+ 
+ 	mutex_unlock(&dev->mt76.mutex);
++
++	wiphy_work_cancel(phy->mt76->hw->wiphy, &phy->radar_resume_work);
+ }
+ 
+ static void mt7996_stop(struct ieee80211_hw *hw, bool suspend)
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -652,6 +652,9 @@ mt7996_mcu_rx_radar_detected(struct mt79
+ 						 container_of((void *)ctx,
+ 							      struct ieee80211_chanctx_conf,
+ 							      drv_priv));
++			atomic_inc(&phy->radar_report_seq);
++			wiphy_work_queue(mphy->hw->wiphy,
++					 &phy->radar_resume_work);
+ 		} else {
+ 			dev_info(dev->mt76.dev,
+ 				 "%s: no channel context on band %d, radar not reported\n",
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -539,6 +539,10 @@ struct mt7996_phy {
+ 	bool offchan_bcn_stopped;
+ 	u8 csa_quiet_links;
+ 
++	struct wiphy_work radar_resume_work;
++	atomic_t radar_report_seq;
++	u32 radar_resume_seq;
++
+ 	bool sku_limit_en;
+ 	bool sku_path_en;
+ 
+@@ -1211,6 +1215,7 @@ bool mt7996_rx_check(struct mt76_dev *md
+ void mt7996_stats_work(struct work_struct *work);
+ int mt76_dfs_start_rdd(struct mt7996_dev *dev, bool force);
+ int mt7996_dfs_init_radar_detector(struct mt7996_phy *phy);
++void mt7996_dfs_radar_resume_work(struct wiphy *wiphy, struct wiphy_work *work);
+ void mt7996_set_stream_he_eht_caps(struct mt7996_phy *phy);
+ void mt7996_set_stream_vht_txbf_caps(struct mt7996_phy *phy);
+ void mt7996_update_channel(struct mt76_phy *mphy);
