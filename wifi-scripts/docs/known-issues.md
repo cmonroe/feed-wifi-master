@@ -89,6 +89,64 @@ SAE on this SSID during those tests. Ten steer rounds per setting:
   the three AKMs; the test above removed WPA-PSK-SHA256 through
   `hostapd_bss_options`.
 
+## Each Additional PSK Without a MAC Can Cost an SAE Client One More Attempt
+
+**Severity:** not known. It depends on how many such PSKs a network has
+and on how each client answers a rejection. Found in the work on
+SDG-13120 on 2026-11-11, from the source and the hostap documentation.
+
+### What happens
+
+- `iface_sae_stations()` in `files-ucode/usr/share/ucode/wifi/ap.uc`
+  writes each Additional PSK without a MAC, and the main passphrase, as a
+  wildcard SAE password, and sets `sae_track_password`.
+- SAE tests one password in each attempt. hostapd tries the wildcard
+  passwords one by one and answers a wrong one with status 1.
+- With K wildcard passwords, a client whose password hostapd tries last
+  gets up to K - 1 rejections before it connects. hostapd keeps the
+  result for each client in RAM only, so this happens again after each
+  start of hostapd and each reload of the BSS config. A failed attempt
+  of the client, also one that another station forges with its address,
+  removes the result too.
+- The `sae_track_password` text in `hostapd.conf` says that a client can
+  take these rejections as an attack and stop after a few attempts, so it
+  names 2 to 3 passwords. The hostap commit "SAE: Multiple default
+  password iteration" reports up to five with wpa_supplicant clients.
+- Tested on a unit with one Additional PSK without a MAC only (two
+  wildcard passwords): wpa_supplicant 2.12 connected 0.26 s after the
+  rejection.
+
+### If it matters later
+
+- The web UI can limit the number of Additional PSKs without a MAC on a
+  network with SAE, or warn about it.
+- SAE password identifiers remove the iteration, but clients do not
+  support them yet.
+
+## A Client With a MAC-Bound PSK Cannot Use the Main Passphrase for SAE
+
+**Severity:** minor. It affects only a client whose MAC address an
+Additional PSK names, and only for SAE. Found in the work on SDG-13120
+on 2026-11-11. The SAE part was seen on an SDG-8614 with SmartOS
+27.2.0.101; the WPA2 part comes from the source.
+
+### What happens
+
+- For SAE, hostapd uses the `sae_password` entry for the address of the
+  client and no other password. hostapd patch
+  `999-smartrg-SAE-Let-each-STA-reach-its-password-with-sae_track_password.patch`
+  keeps that rule when `sae_track_password` is on.
+- For WPA2-PSK, `hostapd_get_psk()` also gives the PSKs that apply to
+  every client, the main passphrase included. So over WPA2, the same
+  client can also use the main passphrase.
+- On a `sae-mixed` BSS, such a client therefore joins with the main
+  passphrase over WPA2, but gets status 15 over SAE.
+
+### If it matters later
+
+- The web UI can say that a PSK with a MAC replaces the main passphrase
+  for that client over WPA3.
+
 ## A `wifi up` During a Setup of the Same Radio Can Leave the 5 GHz AP Down
 
 **Severity:** minor. Only a test tool started the overlap, and no product
@@ -139,3 +197,30 @@ teardown of the shakedown test
   `pending` true.
 - shakedown commit "lib: wait while the radio is pending before the restart
   undo" removed the trigger from the test tool.
+
+## A Key That Contains `|mac=` Breaks the SAE Password File
+
+**Severity:** minor. The fault needs a key that contains the text `|mac=`.
+Found in the work on SDG-13120 on 2026-11-11, from the source; not tested
+on a unit.
+
+### What happens
+
+- `iface_sae_stations()` in `files-ucode/usr/share/ucode/wifi/ap.uc`
+  writes each key as `<key>|mac=<address>`, with `|vlanid=<vid>` when the
+  station has a VLAN.
+- `parse_sae_password()` of hostapd ends the password at the first
+  `|mac=`. A key that contains `|mac=` therefore gives a wrong password
+  and an address that `hwaddr_aton()` can refuse. A refused line makes
+  hostapd refuse the whole file, and the BSS does not start.
+- This applies to the key of each `wifi-station` section. When a station
+  has no MAC, it also applies to the main key of the BSS, which then goes
+  into the same file.
+- The text `|vlanid=`, `|pk=` or `|id=` in a key does no harm: hostapd
+  searches for them only after the address.
+
+### If it matters later
+
+- A check of the key in `bss_refusal()` can refuse such a key with a
+  reason, instead of a BSS that does not start.
+- The web UI can refuse `|mac=` in a key.
