@@ -1,0 +1,30 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Wed, 11 Nov 2026 10:26:54 -0800
+Subject: [PATCH] hostapd: rebuild the own neighbor report when an AP follows
+ its STA
+
+An AP that shares a radio with a station interface follows the
+channel of that station. When the interface is enabled, the start
+call of the script retunes each started BSS and sets its beacon. The
+own neighbor report then keeps the channel of the configuration, so a
+neighbor report or a BSS transition request names a channel that the
+BSS does not use.
+
+Rebuild the own report of each BSS at that retune, as the channel
+switch event does.
+
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ src/ap/ucode.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -867,6 +867,7 @@ out:
+ 				 hostapd_get_oper_centr_freq_seg0_idx(conf),
+ 				 hostapd_get_oper_centr_freq_seg1_idx(conf));
+ 
++		hostapd_neighbor_set_own_report(hapd);
+ 		ieee802_11_set_beacon(hapd);
+ 	}
+ 	hostapd_owe_update_trans(iface);

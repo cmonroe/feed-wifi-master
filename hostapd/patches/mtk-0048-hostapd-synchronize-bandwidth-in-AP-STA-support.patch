@@ -141,7 +141,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
  
-@@ -892,10 +930,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -893,10 +931,14 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  		return ucv_boolean_new(false);
  	}
  
@@ -158,7 +158,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		csa.freq_params.sec_channel_offset = intval;
  
  	csa.freq_params.ht_enabled = conf->ieee80211n;
-@@ -924,13 +966,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
+@@ -925,13 +967,24 @@ uc_hostapd_iface_switch_channel(uc_vm_t
  		break;
  	}
  
