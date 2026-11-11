@@ -1,0 +1,31 @@
+From: Chad Monroe <chad@monroe.io>
+Date: Mon, 09 Nov 2026 16:18:17 -0800
+Subject: [PATCH] wifi: mt76: mt7996: skip unconnected stations after a channel
+ switch
+
+mac80211 iterates every uploaded station after a channel switch, also
+a station that is authenticated and not yet associated. The driver
+sends the first station record at association, so the firmware has no
+entry for such a station. The beamforming and rate control records
+then name a WLAN index that the firmware does not hold.
+
+Skip a station link that is not connected, as the rate control work
+does.
+
+Fixes: 3b11a2351769 ("wifi: mt76: mt7996: set specific BSSINFO and STAREC commands after channel switch")
+Signed-off-by: Chad Monroe <chad@monroe.io>
+---
+ mt7996/mcu.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -3382,7 +3382,7 @@ void mt7996_mcu_update_sta_rec_bw(void *
+ 		return;
+ 
+ 	msta_link = mt7996_sta_link_protected(dev, msta, link_id);
+-	if (!msta_link)
++	if (!msta_link || !msta_link->connected)
+ 		return;
+ 
+ 	vif = container_of((void *)msta->vif, struct ieee80211_vif, drv_priv);
