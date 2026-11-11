@@ -175,7 +175,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -4923,6 +4923,7 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -4925,6 +4925,7 @@ int mt7996_mcu_set_chan_info(struct mt79
  	struct cfg80211_chan_def *chandef = &phy->mt76->chandef;
  	int freq1 = chandef->center_freq1;
  	u8 band_idx = phy->mt76->band_idx;
@@ -183,7 +183,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	struct {
  		/* fixed field */
  		u8 __rsv[4];
-@@ -4977,8 +4978,15 @@ int mt7996_mcu_set_chan_info(struct mt79
+@@ -4979,8 +4980,15 @@ int mt7996_mcu_set_chan_info(struct mt79
  		req.center_ch2 = ieee80211_frequency_to_channel(freq2);
  	}
  

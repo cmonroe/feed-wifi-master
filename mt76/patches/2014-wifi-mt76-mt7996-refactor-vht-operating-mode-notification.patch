@@ -3,26 +3,31 @@ Date: Tue, 8 Oct 2024 19:58:14 +0800
 Subject: [PATCH] wifi: mt76: mt7996: refactor VHT operating mode notification
  handling
 
-The STA_REC_RA command provides operating-mode fields which were
-left at zero, so the firmware rate controller never learned the
-station capability envelope versus its current operating limits.
-Fill them at station addition and push updates through the new
-RATE_PARAM_VHT_OMN_UPDATE field when a station sends an operating
-mode notification.
+The driver sends STA_REC_RA at association, with BSS channel width,
+a maximum bandwidth of the station and its operating limits. That
+maximum is station capability limited to a link's BSS width, as
+MediaTek's proprietary driver sends it. An operating-mode flag
+marks a station that operates below that maximum or below its
+stream count.
 
-Requires the mac80211 ieee80211_link_sta_cap_bw()/cap_nss() helpers
-and IEEE80211_RC_VHT_OMN_CHANGED from mtk-0078.
+Channel, band and width come from the operating channel, because
+an off-channel scan or remain-on-channel dwell puts a radio on a
+20 MHz channel. An operating mode notification from a station
+updates its operating limits with RATE_PARAM_VHT_OMN_UPDATE. The
+driver drops a notification update with a bandwidth that such an
+update cannot hold.
 
-Deviation from the MediaTek original: free the skb when rejecting an
-unsupported bandwidth in the VHT OMN update path instead of leaking
-it.
+Requires af9eb3ac0157 ("mtk: mac80211: Add vht operating mode
+notification vendor flag").
 
 Signed-off-by: Allen Ye <allen.ye@mediatek.com>
+Co-developed-by: Chad Monroe <chad@monroe.io>
+Signed-off-by: Chad Monroe <chad@monroe.io>
 ---
  mt7996/mac.c |   10 +++++++---
- mt7996/mcu.c |   52 ++++++++++++++++++++++++++++++++++++++++------------
+ mt7996/mcu.c |   56 +++++++++++++++++++++++++++++++++++++++++++-------------
  mt7996/mcu.h |    1 +
- 3 files changed, 48 insertions(+), 15 deletions(-)
+ 3 files changed, 51 insertions(+), 16 deletions(-)
 
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
@@ -124,13 +129,24 @@ Signed-off-by: Allen Ye <allen.ye@mediatek.com>
  	struct cfg80211_chan_def *chandef;
  	struct sta_rec_ra_uni *ra;
  	enum nl80211_band band;
-@@ -2858,10 +2883,13 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
+@@ -2850,7 +2875,7 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
+ 	tlv = mt76_connac_mcu_add_tlv(skb, STA_REC_RA, sizeof(*ra));
+ 	ra = (struct sta_rec_ra_uni *)tlv;
+ 
+-	chandef = &mphy->chandef;
++	chandef = &mphy->main_chandef;
+ 	band = chandef->chan->band;
+ 	supp_rate = link_sta->supp_rates[band];
+ 
+@@ -2858,10 +2883,15 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_b
  	ra->auto_rate = true;
  	ra->phy_mode = mt76_connac_get_phy_mode(mphy, vif, band, link_sta);
  	ra->channel = chandef->chan->hw_value;
 -	ra->bw = (link_sta->bandwidth == IEEE80211_STA_RX_BW_320) ?
 -		 CMD_CBW_320MHZ : link_sta->bandwidth;
 -	ra->phy.bw = ra->bw;
++	cap_bw = min(cap_bw,
++		     ieee80211_chan_width_to_rx_bw(link_conf->chanreq.oper.width));
 +	ra->bw = mt76_connac_chan_bw(chandef);
 +	ra->phy.bw = (cap_bw == IEEE80211_STA_RX_BW_320) ? CMD_CBW_320MHZ : cap_bw;
  	ra->mmps_mode = mt7996_mcu_get_mmps_mode(link_sta->smps_mode);

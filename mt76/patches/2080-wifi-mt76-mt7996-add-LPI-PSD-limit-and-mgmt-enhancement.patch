@@ -93,7 +93,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  out:
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6381,7 +6381,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
+@@ -6383,7 +6383,7 @@ int mt7996_mcu_set_fixed_rate_table(stru
  
  	if (beacon) {
  		req.spe_idx_sel = SPE_IXD_SELECT_TXD;
@@ -102,7 +102,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		phy->beacon_rate = rate_idx;
  	} else {
  		req.spe_idx_sel = SPE_IXD_SELECT_BMC_WTBL;
-@@ -6854,6 +6854,22 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6856,6 +6856,22 @@ mt7996_update_max_txpower_cur(struct mt7
  		mphy->txpower_cur = e2p_power_limit;
  }
  
@@ -125,7 +125,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  static s8 mt7996_get_power_bound(struct mt7996_phy *phy, s8 txpower)
  {
         struct mt76_phy *mphy = phy->mt76;
-@@ -6865,7 +6881,8 @@ static s8 mt7996_get_power_bound(struct
+@@ -6867,7 +6883,8 @@ static s8 mt7996_get_power_bound(struct
         return txpower;
  }
  
@@ -135,7 +135,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  #define TX_POWER_LIMIT_TABLE_RATE	0
  #define TX_POWER_LIMIT_TABLE_PATH	1
-@@ -6890,7 +6907,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6892,7 +6909,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	struct sk_buff *skb;
  	int i, ret, txpower_limit;
  
@@ -146,7 +146,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (phy->sku_limit_en) {
  		la = kzalloc(sizeof(*la), GFP_KERNEL);
-@@ -6913,7 +6932,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6915,7 +6934,37 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	}
  
  	skb_put_data(skb, &req, sizeof(req));
@@ -185,7 +185,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb_put_data(skb, &la->mcs[0], 8); /* HT20 */
  	skb_put_data(skb, &la->mcs[1], 9); /* HT40 */
  
-@@ -6952,8 +7001,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6954,8 +7003,41 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la->path.cck, 5);
@@ -229,7 +229,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	for (i = 0; i < 32; i++) {
  		bool bf = i % 2;
-@@ -6970,6 +7052,31 @@ out:
+@@ -6972,6 +7054,31 @@ out:
  	return ret;
  }
  

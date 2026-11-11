@@ -35,7 +35,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 
 --- a/mt7996/mcu.c
 +++ b/mt7996/mcu.c
-@@ -6856,7 +6856,7 @@ mt7996_update_max_txpower_cur(struct mt7
+@@ -6858,7 +6858,7 @@ mt7996_update_max_txpower_cur(struct mt7
  
  static bool mt7996_is_psd_country(char *country)
  {
@@ -44,7 +44,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	int i;
  
  	if (strlen(country) != 2)
-@@ -6881,6 +6881,19 @@ static s8 mt7996_get_power_bound(struct
+@@ -6883,6 +6883,19 @@ static s8 mt7996_get_power_bound(struct
         return txpower;
  }
  
@@ -64,7 +64,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  int mt7996_mcu_set_txpower_sku(struct mt7996_phy *phy,
  			       int txpower_setting)
  {
-@@ -6909,6 +6922,11 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6911,6 +6924,11 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	if (txpower_setting == INT_MIN || txpower_setting > 127)
  		txpower_setting = 127;
@@ -76,7 +76,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	txpower_limit = mt7996_get_power_bound(phy, txpower_setting);
  
  	if (phy->sku_limit_en) {
-@@ -6924,6 +6942,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6926,6 +6944,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  		return 0;
  	}
  
@@ -86,7 +86,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	skb = mt76_mcu_msg_alloc(&dev->mt76, NULL,
  				 sizeof(req) + MT7996_SKU_PATH_NUM);
  	if (!skb) {
-@@ -6934,11 +6955,12 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6936,11 +6957,12 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	skb_put_data(skb, &req, sizeof(req));
  	skb_put_data(skb, &la->cck, 4);
  
@@ -103,7 +103,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->eht[3], 8);
-@@ -6974,8 +6996,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -6976,8 +6998,9 @@ int mt7996_mcu_set_txpower_sku(struct mt
  
  	/* HE RU26, RU52, RU106, RU242, RU484, RU996, and RU2x996 */
  	skb_put_data(skb, &la->ru[0], 84);
@@ -115,7 +115,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	 */
  	skb_put_data(skb, &la->eht[0], 256);
  
-@@ -7005,7 +7028,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
+@@ -7007,7 +7030,7 @@ int mt7996_mcu_set_txpower_sku(struct mt
  	/* FW would NOT compensate in the case of BF backoff table
  	 * driver needs to compensate for LPI PSD
  	 */
@@ -124,7 +124,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		switch (mphy->chandef.width) {
  		case NL80211_CHAN_WIDTH_20:
  			skb_put_data(skb, &la->path.ru[5], 5);
-@@ -7073,6 +7096,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
+@@ -7075,6 +7098,9 @@ int mt7996_mcu_set_lpi_psd(struct mt7996
  		.psd_limit = enable ? mt7996_is_psd_country(dev->mt76.alpha2) : 0,
  	};
  
