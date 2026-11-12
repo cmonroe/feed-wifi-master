@@ -56,7 +56,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  }
  
  
-@@ -1368,6 +1366,66 @@ static bool dfs_background_chandef_conta
+@@ -1393,6 +1391,66 @@ static bool dfs_background_overlaps_ap(s
  }
  
  
@@ -123,7 +123,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  static bool dfs_background_chandef_available(struct hostapd_iface *iface)
  {
  	struct hostapd_hw_modes *mode = iface->current_mode;
-@@ -1439,7 +1497,7 @@ hostapd_dfs_start_channel_switch_backgro
+@@ -1464,7 +1522,7 @@ hostapd_dfs_start_channel_switch_backgro
  
  int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
  			     int ht_enabled, int chan_offset, int chan_width,
@@ -132,7 +132,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  {
  	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
-@@ -1481,8 +1539,15 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1506,8 +1564,15 @@ int hostapd_dfs_complete_cac(struct host
  			 * selected channel and configure the background chain
  			 * to a new DFS channel.
  			 */
@@ -149,7 +149,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  				if (!iface->radar_background.temp_ch)
  					return 0;
  
-@@ -1515,9 +1580,18 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1540,9 +1605,18 @@ int hostapd_dfs_complete_cac(struct host
  			    iface->radar_background.channel == -1)
  				hostapd_dfs_update_background_chain(iface);
  		}
@@ -171,7 +171,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  	} else if (iface->state == HAPD_IFACE_ENABLED) {
  		int i;
  
-@@ -1681,7 +1755,7 @@ static int hostapd_dfs_start_channel_swi
+@@ -1709,7 +1783,7 @@ static int hostapd_dfs_start_channel_swi
  
  static int
  hostapd_dfs_background_start_channel_switch(struct hostapd_iface *iface,
@@ -180,7 +180,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  {
  	if (!dfs_use_radar_background(iface))
  		return -1; /* Background radar chain not supported. */
-@@ -1694,12 +1768,12 @@ hostapd_dfs_background_start_channel_swi
+@@ -1722,12 +1796,12 @@ hostapd_dfs_background_start_channel_swi
  	/* Check if CSA in progress */
  	if (hostapd_csa_in_progress(iface)) {
  		/* the kernel stopped the chain; move it once the CSA ends */
@@ -195,7 +195,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  		/*
  		 * Radar pattern is reported on the background chain.
  		 * Just select a new random channel according to the
-@@ -1933,15 +2007,15 @@ static int dfs_follow_radar_detected(str
+@@ -1961,15 +2035,15 @@ static int dfs_follow_radar_detected(str
  
  
  /* A detect mode keeps only the chain that saw the radar on its channel */
@@ -214,7 +214,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  	default:
  		return false;
  	}
-@@ -2005,8 +2079,10 @@ void hostapd_dfs_detect_mode_clear(struc
+@@ -2033,8 +2107,10 @@ void hostapd_dfs_detect_mode_clear(struc
  
  int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
  			       int ht_enabled, int chan_offset, int chan_width,
@@ -226,7 +226,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO,
  			DFS_EVENT_RADAR_DETECTED
-@@ -2041,8 +2117,10 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -2069,8 +2145,10 @@ int hostapd_dfs_radar_detected(struct ho
  						 chan_offset, chan_width,
  						 cf1, cf2);
  
@@ -238,7 +238,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  		return 0;
  
  	/* mark radar frequency as invalid */
-@@ -2050,14 +2128,31 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -2078,14 +2156,31 @@ int hostapd_dfs_radar_detected(struct ho
  			   cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE))
  		return 0;
  
@@ -272,7 +272,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  		/* Radar detected while operating, switch the channel. */
  		return hostapd_dfs_start_channel_switch(iface);
  	}
-@@ -2183,23 +2278,16 @@ static void dfs_chain_half_adopt(struct
+@@ -2211,23 +2306,16 @@ static void dfs_chain_half_adopt(struct
  	wpa_printf(MSG_DEBUG,
  		   "DFS: background chain runs the 80 MHz half at %d MHz",
  		   cf1);
@@ -299,7 +299,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  
  	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
-@@ -2209,7 +2297,9 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -2237,7 +2325,9 @@ int hostapd_dfs_start_cac(struct hostapd
  	}
  
  	dfs_chain_half_adopt(iface, freq, chan_width, cf1);
@@ -310,7 +310,7 @@ Signed-off-by: Piotr Kubik <piotr.kubik@adtran.com>
  		iface->radar_background.cac_started = 1;
  	} else {
  		/* This is called when the driver indicates that an offloaded
-@@ -2234,9 +2324,7 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -2262,9 +2352,7 @@ int hostapd_dfs_start_cac(struct hostapd
  		freq, (freq - 5000) / 5, chan_offset,
  		channel_width_to_string(chan_width),
  		(cf1 - 5000) / 5, cf2 ? (cf2 - 5000) / 5 : 0,

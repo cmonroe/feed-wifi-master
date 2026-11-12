@@ -341,7 +341,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	iface->radar_background.channel = channel->chan;
  	iface->radar_background.freq = channel->freq;
-@@ -1489,7 +1562,10 @@ hostapd_dfs_start_channel_switch_backgro
+@@ -1514,7 +1587,10 @@ hostapd_dfs_start_channel_switch_backgro
  		hostapd_set_oper_centr_freq_seg1_idx(iface->conf, seg1);
  	}
  

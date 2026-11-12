@@ -365,7 +365,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			if (chan2 && abs(chan2->chan - chan->chan) > 12) {
  				/* two channels are not adjacent */
  				sec_chan_idx_80p80 = chan2->chan;
-@@ -1469,10 +1469,10 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1494,10 +1494,10 @@ int hostapd_dfs_complete_cac(struct host
  			 * another radio.
  			 */
  			if (iface->state != HAPD_IFACE_ENABLED &&
@@ -379,7 +379,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  			/*
  			 * When background radar is enabled but the CAC completion
-@@ -1486,6 +1486,13 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1511,6 +1511,13 @@ int hostapd_dfs_complete_cac(struct host
  	} else if (hostapd_dfs_is_background_event(iface, freq)) {
  		iface->radar_background.cac_started = 0;
  		hostapd_dfs_update_background_chain(iface);
@@ -393,7 +393,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	}
  
  	iface->radar_detected = false;
-@@ -1531,6 +1538,9 @@ int hostapd_dfs_pre_cac_expired(struct h
+@@ -1556,6 +1563,9 @@ int hostapd_dfs_pre_cac_expired(struct h
  		return 0;
  	}
  
@@ -403,7 +403,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	return 0;
  }
  
-@@ -2176,7 +2186,8 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -2204,7 +2214,8 @@ int hostapd_dfs_start_cac(struct hostapd
  		/* This is called when the driver indicates that an offloaded
  		 * DFS has started CAC. radar_detected might be set for previous
  		 * DFS channel. Clear it for this new CAC process. */
@@ -413,7 +413,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		iface->cac_started = 1;
  
  		/* Clear radar_detected in case it is for the previous
-@@ -2244,14 +2255,15 @@ int hostapd_handle_dfs_offload(struct ho
+@@ -2272,14 +2283,15 @@ int hostapd_handle_dfs_offload(struct ho
  }
  
  
@@ -433,7 +433,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  	if (!iface->conf->ieee80211h || !mode ||
  	    mode->mode != HOSTAPD_MODE_IEEE80211A)
-@@ -2284,18 +2296,164 @@ int hostapd_is_dfs_overlap(struct hostap
+@@ -2312,18 +2324,164 @@ int hostapd_is_dfs_overlap(struct hostap
  		if (!(chan->flag & HOSTAPD_CHAN_RADAR))
  			continue;
  

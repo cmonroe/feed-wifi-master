@@ -276,7 +276,7 @@ them. The existing fields stay, so every subscriber keeps working.
  void ap_sta_set_authorized_event(struct hostapd_data *hapd,
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -3931,6 +3931,38 @@ void hostapd_ubus_notify_sta(struct host
+@@ -3986,6 +3986,38 @@ void hostapd_ubus_notify_sta(struct host
  	hostapd_ubus_notify(hapd, type, sta->addr);
  }
  

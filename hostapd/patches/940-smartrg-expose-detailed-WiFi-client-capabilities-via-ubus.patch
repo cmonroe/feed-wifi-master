@@ -18,6 +18,11 @@ elements that hostapd did not accept, for example on a BSS without
 EHT. It leaves out each field that the element does not hold. The
 supported rates are sorted by rate, without the basic rate flag.
 
+The HE report carries the HE-MCS maps for 160 MHz and for 80+80 MHz
+of a client that supports those widths, and the whole Supported
+HE-MCS And NSS Set as hex. They give the number of spatial streams
+at those widths. A map that the element is too short for is left out.
+
 Co-developed-by: Vitali Klotschko <vitali.klotschko@adtran.com>
 Signed-off-by: Vitali Klotschko <vitali.klotschko@adtran.com>
 Co-developed-by: Matthew Cather <matthew.cather@adtran.com>
@@ -30,10 +35,10 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  src/ap/ieee802_11_eht.c        |    3
  src/ap/sta_info.c              |    2
  src/ap/sta_info.h              |    3
- src/ap/ubus.c                  |  800 +++++++++++++++++++++++++++++--
+ src/ap/ubus.c                  |  855 +++++++++++++++++++++++++++++--
  src/common/ieee802_11_common.c |   27 +
  src/common/ieee802_11_common.h |    1
- 7 files changed, 799 insertions(+), 45 deletions(-)
+ 7 files changed, 854 insertions(+), 45 deletions(-)
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
@@ -151,7 +156,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
  static struct ubus_context *ctx;
  static struct blob_buf b;
-@@ -271,71 +285,721 @@ hostapd_bss_reload(struct ubus_context *
+@@ -271,71 +285,776 @@ hostapd_bss_reload(struct ubus_context *
  
  
  static void
@@ -570,8 +575,11 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		{ "20mhz-only_mu_beamforming", 67, 1 },
 +		{ "20mhz-only_mru_support", 68, 1 }
 +		// { "reserved", 69, 3 }
-+	};
-+
+ 	};
+ 
+-	for (i = 0; i < ARRAY_SIZE(vht_capas); i++)
+-		blobmsg_add_u8(&b, vht_capas[i].name,
+-				!!(vhtc->vht_capabilities_info & vht_capas[i].flag));
 +	u8 chwidth = hec->he_phy_capab_info[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX];
 +	bool band_6g = freq >= 5895;
 +	bool band_5g_6g = IS_5GHZ(freq) || band_6g;
@@ -626,6 +634,59 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +}
 +
 +static void
++he_mcs_map_pair_add(const char *name, const u8 *pos)
++{
++	void *table, *map;
++
++	table = blobmsg_open_table(&b, name);
++
++	map = blobmsg_open_table(&b, "rx");
++	mcs_nss_map_add(WPA_GET_LE16(pos), WLAN_STA_HE);
++	blobmsg_close_table(&b, map);
++
++	map = blobmsg_open_table(&b, "tx");
++	mcs_nss_map_add(WPA_GET_LE16(pos + 2), WLAN_STA_HE);
++	blobmsg_close_table(&b, map);
++
++	blobmsg_close_table(&b, table);
++}
++
++/* The Supported HE-MCS And NSS Set holds the <= 80 MHz maps, then the
++ * 160 MHz maps if B2 and the 80+80 MHz maps if B3 of the channel width
++ * set is 1. A map that the element is too short for is left out, and so
++ * is the whole set. */
++static void
++he_mcs_nss_set_add(struct ieee80211_he_capabilities *hec, size_t he_len)
++{
++	const size_t off = offsetof(struct ieee80211_he_capabilities,
++				    he_basic_supported_mcs_set);
++	const u8 *set = (const u8 *) hec + off;
++	u8 chwidth = hec->he_phy_capab_info[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX];
++	size_t avail = he_len > off ? he_len - off : 0;
++	size_t len = 4;
++	char str[2 + 2 * 12 + 1];
++
++	if (chwidth & HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G) {
++		if (avail >= len + 4)
++			he_mcs_map_pair_add("mcs_map_160", set + len);
++		len += 4;
++	}
++
++	if (chwidth & HE_PHYCAP_CHANNEL_WIDTH_SET_80PLUS80MHZ_IN_5G) {
++		if (avail >= len + 4)
++			he_mcs_map_pair_add("mcs_map_80p80", set + len);
++		len += 4;
++	}
++
++	if (avail < len)
++		return;
++
++	os_strlcpy(str, "0x", sizeof(str));
++	wpa_snprintf_hex(str + 2, sizeof(str) - 2, set, len);
++	blobmsg_add_string(&b, "mcs_nss_set", str);
++}
++
++static void
 +he_capab_add(struct ieee80211_he_capabilities *hec, size_t he_len,
 +	     bool filter_false)
 +{
@@ -669,11 +730,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		{ "he_dynamic_sm_pwr_save", 45, 1 },
 +		{ "punctured_sounding", 46, 1 },
 +		{ "ht_vht_trig_frame_rx",47, 1 }
- 	};
- 
--	for (i = 0; i < ARRAY_SIZE(vht_capas); i++)
--		blobmsg_add_u8(&b, vht_capas[i].name,
--				!!(vhtc->vht_capabilities_info & vht_capas[i].flag));
++	};
++
 +	static const struct bitfield_descriptor phy_capas[] = {
 +		// { "reserved", 0, 1 },
 +		{ "channel_width_set", 1, 7 }, // following 7 bits present channel_width_set field
@@ -741,13 +799,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		{ "he_me_ppdu_w_more_ru_rx_max_n_he_ltf", 80, 1 }
 +		// { "reserved", 81, 7 },
 +	};
- 
--	supported_mcs = blobmsg_open_table(&b, "mcs_map");
++
 +	capab_table_add("mac_capabilities", mac_capas, ARRAY_SIZE(mac_capas),
 +			(uint8_t *)&hec->he_mac_capab_info, filter_false);
 +	capab_table_add("phy_capabilities", phy_capas, ARRAY_SIZE(phy_capas),
 +			(uint8_t *)&hec->he_phy_capab_info, filter_false);
-+
+ 
+-	supported_mcs = blobmsg_open_table(&b, "mcs_map");
 +	if (he_len < offsetof(struct ieee80211_he_capabilities, optional))
 +		return;
 +
@@ -767,6 +825,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  
 -	blobmsg_close_table(&b, supported_mcs);
 +	blobmsg_close_table(&b, mcs_table);
++
++	he_mcs_nss_set_add(hec, he_len);
  }
  
  static void
@@ -840,11 +900,13 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		eht_capab_add(&eht_tmp, elems->eht_capabilities_len, &he_tmp,
 +			      freq, filter_false);
 +		blobmsg_close_table(&b, table);
-+	}
-+
+ 	}
+ 
+-	/* ToDo: Add HT / HE capability parsing */
 +	blobmsg_close_table(&b, capab);
 +}
-+
+ 
+-	blobmsg_close_table(&b, v);
 +static void
 +sta_vendors_add(struct sta_info *sta)
 +{
@@ -869,9 +931,8 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +		for (int i = 0; i < data_len; i++, out += 2)
 +			sprintf(out, "%02x", ie_data[i]);
 +		blobmsg_add_string_buffer(&b);
- 	}
- 
--	/* ToDo: Add HT / HE capability parsing */
++	}
++
 +out:
 +	blobmsg_close_table(&b, table);
 +}
@@ -887,8 +948,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
 +	void *r = blobmsg_open_array(&b, "supported_rates");
 +	u8 *rates;
 +	int i;
- 
--	blobmsg_close_table(&b, v);
++
 +	rates = len > 0 ? os_malloc(len) : NULL;
 +	if (!rates)
 +		goto out;
@@ -905,7 +965,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  }
  
  static void
-@@ -399,7 +1063,8 @@ hostapd_ubus_sta_mld_add(struct hostapd_
+@@ -399,7 +1118,8 @@ hostapd_ubus_sta_mld_add(struct hostapd_
  
  /* A non-AP MLD is listed once, with the station of its association link. */
  static void
@@ -915,7 +975,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  {
  	struct hostap_sta_driver_data sta_driver_data;
  	struct sta_info *sta;
-@@ -414,42 +1079,67 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -414,42 +1134,67 @@ hostapd_bss_clients_add(struct hostapd_d
  		{ "authorized", WLAN_STA_AUTHORIZED },
  		{ "preauth", WLAN_STA_PREAUTH },
  		{ "wds", WLAN_STA_WDS },
@@ -986,7 +1046,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		}
  		blobmsg_close_array(&b, r);
  
-@@ -460,8 +1150,8 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -460,8 +1205,8 @@ hostapd_bss_clients_add(struct hostapd_d
  			blobmsg_add_string_buffer(&b);
  #endif
  
@@ -997,7 +1057,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  			r = blobmsg_open_table(&b, "bytes");
  			blobmsg_add_u64(&b, "rx", sta_driver_data.rx_bytes);
  			blobmsg_add_u64(&b, "tx", sta_driver_data.tx_bytes);
-@@ -475,14 +1165,14 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -475,14 +1220,14 @@ hostapd_bss_clients_add(struct hostapd_d
  			blobmsg_add_u32(&b, "tx", sta_driver_data.tx_packets);
  			blobmsg_close_table(&b, r);
  			r = blobmsg_open_table(&b, "rate");
@@ -1014,7 +1074,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  		hostapd_ubus_sta_mld_add(hapd, sta);
  
  		blobmsg_close_table(&b, c);
-@@ -490,25 +1180,28 @@ hostapd_bss_clients_add(struct hostapd_d
+@@ -490,25 +1235,28 @@ hostapd_bss_clients_add(struct hostapd_d
  }
  
  static int
@@ -1048,7 +1108,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  	blobmsg_close_array(&b, list);
  	ubus_send_reply(ctx, req, b.head);
  
-@@ -516,6 +1209,22 @@ hostapd_bss_get_clients(struct ubus_cont
+@@ -516,6 +1264,22 @@ hostapd_bss_get_clients(struct ubus_cont
  }
  
  static int
@@ -1071,7 +1131,7 @@ Signed-off-by: Chad Monroe <chad@monroe.io>
  hostapd_bss_get_features(struct ubus_context *ctx, struct ubus_object *obj,
  			struct ubus_request_data *req, const char *method,
  			struct blob_attr *msg)
-@@ -2712,6 +3421,7 @@ hostapd_bss_ttlm_advertise(struct ubus_c
+@@ -2712,6 +3476,7 @@ hostapd_bss_ttlm_advertise(struct ubus_c
  static const struct ubus_method bss_methods[] = {
  	UBUS_METHOD_NOARG("reload", hostapd_bss_reload),
  	UBUS_METHOD_NOARG("get_clients", hostapd_bss_get_clients),
