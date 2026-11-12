@@ -1,0 +1,62 @@
+From: Koral Ilgun <koral.ilgun@adtran.com>
+Date: Thu, 5 Nov 2026 17:11:00 -0800
+Subject: [PATCH] wifi-scripts: send the RADIUS requests of a controller to its proxy
+
+The nodes of a mesh send their RADIUS requests through radsecproxy on
+the mesh controller, so that one place sees each answer. The BSSes of
+the controller itself sent their requests to the RADIUS servers
+directly.
+
+On a controller, give a BSS the address, the ports and the secret of
+the radsecproxy instance of its network, for authentication and for
+accounting. wireless keeps the servers of the operator, because the
+proxy forwards to them. A satellite keeps the values of wireless,
+because a former controller can keep a stale radsecproxy config.
+---
+--- a/src/usr/share/ucode/wifi/ap.uc
++++ b/src/usr/share/ucode/wifi/ap.uc
+@@ -204,6 +204,36 @@ function iface_setup(config) {
+ 	]);
+ }
+ 
++// On a mesh controller, every node sends its RADIUS requests through the
++// radsecproxy of the controller, so that one place sees each answer.
++// radsecproxy-config.sh in intellifi writes the proxy of each network;
++// wireless keeps the operator's servers, which the proxy forwards to.
++// The instance has the name that svc_of() there reads with "uci get", which
++// joins a list with spaces.
++function iface_radius_proxy(config) {
++	if (!length(config.auth_server_addr))
++		return;
++
++	const cursor = libuci.cursor();
++	if (cursor.get('intellifi', 'global', 'role') != 'hub')
++		return;
++
++	const proxy = cursor.get_all('radsecproxy', join(' ', config.network ?? []));
++	const secret = cursor.get('intellifi', 'global', 'proxy_secret');
++	if (proxy?.['.type'] != 'instance' || !proxy.address || !proxy.auth_port || !secret)
++		return;
++
++	config.auth_server_addr = [ proxy.address ];
++	config.auth_server_port = int(proxy.auth_port);
++	config.auth_server_shared_secret = secret;
++	if (!length(config.acct_server_addr))
++		return;
++
++	config.acct_server_addr = [ proxy.address ];
++	config.acct_server_port = int(proxy.acct_port);
++	config.acct_server_shared_secret = secret;
++}
++
+ function iface_authentication_server(config) {
+ 	for (let server in config.auth_server_addr) {
+ 		append('auth_server_addr', server);
+@@ -736,6 +766,7 @@ export function generate(interface, data
+ 
+ 	config.start_disabled = data.ap_start_disabled;
+ 	iface_setup(config);
++	iface_radius_proxy(config);
+ 
+ 	config.sae_station_passwords = station_password_count(stas);
+ 	const link_config = { ...config };

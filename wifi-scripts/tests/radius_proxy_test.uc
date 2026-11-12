@@ -1,9 +1,14 @@
 // Host test of iface_radius_proxy() in ap.uc, through generate(), with the
-// stub modules in tests/stubs. The search path must be absolute, because ucode
-// resolves a relative one from the directory of each importing file. From the
-// wifi-scripts package directory:
-//   ucode -L "$PWD/tests/stubs/*.uc" -L "$PWD/files-ucode/usr/share/ucode/*.uc" \
+// stub modules in tests/stubs. The code under test comes from a patch, so the
+// test needs the ap.uc of a prepared build directory. Run make
+// package/wifi-scripts/prepare. Then, from the wifi-scripts package directory,
+// with BUILD_DIR set to the absolute path of build_dir/target-<arch> of the
+// OpenWrt tree:
+//   ucode -L "$PWD/tests/stubs/*.uc" \
+//     -L "$BUILD_DIR/wifi-scripts-1.0/src/usr/share/ucode/*.uc" \
 //     tests/radius_proxy_test.uc
+// The search paths must be absolute, because ucode resolves a relative one
+// from the directory of each importing file.
 import * as ap from 'wifi.ap';
 import * as common from 'wifi.common';
 import { opts } from 'uci';
