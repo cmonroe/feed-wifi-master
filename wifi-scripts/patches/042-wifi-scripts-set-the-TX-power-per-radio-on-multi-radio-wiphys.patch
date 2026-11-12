@@ -1,0 +1,89 @@
+From 0d21f8414067268f26c15077a9432ca84b6ccaa2 Mon Sep 17 00:00:00 2001
+From: Patrick Hein <bagbag98@googlemail.com>
+Date: Thu, 29 Oct 2026 04:34:57 +0100
+Subject: [PATCH] wifi-scripts: set the TX power per radio on multi-radio wiphys
+
+setup_phy() sets the TX power with `iw phy <phy> set txpower`. On a wiphy
+with several radios this is wiphy-wide: mac80211 applies it to every
+interface of every radio, so the radio set up last sets the power of all
+bands, and reloading one radio resets the others. New interfaces also
+start with the wiphy-wide value, and hostapd creates all but the first
+BSS of a radio after the setup script has returned, so setting the power
+per interface at the end of the setup would miss them.
+
+The shell implementation skipped the wiphy-level call for radios and set
+the power per interface. The ucode port lost both. Skip the wiphy-level
+call on multi-radio wiphys and let netifd set each radio's power on its
+interfaces as they appear and after each setup, which also covers the
+BSSes hostapd adds later.
+
+Signed-off-by: Patrick Hein <bagbag98@googlemail.com>
+---
+--- a/src/lib/netifd/wireless/mac80211.sh
++++ b/src/lib/netifd/wireless/mac80211.sh
+@@ -106,7 +106,9 @@ function setup_phy(phy, config, data) {
+ 		system(`iw phy ${phy} set antenna ${config.txantenna} ${config.rxantenna} >/dev/null 2>&1`);
+ 	}
+ 	system(`iw phy ${phy} set distance ${config.distance} >/dev/null 2>&1`);
+-	system(`iw phy ${phy} set txpower ${config.txpower}`);
++	// Multi-radio wiphys: netifd sets the power per interface (wireless-device.uc).
++	if (config.radio == null || config.radio < 0)
++		system(`iw phy ${phy} set txpower ${config.txpower}`);
+ 
+ 	if (config.frag)
+ 		system(`iw phy ${phy} set frag ${config.frag}`);
+--- a/src/lib/netifd/wireless-device.uc
++++ b/src/lib/netifd/wireless-device.uc
+@@ -3,6 +3,7 @@ import * as ubus from "ubus";
+ import * as uloop from "uloop";
+ import { is_equal } from "./utils.uc";
+ import { access, lsdir } from "fs";
++import * as nl80211 from "nl80211";
+ 
+ const wds_sta_re = /^(.+)\.sta[0-9]+$/;
+ 
+@@ -91,6 +92,25 @@ function handle_link(dev, data, up)
+ 		});
+ }
+ 
++// On a multi-radio wiphy, the wiphy-wide power would apply to all radios; an interface's applies to its radio only.
++function set_txpower(wdev, ifname)
++{
++	let config = wdev.handler_config?.config;
++	if (config?.radio == null || config.radio < 0 || !access(`/sys/class/net/${ifname}`))
++		return;
++
++	let msg = { dev: ifname, wiphy_tx_power_setting: 0 }; // NL80211_TX_POWER_AUTOMATIC
++	if (config.txpower != null) {
++		msg.wiphy_tx_power_setting = 2; // NL80211_TX_POWER_FIXED
++		msg.wiphy_tx_power_level = int(config.txpower) * 100;
++	}
++
++	nl80211.request(nl80211.const.NL80211_CMD_SET_WIPHY, 0, msg);
++	let err = nl80211.error();
++	if (err)
++		netifd.log(netifd.L_WARNING, `wireless: ${wdev.name}: setting the TX power of ${ifname} failed: ${err}\n`);
++}
++
+ function handle_wds_sta_links(data, netdevs)
+ {
+ 	if (data.type != "vif" && data.type != "vlan")
+@@ -554,6 +574,8 @@ function wdev_mark_up(wdev)
+ 
+ 		handle_link(data.ifname, data, true);
+ 		handle_wds_sta_links(data, netdevs);
++		if (data.type == "vif")
++			set_txpower(wdev, data.ifname);
+ 	}
+ 	wdev.state = "up";
+ 
+@@ -673,6 +695,9 @@ function hotplug(name, add)
+ 			continue;
+ 
+ 		handle_link(dev, data, add);
++		// Not for a WDS station's VLAN (phyX-apN.staM): it transmits through its AP interface.
++		if (add && data.type == "vif" && dev == name)
++			set_txpower(this, dev);
+ 	}
+ }
+ 

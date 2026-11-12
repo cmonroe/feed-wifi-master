@@ -1,0 +1,24 @@
+From cf4cc7b5492a1b4e8b3df9a3377cebfb1e80d1f3 Mon Sep 17 00:00:00 2001
+From: Patrick Hein <bagbag98@googlemail.com>
+Date: Sat, 31 Oct 2026 12:12:29 +0100
+Subject: [PATCH] wifi-scripts: truncate a fractional txpower
+
+setup_phy() passes the TX power to iw as `fixed <txpower>00`. The schema
+allows fractional values, so 17.5 becomes `fixed 17.500`, which iw
+rejects, and the TX power is not set at all. Truncate it to whole dBm, as
+the shell implementation did with ${txpower%%.*}. mac80211 only accepts
+whole dBm anyway.
+
+Signed-off-by: Patrick Hein <bagbag98@googlemail.com>
+---
+--- a/src/lib/netifd/wireless/mac80211.sh
++++ b/src/lib/netifd/wireless/mac80211.sh
+@@ -96,7 +96,7 @@ function setup_phy(phy, config, data) {
+ 	});
+ 
+ 	if (config.txpower != null)
+-		config.txpower = 'fixed ' + config.txpower + '00';
++		config.txpower = 'fixed ' + int(config.txpower) * 100;
+ 	else
+ 		config.txpower = 'auto';
+ 
