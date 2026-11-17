@@ -1,0 +1,84 @@
+From: Trent Brown <trent.brown@adtran.com>
+Date: Mon, 16 Nov 2026 15:00:26 -0800
+Subject: [PATCH] iw: util: bound the EHT MCS maps by the MCS set length
+
+__print_eht_capa() reads 3 bytes for each EHT-MCS map of 80, 160 and
+320 MHz, and 4 bytes for the map of a 20 MHz-only station. It does
+not compare these reads with mcs_len. The MCS set of a scan element
+can be shorter than the maps that the HE and EHT capabilities
+announce, and then iw prints the bytes after the element as MCS maps.
+
+Print each map only when the MCS set holds all of its bytes. When
+"iw phy" gets no MCS set from the kernel, mcs_len is 0, so iw no
+longer prints maps of zeros.
+
+Fixes: 4c859917316b ("iw: util: update and clean up eht capa printing")
+Signed-off-by: Trent Brown <trent.brown@adtran.com>
+---
+ util.c |   34 +++++++++++++++++++---------------
+ 1 file changed, 19 insertions(+), 15 deletions(-)
+
+--- a/util.c
++++ b/util.c
+@@ -1640,16 +1640,18 @@ static void __print_eht_capa(int band,
+ 	    !(he_phy0 & ((BIT(1) | BIT(2) | BIT(3) | BIT(4)) << 8))) {
+ 		static const char * const mcs[] = { "0-7", "8-9", "10-11", "12-13" };
+ 
+-		printf("%s\t\tEHT-MCS Map (20 MHz Non-AP STA) (0x", pre);
+-		for (i = 0; i < mcs_len; i++)
+-			printf("%02x", ((__u8 *)mcs_set)[i]);
+-		printf("):\n");
+-
+-		for (i = 0; i < 4; i++) {
+-			printf("%s\t\t\tRx Max NSS for MCS %s: %u\n",
+-			       pre, mcs[i], mcs_set[i] & 0xf);
+-			printf("%s\t\t\tTx Max NSS for MCS %s: %u\n",
+-			       pre, mcs[i], mcs_set[i] >> 4);
++		if (mcs_len >= 4) {
++			printf("%s\t\tEHT-MCS Map (20 MHz Non-AP STA) (0x", pre);
++			for (i = 0; i < mcs_len; i++)
++				printf("%02x", ((__u8 *)mcs_set)[i]);
++			printf("):\n");
++
++			for (i = 0; i < 4; i++) {
++				printf("%s\t\t\tRx Max NSS for MCS %s: %u\n",
++				       pre, mcs[i], mcs_set[i] & 0xf);
++				printf("%s\t\t\tTx Max NSS for MCS %s: %u\n",
++				       pre, mcs[i], mcs_set[i] >> 4);
++			}
+ 		}
+ 	} else {
+ 		static const char * const mcs[] = { "0-9", "10-11", "12-13"};
+@@ -1659,9 +1661,10 @@ static void __print_eht_capa(int band,
+ 		 * If no Channel Width bits are set, but we are an AP, we use
+ 		 * this MCS logic also.
+ 		 */
+-		if (he_phy0 & ((BIT(1) | BIT(2)) << 8) ||
+-		    (from_ap && !(he_phy0 &
+-		    ((BIT(1) | BIT(2) | BIT(3) | BIT(4)) << 8)))) {
++		if (mcs_len >= 3 &&
++		    (he_phy0 & ((BIT(1) | BIT(2)) << 8) ||
++		     (from_ap && !(he_phy0 &
++		     ((BIT(1) | BIT(2) | BIT(3) | BIT(4)) << 8))))) {
+ 			printf("%s\t\tEHT-MCS Map (BW <= 80) (0x", pre);
+ 			for (i = 0; i < 3; i++)
+ 				printf("%02x", ((__u8 *)mcs_set)[i]);
+@@ -1676,7 +1679,7 @@ static void __print_eht_capa(int band,
+ 		}
+ 		mcs_set += 3;
+ 
+-		if (he_phy0 & (BIT(3) << 8)) {
++		if (mcs_len >= 6 && (he_phy0 & (BIT(3) << 8))) {
+ 			printf("%s\t\tEHT-MCS Map (BW = 160) (0x", pre);
+ 			for (i = 0; i < 3; i++)
+ 				printf("%02x", ((__u8 *)mcs_set)[i]);
+@@ -1691,7 +1694,8 @@ static void __print_eht_capa(int band,
+ 		}
+ 
+ 		mcs_set += 3;
+-		if (band == NL80211_BAND_6GHZ && (le32toh(phy_cap[0]) & BIT(1))) {
++		if (mcs_len >= 9 && band == NL80211_BAND_6GHZ &&
++		    (le32toh(phy_cap[0]) & BIT(1))) {
+ 			printf("%s\t\tEHT-MCS Map (BW = 320) (0x", pre);
+ 			for (i = 0; i < 3; i++)
+ 				printf("%02x", ((__u8 *)mcs_set)[i]);

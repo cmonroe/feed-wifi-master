@@ -1,0 +1,49 @@
+From: Trent Brown <trent.brown@adtran.com>
+Date: Mon, 16 Nov 2026 15:00:26 -0800
+Subject: [PATCH] iw: util: read the EHT PHY capabilities from a buffer of full size
+
+The EHT PHY Capabilities field has 9 bytes. __print_eht_capa() prints
+all 9 and reads the field as three 32-bit words, so the third word
+covers bytes 8 to 11. For a scan element of minimum length, the last
+of these bytes lies after the element. For "iw phy", print_eht_info()
+copies the field into a buffer of 8 bytes, so the ninth byte and the
+two "QAM In Wider Bandwidth" flags come from the stack.
+
+In both callers, copy the field into a zeroed buffer of three words.
+
+Fixes: 4c859917316b ("iw: util: update and clean up eht capa printing")
+Signed-off-by: Trent Brown <trent.brown@adtran.com>
+---
+ util.c |    8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+--- a/util.c
++++ b/util.c
+@@ -1723,7 +1723,7 @@ void print_eht_info(struct nlattr *nl_if
+ {
+ 	struct nlattr *tb[NL80211_BAND_IFTYPE_ATTR_MAX + 1];
+ 	__u8 mac_cap[2] = { 0 };
+-	__u32 phy_cap[2] = { 0 };
++	__u32 phy_cap[3] = { 0 };
+ 	__u8 mcs_set[13] = { 0 };
+ 	__u8 ppet[31] = { 0 };
+ 	__u16 he_phy_cap[6] = { 0 };
+@@ -1799,14 +1799,16 @@ void print_eht_info(struct nlattr *nl_if
+ void print_eht_capability(const uint8_t *ie, int len, const uint8_t *he_cap,
+ 			  bool from_ap)
+ {
+-	const void *mac_cap, *phy_cap, *mcs_set, *he_phy_cap;
++	const void *mac_cap, *mcs_set, *he_phy_cap;
++	__u32 phy_cap[3] = { 0 };
+ 	int mcs_len;
+ 	int i = 0;
+ 
+ 	mac_cap = &ie[i];
+ 	i += 2;
+ 
+-	phy_cap = &ie[i];
++	/* the 9 bytes are read as three words */
++	memcpy(phy_cap, &ie[i], 9);
+ 	i += 9;
+ 
+ 	mcs_set = &ie[i];

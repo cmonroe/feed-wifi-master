@@ -1,0 +1,97 @@
+From: Trent Brown <trent.brown@adtran.com>
+Date: Mon, 16 Nov 2026 15:00:26 -0800
+Subject: [PATCH] iw: scan: print EHT capabilities without an HE capabilities element
+
+init_context() sets he_cap only when its walk reaches an HE
+Capabilities element. A scan entry can carry an EHT Capabilities
+element without such an element, or with one that the walk does not
+reach. print_eht_capability() then computes a pointer from NULL, and
+__print_eht_capa() reads it, so iw stops with SIGSEGV in the middle
+of the scan output.
+
+Without HE PHY capabilities, read the HE channel width bits as 0. For
+an AP, the existing rule for "no channel width bits" then prints the
+EHT-MCS map for 80 MHz and below, and the scan output continues.
+
+init_context() also stores he_cap for an HE Capabilities element of
+any length, but the EHT printer reads byte 6 of it. Store it only
+when the element holds that byte. An extension element of length 0
+has no extension ID, so do not read one.
+
+Fixes: 4c859917316b ("iw: util: update and clean up eht capa printing")
+Fixes: a6ad3f11ead1 ("iw: scan: add eht capability parsing")
+Signed-off-by: Trent Brown <trent.brown@adtran.com>
+---
+ scan.c |    6 +++++-
+ util.c |   13 +++++++------
+ 2 files changed, 12 insertions(+), 7 deletions(-)
+
+--- a/scan.c
++++ b/scan.c
+@@ -2505,9 +2505,13 @@ static void init_context(struct ie_conte
+ 			ctx->is_vht_cap = true;
+ 			break;
+ 		case EID_EXTENSION:
++			if (!pos[1])
++				break;
+ 			switch (pos[2]) {
+ 			case EID_EXT_HE_CAPABILITY:
+-				ctx->he_cap = pos + 3;
++				/* print_eht_capability() reads up to he_cap[6] */
++				if (pos[1] >= 8)
++					ctx->he_cap = pos + 3;
+ 				break;
+ 			}
+ 			break;
+--- a/util.c
++++ b/util.c
+@@ -1535,6 +1535,7 @@ static void __print_eht_capa(int band,
+ 			     bool from_ap,
+ 			     bool indent)
+ {
++	__u16 he_phy0 = he_phy_cap ? le16toh(he_phy_cap[0]) : 0;
+ 	unsigned int i;
+ 	const char *pre = indent ? "\t" : "";
+ 
+@@ -1636,7 +1637,7 @@ static void __print_eht_capa(int band,
+ 	PRINT_EHT_PHY_CAP(2, 1, "Rx 4096-QAM In Wider Bandwidth DL OFDMA Supported");
+ 
+ 	if (!from_ap &&
+-	    !(le16toh(he_phy_cap[0]) & ((BIT(1) | BIT(2) | BIT(3) | BIT(4)) << 8))) {
++	    !(he_phy0 & ((BIT(1) | BIT(2) | BIT(3) | BIT(4)) << 8))) {
+ 		static const char * const mcs[] = { "0-7", "8-9", "10-11", "12-13" };
+ 
+ 		printf("%s\t\tEHT-MCS Map (20 MHz Non-AP STA) (0x", pre);
+@@ -1658,8 +1659,8 @@ static void __print_eht_capa(int band,
+ 		 * If no Channel Width bits are set, but we are an AP, we use
+ 		 * this MCS logic also.
+ 		 */
+-		if (le16toh(he_phy_cap[0]) & ((BIT(1) | BIT(2)) << 8) ||
+-		    (from_ap && !(le16toh(he_phy_cap[0]) &
++		if (he_phy0 & ((BIT(1) | BIT(2)) << 8) ||
++		    (from_ap && !(he_phy0 &
+ 		    ((BIT(1) | BIT(2) | BIT(3) | BIT(4)) << 8)))) {
+ 			printf("%s\t\tEHT-MCS Map (BW <= 80) (0x", pre);
+ 			for (i = 0; i < 3; i++)
+@@ -1675,7 +1676,7 @@ static void __print_eht_capa(int band,
+ 		}
+ 		mcs_set += 3;
+ 
+-		if (le16toh(he_phy_cap[0]) & (BIT(3) << 8)) {
++		if (he_phy0 & (BIT(3) << 8)) {
+ 			printf("%s\t\tEHT-MCS Map (BW = 160) (0x", pre);
+ 			for (i = 0; i < 3; i++)
+ 				printf("%02x", ((__u8 *)mcs_set)[i]);
+@@ -1807,10 +1808,10 @@ void print_eht_capability(const uint8_t
+ 	mcs_set = &ie[i];
+ 	mcs_len = len - i;
+ 
+-	he_phy_cap = &he_cap[6];
++	he_phy_cap = he_cap ? &he_cap[6] - 1 : NULL;
+ 
+ 	__print_eht_capa(NL80211_BAND_6GHZ, mac_cap, phy_cap, mcs_set, mcs_len,
+-			 NULL, 0, he_phy_cap - 1, from_ap, false);
++			 NULL, 0, he_phy_cap, from_ap, false);
+ }
+ 
+ void print_he_capability(const uint8_t *ie, int len)
