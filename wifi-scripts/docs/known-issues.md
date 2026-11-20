@@ -190,3 +190,59 @@ on a unit.
 - A check of the key in `bss_refusal()` can refuse such a key with a
   reason, instead of a BSS that does not start.
 - The web UI can refuse `|mac=` in a key.
+
+## A Backport of OpenWrt PR 24641 Would Turn Hairpin Off Under Patch 035
+
+**Severity:** none in the current tree. It becomes a fault at the first
+backport from OpenWrt master after a merge of
+https://github.com/openwrt/openwrt/pull/24641 in its current form. The PR
+was open on 2026-11-20. Found on 2026-11-20 in a review of that PR.
+
+### What happens
+
+- Patch `035-wifi-scripts-isolate-bridged-AP-stations-by-default.patch`
+  gives a bridged AP `ap_isolate=1` unless `multicast_to_unicast` is 0. An
+  unset option counts as on, as in the shell scripts. With `ap_isolate=1`,
+  frames between two stations of one BSS pass through the bridge, so the
+  client isolation of bridger applies to them.
+- netifd sets the hairpin mode of the bridge port from the same option:
+  `hairpin = mcast_to_ucast || proxyarp` in `system_bridge_set_wireless()`.
+  For an unset option, netifd uses its own default, which is on for an AP
+  port. `files/lib/netifd/wireless-device.uc` sends the option to netifd
+  only when it is set (`config.multicast_to_unicast != null`).
+- So today `ap_isolate` and the hairpin mode have the same value. With the
+  isolation off in bridger, two stations of one BSS reach each other through
+  the bridge.
+- PR 24641 removes the `!= null` guard and sends 0 for an unset option.
+  netifd then turns the hairpin mode off, while patch 035 still sets
+  `ap_isolate=1`. Two stations of one BSS then cannot reach each other,
+  also with the isolation off.
+- This applies to each AP section without an explicit
+  `multicast_to_unicast`. A search of the smartrg-master branch of
+  internal-feed-smartrg, internal-feed-bsp and cdt on 2026-11-20 found no
+  code that sets the option in the wireless configuration.
+
+### No conflict shows it
+
+PR 24641 changes `wireless-device.uc`, and patch 035 changes `ap.uc`. The
+backport and the patch apply without a conflict, so the build gives no
+sign of the fault.
+
+### If it matters later
+
+- Before each backport of wifi-scripts, check the state of PR 24641.
+- If it merged in its current form, keep the two values the same. One
+  option: set `multicast_to_unicast` to 1 on each AP section, which keeps
+  `ap_isolate` and the hairpin mode on. A second option: keep the
+  `!= null` guard with a local patch.
+- For the first option: `set_fast_leave.sh` in internal-feed-bsp writes the
+  bridge port `multicast_to_unicast` itself, 1 on a hub and 0 on a
+  satellite, and does not change the hairpin mode. Check that the script
+  still runs after netifd adds the port.
+- A change of patch 035 that sets `ap_isolate=0` for an unset option also
+  keeps the two values the same. It opens again the fault that patch 035
+  closes: mac80211 forwards between two stations of one BSS without the
+  bridge.
+- A comment of 2026-10-05 on PR 24641 proposes the change of patch 035
+  for OpenWrt. If OpenWrt takes that change instead of PR 24641, patch 035
+  can go.
