@@ -116,6 +116,25 @@ SDG-13120 on 2026-11-11, from the source and the hostap documentation.
   wildcard passwords): wpa_supplicant 2.12 connected 0.26 s after the
   rejection.
 
+### Phones
+
+On 2026-11-19, on an SDG-8733v controller with an 834-5 satellite,
+SmartOS 27.2.0.101 with this fix, one Additional PSK without a MAC (two
+wildcard passwords), WPA3 only, with a Pixel 8a on 6 and 5 GHz and a
+Pixel 3a on 5 GHz. On 2.4 GHz, both phones rejoined by themselves.
+
+- The main passphrase connected at the first attempt on each band.
+- A new join with the Additional PSK got status 1. Neither phone tried
+  again: each showed "Check password and try again". A second join by the
+  user connected at once, because hostapd then tries the other password.
+- A phone that knew the network rejoined by itself after a restart of
+  hostapd: status 1, then a new attempt and a connection after 1 to 9 s,
+  with no message on the phone.
+- Each AP and each band keeps its own results. A phone that roams to an
+  AP that does not know it gets status 1 from that AP too.
+- On `sae-mixed`, the Pixel 3a chose WPA-PSK-SHA256, so SAE did not
+  apply.
+
 ### If it matters later
 
 - The web UI can limit the number of Additional PSKs without a MAC on a
