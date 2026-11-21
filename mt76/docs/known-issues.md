@@ -39,6 +39,37 @@ from before the scan. The firmware documents neither point; measure the
 TX quality on the operating channel after such a scan first. Or scan an
 associated 834-5 radio less often, or with fewer channels in each request.
 
+## MT7986 Firmware Keeps Trigger-Based Sounding After an iPhone Leaves
+
+**Severity:** low. The sounding rate of an idle HE client goes up about 10
+times, and its tx duration does not go up. Seen on an SDG-8612 with
+27.2.0.101 (WM firmware build 20260515120536), 2026-11-20, in the retest of
+SDG-1168.
+
+### What happens
+
+- With one HE client on the 5 GHz AP (HE80), the firmware sounds it with a
+  unicast NDP Announcement every 6 to 30 s.
+- When an HE iPhone joins, the firmware changes to trigger-based sounding of
+  the first client: a broadcast NDP Announcement, then a Beamforming Report
+  Poll trigger. The rate was about one per second with a MediaTek MT7921
+  client (NETGEAR A8000), and 0.4 per second with an Intel AX211-class
+  client. An HT client, an Apple Watch, is not needed for the change.
+- Each broadcast NDP Announcement holds two HE STA Info fields with the same
+  AID, the AID of the first client. The cause is not known.
+- The state stays after the iPhone leaves, for at least 50 minutes. A
+  reconnect of the first client that takes about 1 s does not end it. A
+  disconnect of 30 s ends it.
+- The idle tx duration of the first client was 74 to 132 us per second, with
+  and without the iPhone.
+- In 2023, with an Intel AX211 client, the rate went to about 24 per second,
+  and the tx duration went up about 10 times. Both points are in SDG-1168.
+
+### Options
+
+Report the duplicate STA Info and the state that stays to MediaTek, with the
+over-the-air captures of the retest. The captures are attached to SDG-1168.
+
 ## mt7996e Does Not Recover from a Reload of the WiFi Modules
 
 **Severity:** low, a limit for development work only. A unit loads the WiFi
